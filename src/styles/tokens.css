@@ -1,0 +1,19 @@
+/* Design tokens from SPEC §17 and the Stage 3 mockup sources. */
+:root {
+  --ground: #f2efea;
+  --card: #ffffff;
+  --ink: #1a1411;
+  --ink-2: #4a403a;
+  --rust: #8a3315;
+  --rail: #2e1710;
+  --short: #b3122e;
+  --amber: #f5b700;
+  --navy: #1f3a5f;
+  --destructive-fill: #1a1411;
+  --destructive-outline: #e5484d;
+
+  --font-body: 'Atkinson Hyperlegible', system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', 'Atkinson Hyperlegible', sans-serif;
+
+  --touch-min: 48px;
+}

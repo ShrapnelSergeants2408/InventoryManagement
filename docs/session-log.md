@@ -33,3 +33,30 @@ Stages 1–3 (claude.ai): SPEC v0.5, `stage3-design-notes.md`, `stage3-verificat
 
 **CONFIDENCE**
 High on the seed numbers (scripted). High that `.zip` is not on Chrome's Web Share allow-list (MDN), but it needs a check on the Tab S8. The other questions are judgment calls for Dan.
+
+---
+
+## Session 1 (continued) — M1 Foundation
+
+**DATES & TIMES**
+| Time | Activity |
+|---|---|
+| 16:17 | Dan: "defaults OK, use Preact, commit docs with M1". Approval recorded in `spec-questions.md` |
+| 16:18–16:24 | Scaffold (Vite 8, TS 7, Preact 11, Vitest 5, Dexie 4, Papa Parse, JSZip, Fontsource); domain types, money, order, status, validation, ids |
+| ~16:22 | Dan: commit regularly, push every 5 commits and at milestone completion, set up Pages. Remote exists (`ShrapnelSergeants2408/InventoryManagement`, private); `gh` token invalid; `git push` works via the credential manager |
+| 16:25 | Domain tests 44/44; commit `70001b1` |
+| 16:25–16:26 | Storage, CSV codec, list files, ZIP/seed reader, DB and seed tests: 89/89; build clean; commit `da484d2` |
+| ~16:27 | Dan: the repo can be made public if necessary |
+| 16:27–16:30 | M1 verification: mutation check (7 caught, 1 equivalent), real Chrome IndexedDB check ($8,413.66), Pages workflow, review `docs/reviews/M1.md` |
+
+**WORK COMPLETED**
+M1: data model, IndexedDB storage, order math, CSV codec, starter-catalog reader, deploy workflow.
+
+**DELIVERABLES PRODUCED**
+`src/domain/*`, `src/data/*`, `src/io/*`, `tests/*` (89 tests), `scripts/cdp-check.mjs`, `.github/workflows/deploy.yml`, `docs/reviews/M1.md`.
+
+**PREDECESSORS / CONTEXT**
+Step 0 (above).
+
+**CONFIDENCE**
+High for the M1 math and codec (tests, mutation check, real-browser check). Pages isn't enabled yet; it needs Dan (see the M1 summary).

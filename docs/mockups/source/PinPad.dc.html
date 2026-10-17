@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mentor PIN pad</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>body{margin:0}</style>
+</helmet>
+<div role="dialog" aria-label="{{title}}" style="width: 440px; box-sizing: border-box; padding: 28px 26px 22px; background: #FFFFFF; border-radius: 24px; box-shadow: 0 24px 64px rgba(0,0,0,.35); font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; color: #1A1411; display: flex; flex-direction: column; gap: 16px">
+  <div style="display: flex; align-items: center; gap: 14px">
+    <span style="width: 56px; height: 56px; border-radius: 50%; background: #E3EAF3; color: #1F3A5F; display: flex; align-items: center; justify-content: center; flex: none"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></span>
+    <div style="min-width: 0">
+      <div style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 30px; line-height: 1.05">{{title}}</div>
+      <div style="font-size: 16px; color: #4A403A; margin-top: 2px">{{reasonText}}</div>
+    </div>
+  </div>
+  <div aria-label="{{dotsLabel}}" style="display: flex; justify-content: center; gap: 14px; padding: 6px 0 2px">
+    <sc-for list="{{dots}}" as="dt" hint-placeholder-count="4">
+      <span style="width: 22px; height: 22px; border-radius: 50%; border: 3px solid #1A1411; background: {{dt.bg}}; box-sizing: border-box"></span>
+    </sc-for>
+  </div>
+  <div role="alert" style="min-height: 24px; text-align: center; font-weight: 700; font-size: 16px; color: #A3122B">{{errText}}</div>
+  <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px">
+    <sc-for list="{{keys}}" as="k" hint-placeholder-count="12">
+      <button onClick="{{k.press}}" aria-label="{{k.aria}}" style="height: 72px; border-radius: 16px; border: 2px solid {{k.border}}; background: {{k.bg}}; color: #1A1411; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: {{k.size}}; cursor: pointer; display: flex; align-items: center; justify-content: center">{{k.label}}</button>
+    </sc-for>
+  </div>
+  <button onClick="{{submit}}" style="min-height: 64px; border-radius: 14px; border: 0; background: #8A3315; color: #FFFFFF; font: inherit; font-weight: 700; font-size: 20px; cursor: pointer">{{submitText}}</button>
+  <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px">
+    <button onClick="{{cancel}}" style="min-height: 48px; padding: 0 16px; border-radius: 12px; border: 2px solid #CFC6BB; background: #FFFFFF; font: inherit; font-weight: 700; font-size: 17px; color: #1A1411; cursor: pointer">Cancel</button>
+    <sc-if value="{{isUnlock}}" hint-placeholder-val="{{true}}">
+      <button onClick="{{toggleForgot}}" style="min-height: 48px; padding: 0 12px; border: 0; background: transparent; font: inherit; font-weight: 700; font-size: 17px; color: #1F3A5F; text-decoration: underline; cursor: pointer">Forgot PIN?</button>
+    </sc-if>
+  </div>
+  <sc-if value="{{forgot}}" hint-placeholder-val="{{false}}">
+    <div style="background: #F2EFEA; border-radius: 12px; padding: 12px 14px; font-size: 16px; line-height: 1.35">A mentor enters the one-time recovery code shown at setup, then sets a new PIN. The old code stops working and a new one is shown.</div>
+  </sc-if>
+  <div style="text-align: center; font-size: 14px; color: #4A403A">Mockup: the demo PIN is 2408 · stays unlocked 5 minutes</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"reason":{"editor":"text","default":"Needed to edit vendors and prices"},"mode":{"editor":"enum","options":["unlock","set","confirm"],"default":"unlock"},"wrong":{"editor":"boolean","default":false},"onDone":{"editor":null},"onCancel":{"editor":null},"$preview":{"width":440,"height":720}}'>
+class Component extends DCLogic {
+  componentDidMount() { if (this.props.wrong) this.setState({ d: '', err: 'Wrong PIN. Try again — 2 wrong tries so far.' }); }
+  renderVals() {
+    const s = this.state || {};
+    const d = s.d || '';
+    const mode = this.props.mode || 'unlock';
+    const add = (ch) => { if (d.length < 6) this.setState({ d: d + ch, err: '' }); };
+    const digits = ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => ({ label: n, aria: n, press: () => add(n), bg: '#FFFFFF', border: '#1A1411', size: '34px' }));
+    digits.push({ label: '⌫', aria: 'Delete last digit', press: () => this.setState({ d: d.slice(0, -1) }), bg: '#F2EFEA', border: '#CFC6BB', size: '30px' });
+    digits.push({ label: '0', aria: '0', press: () => add('0'), bg: '#FFFFFF', border: '#1A1411', size: '34px' });
+    digits.push({ label: 'Clear', aria: 'Clear all digits', press: () => this.setState({ d: '' }), bg: '#F2EFEA', border: '#CFC6BB', size: '22px' });
+    const n = Math.max(4, d.length);
+    const dots = []; for (let i = 0; i < n; i++) dots.push({ bg: i < d.length ? '#1A1411' : 'transparent' });
+    const submit = () => {
+      if (d.length < 4) { this.setState({ err: 'Enter 4 to 6 digits.' }); return; }
+      if (mode !== 'unlock') { if (this.props.onDone) this.props.onDone(d); this.setState({ d: '' }); return; }
+      if (d === '2408') { this.setState({ d: '', err: '' }); if (this.props.onDone) this.props.onDone(); }
+      else this.setState({ d: '', err: 'Wrong PIN. Try again.' });
+    };
+    return {
+      title: mode === 'set' ? 'Set a mentor PIN' : mode === 'confirm' ? 'Enter the PIN again' : 'Mentor PIN',
+      reasonText: this.props.reason ?? 'Needed to edit vendors and prices',
+      dots: dots, dotsLabel: d.length + ' digits entered', keys: digits, errText: s.err || '',
+      submit: submit, submitText: mode === 'unlock' ? 'Unlock for 5 minutes' : 'Next',
+      cancel: () => { this.setState({ d: '', err: '' }); if (this.props.onCancel) this.props.onCancel(); },
+      isUnlock: mode === 'unlock', forgot: !!s.forgot, toggleForgot: () => this.setState({ forgot: !s.forgot })
+    };
+  }
+}
+</script>
+</body>
+</html>

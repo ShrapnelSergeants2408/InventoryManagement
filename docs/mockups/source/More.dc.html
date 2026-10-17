@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>More and mentor tools</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.navy{background:#1F3A5F;border-color:#1F3A5F;color:#fff}
+.btn.onb{border-color:#fff;color:#fff;background:transparent}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:16px;height:16px;stroke-width:2.5}
+.chip.lock{background:#E3EAF3;color:#1F3A5F}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+.mbody{flex:1 1 auto;min-height:0;overflow:auto;padding:20px 24px 32px;display:grid;grid-template-columns:400px minmax(0,1fr);gap:20px;align-items:start}
+.app.p .mbody{grid-template-columns:minmax(0,1fr);padding:16px}
+.lockcard{border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px}
+.lockcard.off{background:#fff;border:2px solid #1F3A5F;color:#1F3A5F}
+.lockcard.on{background:#1F3A5F;color:#fff}
+.big{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:64px;line-height:1}
+.grp{background:#fff;border:1px solid #DDD5CB;border-radius:16px;overflow:hidden}
+.grp h3{margin:0;padding:14px 18px 6px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#4A403A}
+.mrow{display:flex;align-items:center;gap:14px;min-height:72px;padding:10px 18px;border-top:1px solid #EEE7DE;color:#1A1411;text-decoration:none;background:#fff;width:100%;border-left:0;border-right:0;border-bottom:0;font:inherit;text-align:left;cursor:pointer}
+.mrow .mi{width:48px;height:48px;border-radius:12px;background:#F2EFEA;display:flex;align-items:center;justify-content:center;flex:none}
+.mt{font-weight:700;font-size:19px}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <h1 class="h1" style="flex: 1 1 auto">More</h1>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+    </header>
+    <div class="mbody">
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <sc-if value="{{locked}}" hint-placeholder-val="{{true}}">
+          <div class="lockcard off">
+            <div style="display: flex; gap: 12px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg><h2 class="h2" style="font-size: 30px">Mentor tools locked</h2></div>
+            <div style="color: #1A1411">Students can add items, change counts, desired, spares, locations, notes and photos without a PIN. A mentor PIN is needed to delete items, change vendors or prices, manage suppliers, rename or remove categories, restore, import prices and change settings.</div>
+            <button class="btn navy lg" onClick="{{unlock}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2"></path></svg>Unlock for 5 minutes</button>
+          </div>
+        </sc-if>
+        <sc-if value="{{unlocked}}" hint-placeholder-val="{{false}}">
+          <div class="lockcard on" role="status">
+            <div style="display: flex; gap: 12px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 44px; height: 44px"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2"></path></svg><h2 class="h2" style="font-size: 30px">Mentor tools unlocked</h2></div>
+            <div><div class="small" style="opacity: .85">Relocks by itself in</div><div class="big">{{left}}</div></div>
+            <div class="small" style="opacity: .9">The same countdown shows on the lock button at the top of every screen. Tap it to lock early.</div>
+            <button class="btn onb lg" onClick="{{lockNow}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>Lock now</button>
+          </div>
+        </sc-if>
+        <a class="btn" href="Setup.dc.html" style="justify-content: flex-start"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 11v5.5 M12 7.5v.01"></path></svg>Mockup: view first-launch setup</a>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px">
+        <div class="grp">
+          <h3>Manage</h3>
+          <a class="mrow" href="{{supHref}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 6h12v10H2z M14 10h4l4 3.5V16h-8 M4 18.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0 M15 18.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span><span style="flex: 1"><span class="mt">Suppliers</span><span class="small muted" style="display: block">9 suppliers · add, rename, remove</span></span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN to change</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+          <a class="mrow" href="{{catHref}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg></span><span style="flex: 1"><span class="mt">Categories</span><span class="small muted" style="display: block">12 categories · add and reorder anytime</span></span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN to rename/remove</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+          <a class="mrow" href="{{locHref}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6-6.5-11.5a6.5 6.5 0 0 1 13 0C18.5 15 12 21 12 21z M10 9.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg></span><span style="flex: 1"><span class="mt">Locations</span><span class="small muted" style="display: block">Bins, totes and shelves · walk order for count-in</span></span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN to rename/remove</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+          <a class="mrow" href="{{bakHref}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg></span><span style="flex: 1"><span class="mt">Backup, restore &amp; price import</span><span class="small muted" style="display: block">Last backup: never</span></span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN to restore/import</span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+        </div>
+        <div class="grp">
+          <h3>Mentor PIN &amp; settings</h3>
+          <button class="mrow" onClick="{{changePin}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg></span><span style="flex: 1"><span class="mt">Change PIN</span><span class="small muted" style="display: block">4–6 digits, stored hashed on this tablet</span></span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></button>
+          <button class="mrow" onClick="{{recovery}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.5V14 M12 17.5v.01"></path></svg></span><span style="flex: 1"><span class="mt">Forgot the PIN?</span><span class="small muted" style="display: block">Use the one-time recovery code from setup</span></span></button>
+          <button class="mrow" onClick="{{settings}}"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg></span><span style="flex: 1"><span class="mt">Reminders &amp; limits</span><span class="small muted" style="display: block">Backup reminder 7 days · stale price 90 days · unlock 5 minutes</span></span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></button>
+        </div>
+        <div class="grp">
+          <h3>About</h3>
+          <div class="mrow" style="cursor: default"><span class="mi"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6"></path></svg></span><span style="flex: 1"><span class="mt">FRC 2408 Inventory Management</span><span class="small muted" style="display: block">Works offline · 130 items · 6.1 MB stored · persistent storage granted</span></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" wrong="{{pinWrong}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn" style="min-height: 48px; background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","pin","pinwrong","unlocked"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2'
+};
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    const st = {};
+    if (v === 'pin') st.pin = 'Unlock mentor tools for 5 minutes';
+    if (v === 'pinwrong') { st.pin = 'Unlock mentor tools for 5 minutes'; st.wrong = true; }
+    if (v === 'unlocked') st.unlockAt = Date.now() - 48000;
+    this.setState(st);
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  unlockedNow() { const s = this.state || {}; return !!s.unlockAt && Date.now() - s.unlockAt < 300000; }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait, P = portrait ? '-P' : '';
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0, mmss = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+    const need = (reason, msg) => () => on ? this.setState({ toast: msg }) : this.setState({ pin: reason, wrong: false, afterMsg: msg });
+    return {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('more', portrait),
+      supHref: 'Suppliers' + P + '.dc.html', catHref: 'Categories' + P + '.dc.html', locHref: 'Locations' + P + '.dc.html', bakHref: 'Backup' + P + '.dc.html',
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock, lockText: on ? 'Unlocked ' + mmss : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes', wrong: false }),
+      locked: !on, unlocked: on, left: mmss, unlock: () => this.setState({ pin: 'Unlock mentor tools for 5 minutes', wrong: false }), lockNow: () => this.setState({ unlockAt: 0 }),
+      pinOpen: !!s.pin, pinReason: s.pin || '', pinWrong: !!s.wrong,
+      onPinDone: () => this.setState({ pin: null, unlockAt: Date.now(), toast: s.afterMsg || '', afterMsg: '' }), onPinCancel: () => this.setState({ pin: null }),
+      changePin: need('Changing the PIN needs the current PIN', 'Enter a new 4–6 digit PIN twice here. (Mockup)'),
+      settings: need('Changing settings needs the mentor PIN', 'Reminder, stale-price and unlock lengths are edited here. (Mockup)'),
+      recovery: () => this.setState({ toast: 'Enter the recovery code from setup, then set a new PIN. A new code is shown afterward.' }),
+      hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

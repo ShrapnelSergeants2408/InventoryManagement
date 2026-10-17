@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Item detail card</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.sp{flex:1 1 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.dark{background:#1A1411;color:#fff}
+.btn.danger{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.dangero{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:12px;border:2px solid #CFC6BB;background:#fff;color:#1A1411;cursor:pointer;flex:none;text-decoration:none;padding:0}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;font-weight:700;font-size:15px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:18px;height:18px;stroke-width:2.5}
+.chip.red{background:#B3122E;color:#fff}
+.chip.yel{background:#F5B700;color:#1A1411}
+.chip.ok{border:2px solid #CFC6BB;color:#4A403A;background:#fff}
+.chip.lock{background:#E3EAF3;color:#1F3A5F}
+.chip.stale{border:2px solid #1F3A5F;color:#1F3A5F;background:#fff}
+.chip.np{border:2px dashed #4A403A;color:#4A403A;background:#fff}
+.chip.mut{background:#ECE7E1;color:#4A403A;font-weight:400;letter-spacing:0}
+.chip.pref{background:#1A1411;color:#fff}
+.card{background:#fff;border:1px solid #DDD5CB;border-radius:16px}
+.lbl{display:block;font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A403A;margin-bottom:6px}
+.step{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:14px;border:2px solid #1A1411;background:#fff;color:#1A1411;cursor:pointer;flex:none;padding:0}
+.step.plus{background:#1A1411;color:#fff}
+.step.xl{width:80px;height:80px;border-radius:16px}
+.step .ic{width:30px;height:30px;stroke-width:3}
+.num{width:84px;height:64px;border:2px solid #CFC6BB;border-radius:12px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;color:#1A1411;background:#fff;padding:0}
+.num.xl{width:128px;height:80px;font-size:44px}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg{background:#fff;border-radius:20px;padding:28px;width:600px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:16px}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px}
+.nophoto{display:flex;align-items:center;justify-content:center;color:#8C8178;background:#F7F4F0}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+/* detail */
+.dbody{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:420px minmax(0,1fr)}
+.app.p .dbody{display:block;overflow:auto}
+.dleft{padding:24px;display:flex;flex-direction:column;gap:14px;border-right:1px solid #DDD5CB;background:#FBF9F6;overflow:auto}
+.app.p .dleft{border-right:0;border-bottom:1px solid #DDD5CB;display:grid;grid-template-columns:300px minmax(0,1fr);align-items:start;gap:16px;padding:16px}
+.photo{width:100%;aspect-ratio:1/1;border-radius:16px;border:1px solid #DDD5CB;background:#fff;padding:0;cursor:zoom-in;display:block;overflow:hidden;position:relative}
+.photo img{width:100%;height:100%;object-fit:contain;display:block}
+.photo .hint{position:absolute;right:10px;bottom:10px;background:rgba(26,20,17,.8);color:#fff;border-radius:999px;padding:6px 12px;font-size:14px;font-weight:700}
+.pacts{display:flex;gap:8px;flex-wrap:wrap}
+.pacts .btn{min-height:48px;padding:0 14px;font-size:16px;border-color:#CFC6BB}
+.dacts{display:flex;flex-direction:column;gap:10px}
+.dright{overflow:auto;padding:24px 28px 40px;display:flex;flex-direction:column;gap:18px}
+.app.p .dright{overflow:visible;padding:16px 16px 32px}
+.qty{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:150px minmax(0,1fr);gap:10px 16px;align-items:baseline}
+.vend{padding:16px 18px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;align-items:center}
+.vname{font-weight:700;font-size:20px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.box{padding:18px 20px}
+.lb{position:absolute;inset:0;z-index:35;background:rgba(10,8,7,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:24px}
+.lb img{max-width:90%;max-height:78%;object-fit:contain;background:#fff;border-radius:12px}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}; height: {{H}}">
+  <sc-if value="{{showNav}}" hint-placeholder-val="{{true}}">
+    <nav class="nav" aria-label="Main">
+      <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+        <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+      </sc-for>
+    </nav>
+  </sc-if>
+  <div class="main">
+    <header class="top">
+      <sc-if value="{{embedded}}" hint-placeholder-val="{{false}}">
+        <button class="btn" onClick="{{close}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Back</button>
+      </sc-if>
+      <sc-if value="{{standalone}}" hint-placeholder-val="{{true}}">
+        <a class="btn" href="{{backHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Back</a>
+      </sc-if>
+      <div style="min-width: 0; flex: 1 1 auto">
+        <div class="small muted">{{crumb}}</div>
+        <h1 class="h1" style="font-size: 28px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{name}}</h1>
+      </div>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+    </header>
+    <sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center" class="muted">Loading item…</div>
+    </sc-if>
+    <sc-if value="{{ready}}" hint-placeholder-val="{{true}}">
+      <div class="dbody">
+        <div class="dleft">
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <sc-if value="{{hasPhoto}}" hint-placeholder-val="{{true}}">
+              <button class="photo" onClick="{{openPhoto}}" aria-label="Enlarge photo"><img src="{{photo}}" alt="{{name}}"><span class="hint">Tap to enlarge</span></button>
+            </sc-if>
+            <sc-if value="{{noPhoto}}" hint-placeholder-val="{{false}}">
+              <div class="photo nophoto" style="cursor: default; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 24px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 64px; height: 64px; stroke-width: 1.5"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15 9.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"></path></svg><span style="font-weight: 700; color: #4A403A">No photo yet</span><span class="small muted">Add one so students can recognize the part.</span></div>
+            </sc-if>
+            <div class="pacts">
+              <button class="btn" onClick="{{photoMsg}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z M8.5 13a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0"></path></svg>{{photoBtn}}</button>
+              <button class="btn" onClick="{{photoMsg}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6"></path></svg>Gallery</button>
+              <sc-if value="{{hasPhoto}}" hint-placeholder-val="{{true}}"><button class="btn" onClick="{{photoMsg}}">Remove</button></sc-if>
+            </div>
+            <div class="small muted">{{photoNote}}</div>
+          </div>
+          <div class="dacts">
+            <a class="btn pri lg" href="{{editHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4"></path></svg>Edit item</a>
+            <a class="btn" href="{{labelsHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6 M7 17H3v-8h18v8h-4 M7 14h10v7H7z"></path></svg>Print QR label</a>
+            <button class="btn dangero" onClick="{{askDelete}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6"></path></svg>Delete item<sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><span class="chip lock" style="height: 28px; margin-left: 4px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></sc-if></button>
+          </div>
+        </div>
+        <div class="dright">
+          <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+            <span class="{{chipCls}}" style="height: 40px; font-size: 17px; padding: 0 16px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{chipIcon}}"></path></svg>{{chipTxt}}</span>
+            <span class="chip mut">{{sourceTxt}}</span>
+            <span class="chip mut">ID {{id}}</span>
+            <span class="chip mut">{{countedTxt}}</span>
+          </div>
+          <div class="card box">
+            <span class="lbl">On hand ({{unit}})</span>
+            <div class="qty" role="group" aria-label="On hand">
+              <button class="step xl" onClick="{{dec}}" aria-label="Minus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 36px; height: 36px"><path d="M5 12h14"></path></svg></button>
+              <input class="num xl" type="number" inputmode="numeric" min="0" aria-label="On hand" value="{{onHand}}" onChange="{{setOn}}">
+              <button class="step xl plus" onClick="{{inc}}" aria-label="Plus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 36px; height: 36px"><path d="M12 5v14 M5 12h14"></path></svg></button>
+              <div style="margin-left: 12px; min-width: 220px; flex: 1 1 220px">
+                <div style="font-weight: 700; font-size: 20px">{{stLine}}</div>
+                <div class="muted small">{{stSub}}</div>
+              </div>
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+            <div class="card box">
+              <span class="lbl">Desired</span>
+              <div class="qty"><button class="step" onClick="{{decD}}" aria-label="Desired minus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input class="num" type="number" inputmode="numeric" min="0" aria-label="Desired" value="{{desired}}" onChange="{{setD}}"><button class="step" onClick="{{incD}}" aria-label="Desired plus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button></div>
+            </div>
+            <div class="card box">
+              <span class="lbl">Spares</span>
+              <div class="qty"><button class="step" onClick="{{decS}}" aria-label="Spares minus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input class="num" type="number" inputmode="numeric" min="0" aria-label="Spares" value="{{spares}}" onChange="{{setS}}"><button class="step" onClick="{{incS}}" aria-label="Spares plus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button></div>
+            </div>
+          </div>
+          <div class="card box" style="display: flex; gap: 14px; align-items: center">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 32px; height: 32px"><path d="M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"></path></svg>
+            <div><div style="font-weight: 700; font-size: 20px">{{orderLine}}</div><div class="small muted">{{orderSub}}</div></div>
+          </div>
+          <div class="card box kv">
+            <span class="lbl" style="margin: 0">Location</span><span>{{location}}</span>
+            <span class="lbl" style="margin: 0">Category</span><span>{{crumb}}</span>
+            <span class="lbl" style="margin: 0">Barcode</span><span class="mono">{{barcode}}</span>
+            <span class="lbl" style="margin: 0">Notes</span><span style="white-space: pre-line">{{notes}}</span>
+          </div>
+          <div>
+            <h2 class="h2" style="margin-bottom: 10px">Where to buy ({{vendorCount}} of 3 vendor options)</h2>
+            <div style="display: flex; flex-direction: column; gap: 12px">
+              <sc-for list="{{vendors}}" as="v" hint-placeholder-count="2">
+                <div class="card vend">
+                  <div style="min-width: 0">
+                    <div class="vname">{{v.supplier}}<sc-if value="{{v.pref}}" hint-placeholder-val="{{true}}"><span class="chip pref"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8L3.5 9.7l5.9-.8z"></path></svg>Preferred</span></sc-if></div>
+                    <div style="margin-top: 4px"><span class="mono">{{v.part}}</span> · {{v.pack}} · <strong>{{v.price}}</strong></div>
+                    <div class="small muted" style="margin-top: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap">{{v.checked}}<sc-if value="{{v.stale}}" hint-placeholder-val="{{false}}"><span class="chip stale"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg>{{v.age}}</span></sc-if></div>
+                  </div>
+                  <a class="btn" href="{{v.url}}" target="_blank" rel="noopener">Open product page<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6"></path></svg></a>
+                </div>
+              </sc-for>
+            </div>
+            <div class="small muted" style="margin-top: 10px; display: flex; gap: 8px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>Changing vendors, prices or the preferred vendor needs the mentor PIN (Edit item).</div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  <sc-if value="{{lightbox}}" hint-placeholder-val="{{false}}">
+    <div class="lb" role="dialog" aria-label="Photo">
+      <img src="{{photo}}" alt="{{name}}">
+      <div style="color: #fff; font-weight: 700; text-align: center">{{name}}<div class="small" style="font-weight: 400; opacity: .85; margin-top: 4px">{{photoNote}}</div></div>
+      <div style="display: flex; gap: 12px">
+        <button class="btn" onClick="{{photoMsg}}">Replace with my photo</button>
+        <button class="btn pri" onClick="{{closePhoto}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg>Close</button>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{confirmDel}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="alertdialog" aria-label="Delete item">
+        <div style="display: flex; gap: 14px; align-items: center"><span style="width: 56px; height: 56px; border-radius: 50%; background: #FDEEF1; color: #A3122B; display: flex; align-items: center; justify-content: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6"></path></svg></span><h2 class="h2">Delete this item?</h2></div>
+        <div class="card" style="display: flex; gap: 14px; align-items: center; padding: 14px; background: #FBF9F6">
+          <sc-if value="{{hasPhoto}}" hint-placeholder-val="{{true}}"><img src="{{photo}}" alt="" style="width: 72px; height: 72px; object-fit: contain; background: #fff; border-radius: 10px; border: 1px solid #DDD5CB"></sc-if>
+          <div><div style="font-weight: 700; font-size: 20px">{{name}}</div><div style="font-size: 20px; margin-top: 4px">On hand: <strong>{{onHand}} {{unit}}</strong></div></div>
+        </div>
+        <p style="margin: 0">It disappears from the list, the order list and QR label scans. The only way back is restoring a backup made before now.</p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn lg" onClick="{{cancelDel}}">Keep item</button>
+          <button class="btn danger lg" onClick="{{doDelete}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"></path></svg>Delete item</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn" style="min-height: 48px; background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"itemId":{"editor":"text","default":"st-0063"},"variant":{"editor":"enum","options":["","photo","delete","systemcore"],"default":""},"portrait":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"item":{"editor":null},"onClose":{"editor":null},"onSet":{"editor":null},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2',
+  alert: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01',
+  tri: 'M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01',
+  check: 'M5 12.5l4.5 4.5L19 7.5'
+};
+function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(iso) { if (!iso) return ''; const d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function days(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    const init = {};
+    if (v === 'photo') init.lightbox = true;
+    if (v === 'delete') { init.unlockAt = Date.now() - 41000; init.confirmDel = true; }
+    this.setState(init);
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+    if (!this.props.embedded) {
+      const id = v === 'systemcore' ? 'st-0099' : (this.props.itemId || 'st-0063');
+      fetch(DATA_URL).then(r => r.json()).then(d => this.setState({ today: d.today, item: d.items.find(i => i.id === id) || d.items[0] }));
+    }
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  unlocked() { const s = this.state || {}; return !!s.unlockAt && Date.now() - s.unlockAt < 300000; }
+  requirePin(reason, then) { if (this.unlocked()) then(); else { this.after = then; this.setState({ pin: reason }); } }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait, embedded = !!this.props.embedded;
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0;
+    const P = portrait ? '-P' : '';
+    const out = {
+      appCls: portrait ? 'app p' : 'app', W: embedded ? '100%' : (portrait ? '800px' : '1280px'), H: embedded ? '100%' : (portrait ? '1280px' : '800px'),
+      showNav: !embedded, embedded: embedded, standalone: !embedded, nav: navItems('inv', portrait), backHref: 'Main' + P + '.dc.html',
+      close: () => { if (this.props.onClose) this.props.onClose(); },
+      editHref: 'Edit' + P + '.dc.html', labelsHref: 'Labels' + P + '.dc.html',
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock, locked: !on,
+      lockText: on ? 'Unlocked ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes' }),
+      pinOpen: !!s.pin, pinReason: s.pin || '',
+      onPinDone: () => { this.setState({ pin: null, unlockAt: Date.now() }); const a = this.after; this.after = null; if (a) a(); },
+      onPinCancel: () => { this.after = null; this.setState({ pin: null }); },
+      lightbox: !!s.lightbox, openPhoto: () => this.setState({ lightbox: true }), closePhoto: () => this.setState({ lightbox: false }),
+      confirmDel: !!s.confirmDel, askDelete: () => this.requirePin('Deleting an item needs the mentor PIN', () => this.setState({ confirmDel: true })),
+      cancelDel: () => this.setState({ confirmDel: false }),
+      hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' }),
+      photoMsg: () => this.setState({ toast: 'The tablet camera or gallery opens here. No PIN needed for photos.', lightbox: false }),
+      loading: true, ready: false, name: 'Loading…', crumb: '', vendors: []
+    };
+    const it = embedded ? this.props.item : s.item;
+    const today = embedded ? '2026-10-17' : (s.today || '2026-10-17');
+    if (!it) return out;
+    const set = (patch) => { if (embedded) { if (this.props.onSet) this.props.onSet(it.id, patch); } else this.setState({ item: Object.assign({}, it, patch) }); };
+    const num = (k) => (e) => { const n = parseInt(e.target.value, 10); const p = {}; p[k] = isNaN(n) ? 0 : Math.max(0, n); set(p); };
+    const bump = (k, dlt) => () => { const p = {}; p[k] = Math.max(0, it[k] + dlt); set(p); };
+    const v = it.vendors[it.pv - 1] || it.vendors[0] || {};
+    const need = it.desired + it.spares - it.on_hand, ps = v.pack_size || 1;
+    const packs = need > 0 ? Math.ceil(need / ps) : 0, qty = packs * ps;
+    const st = it.on_hand < it.desired ? 'red' : (it.on_hand < it.desired + it.spares ? 'yel' : 'ok');
+    const chip = st === 'red' ? { c: 'chip red', i: IC.alert, t: 'SHORT ' + (it.desired - it.on_hand) } : st === 'yel' ? { c: 'chip yel', i: IC.tri, t: 'LOW SPARES' } : { c: 'chip ok', i: IC.check, t: 'OK — STOCKED' };
+    Object.assign(out, {
+      loading: false, ready: true, id: it.id, name: it.name, unit: it.unit,
+      crumb: it.category + (it.subcategory ? ' › ' + it.subcategory : ''),
+      photo: it.photo, hasPhoto: !!it.photo, noPhoto: !it.photo, photoBtn: it.photo ? 'Retake' : 'Take photo',
+      photoNote: it.photo ? (it.source === 'starter' ? 'Vendor product photo from the starter catalog. Replace it with a photo of your own part any time.' : 'Team photo.') : 'Photos are optional; one per item.',
+      chipCls: chip.c, chipIcon: chip.i, chipTxt: chip.t,
+      sourceTxt: it.source === 'starter' ? 'Starter item' : 'Team-added item',
+      countedTxt: it.counted ? 'Counted ' + fmtDate(it.counted) : 'Not counted yet',
+      onHand: it.on_hand, desired: it.desired, spares: it.spares,
+      dec: bump('on_hand', -1), inc: bump('on_hand', 1), setOn: num('on_hand'),
+      decD: bump('desired', -1), incD: bump('desired', 1), setD: num('desired'),
+      decS: bump('spares', -1), incS: bump('spares', 1), setS: num('spares'),
+      stLine: st === 'red' ? 'Short ' + (it.desired - it.on_hand) + ' for current needs' : st === 'yel' ? 'Enough for needs, short on spares' : 'Fully stocked',
+      stSub: 'Desired ' + it.desired + ' + spares ' + it.spares + ' = ' + (it.desired + it.spares) + ' ' + it.unit,
+      orderLine: qty > 0 ? 'Order ' + qty + ' ' + it.unit + (ps > 1 ? ' (' + packs + ' pack' + (packs > 1 ? 's' : '') + ' of ' + ps + ')' : '') : 'Nothing to order',
+      orderSub: qty > 0 ? (v.pack_price != null ? packs + ' × ' + money(v.pack_price) + ' = ' + money(packs * v.pack_price) + ' from ' + v.supplier + ' (preferred vendor)' : 'From ' + v.supplier + ' — no price yet, so it is left out of order totals') : 'On hand covers desired + spares.',
+      location: it.location || 'No location set — add one in Edit item', barcode: it.barcode || 'None — scan one in Edit item, or from Scan', notes: it.notes || 'No notes',
+      vendorCount: it.vendors.length,
+      vendors: it.vendors.map((x, i) => {
+        const age = x.price_checked ? days(x.price_checked, today) : null;
+        return { supplier: x.supplier, pref: i === it.pv - 1, part: x.part_no || 'No part #', pack: x.pack_size > 1 ? 'pack of ' + x.pack_size : 'sold individually',
+          price: x.pack_price != null ? money(x.pack_price) + (x.pack_size > 1 ? ' / pack' : '') : 'No price', url: x.url,
+          checked: x.price_checked ? 'Price checked ' + fmtDate(x.price_checked) : 'Price never checked', stale: age != null && age > 90, age: age + ' days old' };
+      }),
+      doDelete: () => { this.setState({ confirmDel: false, toast: 'Deleted “' + it.name + '”. (Mockup — nothing was removed.)' }); }
+    });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

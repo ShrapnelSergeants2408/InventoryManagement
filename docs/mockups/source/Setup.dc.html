@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>First-launch setup</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:44px;line-height:1.05}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.lg{min-height:64px;font-size:20px;padding:0 28px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.side{flex:none;width:340px;background:#2E1710;color:#F1DDD2;padding:32px 28px;display:flex;flex-direction:column;gap:24px}
+.app.p .side{width:auto;flex-direction:row;align-items:center;padding:18px 20px;gap:18px;flex-wrap:wrap}
+.side img{width:180px;height:180px;border-radius:50%;background:#fff;object-fit:contain;align-self:center}
+.app.p .side img{width:96px;height:96px;align-self:auto}
+.slist{display:flex;flex-direction:column;gap:10px}
+.app.p .slist{flex-direction:row;gap:14px;flex-wrap:wrap}
+.si{display:flex;gap:12px;align-items:center;font-weight:700;font-size:17px;opacity:.7}
+.si.on{opacity:1;color:#fff}
+.si.done{opacity:.95}
+.si b{width:36px;height:36px;border-radius:50%;border:2px solid currentColor;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.si.on b{background:#8A3315;border-color:#8A3315}
+.content{flex:1 1 auto;min-width:0;overflow:auto;padding:32px 36px;display:flex;flex-direction:column;gap:20px}
+.app.p .content{padding:28px 24px}
+.row2{display:flex;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-weight:700;font-size:52px;letter-spacing:.08em;background:#fff;border:3px dashed #1A1411;border-radius:16px;padding:20px 28px;align-self:flex-start}
+.chk{display:flex;gap:14px;align-items:center;min-height:64px;padding:0 16px;border:2px solid #CFC6BB;border-radius:14px;background:#fff;font:inherit;font-weight:700;cursor:pointer;text-align:left;color:#1A1411;align-self:flex-start}
+.box{width:32px;height:32px;border-radius:8px;border:3px solid #1A1411;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.box.on{background:#1A1411;color:#fff}
+.opt{display:flex;gap:16px;align-items:center;width:100%;min-height:104px;padding:16px 20px;border:2px solid #CFC6BB;border-radius:16px;background:#fff;font:inherit;text-align:left;cursor:pointer;color:#1A1411}
+.opt.on{border-color:#1A1411;box-shadow:inset 0 0 0 2px #1A1411}
+.dot{width:28px;height:28px;border-radius:50%;border:3px solid #1A1411;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.dot span{width:14px;height:14px;border-radius:50%;background:#1A1411}
+.bar{height:20px;border-radius:999px;background:#E6DFD6;overflow:hidden}
+.bar span{display:block;height:100%;background:#8A3315}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;font-weight:700;font-size:14px;background:#ECE7E1;color:#1A1411}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <aside class="side">
+    <img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408">
+    <div><div style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 32px; color: #fff; line-height: 1.05">FRC 2408 Inventory Management</div><div class="small" style="margin-top: 6px">First-time setup · about 2 minutes · a mentor should do this</div></div>
+    <div class="slist" aria-label="Setup steps">
+      <sc-for list="{{steps}}" as="st" hint-placeholder-count="3"><div class="{{st.cls}}"><b>{{st.mark}}</b>{{st.label}}</div></sc-for>
+    </div>
+  </aside>
+  <main class="content">
+    <sc-if value="{{isPin}}" hint-placeholder-val="{{true}}">
+      <div class="row2">
+        <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 16px; max-width: 420px">
+          <h1 class="h1">Welcome! First, a mentor PIN.</h1>
+          <p style="margin: 0">Students can use almost everything without it. The PIN protects the few things that are hard to undo: deleting items, changing vendors and prices, managing suppliers, restoring backups and changing settings.</p>
+          <p style="margin: 0">Pick 4–6 digits. Once entered, it stays unlocked for 5 minutes.</p>
+          <p class="small muted" style="margin: 0">This stops accidents, not a determined hacker. Don’t reuse a PIN that protects anything important.</p>
+        </div>
+        <dc-import name="PinPad" mode="{{pinMode}}" reason="{{pinReason}}" on-done="{{pinNext}}" on-cancel="{{pinReset}}" hint-size="440px,700px"></dc-import>
+      </div>
+    </sc-if>
+    <sc-if value="{{isRec}}" hint-placeholder-val="{{false}}">
+      <h1 class="h1">Write down this recovery code</h1>
+      <p style="margin: 0; max-width: 680px">If the PIN is ever forgotten, this code lets a mentor set a new one. It is shown <strong>only this once</strong>. Keep it away from the tablet — the mentor binder or a password manager.</p>
+      <div class="code" aria-label="Recovery code">K7QM-4D2X-9HTR</div>
+      <button class="chk" onClick="{{toggleAck}}" role="checkbox" aria-checked="{{ackStr}}"><span class="{{ackBox}}"><sc-if value="{{ack}}" hint-placeholder-val="{{false}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if></span>I wrote it down somewhere safe</button>
+      <div><button class="btn pri lg" onClick="{{toCatalog}}" disabled="{{noAck}}">Next<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16 M14 6l6 6-6 6"></path></svg></button></div>
+    </sc-if>
+    <sc-if value="{{isCat}}" hint-placeholder-val="{{false}}">
+      <h1 class="h1">What should the inventory start with?</h1>
+      <div style="display: flex; flex-direction: column; gap: 12px; max-width: 760px" role="radiogroup" aria-label="Starting data">
+        <sc-for list="{{opts}}" as="o" hint-placeholder-count="3">
+          <button class="{{o.cls}}" onClick="{{o.pick}}" role="radio" aria-checked="{{o.pr}}">
+            <span class="dot"><sc-if value="{{o.on}}" hint-placeholder-val="{{false}}"><span></span></sc-if></span>
+            <span style="flex: 1"><span style="font-weight: 700; font-size: 21px">{{o.title}}</span> <sc-if value="{{o.rec}}" hint-placeholder-val="{{false}}"><span class="chip">Recommended</span></sc-if><span class="small muted" style="display: block; margin-top: 4px">{{o.desc}}</span></span>
+          </button>
+        </sc-for>
+      </div>
+      <p class="small muted" style="margin: 0; max-width: 760px">Chrome will also be asked to keep this app’s data permanently (persistent storage), so it isn’t cleared to free up space.</p>
+      <div><button class="btn pri lg" onClick="{{startLoad}}">{{goTxt}}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16 M14 6l6 6-6 6"></path></svg></button></div>
+    </sc-if>
+    <sc-if value="{{isLoad}}" hint-placeholder-val="{{false}}">
+      <h1 class="h1">Loading the starter catalog…</h1>
+      <div style="max-width: 640px; display: flex; flex-direction: column; gap: 18px" aria-live="polite">
+        <div><div style="display: flex; justify-content: space-between; font-weight: 700"><span>Items</span><span>{{itemsDone}} of 129</span></div><div class="bar" style="margin-top: 8px"><span style="width: {{itemsPct}}%"></span></div></div>
+        <div><div style="display: flex; justify-content: space-between; font-weight: 700"><span>Photos</span><span>{{photosDone}} of 128</span></div><div class="bar" style="margin-top: 8px"><span style="width: {{photosPct}}%"></span></div></div>
+        <div class="muted">Keep the app open. This takes under a minute and only happens once.</div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+      <div style="width: 96px; height: 96px; border-radius: 50%; background: #1A1411; color: #fff; display: flex; align-items: center; justify-content: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 52px; height: 52px; stroke-width: 2.5"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>
+      <h1 class="h1">Ready — 129 items loaded</h1>
+      <div style="display: flex; flex-direction: column; gap: 8px; max-width: 700px">
+        <div>✓ Mentor PIN set · recovery code saved</div>
+        <div>✓ 129 starter items, 128 photos, 9 suppliers</div>
+        <div>✓ Persistent storage granted — works offline</div>
+      </div>
+      <div style="background: #FFF7DB; border: 2px solid #E8D9A8; border-radius: 16px; padding: 18px 20px; max-width: 760px">
+        <div style="font-weight: 700; font-size: 20px">Next: count what’s already in the shop</div>
+        <div style="margin-top: 6px">Every item starts at 0 on hand, so the order list says <strong>$8,413.66</strong> until you count. Count-in walks you through it category by category.</div>
+      </div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap"><a class="btn pri lg" href="Count.dc.html">Start count-in</a><a class="btn lg" href="Main.dc.html">Go to inventory</a></div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","recovery","catalog","loading","done"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    this.setState({ step: v === 'recovery' ? 'rec' : v === 'catalog' ? 'cat' : v === 'loading' ? 'load' : v === 'done' ? 'done' : 'pin', pinMode: 'set', choice: 'starter', prog: v === 'loading' ? 67 : 0 });
+    this.timer = setInterval(() => {
+      const s = this.state || {};
+      if (s.step === 'load' && s.running) { const p = Math.min(100, (s.prog || 0) + 4); this.setState(p >= 100 ? { prog: 100, step: 'done', running: false } : { prog: p }); }
+    }, 250);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait;
+    const order = ['pin', 'rec', 'cat'];
+    const cur = s.step === 'load' || s.step === 'done' ? 3 : order.indexOf(s.step);
+    const labels = ['Set mentor PIN', 'Save recovery code', 'Load starter catalog'];
+    const prog = s.prog || 0;
+    const opts = [
+      { k: 'starter', title: 'Load the starter catalog', rec: true, desc: '129 FRC parts for a NEO 2.0 swerve robot and practice tank chassis · vendor photos · recommended desired amounts · on hand starts at 0 · about 5.4 MB' },
+      { k: 'restore', title: 'Restore a backup file', rec: false, desc: 'Use a full-backup ZIP or a CSV from this or another tablet' },
+      { k: 'empty', title: 'Start empty', rec: false, desc: 'Categories and suppliers only; add every item yourself' }
+    ];
+    return {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800,
+      steps: labels.map((l, i) => ({ label: l, mark: i < cur ? '✓' : String(i + 1), cls: i === cur ? 'si on' : i < cur ? 'si done' : 'si' })),
+      isPin: s.step === 'pin', isRec: s.step === 'rec', isCat: s.step === 'cat', isLoad: s.step === 'load', isDone: s.step === 'done',
+      pinMode: s.pinMode || 'set', pinReason: s.pinMode === 'confirm' ? 'Type the same PIN again to confirm' : 'Choose 4–6 digits',
+      pinNext: (d) => { if ((s.pinMode || 'set') === 'set') this.setState({ pinMode: 'confirm' }); else this.setState({ step: 'rec' }); },
+      pinReset: () => this.setState({ pinMode: 'set' }),
+      ack: !!s.ack, ackStr: s.ack ? 'true' : 'false', ackBox: s.ack ? 'box on' : 'box', noAck: !s.ack, toggleAck: () => this.setState({ ack: !s.ack }),
+      toCatalog: () => this.setState({ step: 'cat' }),
+      opts: opts.map(o => Object.assign({}, o, { on: s.choice === o.k, pr: s.choice === o.k ? 'true' : 'false', cls: s.choice === o.k ? 'opt on' : 'opt', pick: () => this.setState({ choice: o.k }) })),
+      goTxt: s.choice === 'starter' ? 'Load starter catalog' : s.choice === 'restore' ? 'Choose backup file' : 'Start empty',
+      startLoad: () => this.setState({ step: 'load', prog: 0, running: true }),
+      itemsDone: Math.round(129 * Math.min(1, prog / 60)), itemsPct: Math.round(Math.min(1, prog / 60) * 100),
+      photosDone: Math.round(128 * prog / 100), photosPct: prog
+    };
+  }
+}
+</script>
+</body>
+</html>

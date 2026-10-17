@@ -7,8 +7,12 @@
   --rust: #8a3315;
   --rail: #2e1710;
   --short: #b3122e;
+  /* Red text on light tints (error messages, storage-error icon). */
+  --short-text: #a3122b;
   --amber: #f5b700;
   --navy: #1f3a5f;
+  --line: #ddd5cb;
+  --line-2: #cfc6bb;
   --destructive-fill: #1a1411;
   --destructive-outline: #e5484d;
 

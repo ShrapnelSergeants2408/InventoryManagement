@@ -4,8 +4,8 @@ import { StateMessage } from '../components/common';
 import { Icon } from '../icons';
 
 function describe(error: unknown): string {
-  if (error instanceof Error) return `${error.name}: ${error.message}`;
-  return String(error);
+  const text = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  return text.replace(/\.+$/, '');
 }
 
 export function StorageError({ error, onRetry }: { error: unknown; onRetry?: () => void }) {

@@ -158,6 +158,22 @@ try {
   await waitFor(`document.querySelectorAll('.row').length > 0`);
   const small = await js(`return [...document.querySelectorAll('button, a, input')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 48 || r.width < 48); }).map((e) => e.className + ':' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height))`);
   check('touch targets ≥ 48 px', small, []);
+
+  // SPEC §2 storage-error screen: make IndexedDB unusable before the app loads.
+  const blocker = await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `IDBFactory.prototype.open = function () { throw new DOMException('The user denied permission to access the database.', 'SecurityError'); };`,
+  });
+  await send('Page.reload');
+  await waitFor(`document.querySelector('[role=alert] .h2')`);
+  check('storage blocked → error screen', await js(`return [document.querySelector('[role=alert] .h2').textContent, document.querySelector('.top .small').textContent, !!document.querySelector('.state-detail')]`), ['Can’t open the inventory on this tablet', 'Storage unavailable', true]);
+  await sleep(300);
+  await shot('08-storage-error');
+  await js(`${H} [...document.querySelectorAll('[role=alert] .btn')].find((b) => b.textContent.includes('Try again')).click(); await settle(); await settle();`);
+  check('Try again while still blocked → error screen again', await js(`return document.querySelector('[role=alert] .h2')?.textContent`), 'Can’t open the inventory on this tablet');
+  await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: blocker.result.identifier });
+  await send('Page.reload');
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 30000);
+  check('unblocked → inventory is back, data intact', await js(`return document.querySelector('.top .small').textContent`), '129 items · 124 short · 0 low spares');
 } catch (e) {
   results.push('ERROR ' + e.message);
 } finally {

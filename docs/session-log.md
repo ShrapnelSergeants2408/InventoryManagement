@@ -60,3 +60,15 @@ Step 0 (above).
 
 **CONFIDENCE**
 High for the M1 math and codec (tests, mutation check, real-browser check). Pages isn't enabled yet; it needs Dan (see the M1 summary).
+
+---
+
+## Session 1 (end) — GitHub setup
+
+| Time | Activity |
+|---|---|
+| ~16:31 | Push to main rejected (ruleset: PR required). M1 pushed to branch `m1-foundation` |
+| ~16:35 | Dan removed GITHUB_TOKEN and made the repo public (verified via API) |
+| 17:06 | `gh auth login` blocked by an inherited GITHUB_TOKEN in the VS Code terminal; Dan restarting VS Code. Session paused |
+
+**Next:** gh login → open M1 PR → enable Pages (GitHub Actions) → after merge, check the deploy → M2. Open question: vendor photos on the public site (SPEC §8).

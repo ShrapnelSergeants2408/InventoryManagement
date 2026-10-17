@@ -63,3 +63,21 @@ export async function setOnHand(db: InventoryDb, id: string, onHand: number, now
     await db.settings.put({ key: 'lastChangeAt', value: now });
   });
 }
+
+/**
+ * Quick adjust ± (F3): read-modify-write in one transaction, so fast repeated taps
+ * never lose a step. Never goes below 0. Returns the new on_hand.
+ */
+export async function adjustOnHand(db: InventoryDb, id: string, delta: number, now = Date.now()): Promise<number> {
+  if (!Number.isSafeInteger(delta)) throw new RangeError('adjustment must be a whole number');
+  return db.transaction('rw', db.items, db.settings, async () => {
+    const row = await db.items.get(id);
+    if (!row) throw new Error(`no item with id ${id}`);
+    const onHand = Math.max(0, row.onHand + delta);
+    if (onHand !== row.onHand) {
+      await db.items.update(id, { onHand, updatedAt: now });
+      await db.settings.put({ key: 'lastChangeAt', value: now });
+    }
+    return onHand;
+  });
+}

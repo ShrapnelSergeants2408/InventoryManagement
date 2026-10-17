@@ -72,3 +72,37 @@ High for the M1 math and codec (tests, mutation check, real-browser check). Page
 | 17:06 | `gh auth login` blocked by an inherited GITHUB_TOKEN in the VS Code terminal; Dan restarting VS Code. Session paused |
 
 **Next:** gh login → open M1 PR → enable Pages (GitHub Actions) → after merge, check the deploy → M2. Open question: vendor photos on the public site (SPEC §8).
+
+---
+
+## Session 2 — 2026-10-17 — M1 PR, Pages, M2
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: M1 hand-off, then M2.
+
+**DATES & TIMES**
+| Time | Activity |
+|---|---|
+| ~17:50 | Resumed. `gh auth status` OK (account `dhiebert-whs`, scopes repo + workflow; admin on the repo) |
+| ~17:52 | **PR #1** opened: m1-foundation → main (https://github.com/ShrapnelSergeants2408/InventoryManagement/pull/1) |
+| ~17:53 | **GitHub Pages enabled**, source = GitHub Actions (API `build_type: workflow`). `github-pages` environment allows deploys from `main` only. Found the org's custom domain: the site will be **https://team2408.com/InventoryManagement/**; the github.io URL 301-redirects there; HTTPS works |
+| ~17:55 | Dan's answer on public vendor photos: **"accept it"**, recorded in `spec-questions.md` › Later decisions |
+| 17:56–18:02 | M2 domain: search, filters, grouped view, prefs, `adjustOnHand`; commit `b36789b` (140 tests) |
+| 18:02–18:10 | M2 UI: shell, Inventory screen, stepper, filter panel, thumbnails, storage error; browser check script; two stepper bugs found and fixed by it; commit `acdfa02` |
+| 18:10–18:14 | 15 px text (§17), storage-error browser scenario; commit `0ec5de8` |
+| 18:14–18:20 | M2 verification: mutation check (15/15 after one test fix), code read (4 fixes), `docs/reviews/M2.md` |
+
+**WORK COMPLETED**
+- M1 handed off: PR #1 open; Pages on. The deploy runs when #1 is merged.
+- M2: F1–F5, §2 storage-error screen, §17 shell and states. 161 tests; 28 browser checks.
+
+**DELIVERABLES PRODUCED**
+`src/domain/{search,filters,inventory-view,image-size}.ts`, `src/data/{prefs,photos}.ts`, `src/ui/**` (App, Shell, router, Inventory, ItemRow, FilterPanel, OnHandStepper, StorageError, Placeholder), `src/styles/app.css`, `scripts/m2-ui-check.mjs`, 7 new test files, `docs/reviews/M2.md`.
+
+**PREDECESSORS / CONTEXT**
+Session 1 (M1); mockups 1a–1g.
+
+**CONFIDENCE**
+High for the list logic (tests, mutants, real browser). Medium for touch and keyboard feel until the Tab S8. **Flag (M10, medium):** the site's origin is team2408.com, shared with the team website (see M2 review, finding 8).
+
+**Next:** Dan merges PR #1 (use **"Create a merge commit"** so the M2 PR stays clean), then I check the deploy and the live site. Then the M2 PR, then M3.

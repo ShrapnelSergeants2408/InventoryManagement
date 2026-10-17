@@ -12,18 +12,22 @@ import { StorageError } from './screens/StorageError';
 import { Shell } from './shell/Shell';
 import { useRoute, type Route } from './shell/router';
 
+const STARTER_MARKER = 'starterLoadedAt';
+
 type Boot = { state: 'opening' } | { state: 'ready'; db: InventoryDb } | { state: 'error'; error: unknown };
 
 async function openDb(): Promise<InventoryDb> {
   const db = new InventoryDb();
   await db.open();
-  // TEMPORARY until first-launch setup (M10, F22): an empty tablet gets the starter catalog.
-  if ((await itemCount(db)) === 0) {
+  // TEMPORARY until first-launch setup (M10, F22): a new tablet gets the starter catalog once.
+  // The marker stops it coming back after the team deletes every item.
+  if ((await itemCount(db)) === 0 && !(await db.settings.get(STARTER_MARKER))) {
     const res = await fetch(seedUrl);
     if (!res.ok) throw new Error(`starter catalog download failed (${res.status})`);
     const seed = await readSeed(await res.arrayBuffer());
     if (!seed.ok) throw new Error(seed.problems.map((p) => p.message).join('; '));
     await replaceAll(db, seed.data);
+    await db.settings.put({ key: STARTER_MARKER, value: Date.now() });
   }
   return db;
 }

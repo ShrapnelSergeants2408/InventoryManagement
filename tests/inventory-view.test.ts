@@ -138,6 +138,8 @@ describe('filter options', () => {
       item({ vendors: [vendor({ supplier: 'WCP' }), vendor({ supplier: 'Amazon' }), null], location: 'Shelf' }),
       item({ vendors: [vendor({ supplier: 'AndyMark' }), null, null], location: 'Bin 2' }),
       item({ vendors: [vendor({ supplier: 'wcp' }), null, null], location: 'bin 2' }),
+      // Lower-case first letter: a plain sort() would put it after `other`.
+      item({ vendors: [vendor({ supplier: 'zip ties direct' }), null, null], location: 'Shelf' }),
     ];
     const locs = [
       { name: 'Bin 2', notes: '', order: 0 },
@@ -145,7 +147,7 @@ describe('filter options', () => {
       { name: 'Shelf', notes: '', order: 2 },
     ];
     const o = filterOptions(its, categories, locs);
-    expect(o.suppliers).toEqual(['AndyMark', 'WCP', 'other']);
+    expect(o.suppliers).toEqual(['AndyMark', 'WCP', 'zip ties direct', 'other']);
     expect(o.locations).toEqual(['Bin 2', 'Shelf', '']);
     expect(o.categories).toEqual(['Motors', 'Fasteners', 'Empty']);
   });

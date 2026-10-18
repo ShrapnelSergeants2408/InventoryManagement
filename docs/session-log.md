@@ -121,3 +121,24 @@ Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: depl
 | ~23:14 | Deploy check: the run for #1 was cancelled because the #2 run replaced it (one deploy at a time); the run for #2 **succeeded** (34 s). `shrapnelsergeants2408.github.io/InventoryManagement/` → 301 → `team2408.com/InventoryManagement/` → 200. Headless Chrome on the live URL: starter catalog loaded in about 1 s, "129 items · 124 short · 0 low spares", 12 categories, thumbnails render, secure context, no console errors |
 | ~23:16 | Local `main` fast-forwarded to `origin/main` (it had no extra commits after all) |
 | 23:18 | Branch `m3-edit-lists`: M3 started (item detail, add/edit/remove, suppliers, categories, locations) |
+| 23:18–23:26 | M3 domain and data: item form, list rules, links, add/edit/delete, supplier/location/category changes; commit `b3b7193` (238 tests) |
+| 23:26–23:36 | M3 UI: detail card, editor, delete, More, Suppliers, Categories, Locations, PIN gate stand-in; commit `bc77128` |
+| 23:36–23:46 | Browser check script (50 checks); it found the double detail card after saving (fixed: router remembers where each screen was opened from); portrait fixes; commit `ea62d6f` |
+| 23:46–23:55 | M3 verification: mutation check 22/22, code read (locked vendor fields kept as stored, "No location" reserved, Escape on the photo), commit `18d6bde`; `docs/reviews/M3.md` |
+
+**WORK COMPLETED**
+- Deploy of M1+M2 verified on the live site.
+- M3: F6–F11, F23, F25, with every PIN step going through `gate(reason)` (stand-in dialog until M6). 252 tests; 50 browser checks; M2's 28 still pass.
+
+**DELIVERABLES PRODUCED**
+`src/domain/{item-form,lists,url,dates,item-text}.ts`, `src/data/{items,lists}.ts`, `src/security/gate.ts`, `src/ui/screens/item/*`, `src/ui/screens/more/*`, `src/ui/components/Dialog.tsx`, `src/ui/shell/GateHost.tsx`, `scripts/m3-ui-check.mjs`, 6 new test files, `docs/reviews/M3.md`.
+
+**PREDECESSORS / CONTEXT**
+Sessions 1–2 (M1, M2); mockups 2a–2e, 3a–3e, 7a–7k, 9a.
+
+**CONFIDENCE**
+High for the list rewrites and the PIN rule (tests, mutants, real browser with IndexedDB read-back). Medium for typing in the form on the Tab S8 until Stage 5. **Flag (until M6, medium):** the PIN stand-in only asks for a confirmation, and once M3 is merged that is what the live site does (M3 review, finding 5).
+
+**Process note:** during the review, `git checkout --` on one file to undo a deliberate test mutation also discarded that file's uncommitted fix. It was restored from a copy taken just before; tests confirmed nothing was lost. From now on, mutations are reverted from a saved copy only.
+
+**Next:** Dan merges PR #3 (M3), then M4 (order list, high risk: money).

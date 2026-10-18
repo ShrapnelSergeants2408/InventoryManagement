@@ -7,6 +7,7 @@ import {
   boxAt,
   clampStart,
   cleanNudge,
+  labelGroups,
   labelText,
   layoutById,
   perSheet,
@@ -172,5 +173,45 @@ describe('label text (§9 label content)', () => {
   it('blank location and part # are left out', () => {
     const bare = item({ location: '', vendors: [vendor({ partNo: '' }), null, null] });
     expect(labelText(bare, 'name-location-part').extra).toEqual([]);
+  });
+});
+
+describe('choosing items: groups in print order (F20, F25)', () => {
+  const items = [
+    item({ id: 'a', category: 'Motors', location: 'Bin B' }),
+    item({ id: 'b', category: 'Structure', location: '' }),
+    item({ id: 'c', category: 'Motors', location: 'Bin A' }),
+    item({ id: 'd', category: 'Orphan', location: 'Gone shelf' }),
+  ];
+  const cats = [
+    { name: 'Structure', order: 0, subcategories: [] },
+    { name: 'Motors', order: 1, subcategories: [] },
+    { name: 'Empty', order: 2, subcategories: [] },
+  ];
+  // List order is the walk order: Bin B is walked before Bin A.
+  const locs = [
+    { name: 'Bin A', notes: '', order: 1 },
+    { name: 'Bin B', notes: '', order: 0 },
+  ];
+  const shape = (by: 'category' | 'location') => labelGroups(items, cats, locs, by).map((g) => [g.name, g.items.map((i) => i.id)]);
+
+  it('by category: list order, empty categories left out, an unlisted category last', () => {
+    expect(shape('category')).toEqual([
+      ['Structure', ['b']],
+      ['Motors', ['a', 'c']],
+      ['Orphan', ['d']],
+    ]);
+  });
+
+  it('by location: walk order, then No location (blank or not in the list)', () => {
+    expect(shape('location')).toEqual([
+      ['Bin B', ['a']],
+      ['Bin A', ['c']],
+      ['No location', ['b', 'd']],
+    ]);
+  });
+
+  it('every item appears exactly once either way', () => {
+    for (const by of ['category', 'location'] as const) expect(labelGroups(items, cats, locs, by).flatMap((g) => g.items.map((i) => i.id)).sort()).toEqual(['a', 'b', 'c', 'd']);
   });
 });

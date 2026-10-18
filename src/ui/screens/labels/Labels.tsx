@@ -2,7 +2,7 @@
 // walk order) → 2 layout, start position, nudge, preview → print or test print through the
 // browser's print dialog. No PIN.
 import { createPortal } from 'preact/compat';
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { getNudge, setNudge } from '../../../data/labels';
 import { loadLabelChoice, saveLabelChoice } from '../../../data/prefs';
@@ -13,11 +13,13 @@ import {
   SHEET_LAYOUTS,
   boxAt,
   clampStart,
+  labelGroups,
   layoutById,
   perSheet,
   planSheets,
   plainLayout,
   stepNudge,
+  type LabelGroup,
   type Nudge,
   type PlainQrSize,
 } from '../../../domain/labels';
@@ -28,8 +30,6 @@ import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { StorageError } from '../StorageError';
 import { SheetPage } from './LabelSheet';
-
-const NO_LOCATION = 'No location';
 
 // The selection lives for the session, so leaving Labels and coming back keeps it.
 let remembered = new Set<string>();
@@ -66,8 +66,11 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
     remembered = s;
     setSelectedState(s);
   };
-  // Items in list order; deleted ones drop out of the selection.
-  const chosen = snap.items.filter((i) => selected.has(i.id));
+  // Grouping chosen in step 1; labels print in that order (by location: the walk order, F25).
+  const [by, setBy] = useState<'category' | 'location'>('category');
+  const groups = useMemo(() => labelGroups(snap.items, snap.categories, snap.locations, by), [snap, by]);
+  // Deleted items drop out of the selection.
+  const chosen = groups.flatMap((g) => g.items).filter((i) => selected.has(i.id));
   const step = chosen.length === 0 ? 'select' : chosenStep;
 
   const steps = (
@@ -88,7 +91,7 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
         {steps}
       </TopBar>
       {step === 'select' ? (
-        <Choose snap={snap} selected={selected} chosen={chosen} onChange={setSelected} onNext={() => setStep('layout')} />
+        <Choose groups={groups} by={by} onBy={setBy} selected={selected} chosen={chosen} onChange={setSelected} onNext={() => setStep('layout')} />
       ) : (
         <Layout chosen={chosen} onBack={() => setStep('select')} />
       )}
@@ -98,28 +101,21 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
 
 // ── Step 1: choose items ──
 
-type Group = { name: string; items: Item[] };
-
-function groupsFor(snap: InventorySnapshot, by: 'category' | 'location'): Group[] {
-  if (by === 'category') {
-    return snap.categories.map((c) => ({ name: c.name, items: snap.items.filter((i) => i.category === c.name) })).filter((g) => g.items.length > 0);
-  }
-  // Location list order (the walk order, F25), then items with no location.
-  const names = snap.locations.map((l) => l.name);
-  const groups = names.map((n) => ({ name: n, items: snap.items.filter((i) => i.location === n) }));
-  groups.push({ name: NO_LOCATION, items: snap.items.filter((i) => i.location === '' || !names.includes(i.location)) });
-  return groups.filter((g) => g.items.length > 0);
-}
-
 function Box({ state }: { state: 'on' | 'some' | 'off' }) {
   return <span class={state === 'off' ? 'cbox' : `cbox ${state}`}>{state === 'on' ? <Icon name="check" /> : state === 'some' ? <Icon name="minus" /> : null}</span>;
 }
 
-function Choose(props: { snap: InventorySnapshot; selected: Set<string>; chosen: Item[]; onChange: (s: Set<string>) => void; onNext: () => void }) {
-  const { selected } = props;
-  const [by, setBy] = useState<'category' | 'location'>('category');
+function Choose(props: {
+  groups: LabelGroup[];
+  by: 'category' | 'location';
+  onBy: (by: 'category' | 'location') => void;
+  selected: Set<string>;
+  chosen: Item[];
+  onChange: (s: Set<string>) => void;
+  onNext: () => void;
+}) {
+  const { selected, groups, by } = props;
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const groups = useMemo(() => groupsFor(props.snap, by), [props.snap, by]);
   const set = (ids: string[], on: boolean) => {
     const next = new Set(selected);
     for (const id of ids) on ? next.add(id) : next.delete(id);
@@ -145,7 +141,7 @@ function Choose(props: { snap: InventorySnapshot; selected: Set<string>; chosen:
               aria-selected={by === b}
               class={by === b ? 'fchip on' : 'fchip'}
               onClick={() => {
-                setBy(b);
+                props.onBy(b);
                 setOpen(new Set());
               }}
             >
@@ -230,6 +226,9 @@ function Layout({ chosen, onBack }: { chosen: Item[]; onBack: () => void }) {
   const layout = layoutById(choice.layoutId, choice.plainQr)!;
   const [start, setStart] = useState(0);
   const [nudge, setNudgeState] = useState<Nudge>(NO_NUDGE);
+  // The latest nudge, so two quick taps both count.
+  const nudgeNow = useRef(nudge);
+  nudgeNow.current = nudge;
   const [page, setPage] = useState(0);
   // The print pages are always rendered (hidden on screen); printing picks labels or outlines.
   const [mode, setMode] = useState<'labels' | 'test'>('labels');
@@ -259,7 +258,9 @@ function Layout({ chosen, onBack }: { chosen: Item[]; onBack: () => void }) {
   const pageLabels = (k: number) => plan.pages[k]!.labels.map((box, j) => ({ box, item: chosen[offsets[k]! + j]! }));
 
   const nudgeBy = (field: keyof Nudge, dir: 1 | -1) => {
-    const next = { ...nudge, [field]: stepNudge(nudge[field], dir) };
+    const cur = nudgeNow.current;
+    const next = { ...cur, [field]: stepNudge(cur[field], dir) };
+    nudgeNow.current = next;
     setNudgeState(next);
     void setNudge(db, layout.id, next);
   };

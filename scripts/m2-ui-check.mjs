@@ -152,9 +152,9 @@ try {
   await size(1280, 800);
 
   // Other tabs are placeholders; the router works with reload
-  await send('Page.navigate', { url: 'http://localhost:4319/#/labels' });
+  await send('Page.navigate', { url: 'http://localhost:4319/#/count' });
   await waitFor(`document.querySelector('.state .h2')`);
-  check('Labels tab placeholder (M8), opened by URL', await js(`return [document.querySelector('.h1').textContent, document.querySelector('.nav a.on span').textContent]`), ['Labels', 'Labels']);
+  check('Count tab placeholder (M9), opened by URL', await js(`return [document.querySelector('.h1').textContent, document.querySelector('.nav a.on span').textContent]`), ['Count', 'Count']);
 
   // Touch targets ≥ 48 px (§2, §17) on the Inventory screen
   await send('Page.navigate', { url: 'http://localhost:4319/#/inventory' });

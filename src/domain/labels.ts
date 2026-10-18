@@ -5,7 +5,7 @@
 // published Avery templates for 5160 and 5163. For 22805 the 4 × 6 grid of 1½ in squares
 // is centred on the page. Check each against a real sheet with a test print before relying
 // on it; the alignment nudge corrects small offsets.
-import type { Item } from './types';
+import type { Category, Item, Location } from './types';
 
 export type LabelContent = 'name-location' | 'name-location-part' | 'short-name' | 'name';
 
@@ -188,4 +188,32 @@ export function labelText(item: Item, content: LabelContent): { name: string; ex
     if (v?.partNo) extra.push(`${v.supplier} ${v.partNo}`);
   }
   return { name: item.name, extra };
+}
+
+// ── Choosing items (F20 step 1) ──
+
+export const NO_LOCATION = 'No location';
+
+export interface LabelGroup {
+  name: string;
+  items: Item[];
+}
+
+/**
+ * Items grouped for choosing labels, in the order they print: by category (category list
+ * order) or by location (the walk order, F25, then "No location"). Items keep list order
+ * inside a group. An item whose category isn't in the list gets a group of its own at the
+ * end, so nothing can drop out of a print.
+ */
+export function labelGroups(items: readonly Item[], categories: readonly Category[], locations: readonly Location[], by: 'category' | 'location'): LabelGroup[] {
+  const keyOf = (i: Item) => (by === 'category' ? i.category : i.location);
+  const names = by === 'category' ? categories.map((c) => c.name) : [...locations].sort((a, b) => a.order - b.order).map((l) => l.name);
+  const known = new Set(names);
+  const groups = names.map((name) => ({ name, items: items.filter((i) => keyOf(i) === name) }));
+  if (by === 'location') {
+    groups.push({ name: NO_LOCATION, items: items.filter((i) => !known.has(i.location)) });
+  } else {
+    for (const name of [...new Set(items.map(keyOf).filter((k) => !known.has(k)))]) groups.push({ name, items: items.filter((i) => keyOf(i) === name) });
+  }
+  return groups.filter((g) => g.items.length > 0);
 }

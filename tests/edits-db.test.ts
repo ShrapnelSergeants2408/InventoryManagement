@@ -200,6 +200,12 @@ describe('locations (F25)', () => {
     ]);
   });
 
+  it('"No location" is reserved for items without one', async () => {
+    await setup();
+    await expect(addLocation(db, 'no location')).rejects.toThrow('already in the list as “No location”');
+    await expect(updateLocation(db, 'Shelf', 'No Location', '')).rejects.toThrow(/No location/);
+  });
+
   it('rename updates every item using it, and the recent quick picks', async () => {
     await setup();
     await db.settings.put({ key: RECENT_LOCATIONS, value: ['Bin 2', 'Shelf'] });

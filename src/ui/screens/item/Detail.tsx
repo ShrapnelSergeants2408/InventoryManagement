@@ -1,6 +1,7 @@
 // Item detail card (F10): photo (tap to enlarge), +/− for on hand, desired and spares,
 // the order line, location/category/barcode/notes, every vendor option with its link (F11).
-import { useState } from 'preact/hooks';
+import type { ComponentChildren } from 'preact';
+import { useEffect, useState } from 'preact/hooks';
 import { adjustCount, setCount, type CountField } from '../../../data/inventory';
 import { formatIsoDate } from '../../../domain/dates';
 import { orderLines, packText, stockLines } from '../../../domain/item-text';
@@ -45,7 +46,7 @@ export function DetailScreen({ id }: { id: string }) {
   return <Detail item={item} back={back} />;
 }
 
-export function ItemMissing({ id, back }: { id: string; back: preact.ComponentChildren }) {
+export function ItemMissing({ id, back }: { id: string; back: ComponentChildren }) {
   return (
     <>
       <TopBar title="Item not found" back={back} />
@@ -65,7 +66,7 @@ export function ItemMissing({ id, back }: { id: string; back: preact.ComponentCh
   );
 }
 
-function Detail({ item, back }: { item: Item; back: preact.ComponentChildren }) {
+function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const db = useDb();
   const photo = usePhotoUrl(item.id, item.hasPhoto);
   const [enlarged, setEnlarged] = useState(false);
@@ -215,16 +216,26 @@ function Detail({ item, back }: { item: Item; back: preact.ComponentChildren }) 
         </div>
       </div>
 
-      {enlarged && photo && (
-        <div class="lb" role="dialog" aria-modal="true" aria-label="Photo" onClick={() => setEnlarged(false)}>
-          <img src={photo} alt={item.name} />
-          <div class="lb-cap">{item.name}</div>
-          <button type="button" class="btn pri lg" autoFocus onClick={() => setEnlarged(false)}>
-            <Icon name="close" />
-            Close
-          </button>
-        </div>
-      )}
+      {enlarged && photo && <Lightbox src={photo} name={item.name} onClose={() => setEnlarged(false)} />}
     </>
+  );
+}
+
+/** Tap-to-enlarge photo (F10). A tap anywhere, Close or Escape closes it. */
+function Lightbox(props: { src: string; name: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && props.onClose();
+    addEventListener('keydown', onKey);
+    return () => removeEventListener('keydown', onKey);
+  }, []);
+  return (
+    <div class="lb" role="dialog" aria-modal="true" aria-label="Photo" onClick={props.onClose}>
+      <img src={props.src} alt={props.name} />
+      <div class="lb-cap">{props.name}</div>
+      <button type="button" class="btn pri lg" autoFocus onClick={props.onClose}>
+        <Icon name="close" />
+        Close
+      </button>
+    </div>
   );
 }

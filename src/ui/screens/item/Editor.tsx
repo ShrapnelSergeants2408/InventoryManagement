@@ -21,7 +21,7 @@ import {
   type ItemDraft,
   type VendorDraft,
 } from '../../../domain/item-form';
-import { checkName, sortSupplierNames } from '../../../domain/lists';
+import { checkName, sortSupplierNames, takenLocationNames } from '../../../domain/lists';
 import type { Item } from '../../../domain/types';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { gate } from '../../../security/gate';
@@ -136,7 +136,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     setD((prev) => (prev.vendors.length >= MAX_VENDORS ? prev : { ...prev, vendors: [...prev.vendors, blankVendor()] }));
   };
 
-  const locCheck = newLoc === null || newLoc.trim() === '' ? null : checkName(newLoc, locNames, 'Location');
+  const locCheck = newLoc === null || newLoc.trim() === '' ? null : checkName(newLoc, takenLocationNames(locNames), 'Location');
   const saveNewLocation = async () => {
     if (!locCheck || !locCheck.ok) return;
     try {
@@ -153,7 +153,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     if (busy) return;
     const taken = new Set(snap.items.map((i) => i.id));
     const id = base ? base.id : newTeamId((x) => taken.has(x));
-    const r = buildItem(d, { id, base, today, supplierNames: snap.suppliers.map((s) => s.name), categories: snap.categories });
+    const r = buildItem(d, { id, base, today, supplierNames: snap.suppliers.map((s) => s.name), categories: snap.categories, vendorsLocked: vLocked });
     if (!r.ok) {
       setErrors(r.errors);
       document.querySelector('.fbody')?.scrollTo({ top: 0 });

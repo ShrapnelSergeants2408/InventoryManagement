@@ -127,6 +127,12 @@ export interface BuildContext {
   today: string;
   supplierNames: readonly string[];
   categories: readonly Category[];
+  /**
+   * True while the vendor fields are PIN-locked (editing without the PIN): they are kept
+   * exactly as stored, unchecked, so an imported odd value (a link without https://, a
+   * supplier in other capitals) can never block a student's save or ask for the PIN.
+   */
+  vendorsLocked?: boolean;
 }
 
 export type BuildResult =
@@ -169,12 +175,13 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
     else err(k, p.error);
   }
 
-  if (d.vendors.length < 1 || d.vendors.length > MAX_VENDORS) err('vendors', 'An item needs 1 to 3 vendor options');
-  if (d.preferred < 0 || d.preferred >= d.vendors.length) err('preferred', 'Choose the preferred vendor');
+  const keep = ctx.vendorsLocked === true && ctx.base !== null;
+  if (!keep && (d.vendors.length < 1 || d.vendors.length > MAX_VENDORS)) err('vendors', 'An item needs 1 to 3 vendor options');
+  if (!keep && (d.preferred < 0 || d.preferred >= d.vendors.length)) err('preferred', 'Choose the preferred vendor');
 
   const known = new Map(ctx.supplierNames.map((s) => [nameKey(s), s]));
   const vendors: Vendor[] = [];
-  d.vendors.slice(0, MAX_VENDORS).forEach((v, i) => {
+  (keep ? [] : d.vendors.slice(0, MAX_VENDORS)).forEach((v, i) => {
     const n = i + 1;
     const f = (x: string) => `v${n}.${x}`;
     const pre = `Vendor option ${n}: `;
@@ -223,8 +230,8 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
     notes: d.notes.trim(),
     source,
     lastCounted: base ? base.lastCounted : ctx.today,
-    preferredVendor: (d.preferred + 1) as VendorSlot,
-    vendors: [vendors[0] ?? null, vendors[1] ?? null, vendors[2] ?? null],
+    preferredVendor: keep && base ? base.preferredVendor : ((d.preferred + 1) as VendorSlot),
+    vendors: keep && base ? base.vendors : [vendors[0] ?? null, vendors[1] ?? null, vendors[2] ?? null],
     hasPhoto: base?.hasPhoto ?? false,
   };
   return { ok: true, item, newSubcategory };

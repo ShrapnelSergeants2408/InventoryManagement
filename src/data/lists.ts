@@ -11,6 +11,7 @@ import {
   renameCategoryItems,
   renameSubcategoryItems,
   renumber,
+  takenLocationNames,
   type CategoryPlace,
 } from '../domain/lists';
 import { nameKey, type Item, type Location, type Supplier } from '../domain/types';
@@ -95,7 +96,7 @@ async function writeLocations(db: InventoryDb, list: readonly Location[]): Promi
 export async function addLocation(db: InventoryDb, name: string, notes = '', now = Date.now()): Promise<Location> {
   return db.transaction('rw', db.locations, db.settings, async () => {
     const list = await orderedLocations(db);
-    const checked = checkName(name, list.map((l) => l.name), 'Location');
+    const checked = checkName(name, takenLocationNames(list.map((l) => l.name)), 'Location');
     if (!checked.ok) return fail(checked.error);
     const loc = { name: checked.name, notes: notes.trim(), order: list.length };
     await writeLocations(db, [...list, loc]);
@@ -110,7 +111,7 @@ export async function updateLocation(db: InventoryDb, oldName: string, name: str
     const list = await orderedLocations(db);
     const at = list.findIndex((l) => nameKey(l.name) === nameKey(oldName));
     if (at < 0) fail(`location "${oldName}" isn't in the list`);
-    const checked = checkName(name, list.map((l) => l.name), 'Location', list[at]!.name);
+    const checked = checkName(name, takenLocationNames(list.map((l) => l.name)), 'Location', list[at]!.name);
     if (!checked.ok) return fail(checked.error);
     const old = list[at]!.name;
     list[at] = { ...list[at]!, name: checked.name, notes: notes.trim() };

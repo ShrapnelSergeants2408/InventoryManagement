@@ -153,6 +153,24 @@ describe('buildItem — edit (F7)', () => {
     expect(r.ok && [r.item.source, r.item.lastCounted, r.item.hasPhoto, r.item.onHand]).toEqual(['starter', '', true, 5]);
   });
 
+  it('with vendor fields PIN-locked, stored vendors are kept exactly, even odd imported ones', () => {
+    const odd: Item = { ...base, vendors: [vendor({ supplier: 'rev', url: 'www.revrobotics.com/x', packPriceCents: 5500 }), null, null], preferredVendor: 1 };
+    const d = { ...draftFromItem(odd), notes: 'a student edits the notes' };
+    const locked = buildItem(d, ctx({ id: odd.id, base: odd, vendorsLocked: true }));
+    expect(locked.ok && locked.item.vendors).toEqual(odd.vendors);
+    expect(locked.ok && vendorChangesNeedPin(odd, locked.item)).toBe(false);
+    // Unlocked, the same fields are checked and tidied — which is a vendor change.
+    const open = buildItem(d, ctx({ id: odd.id, base: odd }));
+    expect(open.ok && open.item.vendors[0]).toMatchObject({ supplier: 'REV', url: 'https://www.revrobotics.com/x' });
+    expect(open.ok && vendorChangesNeedPin(odd, open.item)).toBe(true);
+  });
+
+  it('locked vendor fields with a value that wouldn’t pass the editor don’t block the save', () => {
+    const bad: Item = { ...base, vendors: [vendor({ url: 'javascript:alert(1)' }), null, null] };
+    expect(buildItem({ ...draftFromItem(bad), name: 'x' }, ctx({ id: bad.id, base: bad, vendorsLocked: true })).ok).toBe(true);
+    expect(buildItem({ ...draftFromItem(bad), name: 'x' }, ctx({ id: bad.id, base: bad })).ok).toBe(false);
+  });
+
   it('a unit that isn’t in the chip list is kept', () => {
     const odd = { ...base, unit: 'pair' };
     const r = buildItem(draftFromItem(odd), ctx({ id: odd.id, base: odd }));

@@ -2,7 +2,7 @@
 // for count-in and labels by location); rename and remove need the mentor PIN.
 import { useState } from 'preact/hooks';
 import { addLocation, moveLocation, removeLocation, updateLocation } from '../../../data/lists';
-import { locationUsage } from '../../../domain/lists';
+import { locationUsage, takenLocationNames } from '../../../domain/lists';
 import { nameKey, type Location } from '../../../domain/types';
 import { gate } from '../../../security/gate';
 import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../components/common';
@@ -134,7 +134,7 @@ export function LocationsScreen() {
         <EntryDialog
           title="Add a location"
           what="Location"
-          existing={names}
+          existing={takenLocationNames(names)}
           notes
           placeholder="e.g. Bin F17, Shelf C2, Pit cart"
           notesPlaceholder="e.g. blue tote under the workbench"
@@ -152,7 +152,7 @@ export function LocationsScreen() {
         <EntryDialog
           title={`Rename “${open.l.name}”`}
           what="Location"
-          existing={names}
+          existing={takenLocationNames(names)}
           self={open.l.name}
           initial={open.l}
           notes

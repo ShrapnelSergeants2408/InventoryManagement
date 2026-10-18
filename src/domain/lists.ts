@@ -83,6 +83,12 @@ export function reassignSupplier(items: readonly Item[], from: string, to: strin
 
 // ── Locations (F25) ──────────────────────────────────────────────────────────
 
+/** Items without a location are grouped under this name, so no location may use it. */
+export const NO_LOCATION = 'No location';
+
+/** Names a new or renamed location can't take: the list plus "No location". */
+export const takenLocationNames = (names: readonly string[]) => [...names, NO_LOCATION];
+
 /** Items per location name (nameKey); items with no location are counted under ''. */
 export function locationUsage(items: readonly Item[]): Map<string, Item[]> {
   const out = new Map<string, Item[]>();

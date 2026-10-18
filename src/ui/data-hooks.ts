@@ -59,8 +59,16 @@ function thumbUrl(db: InventoryDb, itemId: string): Promise<string | null> {
   return p;
 }
 
-/** Drops a cached thumbnail after its photo changes (M7). */
+// Mounted thumbnails listen here, so a replaced photo shows without leaving the screen.
+const thumbListeners = new Set<(itemId: string | null) => void>();
+
+/** Drops a cached thumbnail after its photo changes; mounted thumbnails reload. */
 export function forgetThumbnail(itemId: string): void {
+  dropThumbnail(itemId);
+  for (const l of thumbListeners) l(itemId);
+}
+
+function dropThumbnail(itemId: string): void {
   const p = thumbUrls.get(itemId);
   thumbUrls.delete(itemId);
   void p?.then((url) => url && URL.revokeObjectURL(url));
@@ -68,7 +76,8 @@ export function forgetThumbnail(itemId: string): void {
 
 /** Drops every cached thumbnail (after a restore replaces the photos). */
 export function forgetAllThumbnails(): void {
-  for (const id of [...thumbUrls.keys()]) forgetThumbnail(id);
+  for (const id of [...thumbUrls.keys()]) dropThumbnail(id);
+  for (const l of thumbListeners) l(null);
 }
 
 /** The current time, updated every `ms` (banners that depend on the clock). */
@@ -95,13 +104,19 @@ export function useStorageStatus(): StorageStatus | null {
   return s;
 }
 
-/** The full-size photo (detail card, §8) as an object URL while the screen is open. */
-export function usePhotoUrl(itemId: string, hasPhoto: boolean): string | null {
+/** The full-size photo (detail card, §8) while the screen is open. */
+export type PhotoView = {
+  url: string;
+  /** Taken or chosen on this tablet (not an imported starter or backup photo). */
+  taken: boolean;
+};
+
+export function usePhoto(itemId: string, hasPhoto: boolean): PhotoView | null {
   const db = useDb();
-  const [url, setUrl] = useState<string | null>(null);
+  const [view, setView] = useState<PhotoView | null>(null);
   useEffect(() => {
     if (!hasPhoto) {
-      setUrl(null);
+      setView(null);
       return;
     }
     let current: string | null = null;
@@ -109,21 +124,27 @@ export function usePhotoUrl(itemId: string, hasPhoto: boolean): string | null {
       next: (row) => {
         if (current) URL.revokeObjectURL(current);
         current = row ? URL.createObjectURL(row.full) : null;
-        setUrl(current);
+        setView(row && current ? { url: current, taken: row.taken !== undefined } : null);
       },
-      error: () => setUrl(null),
+      error: () => setView(null),
     });
     return () => {
       sub.unsubscribe();
       if (current) URL.revokeObjectURL(current);
     };
   }, [db, itemId, hasPhoto]);
-  return url;
+  return view;
 }
 
 export function useThumbnail(itemId: string, hasPhoto: boolean): string | null {
   const db = useDb();
   const [url, setUrl] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    const l = (id: string | null) => (id === null || id === itemId) && setVersion((v) => v + 1);
+    thumbListeners.add(l);
+    return () => void thumbListeners.delete(l);
+  }, [itemId]);
   useEffect(() => {
     if (!hasPhoto) {
       setUrl(null);
@@ -137,6 +158,6 @@ export function useThumbnail(itemId: string, hasPhoto: boolean): string | null {
     return () => {
       alive = false;
     };
-  }, [db, itemId, hasPhoto]);
+  }, [db, itemId, hasPhoto, version]);
   return url;
 }

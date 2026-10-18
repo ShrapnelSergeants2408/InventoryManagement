@@ -1,10 +1,11 @@
 // Add item (F6) and edit item (F7): one form. Counts, location, notes, category and barcode
 // need no PIN; vendor fields are PIN-locked when editing, and open for vendor option 1 while
-// adding (§6). Nothing is stored until Save.
+// adding (§6). Nothing is stored until Save, including a photo taken or removed here (F19).
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addItem, getRecentLocations, updateItem } from '../../../data/items';
 import { addLocation } from '../../../data/lists';
+import type { PhotoChange } from '../../../data/photos';
 import { localIsoDate } from '../../../domain/dates';
 import { newTeamId } from '../../../domain/ids';
 import {
@@ -28,7 +29,8 @@ import { gate } from '../../../security/gate';
 import { isUnlocked } from '../../../security/lock';
 import { PinMark, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
+import { PhotoButtons } from '../../components/PhotoButtons';
+import { forgetThumbnail, useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { goBack, href, openedFrom, replaceRoute } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -102,6 +104,16 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const [newLoc, setNewLoc] = useState<string | null>(null);
   const today = localIsoDate();
   const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
+  // A photo taken or removed in the form; undefined keeps the stored one.
+  const [photo, setPhotoChange] = useState<PhotoChange | undefined>(undefined);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const url = photo && photo !== 'remove' ? URL.createObjectURL(photo.thumb ?? photo.full) : null;
+    setPhotoUrl(url);
+    return () => void (url && URL.revokeObjectURL(url));
+  }, [photo]);
+  const shownPhoto = photo === 'remove' ? null : photo ? photoUrl : base?.hasPhoto ? thumb : null;
+  const showsPhoto = photo === undefined ? (base?.hasPhoto ?? false) : photo !== 'remove';
 
   useEffect(() => {
     void getRecentLocations(db).then(setRecent);
@@ -123,7 +135,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
 
   // Vendor fields: open while adding (option 1, F6) or after the PIN; locked otherwise.
   const vLocked = !adding && !vendorsOpen;
-  const dirty = JSON.stringify(d) !== JSON.stringify(initial);
+  const dirty = JSON.stringify(d) !== JSON.stringify(initial) || photo !== undefined;
 
   const unlockVendors = async () => {
     if (await gate('Changing suppliers, part numbers, links, pack sizes, prices or the preferred vendor needs the mentor PIN.')) setVendorsOpen(true);
@@ -167,7 +179,8 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     if (vendorChangesNeedPin(base, r.item) && !(await gate('Saving changes to vendors or prices needs the mentor PIN.'))) return;
     setBusy(true);
     try {
-      const saved = base ? await updateItem(db, base, r.item) : await addItem(db, r.item);
+      const saved = base ? await updateItem(db, base, r.item, undefined, photo) : await addItem(db, r.item, undefined, photo);
+      if (photo) forgetThumbnail(saved.id);
       showToast(base ? 'Saved.' : `Added “${saved.name}”.`);
       // Opened from this item's card: go back to it. Otherwise (a new item, or the editor
       // opened directly) the card replaces the form, so Back never returns to the form.
@@ -215,12 +228,28 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
         <div class="egrid">
           <div class="card sec">
             <h2 class="h2">Item</h2>
-            {base?.hasPhoto && (
-              <div class="photo-row">
-                {thumb ? <img class="thumbL" src={thumb} alt="Current photo" /> : <span class="thumbL nophoto" />}
-                <span class="small muted">Taking, replacing or removing photos comes in a later build (M7).</span>
+            <div class="photo-row">
+              {shownPhoto ? (
+                <img class="thumbL" src={shownPhoto} alt={photo ? 'New photo' : 'Current photo'} />
+              ) : (
+                <span class="thumbL nophoto">
+                  <Icon name="photo" class="ic xl" />
+                </span>
+              )}
+              <div class="photo-side">
+                <PhotoButtons
+                  small
+                  hasPhoto={showsPhoto}
+                  retakeLabel="Take photo"
+                  onPhoto={(p) => setPhotoChange(p)}
+                  // Removing a photo taken in this form just drops it; a stored one is removed on Save.
+                  onRemove={() => setPhotoChange(base?.hasPhoto ? 'remove' : undefined)}
+                />
+                <span class="small muted">
+                  {photo === 'remove' ? 'The photo is removed when you save.' : photo ? 'New photo: saved with the item.' : 'Optional; one per item. No PIN needed.'}
+                </span>
               </div>
-            )}
+            </div>
             <Field id="nm" label="Name" required>
               <input
                 id="nm"

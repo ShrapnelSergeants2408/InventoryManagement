@@ -27,6 +27,8 @@ export interface PhotoRow {
   /** Small JPEG for list rows; null until generated (needs a browser canvas). */
   thumb: Blob | null;
   updatedAt: number;
+  /** Set when the photo was taken or chosen on this tablet; absent for imported photos. */
+  taken?: number;
 }
 
 export interface SettingRow {

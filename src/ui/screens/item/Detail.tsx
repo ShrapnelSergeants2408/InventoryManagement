@@ -1,8 +1,10 @@
-// Item detail card (F10): photo (tap to enlarge), +/− for on hand, desired and spares,
+// Item detail card (F10): photo (tap to enlarge; take, replace or remove it, F19), +/− for
+// on hand, desired and spares,
 // the order line, location/category/barcode/notes, every vendor option with its link (F11).
 import type { ComponentChildren } from 'preact';
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { adjustCount, setCount, type CountField } from '../../../data/inventory';
+import { setPhoto, type PhotoChange } from '../../../data/photos';
 import { formatIsoDate } from '../../../domain/dates';
 import { orderLines, packText, stockLines } from '../../../domain/item-text';
 import { formatCents } from '../../../domain/money';
@@ -10,8 +12,10 @@ import { stockStatus } from '../../../domain/status';
 import type { Item } from '../../../domain/types';
 import { safeHref } from '../../../domain/url';
 import { BackButton, StateMessage, StatusChip, TopBar, plural } from '../../components/common';
+import { Dialog, DialogActions } from '../../components/Dialog';
 import { CountStepper, type StepperLabel } from '../../components/OnHandStepper';
-import { useDb, usePhotoUrl, useSnapshot } from '../../data-hooks';
+import { PhotoButtons } from '../../components/PhotoButtons';
+import { forgetThumbnail, useDb, usePhoto, useSnapshot, type PhotoView } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -68,14 +72,26 @@ export function ItemMissing({ id, back }: { id: string; back: ComponentChildren 
 
 function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const db = useDb();
-  const photo = usePhotoUrl(item.id, item.hasPhoto);
+  const photo = usePhoto(item.id, item.hasPhoto);
   const [enlarged, setEnlarged] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const camera = useRef<HTMLInputElement>(null);
   const status = stockStatus(item.onHand, item.desired, item.spares);
   const stock = stockLines(item);
   const order = orderLines(item);
   const vendors = item.vendors.flatMap((v, i) => (v ? [{ v, slot: i + 1 }] : []));
 
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
+  const changePhoto = async (change: PhotoChange) => {
+    try {
+      await setPhoto(db, item.id, change);
+      showToast(change === 'remove' ? 'Photo removed.' : 'Photo saved.');
+    } catch (e) {
+      fail(e);
+    } finally {
+      forgetThumbnail(item.id);
+    }
+  };
   const stepper = (field: CountField, label: StepperLabel, size?: 'xl') => (
     <CountStepper
       label={label}
@@ -100,18 +116,23 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
           <div class="dphoto">
             {item.hasPhoto && photo ? (
               <button type="button" class="photo" onClick={() => setEnlarged(true)} aria-label="Enlarge photo">
-                <img src={photo} alt={item.name} />
+                <img src={photo.url} alt={item.name} />
                 <span class="hint">Tap to enlarge</span>
               </button>
             ) : (
               <div class="photo nophoto">
                 <Icon name="photo" class="ic xxl" />
                 <span class="nophoto-t">{item.hasPhoto ? 'Loading photo…' : 'No photo yet'}</span>
+                {!item.hasPhoto && <span class="small muted">Add one so students can recognize the part.</span>}
               </div>
             )}
-            {item.hasPhoto && item.source === 'starter' && (
-              <span class="small muted">Vendor product photo from the starter catalog. Replace it with a photo of your own part any time.</span>
-            )}
+            <PhotoButtons
+              hasPhoto={item.hasPhoto}
+              cameraRef={camera}
+              onPhoto={(p) => changePhoto(p)}
+              onRemove={() => setRemoving(true)}
+            />
+            <span class="small muted">{photoNote(item, photo)}</span>
           </div>
           <div class="dacts">
             <a class="btn pri lg" href={href.edit(item.id)}>
@@ -216,13 +237,56 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
         </div>
       </div>
 
-      {enlarged && photo && <Lightbox src={photo} name={item.name} onClose={() => setEnlarged(false)} />}
+      {enlarged && photo && (
+        <Lightbox
+          src={photo.url}
+          name={item.name}
+          note={photoNote(item, photo)}
+          onReplace={() => camera.current?.click()}
+          onClose={() => setEnlarged(false)}
+        />
+      )}
+      {removing && (
+        <Dialog label="Remove photo" role="alertdialog" onClose={() => setRemoving(false)}>
+          <h2 class="h2">Remove this photo?</h2>
+          <p class="dlg-p">
+            {isVendorPhoto(item, photo)
+              ? 'The starter-catalog photo only comes back by restoring a backup that has it.'
+              : 'The photo is deleted from this tablet. Backups made before now still have it.'}
+          </p>
+          <DialogActions>
+            <button type="button" class="btn lg" data-autofocus onClick={() => setRemoving(false)}>
+              Keep photo
+            </button>
+            <button
+              type="button"
+              class="btn danger lg"
+              onClick={() => {
+                setRemoving(false);
+                void changePhoto('remove');
+              }}
+            >
+              <Icon name="trash" />
+              Remove photo
+            </button>
+          </DialogActions>
+        </Dialog>
+      )}
     </>
   );
 }
 
-/** Tap-to-enlarge photo (F10). A tap anywhere, Close or Escape closes it. */
-function Lightbox(props: { src: string; name: string; onClose: () => void }) {
+/** A starter item's photo that wasn't taken on this tablet: the vendor's image (§8). */
+const isVendorPhoto = (item: Item, photo: PhotoView | null) => item.source === 'starter' && photo !== null && !photo.taken;
+
+function photoNote(item: Item, photo: PhotoView | null): string {
+  if (!item.hasPhoto) return 'Photos are optional; one per item.';
+  if (isVendorPhoto(item, photo)) return 'Vendor product photo from the starter catalog. Replace it with a photo of your own part any time.';
+  return photo ? 'Team photo.' : '';
+}
+
+/** Tap-to-enlarge photo (F10, mockup 2b). A tap anywhere, Close or Escape closes it. */
+function Lightbox(props: { src: string; name: string; note: string; onReplace: () => void; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && props.onClose();
     addEventListener('keydown', onKey);
@@ -231,11 +295,21 @@ function Lightbox(props: { src: string; name: string; onClose: () => void }) {
   return (
     <div class="lb" role="dialog" aria-modal="true" aria-label="Photo" onClick={props.onClose}>
       <img src={props.src} alt={props.name} />
-      <div class="lb-cap">{props.name}</div>
-      <button type="button" class="btn pri lg" autoFocus onClick={props.onClose}>
-        <Icon name="close" />
-        Close
-      </button>
+      <div class="lb-cap">
+        {props.name}
+        {props.note && <div class="small lb-note">{props.note}</div>}
+      </div>
+      <div class="lb-acts">
+        {/* Opens the camera from this tap; the tap then reaches the backdrop and closes the view. */}
+        <button type="button" class="btn lg" onClick={props.onReplace}>
+          <Icon name="camera" />
+          Replace with my photo
+        </button>
+        <button type="button" class="btn pri lg" autoFocus onClick={props.onClose}>
+          <Icon name="close" />
+          Close
+        </button>
+      </div>
     </div>
   );
 }

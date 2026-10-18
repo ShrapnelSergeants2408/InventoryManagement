@@ -270,3 +270,34 @@ Also untested: the wall-clock close after the tablet sleeps.
 
 **Next:** Dan merges PR #7 (M6 plus these fixes), then M7 (photos).
 
+
+
+---
+
+## Session 7 — 2026-10-18 — M7
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: M7 (part photos; low risk). Also looked at the leftover worktree branches, at Dan's request.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~12:11 | PR #7 (M6 plus review fixes) already merged, as `ade857a`. Branch `m7-photos` from `origin/main`. Read SPEC §8, F19, mockups 2a/2b/2d/3a and the existing photo code (thumbnails and the detail photo came in M3) |
+| 12:11–12:24 | `setPhoto` / `applyPhotoChange` (photo row and `hasPhoto` in one transaction); `addItem` / `updateItem` take a photo change; `preparePhoto` (one decode, 1024 px JPEG and a 160 px thumbnail); `PhotoButtons`; Detail (Take/Retake, Gallery, Remove with a confirmation, Replace from the enlarged photo); Editor (staged photo, saved with the item); thumbnail change notices; 20 new tests; `scripts/m7-ui-check.mjs`. Commit `a9c95c6` |
+| ~12:20 | Dan asked about worktree agent branches with unfinished commits or PRs. Checked them (see WORK COMPLETED) |
+| 12:24–12:38 | M7 verification: unit mutants 15/15; M2–M6 browser checks as regression; interface mutants 6/6 after closing one test gap (the delete dialog's thumbnail); `docs/reviews/M7.md` |
+
+**WORK COMPLETED**
+- M7: F19 and §8 in full: take or choose, resize on the tablet, thumbnail, full size on the card, enlarge, replace and remove with no PIN. 377 tests; 32 browser checks. The M2–M6 checks still pass (28, 50, 25, 39, 54).
+- Worktrees: `worktree-agent-a056243a7b1b2e7b6` (M5 reviewer) and `worktree-agent-a9f7b8a443fb05054` (M6 reviewer) are the Session 6 reviewers' worktrees. Each has one commit ("catch up 2" / "catch up 3", 12:12) with its reviewer's first-draft test file. Both files are already on `main`, edited (`tests/review-m5.test.ts`, `tests/m6-review.test.ts`), and every test in them is there. PR #8 (from the first branch) was opened and closed within seconds. Nothing to rescue; recommended removing both worktrees and branches (Dan to confirm).
+
+**DELIVERABLES PRODUCED**
+`src/data/photos.ts` (`setPhoto`, `applyPhotoChange`), `src/data/items.ts`, `src/data/db.ts` (`taken`), `src/io/image.ts` (`preparePhoto`), `src/domain/image-size.ts` (`pickedFileProblem`), `src/ui/components/PhotoButtons.tsx`, `src/ui/screens/item/{Detail,Editor}.tsx`, `src/ui/data-hooks.ts` (`usePhoto`, thumbnail notices), `src/ui/icons.tsx`, `src/styles/app.css`, `tests/{photos,image-size}.test.ts`, `scripts/m7-ui-check.mjs`, `scripts/m2–m6-ui-check.mjs` (touch-target scans skip the hidden inputs), `docs/reviews/M7.md`.
+
+**PREDECESSORS / CONTEXT**
+Sessions 1–6 (M1–M6 and the independent review); M3's thumbnail cache and detail photo; M5 backup format (§7).
+
+**CONFIDENCE**
+High for the data paths: every write and failure case is unit-tested with mutants, and the browser check reads back and decodes the stored JPEGs. Medium for the camera and picker on the Tab S8, EXIF rotation and decoding speed at 12 MP (Stage 5). Open (low): the "taken on this tablet" mark isn't in backups, so after a restore a team photo on a starter item shows the vendor note again. A fresh-session review isn't needed (low risk).
+
+**Next:** Dan merges the M7 PR; then M8 (QR labels and scanning; medium risk).

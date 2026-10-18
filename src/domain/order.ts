@@ -1,5 +1,5 @@
 // Order quantity and order list (SPEC §4, F12).
-import { OTHER_SUPPLIER, preferredVendorOf, type Item, type Vendor } from './types';
+import { OTHER_SUPPLIER, nameKey, preferredVendorOf, type Item, type Vendor } from './types';
 
 export interface OrderQuantity {
   need: number;
@@ -64,23 +64,28 @@ export function compareSupplierNames(a: string, b: string): number {
   return a.localeCompare(b, 'en-US', { sensitivity: 'base' });
 }
 
+/**
+ * F12: every item with order_qty > 0, grouped by preferred supplier (A–Z, `other` last;
+ * names compared ignoring capitals, so "rev" and "REV" are one group), lines in catalog
+ * order (by id: starter items, then team items), the same order as the Inventory list.
+ */
 export function buildOrderList(items: readonly Item[]): OrderList {
   const bySupplier = new Map<string, SupplierGroup>();
-  for (const item of items) {
+  const sorted = [...items].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  for (const item of sorted) {
     const line = orderLineFor(item);
     if (!line) continue;
-    const name = line.vendor.supplier;
-    let g = bySupplier.get(name);
+    const key = nameKey(line.vendor.supplier);
+    let g = bySupplier.get(key);
     if (!g) {
-      g = { supplier: name, lines: [], subtotalCents: 0, noPriceCount: 0 };
-      bySupplier.set(name, g);
+      g = { supplier: line.vendor.supplier, lines: [], subtotalCents: 0, noPriceCount: 0 };
+      bySupplier.set(key, g);
     }
     g.lines.push(line);
     if (line.lineTotalCents === null) g.noPriceCount++;
     else g.subtotalCents += line.lineTotalCents;
   }
   const groups = [...bySupplier.values()].sort((a, b) => compareSupplierNames(a.supplier, b.supplier));
-  for (const g of groups) g.lines.sort((a, b) => a.item.name.localeCompare(b.item.name, 'en-US', { sensitivity: 'base' }));
   let grandTotalCents = 0;
   let lineCount = 0;
   let noPriceCount = 0;

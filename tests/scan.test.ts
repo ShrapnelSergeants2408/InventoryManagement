@@ -96,6 +96,7 @@ describe('QR round trip: generated label codes decode back to the payload', () =
   it.each(['2408:st-0063', '2408:st-0001', '2408:tm-7K3QX', '2408:tm-ZZZZZ'])('%s', async (text) => {
     const found = await readBarcodes(render(text) as unknown as ImageData, { formats: ['QRCode'] });
     expect(found.map((f) => f.text)).toEqual([text]);
+    expect(found[0]!.ecLevel).toBe('M'); // survives a scuffed label
     expect(resolveScan(found[0]!.text, items).kind).not.toBe('unknown');
   });
 

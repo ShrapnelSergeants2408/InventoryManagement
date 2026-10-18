@@ -301,3 +301,32 @@ Sessions 1–6 (M1–M6 and the independent review); M3's thumbnail cache and de
 High for the data paths: every write and failure case is unit-tested with mutants, and the browser check reads back and decodes the stored JPEGs. Medium for the camera and picker on the Tab S8, EXIF rotation and decoding speed at 12 MP (Stage 5). Open (low): the "taken on this tablet" mark isn't in backups, so after a restore a team photo on a starter item shows the vendor note again. A fresh-session review isn't needed (low risk).
 
 **Next:** Dan merges the M7 PR; then M8 (QR labels and scanning; medium risk).
+
+
+---
+
+## Session 7, continued — 2026-10-18 — M8
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine, same session as M7. Stage 4: M8 (QR labels and scanning; medium risk).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| 12:49 | Dan merged PR #9 (M7), as `b0f3f9a`. Branch `m8-labels-scan` from `origin/main`. Read SPEC §9, F20, F21, mockups 5a–5f and 6a–6d and the mockup logic. Web search for the Avery 22805 margins found nothing usable |
+| 12:49–13:15 | `qrcode-generator` and `barcode-detector` (zxing, local `.wasm`) added. `domain/labels.ts` (layouts, geometry, start, nudge, label text), `domain/scan.ts`, `domain/qr.ts`, `data/labels.ts`, `setBarcode`; Labels screen (two steps, preview = print pages, test print, print CSS); `Scanner`, Scan screen, editor Scan button, Print QR label on the card; `scripts/m8-ui-check.mjs` with a fake camera playing a generated QR label. Commit `e7b14c5` |
+| 13:15–13:40 | M8 verification: M2–M7 regression (the M2 placeholder check moved to Count); review fixes (walk-order printing, quick nudge taps), commit `3ffe54d`; unit mutants 27/29 (2 equivalent) after one test gap; interface mutants 9/9; `docs/reviews/M8.md` |
+
+**WORK COMPLETED**
+M8: F20, F21 and §9: labels for 4 layouts with start position, page breaks, nudge, test print and the 100% reminder; scanning QR labels, barcodes and typed codes; attach or add for unknown codes; a barcode Scan button in the editor. 443 tests; 60 browser checks; the M2–M7 checks pass (28, 50, 25, 39, 54, 32).
+
+**DELIVERABLES PRODUCED**
+`src/domain/{labels,scan,qr}.ts`, `src/data/labels.ts`, `src/data/items.ts` (`setBarcode`), `src/data/prefs.ts` (last layout), `src/io/barcode.ts`, `src/ui/components/{Scanner,ScanDialog}.tsx`, `src/ui/screens/labels/{Labels,LabelSheet}.tsx`, `src/ui/screens/scan/Scan.tsx`, `src/ui/screens/item/{Detail,Editor}.tsx`, `src/ui/shell/router.ts`, `src/ui/App.tsx`, `src/styles/{labels,scan}.css`, `tests/{labels,labels-db,scan}.test.ts`, `tests/router.test.ts`, `scripts/m8-ui-check.mjs`, `scripts/m2-ui-check.mjs`, `docs/reviews/M8.md`.
+
+**PREDECESSORS / CONTEXT**
+M1–M7; the mockup's label geometry (approximate) and SPEC §15 Q2 (label sheets still not chosen).
+
+**CONFIDENCE**
+High for the label math and scan logic: exact positions, page breaks and nudge are unit-tested with mutants; the print is measured in print media and as a PDF; generated QR codes decode back with zxing, and the camera path ran end to end on a fake camera. **Medium for the physical print:** the sheet geometry is marked "verify against package" and needs a real print at 100% on the Tab S8 (Stage 5). Medium for the native BarcodeDetector and the torch on the tablet. A fresh-session review isn't needed; a real test print is.
+
+**Next:** Dan merges the M8 PR; then M9 (count-in; medium risk).

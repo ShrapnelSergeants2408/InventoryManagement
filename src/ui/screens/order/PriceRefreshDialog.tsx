@@ -8,14 +8,14 @@ export function PriceRefreshDialog({ onClose }: { onClose: () => void }) {
       <p class="dlg-p">The app can’t read vendor websites itself, so prices are refreshed with Claude before an order:</p>
       <ol class="steps">
         <li>
-          <strong>Export a data-only backup</strong> (More › Backup — arrives in a later build, M5).
+          <strong>Export a data-only backup</strong> (More › Backup &amp; restore › Data only).
         </li>
         <li>
           In a desktop chat with web search, give the file to <strong>Claude</strong> and ask it to check current prices for the items on the order list. It returns a
           price-update CSV.
         </li>
         <li>
-          <strong>Import the price update</strong> (More › Backup › Price import, mentor PIN — also M5). It changes only prices, pack sizes, links and “price checked”, never
+          <strong>Import the price update</strong> (More › Backup &amp; restore › Price update import, mentor PIN). It changes only prices, pack sizes, links and “price checked”, never
           counts.
         </li>
       </ol>

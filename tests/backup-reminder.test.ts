@@ -39,5 +39,7 @@ describe('backup reminder (F16, D7)', () => {
     expect(showBackupBanner(clock(), now + SNOOZE_MS - 1, now)).toBe(false);
     expect(showBackupBanner(clock(), now + SNOOZE_MS, now)).toBe(true);
     expect(showBackupBanner(clock({ lastBackupAt: now }), now + 1, null)).toBe(false);
+    // A screen whose clock last ticked before "Later" was tapped stays hidden.
+    expect(showBackupBanner(clock(), now - 30_000, now)).toBe(false);
   });
 });

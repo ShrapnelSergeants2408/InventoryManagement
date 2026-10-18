@@ -23,8 +23,12 @@ export function daysSinceBackup(lastBackupAt: number | null, now: number): numbe
   return lastBackupAt === null ? null : Math.max(0, Math.floor((now - lastBackupAt) / DAY_MS));
 }
 
-/** The banner shows when a backup is due and "Later" wasn't tapped within the snooze time. */
+/**
+ * The banner shows when a backup is due and "Later" wasn't tapped within the snooze time.
+ * `now` can be a little older than `snoozedAt` (a screen's clock ticks once a minute); that
+ * still counts as snoozed.
+ */
 export function showBackupBanner(c: ReminderClock, now: number, snoozedAt: number | null): boolean {
   if (!backupDue(c, now)) return false;
-  return snoozedAt === null || now - snoozedAt >= SNOOZE_MS || now < snoozedAt;
+  return snoozedAt === null || now - snoozedAt >= SNOOZE_MS;
 }

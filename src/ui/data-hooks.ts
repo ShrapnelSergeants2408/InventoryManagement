@@ -66,6 +66,21 @@ export function forgetThumbnail(itemId: string): void {
   void p?.then((url) => url && URL.revokeObjectURL(url));
 }
 
+/** Drops every cached thumbnail (after a restore replaces the photos). */
+export function forgetAllThumbnails(): void {
+  for (const id of [...thumbUrls.keys()]) forgetThumbnail(id);
+}
+
+/** The current time, updated every `ms` (banners that depend on the clock). */
+export function useNow(ms = 60_000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), ms);
+    return () => clearInterval(t);
+  }, [ms]);
+  return now;
+}
+
 /** The full-size photo (detail card, §8) as an object URL while the screen is open. */
 export function usePhotoUrl(itemId: string, hasPhoto: boolean): string | null {
   const db = useDb();

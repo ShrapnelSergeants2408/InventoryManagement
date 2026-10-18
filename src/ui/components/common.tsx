@@ -3,6 +3,7 @@ import type { ComponentChildren } from 'preact';
 import { groupChips, type StatusCounts } from '../../domain/inventory-view';
 import { statusLabel, type StockStatus } from '../../domain/status';
 import { Icon, type IconName } from '../icons';
+import { goBack } from '../shell/router';
 
 /** Color, icon and word together; never color alone (§17). */
 export function StatusChip({ status }: { status: StockStatus }) {
@@ -72,15 +73,45 @@ export function LockPill() {
   );
 }
 
-export function TopBar(props: { title: string; subtitle?: string; children?: ComponentChildren }) {
+export function TopBar(props: {
+  title: string;
+  subtitle?: string;
+  /** Small line above the title (breadcrumb on detail and edit screens). */
+  kicker?: string;
+  /** Back or Cancel button before the title. */
+  back?: ComponentChildren;
+  /** Between the title and the lock button (search, filters). */
+  children?: ComponentChildren;
+  /** After the lock button (Add, Save, Reorder). */
+  actions?: ComponentChildren;
+}) {
   return (
     <header class="top">
-      <div class="top-title">
-        <h1 class="h1">{props.title}</h1>
+      {props.back}
+      <div class={props.kicker !== undefined ? 'top-title grow' : 'top-title'}>
+        {props.kicker !== undefined && <span class="small muted">{props.kicker}</span>}
+        <h1 class={props.kicker !== undefined ? 'h1 clip' : 'h1'}>{props.title}</h1>
         {props.subtitle !== undefined && <span class="small muted">{props.subtitle}</span>}
       </div>
       {props.children}
       <LockPill />
+      {props.actions}
     </header>
   );
 }
+
+export function BackButton(props: { label?: string; fallback: string }) {
+  return (
+    <button type="button" class="btn" onClick={() => goBack(props.fallback)}>
+      <Icon name="chevLeft" />
+      {props.label ?? 'Back'}
+    </button>
+  );
+}
+
+/** The lock shown on buttons for actions that need the mentor PIN (§17). */
+export function PinMark() {
+  return <Icon name="lock" class="ic pinmark" label="needs the mentor PIN" />;
+}
+
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;

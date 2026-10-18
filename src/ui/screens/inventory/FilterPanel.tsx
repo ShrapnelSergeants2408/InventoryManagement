@@ -1,10 +1,11 @@
 // Filters panel (F5): side sheet in landscape, bottom sheet in portrait.
 import { useEffect, useRef } from 'preact/hooks';
 import type { Filters } from '../../../domain/filters';
+import { NO_LOCATION } from '../../../domain/lists';
 import type { FilterOptions, Totals } from '../../../domain/inventory-view';
 import { Icon } from '../../icons';
 
-export const NO_LOCATION_LABEL = 'No location';
+export const NO_LOCATION_LABEL = NO_LOCATION;
 
 function Choice(props: { on: boolean; label: string; onClick: () => void }) {
   return (

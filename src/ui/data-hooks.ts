@@ -54,6 +54,32 @@ export function forgetThumbnail(itemId: string): void {
   void p?.then((url) => url && URL.revokeObjectURL(url));
 }
 
+/** The full-size photo (detail card, §8) as an object URL while the screen is open. */
+export function usePhotoUrl(itemId: string, hasPhoto: boolean): string | null {
+  const db = useDb();
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!hasPhoto) {
+      setUrl(null);
+      return;
+    }
+    let current: string | null = null;
+    const sub = liveQuery(() => db.photos.get(itemId)).subscribe({
+      next: (row) => {
+        if (current) URL.revokeObjectURL(current);
+        current = row ? URL.createObjectURL(row.full) : null;
+        setUrl(current);
+      },
+      error: () => setUrl(null),
+    });
+    return () => {
+      sub.unsubscribe();
+      if (current) URL.revokeObjectURL(current);
+    };
+  }, [db, itemId, hasPhoto]);
+  return url;
+}
+
 export function useThumbnail(itemId: string, hasPhoto: boolean): string | null {
   const db = useDb();
   const [url, setUrl] = useState<string | null>(null);

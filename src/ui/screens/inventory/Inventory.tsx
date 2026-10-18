@@ -1,10 +1,10 @@
 // Inventory (home): grouped list (F1), rows (F2), quick adjust (F3), search (F4), filters (F5).
-import { useEffect, useMemo, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { adjustOnHand, setOnHand } from '../../../data/inventory';
 import { loadExpanded, loadFilters, saveExpanded, saveFilters } from '../../../data/prefs';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
 import { buildInventoryView, filterOptions, type InventoryView } from '../../../domain/inventory-view';
-import { GroupChips, StateMessage, TopBar } from '../../components/common';
+import { GroupChips, StateMessage, TopBar, plural } from '../../components/common';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
@@ -12,8 +12,6 @@ import { showToast } from '../../shell/toast';
 import { FilterPanel, NO_LOCATION_LABEL } from './FilterPanel';
 import { ItemRow } from './ItemRow';
 import { StorageError } from '../StorageError';
-
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function Skeleton() {
   return (
@@ -56,6 +54,18 @@ export function InventoryScreen() {
     [snap, query, filters, expanded],
   );
   const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap.locations) : null), [snap]);
+
+  // A saved filter can name a category, supplier or location that was since renamed or
+  // removed (M3); drop it rather than show an empty list.
+  useEffect(() => {
+    if (!options) return;
+    setFilters((f) => {
+      const category = f.category !== null && !options.categories.includes(f.category) ? null : f.category;
+      const supplier = f.supplier !== null && !options.suppliers.includes(f.supplier) ? null : f.supplier;
+      const location = f.location !== null && f.location !== '' && !options.locations.includes(f.location) ? null : f.location;
+      return category === f.category && supplier === f.supplier && location === f.location ? f : { ...f, category, supplier, location };
+    });
+  }, [options]);
 
   if (live.state === 'error') {
     return (
@@ -214,8 +224,15 @@ function QuickFilters(props: {
   );
 }
 
+// Where the list was scrolled, so coming back from an item's detail card keeps the place.
+let savedScroll = 0;
+
 function List({ view, toggle }: { view: InventoryView; toggle: (key: string) => void }) {
   const db = useDb();
+  const box = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    if (box.current) box.current.scrollTop = savedScroll;
+  }, []);
   const fail = (e: unknown) => showToast(`Couldn't save the count: ${e instanceof Error ? e.message : String(e)}`);
   const onStep = (id: string, d: number) => void adjustOnHand(db, id, d).catch(fail);
   const onSet = (id: string, n: number) =>
@@ -224,7 +241,7 @@ function List({ view, toggle }: { view: InventoryView; toggle: (key: string) => 
       throw e;
     });
   return (
-    <div class="list">
+    <div class="list" ref={box} onScroll={(e) => (savedScroll = (e.currentTarget as HTMLDivElement).scrollTop)}>
       {view.lines.map((ln) => {
         if (ln.kind === 'item') return <ItemRow key={ln.info.item.id} info={ln.info} onStep={onStep} onSet={onSet} />;
         const isCat = ln.kind === 'category';

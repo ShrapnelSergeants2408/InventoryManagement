@@ -1,5 +1,5 @@
 // Independent fresh-session review of M6 (docs/reviews/M6-independent.md): findings shown at
-// the data layer. Each asserts the behaviour the review describes. F-A and F-D are fixed in the
+// the data layer. Each asserts the data-layer behaviour the review describes. F-A and F-D are fixed in the
 // UI (the PIN pad recovers from a failed check; gated dialogs close on relock and Delete asks
 // again), which scripts/m6-ui-check.mjs covers; F-B and F-C are left as they are (low).
 import 'fake-indexeddb/auto';
@@ -25,7 +25,7 @@ const newDb = () => {
 };
 const DAY = 86_400_000;
 
-describe('F-A: tryPin can reject; GateHost.submit has no try/finally, so the pad stays busy for good', () => {
+describe('F-A: tryPin can reject (the PIN pad and recovery check now recover: m6-ui-check "PIN check error", "recovery check error")', () => {
   it('a stored hash that isSecretHash accepts but cannot be used makes tryPin reject (not resolve false)', async () => {
     const db = newDb();
     await savePinAndRecovery(db, '2408', 'K7QM4D2X9H');
@@ -87,8 +87,8 @@ describe('F-C: the 5-wrong-tries wait', () => {
   });
 });
 
-describe('F-D: the unlock is decided once, at gate() time', () => {
-  it('gate() resolves true just before relock; nothing re-checks when the follow-up dialog submits', async () => {
+describe('F-D: the unlock is decided once, at gate() time (gated dialogs now close on relock: m6-ui-check "relock closes…")', () => {
+  it('gate() resolves true just before relock and is not asked again by itself; the UI must re-check', async () => {
     vi.useFakeTimers({ now: Date.UTC(2026, 9, 18, 15, 0) });
     setGateAsk(async () => false);
     unlockFor(1000);

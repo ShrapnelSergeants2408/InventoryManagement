@@ -269,6 +269,15 @@ try {
   await J(`await go('#/more'); await click('button.mrow', 'Forgot the PIN?');`);
   check('a wrong recovery code is refused with the count', await J(`await type('.rinput', 'ABCDE-FGHJK'); await click('.dlg button[type=submit]', 'Check the code'); return norm($('.pin-err').textContent)`), 'Wrong recovery code. Try again — 1 wrong try so far.');
   await shot('07-recovery');
+  // Independent review, M6 finding 2: a recovery-code check that fails doesn't stay busy.
+  check('recovery check error: message shown, Check the code works again', await J(`
+    const good = await idb('settings', 'recoveryHash');
+    await idbPut('settings', { key: 'recoveryHash', value: { ...good.value, iter: 0 } });
+    await type('.rinput', 'ABCDE-FGHJK'); await click('.dlg button[type=submit]', 'Check the code'); await settle(300);
+    const msg = norm($('.pin-err')?.textContent ?? '');
+    const enabled = !byText('.dlg button[type=submit]', 'Check the code').disabled;
+    await idbPut('settings', good);
+    return [msg.startsWith('Couldn’t check the code'), enabled]`), [true, true]);
   check('the right code (any capitals, no dash) leads to a new PIN', await J(`await type('.rinput', ${JSON.stringify(code1.replace('-', ' ').toLowerCase())}); await click('.dlg button[type=submit]', 'Check the code'); return norm($('.pinpad h2').textContent)`), 'Set a new mentor PIN');
   await J(`await enterPin('1357'); await enterPin('1357');`);
   const code2 = await J(`return norm($('.rcode').textContent)`);

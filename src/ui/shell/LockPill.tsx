@@ -23,13 +23,21 @@ export function useUnlockRemaining(): number {
 /**
  * Closes a dialog that was opened behind the PIN once mentor tools relock (timer or lock
  * button), so a confirm left open can't be finished by whoever picks up the tablet (§6).
+ * Also checks the wall clock every second: after the tablet sleeps, the relock timer can
+ * fire late.
  */
 export function useCloseOnRelock(open: boolean, close: () => void): void {
   useEffect(() => {
     if (!open) return;
-    return onLockChange(() => {
+    const check = () => {
       if (!isUnlocked()) close();
-    });
+    };
+    const off = onLockChange(check);
+    const t = setInterval(check, 1000);
+    return () => {
+      off();
+      clearInterval(t);
+    };
   }, [open]);
 }
 

@@ -330,3 +330,32 @@ M1–M7; the mockup's label geometry (approximate) and SPEC §15 Q2 (label sheet
 High for the label math and scan logic: exact positions, page breaks and nudge are unit-tested with mutants; the print is measured in print media and as a PDF; generated QR codes decode back with zxing, and the camera path ran end to end on a fake camera. **Medium for the physical print:** the sheet geometry is marked "verify against package" and needs a real print at 100% on the Tab S8 (Stage 5). Medium for the native BarcodeDetector and the torch on the tablet. A fresh-session review isn't needed; a real test print is.
 
 **Next:** Dan merges the M8 PR; then M9 (count-in; medium risk).
+
+
+---
+
+## Session 8 — 2026-10-18 — M9
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. New session after `/clear` ("continue"). Stage 4: M9 (count-in; medium risk).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| 16:53 | PR #10 (M8) already merged, as `1e14b08`. Branch `m9-count-in` from `origin/main`. Read SPEC F24, design notes §5, mockups 10a–10e and the mockup logic, and the existing data layer, Scan and Labels code |
+| 16:53–17:22 | `domain/count.ts` (walk order, groups, progress, keypad, summary), `listOrder` in `inventory-view.ts`, `data/count.ts` (`saveCount`), count options and pause point in `prefs.ts`, `Keypad`, Count screen (start, walk, summary, scan as you go), `count.css`; 45 new tests; `scripts/m9-ui-check.mjs`; M2 check updated (Count is no longer a placeholder); scanner line CSS fix. Commit `729eff9` |
+| 17:22–17:55 | M9 verification: unit mutants 26/26 after one test gap; interface mutants 9/9 after finding and fixing the scanner stopping after one report (M8 bug); M2–M8 regression; `docs/reviews/M9.md` |
+
+**WORK COMPLETED**
+M9: F24 in full. Three modes (by category, by location in walk order then "No location", scan as you go), start screen with order total, overall progress and Start/Continue/Recount per group, the two options, one item per screen with keypad, status preview and location picks (with New location, no PIN), Back/Skip/Save & next, group summary with before → after total and shortcuts, and resume after a reload. 488 tests; 63 browser checks; the M2–M8 checks pass (28, 50, 25, 39, 54, 32, 61). Two M8 bugs fixed on the way: the scanner stopped reading after its first code unless paused and resumed, and its amber line drew as a block (CSS class clash).
+
+**DELIVERABLES PRODUCED**
+`src/domain/count.ts`, `src/domain/inventory-view.ts` (`listOrder`), `src/data/count.ts`, `src/data/prefs.ts`, `src/ui/components/Keypad.tsx`, `src/ui/components/common.tsx` (chip prefix), `src/ui/components/Scanner.tsx`, `src/ui/screens/count/Count.tsx`, `src/ui/App.tsx`, `src/main.tsx`, `src/styles/{count,scan}.css`, `tests/{count,count-db}.test.ts`, `scripts/m9-ui-check.mjs`, `scripts/{m2,m8}-ui-check.mjs`, `docs/reviews/M9.md`; removed `src/ui/screens/Placeholder.tsx`.
+
+**PREDECESSORS / CONTEXT**
+M1–M8; spec-questions Q7 and D8; M8's Scanner and Labels routes.
+
+**CONFIDENCE**
+High for the count logic and the save: walk order, progress, keypad, summary and `saveCount` are unit-tested with mutants (26/26), and the browser check reads the stored values back. Medium for scan as you go on the tablet (native BarcodeDetector, a long camera session) and for glove use (Stage 5). Open (low, for Dan): recounts have no "round", so after the first full count every group shows Recount 100% (see M9 review). A fresh-session review isn't needed.
+
+**Next:** Dan merges the M9 PR; then M10 (starter catalog first launch and offline/PWA; medium risk).

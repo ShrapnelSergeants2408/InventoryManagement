@@ -103,10 +103,9 @@ export function Scanner(props: {
             const prev = last.current;
             if (!(prev && prev.code === hit.rawValue && now - prev.at < REPEAT_IGNORE_MS)) {
               last.current = { code: hit.rawValue, at: now };
+              // Scanning carries on after a report (count-in never pauses); pausing stops it.
               latest.current.onDetect(hit.rawValue, hit.format);
-              return;
-            }
-            last.current = { code: hit.rawValue, at: prev!.at };
+            } else last.current = { code: hit.rawValue, at: prev!.at };
           }
         }
       } catch {

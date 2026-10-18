@@ -148,6 +148,8 @@ function Count({ snap }: { snap: InventorySnapshot }) {
           <button
             type="button"
             class="btn"
+            // Not while a save is running: it would carry on to the next item after the pause.
+            disabled={busy}
             onClick={() => {
               if (view.kind === 'scan' && view.saved.size > 0) showToast(`Counted ${plural(view.saved.size, 'item')} while scanning.`);
               setView({ kind: 'start' });
@@ -772,7 +774,7 @@ function ScanCount(props: {
   const [typed, setTyped] = useState('');
   const dirty = useRef(false);
   // The item just saved or skipped: its label is usually still in front of the camera, so the
-  // camera ignores it until another item is scanned. Typing its code still opens it.
+  // camera ignores it until another item is saved or skipped. Typing its code still opens it.
   const done = useRef<string | null>(null);
   const blocked = camera === 'denied' || camera === 'nocamera' || camera === 'error';
 
@@ -785,7 +787,6 @@ function ScanCount(props: {
     setNote(null);
     setPicks(null);
     setTyped('');
-    done.current = null;
     props.onOpen(item.id);
   };
   const find = (raw: string, typedByHand: boolean) => {

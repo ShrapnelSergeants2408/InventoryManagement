@@ -264,13 +264,20 @@ try {
   await js(`await settle(3500);`);
   check('the label still in view does not reopen the item just saved', await js(`return [!!$('.wname'), !!$('.wscan .cam[data-state=live]')]`), [false, true]);
   await js(`await type('.wscan input', 'st-0001'); await click('.wscan .btn', 'Find');`);
-  check('typed ID opens the item; the camera keeps running', await js(`return [wname(), pos()[1], !!$('.wscan .cam[data-state=live]')]`), [await js(`return (await idb('items', 'st-0001')).name`), 'Scan 2', true]);
+  await js(`await act('Skip for now'); await settle(3500);`);
+  check('after another item, the camera reads the same label again (the scanner keeps scanning)', await js(`return $('.wname') ? wname() : 'nothing opened'`), await js(`return (await idb('items', 'st-0063')).name`));
+  await js(`await act('Skip for now'); await type('.wscan input', 'st-0001'); await click('.wscan .btn', 'Find');`);
+  check('typed ID opens the item; the camera keeps running', await js(`return [wname(), pos()[1], !!$('.wscan .cam[data-state=live]')]`), [await js(`return (await idb('items', 'st-0001')).name`), 'Scan 4', true]);
+  await js(`await settle(3000);`);
+  check('the label still in view does not take over the item just typed', await js(`return wname()`), await js(`return (await idb('items', 'st-0001')).name`));
   await js(`await key('9'); await type('.wscan input', 'st-0002'); await click('.wscan .btn', 'Find');`);
   check('a typed count is not lost: finishing it is asked first', await js(`return [wname(), val(), norm($('.wnote').textContent).startsWith('Save or skip')]`), [await js(`return (await idb('items', 'st-0001')).name`), '9', true]);
   await js(`await act('Skip for now'); await type('.wscan input', 'NEO'); await click('.wscan .btn', 'Find');`);
   check('a name matching several items offers a choice', await js(`return [$$('.picks .pick').length > 1, norm($('.wnote').textContent).includes('match “NEO”')]`), [true, true]);
-  await js(`$$('.picks .pick')[0].click(); await settle(300);`);
-  check('choosing one opens it', await js(`return !!$('.wname')`), true);
+  // Choose the item whose label the camera sees, so after skipping it the camera ignores it again.
+  const neo2 = await js(`return (await idb('items', 'st-0063')).name`);
+  await js(`$$('.picks .pick').find((p) => norm(p.querySelector('strong').textContent) === ${JSON.stringify(neo2)}).click(); await settle(300);`);
+  check('choosing one opens it', await js(`return $('.wname') ? wname() : null`), neo2);
   await js(`await act('Skip for now'); await type('.wscan input', '000000'); await click('.wscan .btn', 'Find');`);
   check('unknown code: says so and points to the Scan tab', await js(`return norm($('.wnote').textContent)`), 'No item has the code 000000. To attach it to an item, use the Scan tab.');
   await js(`await click('.wwait .btn', 'Back to the last item');`);

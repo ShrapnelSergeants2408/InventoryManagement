@@ -153,7 +153,8 @@ describe('group summary (10d)', () => {
   const walk = ['a', 'b', 'c', 'd'];
   const now = [
     item({ id: 'a', desired: 5, onHand: 2, lastCounted: '2026-10-18' }),
-    item({ id: 'b', desired: 1, onHand: 1, lastCounted: '2026-10-18', location: 'Moved shelf' }),
+    // Low spares, not short: the summary's Short tile leaves it out.
+    item({ id: 'b', desired: 1, spares: 2, onHand: 1, lastCounted: '2026-10-18', location: 'Moved shelf' }),
     item({ id: 'c', desired: 1, onHand: 0 }),
     item({ id: 'd', desired: 1, onHand: 0, lastCounted: '2026-09-01' }),
   ];

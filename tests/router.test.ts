@@ -12,6 +12,8 @@ describe('hash routes', () => {
     ['#/add', { tab: 'inventory', screen: 'add', name: '' }],
     ['#/item/st-0063/edit', { tab: 'inventory', screen: 'edit', id: 'st-0063' }],
     ['#/more/suppliers', { tab: 'more', screen: 'suppliers' }],
+    ['#/more/backup', { tab: 'more', screen: 'backup' }],
+    ['#/more/settings', { tab: 'more', screen: 'settings' }],
     ['#/more/categories', { tab: 'more', screen: 'categories' }],
     ['#/more/locations', { tab: 'more', screen: 'locations' }],
     ['#/more/nonsense', { tab: 'more', screen: 'tab' }],

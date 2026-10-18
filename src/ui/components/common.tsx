@@ -3,6 +3,7 @@ import type { ComponentChildren } from 'preact';
 import { groupChips, type StatusCounts } from '../../domain/inventory-view';
 import { statusLabel, type StockStatus } from '../../domain/status';
 import { Icon, type IconName } from '../icons';
+import { LockPill } from '../shell/LockPill';
 import { goBack } from '../shell/router';
 
 /** Color, icon and word together; never color alone (§17). */
@@ -60,16 +61,6 @@ export function StateMessage(props: {
       {props.children}
       {props.actions && <div class="state-actions">{props.actions}</div>}
     </div>
-  );
-}
-
-/** Placeholder until the mentor PIN arrives (M6): always "Locked". */
-export function LockPill() {
-  return (
-    <button class="lockpill" type="button" aria-label="Mentor PIN status: locked" title="Mentor PIN arrives in a later milestone" aria-disabled="true">
-      <Icon name="lock" />
-      Locked
-    </button>
   );
 }
 

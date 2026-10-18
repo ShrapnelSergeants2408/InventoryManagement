@@ -1,8 +1,9 @@
-// Boot: open the database → storage error | app (SPEC §2).
+// Boot: open the database → storage error | first-launch setup (no PIN yet, §6) | app (SPEC §2).
 import { useEffect, useState } from 'preact/hooks';
 import seedUrl from '../../seed/frc2408-starter-catalog-2026-10-17.zip?url';
 import { InventoryDb } from '../data/db';
 import { itemCount, replaceAll } from '../data/inventory';
+import { hasPin } from '../data/pin';
 import { readSeed } from '../io/seed';
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
@@ -13,9 +14,11 @@ import { BackupScreen } from './screens/more/Backup';
 import { CategoriesScreen } from './screens/more/Categories';
 import { LocationsScreen } from './screens/more/Locations';
 import { MoreScreen } from './screens/more/More';
+import { SettingsScreen } from './screens/more/Settings';
 import { SuppliersScreen } from './screens/more/Suppliers';
 import { OrderScreen } from './screens/order/Order';
 import { Placeholder } from './screens/Placeholder';
+import { SetupScreen } from './screens/Setup';
 import { StorageError } from './screens/StorageError';
 import { GateHost } from './shell/GateHost';
 import { Shell } from './shell/Shell';
@@ -23,7 +26,7 @@ import { useRoute, type Route } from './shell/router';
 
 const STARTER_MARKER = 'starterLoadedAt';
 
-type Boot = { state: 'opening' } | { state: 'ready'; db: InventoryDb } | { state: 'error'; error: unknown };
+type Boot = { state: 'opening' } | { state: 'ready'; db: InventoryDb; setup: boolean } | { state: 'error'; error: unknown };
 
 async function openDb(): Promise<InventoryDb> {
   const db = new InventoryDb();
@@ -64,6 +67,8 @@ function Screen({ route }: { route: Route }) {
       return <LocationsScreen />;
     case 'backup':
       return <BackupScreen />;
+    case 'settings':
+      return <SettingsScreen />;
     case 'tab':
       break;
   }
@@ -89,7 +94,7 @@ export function App() {
   const start = () => {
     setBoot({ state: 'opening' });
     openDb().then(
-      (db) => setBoot({ state: 'ready', db }),
+      async (db) => setBoot({ state: 'ready', db, setup: !(await hasPin(db)) }),
       (error: unknown) => setBoot({ state: 'error', error }),
     );
   };
@@ -113,6 +118,13 @@ export function App() {
           </div>
         </div>
       </Shell>
+    );
+  }
+  if (boot.setup) {
+    return (
+      <DbContext.Provider value={boot.db}>
+        <SetupScreen onDone={() => setBoot({ ...boot, setup: false })} />
+      </DbContext.Provider>
     );
   }
   return (

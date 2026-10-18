@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Backup and restore</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:28px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.danger{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.onb{border-color:#fff;color:#fff;background:transparent;min-height:48px}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:16px;height:16px;stroke-width:2.5}
+.chip.lock{background:#E3EAF3;color:#1F3A5F}
+.card{background:#fff;border:1px solid #DDD5CB;border-radius:16px}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg{background:#fff;border-radius:20px;padding:28px;width:680px;max-width:100%;max-height:100%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:16px}
+.banner{flex:none;display:flex;align-items:center;gap:14px;padding:8px 16px 8px 24px;background:#1F3A5F;color:#fff;font-weight:700}
+.app.p .banner{padding:8px 12px 8px 16px;flex-wrap:wrap}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+.bbody{flex:1 1 auto;min-height:0;overflow:auto;padding:20px 24px 32px}
+.app.p .bbody{padding:16px}
+.bgrid{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:20px;align-items:start}
+.app.p .bgrid{grid-template-columns:minmax(0,1fr)}
+.sec{padding:20px;display:flex;flex-direction:column;gap:14px}
+.opt{display:flex;gap:14px;align-items:center;width:100%;min-height:96px;padding:14px 16px;border:2px solid #1A1411;border-radius:16px;background:#fff;font:inherit;text-align:left;cursor:pointer;color:#1A1411}
+.opt .oi{width:56px;height:56px;border-radius:14px;background:#F2EFEA;display:flex;align-items:center;justify-content:center;flex:none}
+.cmp{width:100%;border-collapse:collapse}
+.cmp th,.cmp td{text-align:left;padding:10px 12px;border-bottom:1px solid #E6DFD6}
+.cmp th{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:#4A403A}
+.chk{display:flex;gap:12px;align-items:center;min-height:56px;padding:0 12px;border:2px solid #CFC6BB;border-radius:12px;background:#fff;font:inherit;cursor:pointer;text-align:left;color:#1A1411}
+.box{width:30px;height:30px;border-radius:8px;border:3px solid #1A1411;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.box.on{background:#1A1411;color:#fff}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:36;background:#fff;border-radius:20px 20px 0 0;padding:20px 24px 28px;box-shadow:0 -10px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:16px}
+.share{display:flex;gap:16px;flex-wrap:wrap}
+.share button{width:120px;min-height:104px;border-radius:16px;border:2px solid #DDD5CB;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;color:#1A1411}
+.ok{display:flex;gap:10px;align-items:flex-start}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <a class="btn" href="{{moreHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>More</a>
+      <h1 class="h1" style="flex: 1 1 auto">Backup &amp; restore</h1>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+    </header>
+    <sc-if value="{{showBanner}}" hint-placeholder-val="{{true}}">
+      <div class="banner" role="status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg><span style="flex: 1 1 260px">{{bannerTxt}}</span></div>
+    </sc-if>
+    <div class="bbody">
+      <div class="bgrid">
+        <div class="card sec">
+          <h2 class="h2">Back up</h2>
+          <div style="display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap"><span class="muted">Last backup:</span><span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 30px">{{lastTxt}}</span></div>
+          <button class="opt" onClick="{{shareFull}}">
+            <span class="oi"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15 9.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"></path></svg></span>
+            <span style="flex: 1"><span style="font-weight: 700; font-size: 20px; display: block">Full backup (ZIP)</span><span class="small muted">inventory.csv + suppliers.csv + 128 photos · about 5.6 MB · use this every week</span></span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg>
+          </button>
+          <button class="opt" onClick="{{shareData}}">
+            <span class="oi"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z M14 3v5h5"></path></svg></span>
+            <span style="flex: 1"><span style="font-weight: 700; font-size: 20px; display: block">Data only (CSV)</span><span class="small muted">inventory.csv · about 40 KB · quick over Bluetooth · use for a price refresh with Claude</span></span>
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg>
+          </button>
+          <div class="small muted">Both open Android’s share sheet. Quick Share or Drive is much faster than Bluetooth for the full backup. The PIN and settings are never included.</div>
+          <div class="ok small" style="background: #F2EFEA; border-radius: 12px; padding: 12px 14px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg><span><strong>Persistent storage granted.</strong> Chrome won’t clear the app’s data on its own. Using 6.1 MB on this tablet. Backups still matter if the tablet is lost, reset or broken.</span></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px">
+          <div class="card sec">
+            <div style="display: flex; align-items: center; gap: 10px"><h2 class="h2" style="flex: 1">Restore</h2><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></div>
+            <p style="margin: 0">Replaces <strong>all</strong> inventory on this tablet with a backup file. A CSV-only restore keeps existing photos for matching item IDs. Unknown supplier names are added to the supplier list.</p>
+            <button class="btn lg" onClick="{{chooseRestore}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21V9 M7 14l5-5 5 5 M5 4h14"></path></svg>Choose backup file (ZIP or CSV)…</button>
+          </div>
+          <div class="card sec">
+            <div style="display: flex; align-items: center; gap: 10px"><h2 class="h2" style="flex: 1">Price update import</h2><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></div>
+            <p style="margin: 0">Updates price, pack size, link and price-checked date for matching item IDs. <strong>Never changes counts.</strong></p>
+            <ol class="small" style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px">
+              <li>Share a <strong>Data only</strong> backup to a computer.</li>
+              <li>In a Claude desktop chat with web search, ask it to check current prices for the items on the order list.</li>
+              <li>Import the price-update CSV Claude returns.</li>
+            </ol>
+            <button class="btn lg" onClick="{{chooseImport}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z M14 3v5h5"></path></svg>Choose price CSV…</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <sc-if value="{{restoreOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="alertdialog" aria-label="Replace all inventory">
+        <h2 class="h2">Replace all inventory with this backup?</h2>
+        <div class="mono small">inventory-backup-2026-10-10-1535.zip · 5.5 MB</div>
+        <table class="cmp">
+          <thead><tr><th></th><th>On this tablet now</th><th>In the backup</th></tr></thead>
+          <tbody>
+            <tr><td class="muted">Items</td><td><strong>130</strong></td><td><strong>129</strong></td></tr>
+            <tr><td class="muted">Photos</td><td>128</td><td>128</td></tr>
+            <tr><td class="muted">Suppliers</td><td>9</td><td>9</td></tr>
+            <tr><td class="muted">Saved</td><td>changed today 12:31 PM</td><td>Oct 10, 2026 3:35 PM</td></tr>
+          </tbody>
+        </table>
+        <p style="margin: 0">Everything on the tablet is replaced. Counts and items added since Oct 10 will be lost unless you back up first.</p>
+        <button class="chk" onClick="{{toggleAck}}" role="checkbox" aria-checked="{{ackStr}}"><span class="{{ackBox}}"><sc-if value="{{ack}}" hint-placeholder-val="{{false}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if></span>I understand this replaces everything</button>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn lg" onClick="{{shareFull}}">Back up this tablet first</button>
+          <button class="btn lg" onClick="{{closeAll}}">Cancel</button>
+          <button class="btn danger lg" onClick="{{doRestore}}" disabled="{{noAck}}">Replace everything</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{importOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="dialog" aria-label="Price update imported">
+        <div style="display: flex; gap: 14px; align-items: center"><span style="width: 56px; height: 56px; border-radius: 50%; background: #1A1411; color: #fff; display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><h2 class="h2">Price update imported</h2></div>
+        <div class="mono small">prices-2026-11-02.csv · 120 rows (example)</div>
+        <div class="ok"><strong style="min-width: 64px; font-size: 22px">118</strong><span>vendor options updated — price, pack size, link, price-checked date</span></div>
+        <div class="ok"><strong style="min-width: 64px; font-size: 22px">0</strong><span>counts changed — imports never touch on hand, desired or spares</span></div>
+        <div class="ok"><strong style="min-width: 64px; font-size: 22px">2</strong><span>IDs not found, skipped: <span class="mono">st-0200, st-0201</span></span></div>
+        <div class="ok"><strong style="min-width: 64px; font-size: 22px">1</strong><span>new supplier added to the list: <strong>FIRST Storefront</strong></span></div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap"><a class="btn lg" href="Order.dc.html">See the order list</a><button class="btn pri lg" onClick="{{closeAll}}">Done</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{errOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="alertdialog" aria-label="Import failed">
+        <div style="display: flex; gap: 14px; align-items: center"><span style="width: 56px; height: 56px; border-radius: 50%; background: #FDEEF1; color: #A3122B; display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg></span><h2 class="h2">Couldn’t import — nothing was changed</h2></div>
+        <div class="mono small">prices-2026-11-02.csv (example)</div>
+        <ul style="margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px">
+          <li><strong>Row 14 (st-0013):</strong> v1_pack_size “2.5” must be a whole number of 1 or more.</li>
+          <li><strong>Row 22:</strong> column “v4_pack_price” isn’t recognized — items have at most 3 vendor options.</li>
+        </ul>
+        <p style="margin: 0">Fix the file (or ask Claude to fix it) and import again. The whole file is checked before anything is saved.</p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end"><button class="btn pri lg" onClick="{{closeAll}}">OK</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{shareOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim" style="z-index: 35"></div>
+    <div class="sheet" role="dialog" aria-label="Android share sheet (simulated)">
+      <div class="small muted">Android share sheet (simulated) · <span class="mono">{{shareFile}}</span></div>
+      <div class="share">
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg>Quick Share</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l6 11-4 7H6l-4-7z M2 14h20"></path></svg>Drive</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 6l9 7 9-7"></path></svg>Gmail</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10-5 4V3l5 4L7 17"></path></svg>Bluetooth</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg>Files</button>
+      </div>
+      <button class="btn" style="align-self: flex-start" onClick="{{closeAll}}">Cancel</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn" style="min-height: 48px; background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","share","restore","import","importerror"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2'
+};
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    const st = { dlg: v || null, shareFile: 'inventory-backup-2026-10-17-1240.zip · 5.6 MB' };
+    if (v === 'restore' || v === 'import' || v === 'importerror') st.unlockAt = Date.now() - 37000;
+    this.setState(st);
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  unlocked() { const s = this.state || {}; return !!s.unlockAt && Date.now() - s.unlockAt < 300000; }
+  requirePin(reason, then) { if (this.unlocked()) then(); else { this.after = then; this.setState({ pin: reason }); } }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait, P = portrait ? '-P' : '';
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0;
+    return {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('more', portrait), moreHref: 'More' + P + '.dc.html',
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock,
+      lockText: on ? 'Unlocked ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes' }),
+      pinOpen: !!s.pin, pinReason: s.pin || '',
+      onPinDone: () => { this.setState({ pin: null, unlockAt: Date.now() }); const a = this.after; this.after = null; if (a) a(); },
+      onPinCancel: () => { this.after = null; this.setState({ pin: null }); },
+      showBanner: !s.backedUp, bannerTxt: 'No backup in the last 7 days. This reminder also shows on the Inventory screen until a full or data-only backup is shared.',
+      lastTxt: s.backedUp ? 'Today, 12:40 PM' : 'Never',
+      shareFull: () => this.setState({ dlg: 'share', shareFile: 'inventory-backup-2026-10-17-1240.zip · 5.6 MB' }),
+      shareData: () => this.setState({ dlg: 'share', shareFile: 'inventory-backup-2026-10-17-1240.csv · 40 KB' }),
+      shareOpen: s.dlg === 'share', shareFile: s.shareFile, shared: () => this.setState({ dlg: null, backedUp: true, toast: 'Backup shared. Reminder reset for 7 days.' }),
+      chooseRestore: () => this.requirePin('Restoring a backup needs the mentor PIN', () => this.setState({ dlg: 'restore', ack: false })),
+      chooseImport: () => this.requirePin('Price-update import needs the mentor PIN', () => this.setState({ dlg: 'import' })),
+      restoreOpen: s.dlg === 'restore', importOpen: s.dlg === 'import', errOpen: s.dlg === 'importerror',
+      ack: !!s.ack, ackStr: s.ack ? 'true' : 'false', ackBox: s.ack ? 'box on' : 'box', noAck: !s.ack, toggleAck: () => this.setState({ ack: !s.ack }),
+      doRestore: () => this.setState({ dlg: null, toast: 'Restored 129 items from Oct 10. (Mockup — nothing changed.)' }),
+      closeAll: () => this.setState({ dlg: null }), hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Scan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:28px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn.blk{width:100%}
+.btn.dk{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.6);color:#fff}
+.btn.dk.on{background:#F5B700;border-color:#F5B700;color:#1A1411}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;font-weight:700;font-size:15px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:18px;height:18px;stroke-width:2.5}
+.chip.red{background:#B3122E;color:#fff}
+.chip.yel{background:#F5B700;color:#1A1411}
+.chip.ok{border:2px solid #CFC6BB;color:#4A403A;background:#fff}
+.field{width:100%;min-height:56px;padding:0 16px;border:2px solid #CFC6BB;border-radius:12px;background:#fff;font:inherit;font-size:18px;color:#1A1411}
+.step{display:inline-flex;align-items:center;justify-content:center;width:80px;height:80px;border-radius:16px;border:2px solid #1A1411;background:#fff;color:#1A1411;cursor:pointer;flex:none;padding:0}
+.step.plus{background:#1A1411;color:#fff}
+.step .ic{width:36px;height:36px;stroke-width:3}
+.num{width:128px;height:80px;border:2px solid #CFC6BB;border-radius:12px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:44px;color:#1A1411;background:#fff;padding:0}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+/* scan */
+.cam{flex:1 1 auto;position:relative;overflow:hidden;background:radial-gradient(ellipse at 40% 45%, #3a3632 0%, #1d1b19 55%, #0e0d0c 100%);color:#fff}
+.ctop{position:absolute;left:0;right:0;top:0;display:flex;align-items:center;gap:12px;padding:12px 20px;background:linear-gradient(rgba(0,0,0,.7),rgba(0,0,0,0));z-index:3;flex-wrap:wrap}
+.reticle{position:absolute;left:50%;top:46%;width:340px;height:340px;transform:translate(-50%,-50%)}
+.app.p .reticle{top:40%}
+.reticle span{position:absolute;width:64px;height:64px;border-color:#fff;border-style:solid}
+.reticle .a{left:0;top:0;border-width:6px 0 0 6px;border-radius:14px 0 0 0}
+.reticle .b{right:0;top:0;border-width:6px 6px 0 0;border-radius:0 14px 0 0}
+.reticle .c{left:0;bottom:0;border-width:0 0 6px 6px;border-radius:0 0 0 14px}
+.reticle .d{right:0;bottom:0;border-width:0 6px 6px 0;border-radius:0 0 14px 0}
+.reticle .line{left:24px;right:24px;top:50%;height:3px;width:auto;border:0;background:#F5B700;box-shadow:0 0 16px #F5B700}
+.chint{position:absolute;left:0;right:0;top:calc(46% + 196px);text-align:center;font-weight:700;font-size:20px;text-shadow:0 1px 4px #000}
+.app.p .chint{top:calc(40% + 196px)}
+.paused{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:flex-start;padding:84px 24px;font-weight:700;color:#fff;z-index:2}
+.mock{position:absolute;left:20px;bottom:20px;z-index:4;border:2px dashed #F5B700;border-radius:14px;padding:12px;background:rgba(0,0,0,.6);display:flex;flex-direction:column;gap:8px;max-width:560px}
+.mock .row{display:flex;gap:8px;flex-wrap:wrap}
+.mock button{min-height:48px;padding:0 14px;border-radius:10px;border:2px solid #fff;background:transparent;color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer}
+.panel{position:absolute;top:0;right:0;bottom:0;width:480px;z-index:5;background:#fff;color:#1A1411;box-shadow:-12px 0 40px rgba(0,0,0,.4);display:flex;flex-direction:column}
+.app.p .panel{top:auto;left:0;width:auto;max-height:78%;border-radius:22px 22px 0 0}
+.pbody{flex:1 1 auto;overflow:auto;padding:22px 24px;display:flex;flex-direction:column;gap:16px}
+.pfoot{padding:16px 24px 20px;border-top:1px solid #DDD5CB;display:flex;flex-direction:column;gap:10px}
+.pick{display:flex;align-items:center;gap:12px;width:100%;min-height:72px;padding:8px 12px;border:2px solid #DDD5CB;border-radius:14px;background:#fff;font:inherit;text-align:left;cursor:pointer;color:#1A1411}
+.pick.on{border-color:#1A1411;background:#FBF9F6}
+.pick img{width:56px;height:56px;object-fit:contain;border-radius:8px;border:1px solid #DDD5CB;background:#fff;flex:none}
+.denied{flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:32px;background:#fff}
+.embed{position:absolute;inset:0;z-index:20}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <sc-if value="{{isDenied}}" hint-placeholder-val="{{false}}">
+      <div class="denied">
+        <div style="max-width: 640px; display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; gap: 16px; align-items: center"><span style="width: 80px; height: 80px; border-radius: 50%; background: #FDEEF1; color: #A3122B; display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px"><path d="M3 7h4l2-3h6l2 3h4v13H3z M8.5 13a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0 M3 3l18 18"></path></svg></span><h1 class="h1">The camera is blocked</h1></div>
+          <p style="margin: 0">Scanning needs camera permission for this app. To turn it on:</p>
+          <ol style="margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 6px">
+            <li>Open Chrome’s <strong>⋮ menu › Settings › Site settings › Camera</strong>.</li>
+            <li>Find this app in the <strong>Blocked</strong> list and choose <strong>Allow</strong>.</li>
+            <li>Come back here and tap <strong>Try again</strong>.</li>
+          </ol>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap"><button class="btn pri lg" onClick="{{retryCam}}">Try again</button></div>
+          <div style="border-top: 1px solid #DDD5CB; padding-top: 16px">
+            <label class="small muted" for="mc" style="font-weight: 700">No camera? Type the code on the label or barcode</label>
+            <div style="display: flex; gap: 10px; margin-top: 6px"><input id="mc" class="field mono" placeholder="e.g. st-0063 or 722787604386" value="{{manual}}" onChange="{{setManual}}"><button class="btn" onClick="{{findManual}}">Find</button></div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isCam}}" hint-placeholder-val="{{true}}">
+      <div class="cam" aria-label="Camera view">
+        <div class="ctop">
+          <h1 class="h1" style="color: #fff; flex: 1 1 auto">Scan</h1>
+          <button class="{{torchCls}}" onClick="{{toggleTorch}}" aria-pressed="{{torchPr}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2L4 14h7l-1 8 9-12h-7z"></path></svg>Light</button>
+          <button class="btn dk" onClick="{{openManual}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v12H3z M7 10h.01 M11 10h.01 M15 10h.01 M7 14h10"></path></svg>Type a code</button>
+        </div>
+        <div class="reticle" aria-hidden="true"><span class="a"></span><span class="b"></span><span class="c"></span><span class="d"></span><span class="line"></span></div>
+        <div class="chint">Point at a QR label or a barcode — it scans by itself</div>
+        <sc-if value="{{paused}}" hint-placeholder-val="{{false}}"><div class="paused">Camera paused</div></sc-if>
+        <sc-if value="{{showMock}}" hint-placeholder-val="{{true}}">
+          <div class="mock" aria-label="Mockup controls">
+            <span class="small" style="font-weight: 700; color: #F5B700">MOCKUP ONLY — simulate a scan:</span>
+            <div class="row">
+              <button onClick="{{simQr}}">QR label · NEO 2.0</button>
+              <button onClick="{{simUpc}}">REV barcode · SPARK MAX</button>
+              <button onClick="{{simUnknown}}">Unknown barcode</button>
+              <button onClick="{{simDenied}}">Camera blocked</button>
+            </div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isFound}}" hint-placeholder-val="{{false}}">
+      <div class="panel" role="dialog" aria-label="Item found">
+        <div class="pbody">
+          <div class="small muted" style="display: flex; gap: 8px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #1A1411"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>{{foundBy}}</div>
+          <div style="display: flex; gap: 16px; align-items: center">
+            <img src="{{f.photo}}" alt="" style="width: 120px; height: 120px; object-fit: contain; border-radius: 14px; border: 1px solid #DDD5CB; background: #fff; flex: none">
+            <div style="min-width: 0">
+              <h2 class="h2">{{f.name}}</h2>
+              <div class="small muted" style="margin-top: 4px">{{f.meta}}</div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap"><span class="{{f.chipCls}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{f.chipIcon}}"></path></svg>{{f.chipTxt}}</span><span class="small muted">Desired {{f.desired}} · spares {{f.spares}}</span></div>
+          <div>
+            <div class="small" style="font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #4A403A; margin-bottom: 8px">On hand ({{f.unit}}) — took some? tap −</div>
+            <div style="display: flex; gap: 12px; align-items: center">
+              <button class="step" onClick="{{f.dec}}" aria-label="Minus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+              <input class="num" type="number" inputmode="numeric" min="0" aria-label="On hand" value="{{f.onHand}}" onChange="{{f.set}}">
+              <button class="step plus" onClick="{{f.inc}}" aria-label="Plus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="pfoot">
+          <button class="btn pri lg blk" onClick="{{done}}">Done — scan next</button>
+          <button class="btn blk" onClick="{{openDetail}}">Open full details</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isUnknown}}" hint-placeholder-val="{{false}}">
+      <div class="panel" role="dialog" aria-label="Unknown barcode">
+        <div class="pbody">
+          <div style="display: flex; gap: 14px; align-items: center"><span style="width: 64px; height: 64px; border-radius: 50%; background: #ECE7E1; display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 32px; height: 32px"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.5V14 M12 17.5v.01"></path></svg></span><h2 class="h2">Not in the inventory yet</h2></div>
+          <div class="mono" style="font-size: 28px; font-weight: 700">012345678905</div>
+          <div class="small muted">UPC-A barcode · no item has this code</div>
+          <p style="margin: 0">If this is a part you already track, attach the barcode to it so the next scan opens it straight away.</p>
+        </div>
+        <div class="pfoot">
+          <button class="btn pri lg blk" onClick="{{toAttach}}">Attach to an existing item</button>
+          <a class="btn blk" href="Edit-Add.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg>Add a new item with this barcode</a>
+          <button class="btn blk" onClick="{{done}}">Scan again</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isManual}}" hint-placeholder-val="{{false}}">
+      <div class="panel" role="dialog" aria-label="Type a code">
+        <div class="pbody">
+          <h2 class="h2">Type a code</h2>
+          <p style="margin: 0">For a torn label or a barcode the camera can’t read. Type the item ID from the label (e.g. st-0063) or the barcode digits.</p>
+          <input class="field mono" aria-label="Code" placeholder="e.g. st-0063 or 722787604386" value="{{manual}}" onChange="{{setManual}}">
+        </div>
+        <div class="pfoot">
+          <button class="btn pri lg blk" onClick="{{findManual}}">Find item</button>
+          <button class="btn blk" onClick="{{done}}">Back to camera</button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isAttach}}" hint-placeholder-val="{{false}}">
+      <div class="panel" role="dialog" aria-label="Attach barcode">
+        <div class="pbody">
+          <h2 class="h2">Attach 012345678905 to…</h2>
+          <input class="field" type="search" aria-label="Find the item" placeholder="Find the item" value="{{aq}}" onChange="{{setAq}}">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <sc-for list="{{picks}}" as="p" hint-placeholder-count="4">
+              <button class="{{p.cls}}" onClick="{{p.pick}}" aria-pressed="{{p.pr}}">
+                <img src="{{p.photo}}" alt="">
+                <span style="min-width: 0"><span style="font-weight: 700; display: block">{{p.name}}</span><span class="small muted">{{p.sub}}</span></span>
+              </button>
+            </sc-for>
+            <sc-if value="{{noPicks}}" hint-placeholder-val="{{false}}"><div class="muted">No items match. Try another word.</div></sc-if>
+          </div>
+        </div>
+        <div class="pfoot">
+          <button class="btn pri lg blk" onClick="{{attach}}" disabled="{{noChoice}}">{{attachTxt}}</button>
+          <button class="btn blk" onClick="{{backUnknown}}">Back</button>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+      <div class="embed"><dc-import name="Detail" item-id="{{selId}}" item="{{selItem}}" embedded="{{true}}" portrait="{{portrait}}" on-close="{{closeSel}}" on-set="{{onSet}}" hint-size="100%,100%"></dc-import></div>
+    </sc-if>
+  </div>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn" style="min-height: 48px; background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","found","unknown","attach","denied"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  alert: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01',
+  tri: 'M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01',
+  check: 'M5 12.5l4.5 4.5L19 7.5'
+};
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    this.setState({ mode: v || 'cam', foundId: 'st-0063', foundBy: 'QR label 2408:st-0063', aq: 'gamepad', choice: v === 'attach' ? 'st-0107' : null });
+    fetch(DATA_URL).then(r => r.json()).then(d => this.setState({ items: d.items }));
+  }
+  setItem(id, patch) { this.setState({ items: (this.state.items || []).map(i => i.id === id ? Object.assign({}, i, patch) : i) }); }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait;
+    const mode = s.mode || 'cam';
+    const items = s.items || [];
+    const out = {
+      portrait: portrait, appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('scan', portrait),
+      isDenied: mode === 'denied', isCam: mode !== 'denied', paused: mode === 'found' || mode === 'unknown' || mode === 'attach' || mode === 'manual',
+      showMock: mode === 'cam', isFound: mode === 'found' && items.length > 0, isUnknown: mode === 'unknown', isAttach: mode === 'attach',
+      torchCls: s.torch ? 'btn dk on' : 'btn dk', torchPr: s.torch ? 'true' : 'false', toggleTorch: () => this.setState({ torch: !s.torch }),
+      openManual: () => this.setState({ mode: 'manual' }), isManual: mode === 'manual',
+      simQr: () => this.setState({ mode: 'found', foundId: 'st-0063', foundBy: 'Found by QR label 2408:st-0063' }),
+      simUpc: () => this.setState({ mode: 'found', foundId: 'st-0065', foundBy: 'Found by manufacturer barcode 635963684815' }),
+      simUnknown: () => this.setState({ mode: 'unknown' }), simDenied: () => this.setState({ mode: 'denied' }),
+      retryCam: () => this.setState({ mode: 'cam' }), manual: s.manual || '', setManual: e => this.setState({ manual: e.target.value }),
+      findManual: () => this.setState({ mode: 'found', foundId: 'st-0063', foundBy: 'Found by typed code' }),
+      done: () => this.setState({ mode: 'cam' }), toAttach: () => this.setState({ mode: 'attach' }), backUnknown: () => this.setState({ mode: 'unknown' }),
+      aq: s.aq || '', setAq: e => this.setState({ aq: e.target.value }),
+      hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' }),
+      hasSel: !!s.sel, selId: s.sel || '', closeSel: () => this.setState({ sel: null }), onSet: (id, p) => this.setItem(id, p), selItem: null,
+      f: {}, foundBy: s.foundBy || '', picks: [], noPicks: false, noChoice: !s.choice, attachTxt: 'Choose an item'
+    };
+    if (!items.length) return out;
+    const it = items.find(i => i.id === s.foundId) || items[0];
+    const v = it.vendors[it.pv - 1] || it.vendors[0];
+    const st = it.on_hand < it.desired ? 'red' : (it.on_hand < it.desired + it.spares ? 'yel' : 'ok');
+    const setOn = n => this.setItem(it.id, { on_hand: Math.max(0, n) });
+    out.f = { name: it.name, photo: it.photo, unit: it.unit, desired: it.desired, spares: it.spares, onHand: it.on_hand,
+      meta: (it.location || 'No location') + ' · ' + v.supplier + ' ' + v.part_no,
+      chipCls: 'chip ' + st, chipIcon: st === 'red' ? IC.alert : st === 'yel' ? IC.tri : IC.check, chipTxt: st === 'red' ? 'SHORT ' + (it.desired - it.on_hand) : st === 'yel' ? 'LOW SPARES' : 'OK',
+      dec: () => setOn(it.on_hand - 1), inc: () => setOn(it.on_hand + 1), set: e => { const n = parseInt(e.target.value, 10); setOn(isNaN(n) ? 0 : n); } };
+    out.openDetail = () => this.setState({ sel: it.id });
+    if (s.sel) out.selItem = items.find(i => i.id === s.sel) || null;
+    const q = (s.aq || '').toLowerCase().trim();
+    const m = q ? items.filter(i => (i.name + ' ' + i.category + ' ' + i.subcategory).toLowerCase().indexOf(q) >= 0).slice(0, 6) : [];
+    out.picks = m.map(i => ({ name: i.name, photo: i.photo, sub: i.category + (i.barcode ? ' · already has barcode ' + i.barcode : ' · no barcode yet'), cls: s.choice === i.id ? 'pick on' : 'pick', pr: s.choice === i.id ? 'true' : 'false', pick: () => this.setState({ choice: i.id }) }));
+    out.noPicks = !!q && m.length === 0;
+    const ch = items.find(i => i.id === s.choice);
+    out.attachTxt = ch ? 'Attach to ' + ch.name : 'Choose an item';
+    out.attach = () => { if (ch) { this.setItem(ch.id, { barcode: '012345678905' }); this.setState({ mode: 'cam', toast: 'Barcode attached. Scanning it now opens ' + ch.name + '.' }); } };
+    return out;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>QR labels</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:24px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn.sm{min-height:48px;padding:0 14px;font-size:16px}
+.btn[disabled]{opacity:.4}
+.fchip{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-weight:700;font-size:16px;color:#1A1411;cursor:pointer;white-space:nowrap;flex:none}
+.fchip.on{background:#1A1411;border-color:#1A1411;color:#fff}
+.step{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;cursor:pointer;flex:none;padding:0}
+.step .ic{width:26px;height:26px;stroke-width:3}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg{background:#fff;border-radius:20px;padding:28px;width:620px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:16px}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+/* labels */
+.steps{display:flex;gap:8px;align-items:center}
+.stp{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:#4A403A}
+.stp b{width:32px;height:32px;border-radius:50%;border:2px solid #4A403A;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+.stp.on{color:#1A1411}
+.stp.on b{background:#1A1411;border-color:#1A1411;color:#fff}
+.lbody{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 380px}
+.app.p .lbody{display:flex;flex-direction:column;overflow:auto}
+.lpane{overflow:auto;padding:16px 24px 32px;background:#fff}
+.app.p .lpane{overflow:visible;padding:16px}
+.rpane{border-left:1px solid #DDD5CB;display:flex;flex-direction:column;background:#FBF9F6;min-height:0}
+.app.p .rpane{border-left:0;border-top:1px solid #DDD5CB}
+.crow{display:flex;align-items:center;gap:12px;min-height:60px;border-bottom:1px solid #E6DFD6}
+.cb{display:inline-flex;align-items:center;gap:12px;min-height:56px;padding:0 8px 0 0;background:none;border:0;font:inherit;color:#1A1411;cursor:pointer;text-align:left;flex:1 1 auto;min-width:0}
+.box{width:32px;height:32px;border-radius:8px;border:3px solid #1A1411;display:inline-flex;align-items:center;justify-content:center;flex:none;background:#fff}
+.box.on{background:#1A1411;color:#fff}
+.box.some{background:#fff}
+.box .ic{width:22px;height:22px;stroke-width:3}
+.exp{width:56px;height:56px;border:0;background:transparent;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#1A1411}
+.irow{display:flex;align-items:center;gap:12px;min-height:56px;padding-left:44px;border-bottom:1px solid #F0EAE2}
+.irow img{width:40px;height:40px;object-fit:contain;border-radius:6px;border:1px solid #DDD5CB;background:#fff;flex:none}
+.cfg{display:grid;grid-template-columns:400px minmax(0,1fr);flex:1 1 auto;min-height:0}
+.app.p .cfg{display:flex;flex-direction:column;overflow:auto}
+.cfgl{overflow:auto;padding:16px 20px 28px;display:flex;flex-direction:column;gap:18px;background:#fff;border-right:1px solid #DDD5CB}
+.app.p .cfgl{overflow:visible;border-right:0}
+.lay{display:flex;flex-direction:column;gap:4px;width:100%;min-height:64px;padding:10px 14px;border:2px solid #DDD5CB;border-radius:14px;background:#fff;font:inherit;text-align:left;cursor:pointer;color:#1A1411}
+.lay.on{border-color:#1A1411;background:#FBF9F6;box-shadow:inset 0 0 0 1px #1A1411}
+.mini{display:grid;gap:4px;background:#F2EFEA;padding:8px;border-radius:10px}
+.cell{min-height:48px;border-radius:6px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer;color:#1A1411;padding:0}
+.cell.used{background:repeating-linear-gradient(45deg,#D9D2C9 0 4px,#F2EFEA 4px 8px);color:#4A403A}
+.cell.start{background:#1A1411;color:#fff;border-color:#1A1411}
+.nud{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nv{min-width:96px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px}
+.prev{display:flex;flex-direction:column;align-items:center;gap:12px;padding:16px;overflow:auto;background:#E8E3DC}
+.page{position:relative;background:#fff;box-shadow:0 4px 18px rgba(0,0,0,.25);flex:none}
+.lab{position:absolute;border:1px dashed #B9AFA4;border-radius:4px;display:flex;align-items:center;gap:4px;padding:2px 3px;overflow:hidden}
+.lab svg{flex:none}
+.lab span{font-size:7px;line-height:1.1;font-weight:700;overflow:hidden}
+.remind{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:#1F3A5F;color:#fff;font-weight:700}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <h1 class="h1" style="flex: 1 1 auto">QR labels</h1>
+      <div class="steps" aria-label="Steps">
+        <span class="{{s1Cls}}"><b>1</b>Choose items</span>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #8C8178"><path d="M9 6l6 6-6 6"></path></svg>
+        <span class="{{s2Cls}}"><b>2</b>Layout &amp; print</span>
+      </div>
+    </header>
+    <sc-if value="{{isSelect}}" hint-placeholder-val="{{true}}">
+      <div class="lbody">
+        <div class="lpane">
+          <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap" role="tablist">
+            <button class="{{tabCatCls}}" role="tab" aria-selected="{{tabCatSel}}" onClick="{{tabCat}}">By category</button>
+            <button class="{{tabLocCls}}" role="tab" aria-selected="{{tabLocSel}}" onClick="{{tabLoc}}">By location</button>
+          </div>
+          <sc-for list="{{groups}}" as="g" hint-placeholder-count="8">
+            <div class="crow">
+              <button class="cb" onClick="{{g.toggle}}" role="checkbox" aria-checked="{{g.aria}}">
+                <span class="{{g.boxCls}}"><sc-if value="{{g.all}}" hint-placeholder-val="{{false}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if><sc-if value="{{g.some}}" hint-placeholder-val="{{false}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="color: #1A1411"><path d="M6 12h12"></path></svg></sc-if></span>
+                <span><span style="font-weight: 700">{{g.name}}</span> <span class="small muted">{{g.count}}</span></span>
+              </button>
+              <button class="exp" onClick="{{g.expand}}" aria-label="{{g.expAria}}" aria-expanded="{{g.expStr}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{g.chev}}"></path></svg></button>
+            </div>
+            <sc-if value="{{g.open}}" hint-placeholder-val="{{false}}">
+              <sc-for list="{{g.items}}" as="i" hint-placeholder-count="4">
+                <div class="irow">
+                  <button class="cb" onClick="{{i.toggle}}" role="checkbox" aria-checked="{{i.aria}}">
+                    <span class="{{i.boxCls}}"><sc-if value="{{i.on}}" hint-placeholder-val="{{false}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if></span>
+                    <sc-if value="{{i.hasPhoto}}" hint-placeholder-val="{{true}}"><img src="{{i.photo}}" alt=""></sc-if>
+                    <span style="min-width: 0"><span style="font-weight: 700; font-size: 16px">{{i.name}}</span> <span class="small muted">{{i.loc}}</span></span>
+                  </button>
+                </div>
+              </sc-for>
+            </sc-if>
+          </sc-for>
+        </div>
+        <div class="rpane">
+          <div style="padding: 20px; display: flex; flex-direction: column; gap: 8px">
+            <span class="small muted" style="font-weight: 700; letter-spacing: .06em; text-transform: uppercase">Selected</span>
+            <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 48px; line-height: 1">{{selCount}} labels</span>
+            <span class="small muted">{{selSummary}}</span>
+          </div>
+          <div style="flex: 1 1 auto; overflow: auto; padding: 0 20px; display: flex; flex-direction: column; gap: 6px">
+            <sc-for list="{{selList}}" as="x" hint-placeholder-count="6"><div class="small" style="padding: 6px 0; border-bottom: 1px solid #E6DFD6">{{x}}</div></sc-for>
+          </div>
+          <div style="padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #DDD5CB">
+            <button class="btn pri lg" onClick="{{toLayout}}" disabled="{{noSel}}">Next: layout<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16 M14 6l6 6-6 6"></path></svg></button>
+            <button class="btn sm" onClick="{{clearSel}}">Clear selection</button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{isLayout}}" hint-placeholder-val="{{false}}">
+      <div class="cfg">
+        <div class="cfgl">
+          <button class="btn sm" style="align-self: flex-start" onClick="{{toSelect}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>{{selCount}} items selected</button>
+          <div>
+            <h2 class="h2" style="margin-bottom: 8px">Label sheet</h2>
+            <div style="display: flex; flex-direction: column; gap: 8px" role="radiogroup" aria-label="Label layout">
+              <sc-for list="{{layouts}}" as="L" hint-placeholder-count="4">
+                <button class="{{L.cls}}" onClick="{{L.pick}}" role="radio" aria-checked="{{L.pr}}"><span style="font-weight: 700">{{L.name}}</span><span class="small muted">{{L.desc}}</span></button>
+              </sc-for>
+            </div>
+            <sc-if value="{{isPlain}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap"><span class="small muted" style="align-self: center; font-weight: 700">QR size</span><sc-for list="{{qrSizes}}" as="q" hint-placeholder-count="3"><button class="{{q.cls}}" onClick="{{q.pick}}">{{q.label}}</button></sc-for></div>
+            </sc-if>
+          </div>
+          <sc-if value="{{hasStart}}" hint-placeholder-val="{{true}}">
+            <div>
+              <h2 class="h2">Start position</h2>
+              <div class="small muted" style="margin: 4px 0 8px">Sheet already partly used? Tap the first empty label. {{startTxt}}</div>
+              <div class="mini" style="grid-template-columns: repeat({{cols}}, minmax(0, 1fr))">
+                <sc-for list="{{cells}}" as="c" hint-placeholder-count="30"><button class="{{c.cls}}" onClick="{{c.pick}}" aria-label="{{c.aria}}">{{c.n}}</button></sc-for>
+              </div>
+            </div>
+          </sc-if>
+          <div>
+            <h2 class="h2">Alignment nudge</h2>
+            <div class="small muted" style="margin: 4px 0 8px">Moves everything in 0.5 mm steps. Saved for {{layoutShort}}.</div>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <div class="nud"><span style="width: 64px; font-weight: 700">Down</span><button class="step" onClick="{{topDec}}" aria-label="Move up 0.5 mm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button><span class="nv">{{topTxt}}</span><button class="step" onClick="{{topInc}}" aria-label="Move down 0.5 mm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button></div>
+              <div class="nud"><span style="width: 64px; font-weight: 700">Right</span><button class="step" onClick="{{leftDec}}" aria-label="Move left 0.5 mm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button><span class="nv">{{leftTxt}}</span><button class="step" onClick="{{leftInc}}" aria-label="Move right 0.5 mm"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button></div>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; min-height: 0">
+          <div class="prev" style="flex: 1 1 auto">
+            <div class="small muted" style="font-weight: 700">{{pageTxt}}</div>
+            <div class="page" style="width: {{pw}}px; height: {{ph}}px">
+              <sc-for list="{{labs}}" as="b" hint-placeholder-count="20">
+                <div class="lab" style="left: {{b.x}}px; top: {{b.y}}px; width: {{b.w}}px; height: {{b.h}}px; flex-direction: {{b.dir}}">
+                  <svg viewBox="-2 -2 25 25" width="{{b.q}}" height="{{b.q}}" aria-hidden="true"><path d="{{b.d}}" fill="#000000"></path></svg>
+                  <span style="font-size: {{b.fs}}px">{{b.text}}</span>
+                </div>
+              </sc-for>
+              <sc-for list="{{used}}" as="u" hint-placeholder-count="0">
+                <div class="lab" style="left: {{u.x}}px; top: {{u.y}}px; width: {{u.w}}px; height: {{u.h}}px; background: repeating-linear-gradient(45deg,#E6DFD6 0 4px,#fff 4px 8px)"></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="padding: 12px 20px 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid #DDD5CB; background: #fff">
+            <div class="remind" role="note"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6 M7 17H3v-8h18v8h-4 M7 14h10v7H7z"></path></svg><span>In the print dialog set Scale to <u>100% / Actual size</u>. “Fit to page” shifts every label.</span></div>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap">
+              <button class="btn" onClick="{{testPrint}}">Test print (outlines only)</button>
+              <button class="btn pri lg" style="flex: 1 1 auto" onClick="{{openPrint}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 9V3h10v6 M7 17H3v-8h18v8h-4 M7 14h10v7H7z"></path></svg>Print {{selCount}} labels</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  <sc-if value="{{printOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="dialog" aria-label="Before you print">
+        <div style="display: flex; gap: 14px; align-items: center"><span style="width: 56px; height: 56px; border-radius: 50%; background: #E3EAF3; color: #1F3A5F; display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px"><path d="M7 9V3h10v6 M7 17H3v-8h18v8h-4 M7 14h10v7H7z"></path></svg></span><h2 class="h2" style="font-size: 30px">{{printTitle}}</h2></div>
+        <div style="font-size: 20px">In the Android print dialog that opens next, check three settings:</div>
+        <ol style="margin: 0; padding-left: 26px; display: flex; flex-direction: column; gap: 10px; font-size: 20px">
+          <li>Paper size: <strong>Letter</strong></li>
+          <li>Scale: <strong>100% / Actual size</strong> — <span style="color: #A3122B; font-weight: 700">not “Fit to page”</span></li>
+          <li>Pages: <strong>All</strong> ({{sheetCount}} sheet{{sheetPlural}})</li>
+        </ol>
+        <div class="small muted">{{printNote}}</div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn lg" onClick="{{closePrint}}">Back</button>
+          <button class="btn pri lg" onClick="{{doPrint}}">Open print dialog</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn sm" style="background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","layout","print"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const QR_URL = '/_blob/116b63cf3158c4467baf5fddba1bfd49';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  chevD: 'M6 9l6 6 6-6', chevR: 'M9 6l6 6-6 6'
+};
+// Geometry in inches. Approximate — SPEC §9 says to check against the actual package before building (Stage 4).
+const LAYOUTS = {
+  a5160: { name: 'Avery 5160-compatible', short: 'Avery 5160', desc: '1 × 2⅝ in · 30 per sheet · small QR, name, location', cols: 3, rows: 10, w: 2.625, h: 1, left: 0.1875, top: 0.5, px: 2.75, py: 1, dir: 'row', q: 0.8, fields: 'nl' },
+  a5163: { name: 'Avery 5163-compatible', short: 'Avery 5163', desc: '2 × 4 in · 10 per sheet · large QR, name, location, part #', cols: 2, rows: 5, w: 4, h: 2, left: 0.15625, top: 0.5, px: 4.1875, py: 2, dir: 'row', q: 1.7, fields: 'nlp' },
+  a22805: { name: 'Avery 22805-compatible', short: 'Avery 22805', desc: '1½ in square · 24 per sheet · QR, short name', cols: 4, rows: 6, w: 1.5, h: 1.5, left: 0.625, top: 0.625, px: 1.875, py: 1.625, dir: 'column', q: 1.05, fields: 's' },
+  plain: { name: 'Plain paper grid', short: 'plain paper', desc: 'Any printer paper · QR 1, 1½ or 2 in · name · dashed cut lines', plain: true, fields: 'n' }
+};
+function plainGeom(qs) { const cw = qs + 0.6, ch = qs + 0.55; const cols = Math.floor(7.5 / cw), rows = Math.floor(10 / ch); return { cols: cols, rows: rows, w: cw, h: ch, left: (8.5 - cols * cw) / 2, top: (11 - rows * ch) / 2, px: cw, py: ch, dir: 'column', q: qs }; }
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    this.setState({ step: v ? 'layout' : 'select', tab: 'cat', open: { Fasteners: 1 }, layout: 'a5160', qs: 1, start: 6, nudge: { a5160: { t: 0.5, l: 0 } }, printOpen: v === 'print' });
+    Promise.all([fetch(DATA_URL).then(r => r.json()), fetch(QR_URL).then(r => r.json())]).then(([d, q]) => {
+      const sel = {}; d.items.forEach(i => { if (i.category === 'Fasteners' || i.category === 'Motors') sel[i.id] = 1; });
+      this.setState({ data: d, qr: q, sel: sel });
+    });
+  }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait;
+    const isLayout = s.step === 'layout';
+    const out = {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('labels', portrait),
+      isSelect: !isLayout, isLayout: isLayout, s1Cls: isLayout ? 'stp' : 'stp on', s2Cls: isLayout ? 'stp on' : 'stp',
+      toLayout: () => this.setState({ step: 'layout' }), toSelect: () => this.setState({ step: 'select' }),
+      tabCat: () => this.setState({ tab: 'cat' }), tabLoc: () => this.setState({ tab: 'loc' }),
+      tabCatCls: s.tab === 'loc' ? 'fchip' : 'fchip on', tabLocCls: s.tab === 'loc' ? 'fchip on' : 'fchip', tabCatSel: s.tab === 'loc' ? 'false' : 'true', tabLocSel: s.tab === 'loc' ? 'true' : 'false',
+      printOpen: !!s.printOpen, closePrint: () => this.setState({ printOpen: false }),
+      hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' }),
+      groups: [], selList: [], selCount: 0, layouts: [], cells: [], labs: [], used: [], qrSizes: []
+    };
+    if (!s.data) return out;
+    const items = s.data.items, sel = s.sel || {};
+    const setSel = (ids, on) => { const n = Object.assign({}, sel); ids.forEach(id => { if (on) n[id] = 1; else delete n[id]; }); this.setState({ sel: n }); };
+    const keyOf = s.tab === 'loc' ? (i => i.location || 'No location') : (i => i.category);
+    const names = []; items.forEach(i => { const k = keyOf(i); if (names.indexOf(k) < 0) names.push(k); });
+    if (s.tab === 'loc') names.sort((a, b) => a === 'No location' ? 1 : b === 'No location' ? -1 : a.localeCompare(b, undefined, { numeric: true }));
+    const open = s.open || {};
+    out.groups = names.map(nm => {
+      const its = items.filter(i => keyOf(i) === nm);
+      const n = its.filter(i => sel[i.id]).length, all = n === its.length, some = n > 0 && !all;
+      const isOpen = !!open[nm];
+      return { name: nm, count: n ? n + ' of ' + its.length + ' selected' : its.length + ' items', all: all, some: some, aria: all ? 'true' : some ? 'mixed' : 'false',
+        boxCls: all ? 'box on' : some ? 'box some' : 'box', toggle: () => setSel(its.map(i => i.id), !all),
+        open: isOpen, expStr: isOpen ? 'true' : 'false', chev: isOpen ? IC.chevD : IC.chevR, expAria: (isOpen ? 'Hide' : 'Choose') + ' items in ' + nm,
+        expand: () => { const o = Object.assign({}, open); o[nm] = o[nm] ? 0 : 1; this.setState({ open: o }); },
+        items: its.map(i => ({ name: i.name, loc: i.location || '', photo: i.photo, hasPhoto: !!i.photo, on: !!sel[i.id], aria: sel[i.id] ? 'true' : 'false', boxCls: sel[i.id] ? 'box on' : 'box', toggle: () => setSel([i.id], !sel[i.id]) })) };
+    });
+    const chosen = items.filter(i => sel[i.id]);
+    out.selCount = chosen.length; out.noSel = chosen.length === 0;
+    const byCat = {}; chosen.forEach(i => { byCat[i.category] = (byCat[i.category] || 0) + 1; });
+    out.selSummary = Object.keys(byCat).map(k => k + ' ' + byCat[k]).join(' · ') || 'Nothing selected yet';
+    out.selList = chosen.map(i => i.name);
+    out.clearSel = () => this.setState({ sel: {} });
+    // layout
+    const lk = s.layout || 'a5160';
+    const L0 = LAYOUTS[lk];
+    const qs = s.qs || 1;
+    const G = L0.plain ? Object.assign({}, L0, plainGeom(qs)) : L0;
+    const per = G.cols * G.rows;
+    const start = L0.plain ? 0 : Math.min(s.start || 0, per - 1);
+    const nd = (s.nudge || {})[lk] || { t: 0, l: 0 };
+    const setN = (k, dlt) => () => { const all = Object.assign({}, s.nudge || {}); const cur = Object.assign({ t: 0, l: 0 }, all[lk]); cur[k] = Math.round((cur[k] + dlt) * 2) / 2; all[lk] = cur; this.setState({ nudge: all }); };
+    out.layouts = Object.keys(LAYOUTS).map(k => ({ name: LAYOUTS[k].name, desc: LAYOUTS[k].desc, cls: k === lk ? 'lay on' : 'lay', pr: k === lk ? 'true' : 'false', pick: () => this.setState({ layout: k }) }));
+    out.isPlain = !!L0.plain; out.hasStart = !L0.plain; out.layoutShort = L0.short;
+    out.qrSizes = [[1, '1 in'], [1.5, '1½ in'], [2, '2 in']].map(a => ({ label: a[1], cls: qs === a[0] ? 'fchip on' : 'fchip', pick: () => this.setState({ qs: a[0] }) }));
+    out.cols = G.cols;
+    out.cells = []; for (let k = 0; k < per; k++) out.cells.push({ n: k + 1, cls: k < start ? 'cell used' : k === start ? 'cell start' : 'cell', aria: 'Start at label ' + (k + 1), pick: () => this.setState({ start: k }) });
+    out.startTxt = start ? 'Starting at label ' + (start + 1) + ' (row ' + (Math.floor(start / G.cols) + 1) + ', column ' + (start % G.cols + 1) + ').' : 'Starting at label 1.';
+    out.topTxt = (nd.t > 0 ? '+' : '') + nd.t.toFixed(1) + ' mm'; out.leftTxt = (nd.l > 0 ? '+' : '') + nd.l.toFixed(1) + ' mm';
+    out.topInc = setN('t', 0.5); out.topDec = setN('t', -0.5); out.leftInc = setN('l', 0.5); out.leftDec = setN('l', -0.5);
+    const k = portrait ? 56 : 52;
+    out.pw = Math.round(8.5 * k); out.ph = Math.round(11 * k);
+    const offX = nd.l / 25.4, offY = nd.t / 25.4;
+    const pos = idx => ({ x: Math.round((G.left + (idx % G.cols) * G.px + offX) * k), y: Math.round((G.top + Math.floor(idx / G.cols) * G.py + offY) * k), w: Math.round(G.w * k), h: Math.round(G.h * k) });
+    const qr = s.qr || {};
+    const fit = Math.min(chosen.length, per - start);
+    out.labs = chosen.slice(0, fit).map((i, j) => {
+      const p = pos(start + j); const v = i.vendors[i.pv - 1] || i.vendors[0];
+      const short = i.name.length > 22 ? i.name.slice(0, 21) + '…' : i.name;
+      const text = G.fields === 's' ? short : G.fields === 'nlp' ? i.name + ' · ' + (i.location || '') + ' · ' + (v.part_no || '') : G.fields === 'nl' ? i.name + (i.location ? ' · ' + i.location : '') : i.name;
+      return Object.assign(p, { q: Math.round(G.q * k), d: (qr[i.id] || {}).d || '', text: text, dir: G.dir, fs: G.fields === 'nlp' ? 9 : 7 });
+    });
+    out.used = []; for (let u = 0; u < start; u++) out.used.push(pos(u));
+    const sheets = Math.max(1, Math.ceil((chosen.length + start) / per));
+    out.sheetCount = sheets; out.sheetPlural = sheets > 1 ? 's' : '';
+    out.pageTxt = 'Sheet 1 of ' + sheets + ' · ' + L0.short + ' · ' + fit + ' labels on this sheet' + (start ? ' · ' + start + ' already used' : '');
+    out.testPrint = () => this.setState({ printOpen: true, test: true });
+    out.openPrint = () => this.setState({ printOpen: true, test: false });
+    out.printTitle = s.test ? 'Test print: outlines on plain paper' : 'Before you print';
+    out.printNote = s.test ? 'Prints only the label outlines. Hold the page against a label sheet up to a light; if the boxes are off, adjust the nudge and test again.' : 'Labels encode the item ID (e.g. 2408:st-0063) so they keep working if the item is renamed.';
+    out.doPrint = () => this.setState({ printOpen: false, toast: 'The Android print dialog opens here. (Mockup)' });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

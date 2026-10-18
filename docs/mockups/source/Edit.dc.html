@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add or edit item</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.sp{flex:1 1 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.navy{background:#1F3A5F;border-color:#1F3A5F;color:#fff}
+.btn.dangero{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn.sm{min-height:48px;padding:0 14px;font-size:16px}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;font-weight:700;font-size:15px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:18px;height:18px;stroke-width:2.5}
+.chip.lock{background:#E3EAF3;color:#1F3A5F}
+.chip.open{background:#1F3A5F;color:#fff}
+.fchip{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-weight:700;font-size:16px;color:#1A1411;cursor:pointer;white-space:nowrap;flex:none}
+.fchip.on{background:#1A1411;border-color:#1A1411;color:#fff}
+.card{background:#fff;border:1px solid #DDD5CB;border-radius:16px}
+.lbl{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4A403A;margin-bottom:6px}
+.lbl .ic{width:16px;height:16px;color:#1F3A5F}
+.req{color:#A3122B}
+.field{width:100%;min-height:56px;padding:0 16px;border:2px solid #CFC6BB;border-radius:12px;background:#fff;font:inherit;font-size:18px;color:#1A1411}
+select.field{appearance:auto}
+textarea.field{padding:12px 16px;min-height:120px;resize:none;line-height:1.4}
+.field:disabled{background:#EEF2F7;border-style:dashed;border-color:#8FA3BC;color:#3A4A5E;opacity:1}
+.field.bad{border-color:#A3122B;background:#FFF5F6}
+.err{color:#A3122B;font-weight:700;font-size:15px;margin-top:6px;display:flex;gap:6px;align-items:center}
+.err .ic{width:18px;height:18px}
+.step{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:14px;border:2px solid #1A1411;background:#fff;color:#1A1411;cursor:pointer;flex:none;padding:0}
+.step.plus{background:#1A1411;color:#fff}
+.step .ic{width:30px;height:30px;stroke-width:3}
+.num{width:84px;height:64px;border:2px solid #CFC6BB;border-radius:12px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;color:#1A1411;background:#fff;padding:0}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+/* form */
+.fbody{flex:1 1 auto;min-height:0;overflow:auto;padding:20px 24px 40px}
+.app.p .fbody{padding:16px 16px 32px}
+.fgrid{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:20px;align-items:start}
+.app.p .fgrid{grid-template-columns:minmax(0,1fr)}
+.sec{padding:20px;display:flex;flex-direction:column;gap:16px}
+.row2{display:grid;grid-template-columns:repeat(2, minmax(0, 1fr));gap:14px}
+.row3{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px}
+.qrow{display:flex;align-items:center;gap:8px}
+.vopt{border:2px solid #DDD5CB;border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.vopt.pref{border-color:#1A1411}
+.vhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.radio{display:inline-flex;align-items:center;gap:10px;min-height:48px;padding:0 14px 0 10px;border-radius:999px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;color:#1A1411}
+.radio .dot{width:24px;height:24px;border-radius:50%;border:3px solid #1A1411;display:inline-flex;align-items:center;justify-content:center}
+.radio .dot span{width:12px;height:12px;border-radius:50%;background:#1A1411}
+.radio:disabled{border-style:dashed;border-color:#8FA3BC;color:#3A4A5E;background:#EEF2F7}
+.lockbar{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:12px;background:#E3EAF3;color:#1F3A5F;font-weight:700;flex-wrap:wrap}
+.errsum{background:#FFF5F6;border:2px solid #A3122B;border-radius:14px;padding:14px 18px;margin-bottom:18px}
+.errsum ul{margin:6px 0 0;padding-left:22px}
+.thumbL{width:96px;height:96px;border-radius:12px;border:1px solid #DDD5CB;background:#fff;object-fit:contain;flex:none}
+.nophoto{display:flex;align-items:center;justify-content:center;color:#8C8178;background:#F7F4F0}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <a class="btn" href="{{cancelHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg>Cancel</a>
+      <div style="min-width: 0; flex: 1 1 auto">
+        <div class="small muted">{{sub}}</div>
+        <h1 class="h1" style="font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{title}}</h1>
+      </div>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+      <button class="btn pri lg" onClick="{{save}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>{{saveText}}</button>
+    </header>
+    <div class="fbody">
+      <sc-if value="{{hasErrors}}" hint-placeholder-val="{{false}}">
+        <div class="errsum" role="alert"><strong style="color: #A3122B; font-size: 20px">Fix {{errCount}} things before saving</strong>
+          <ul><sc-for list="{{errList}}" as="e" hint-placeholder-count="3"><li>{{e}}</li></sc-for></ul>
+        </div>
+      </sc-if>
+      <sc-if value="{{ready}}" hint-placeholder-val="{{true}}">
+      <div class="fgrid">
+        <div style="display: flex; flex-direction: column; gap: 20px">
+          <div class="card sec">
+            <h2 class="h2">Item</h2>
+            <div style="display: flex; gap: 14px; align-items: center; flex-wrap: wrap">
+              <sc-if value="{{hasPhoto}}" hint-placeholder-val="{{true}}"><img class="thumbL" src="{{f.photo}}" alt="Current photo"></sc-if>
+              <sc-if value="{{noPhoto}}" hint-placeholder-val="{{false}}"><span class="thumbL nophoto"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15 9.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"></path></svg></span></sc-if>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                <button class="btn sm" onClick="{{photoMsg}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v13H3z M8.5 13a3.5 3.5 0 1 0 7 0a3.5 3.5 0 1 0 -7 0"></path></svg>Take photo</button>
+                <button class="btn sm" onClick="{{photoMsg}}">Gallery</button>
+                <sc-if value="{{hasPhoto}}" hint-placeholder-val="{{true}}"><button class="btn sm" onClick="{{removePhoto}}">Remove</button></sc-if>
+              </div>
+            </div>
+            <div>
+              <label class="lbl" for="nm">Name <span class="req">*</span></label>
+              <input id="nm" class="{{nameCls}}" value="{{f.name}}" onChange="{{setName}}" placeholder="e.g. 10-32 x 3/8 in. button head cap screw">
+              <sc-if value="{{errName}}" hint-placeholder-val="{{false}}"><div class="err"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>Name is required.</div></sc-if>
+            </div>
+            <div class="row2">
+              <div>
+                <label class="lbl" for="cat">Category <span class="req">*</span></label>
+                <select id="cat" class="field" value="{{f.category}}" onChange="{{setCat}}">
+                  <sc-for list="{{catOpts}}" as="o" hint-placeholder-count="5"><option value="{{o}}">{{o}}</option></sc-for>
+                </select>
+              </div>
+              <div>
+                <label class="lbl" for="sub">Subcategory</label>
+                <select id="sub" class="field" value="{{subSel}}" onChange="{{setSub}}">
+                  <option value="">None</option>
+                  <sc-for list="{{subOpts}}" as="o" hint-placeholder-count="4"><option value="{{o}}">{{o}}</option></sc-for>
+                  <option value="__new">+ New subcategory…</option>
+                </select>
+              </div>
+            </div>
+            <sc-if value="{{newSub}}" hint-placeholder-val="{{false}}">
+              <div>
+                <label class="lbl" for="ns">New subcategory in {{f.category}}</label>
+                <input id="ns" class="field" value="{{f.newSub}}" onChange="{{setNewSub}}" placeholder="Name of the new subcategory">
+                <div class="small muted" style="margin-top: 6px">Anyone can add a subcategory. Renaming or removing one later needs the PIN.</div>
+              </div>
+            </sc-if>
+            <div>
+              <label class="lbl" for="loc">Location <span class="muted" style="text-transform: none; letter-spacing: 0; font-weight: 400">(optional)</span></label>
+              <select id="loc" class="field" value="{{locSel}}" onChange="{{setLocSel}}">
+                <option value="">No location</option>
+                <sc-for list="{{locOpts}}" as="o" hint-placeholder-count="6"><option value="{{o}}">{{o}}</option></sc-for>
+                <option value="__new">+ New location…</option>
+              </select>
+              <sc-if value="{{addingLoc}}" hint-placeholder-val="{{false}}">
+                <div style="display: flex; gap: 10px; margin-top: 10px">
+                  <input class="{{newLocCls}}" aria-label="New location name" value="{{newLoc}}" onChange="{{setNewLoc}}" placeholder="New location name — e.g. Bin F17">
+                  <button class="btn" onClick="{{saveNewLoc}}">Add</button>
+                </div>
+                <sc-if value="{{locDup}}" hint-placeholder-val="{{false}}"><div class="err" role="alert">Already in the list as “{{locDupOf}}”. Pick it from the list instead.</div></sc-if>
+                <div class="small muted" style="margin-top: 6px">Anyone can add a location. Renaming, removing and walk order are in More › Locations.</div>
+              </sc-if>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; align-items: center">
+                <span class="small muted">Recent:</span>
+                <sc-for list="{{locChips}}" as="c" hint-placeholder-count="4"><button class="{{c.cls}}" onClick="{{c.pick}}">{{c.label}}</button></sc-for>
+              </div>
+            </div>
+            <div>
+              <span class="lbl">Unit <span class="req">*</span></span>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap" role="radiogroup" aria-label="Unit">
+                <sc-for list="{{unitChips}}" as="c" hint-placeholder-count="8"><button class="{{c.cls}}" onClick="{{c.pick}}" role="radio" aria-checked="{{c.pr}}">{{c.label}}</button></sc-for>
+              </div>
+            </div>
+            <div>
+              <label class="lbl" for="bc">Manufacturer barcode <span class="muted" style="text-transform: none; letter-spacing: 0; font-weight: 400">(optional)</span></label>
+              <div style="display: flex; gap: 10px">
+                <input id="bc" class="field" inputmode="numeric" value="{{f.barcode}}" onChange="{{setBc}}" placeholder="Scan or type the UPC">
+                <a class="btn" href="Scan.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10"></path></svg>Scan</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 20px">
+          <div class="card sec">
+            <h2 class="h2">Counts <span class="small muted" style="font-family: 'Atkinson Hyperlegible'; font-weight: 400">— no PIN needed</span></h2>
+            <div style="display: flex; flex-direction: column; gap: 10px">
+              <sc-for list="{{counts}}" as="q" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap">
+                  <span class="lbl" style="flex: 1 1 120px; margin: 0">{{q.label}}</span>
+                  <div class="qrow"><button class="step" onClick="{{q.dec}}" aria-label="{{q.decA}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button><input class="num" type="number" inputmode="numeric" min="0" aria-label="{{q.label}}" value="{{q.val}}" onChange="{{q.set}}"><button class="step plus" onClick="{{q.inc}}" aria-label="{{q.incA}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button></div>
+                </div>
+              </sc-for>
+            </div>
+            <div>
+              <label class="lbl" for="nt">Notes</label>
+              <textarea id="nt" class="field" value="{{f.notes}}" onChange="{{setNotes}}" placeholder="e.g. use with Thrifty swerve · ask a mentor before cutting"></textarea>
+            </div>
+          </div>
+          <div class="card sec">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+              <h2 class="h2" style="flex: 1 1 auto">Vendors &amp; prices</h2>
+              <span class="{{vChipCls}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{vChipIcon}}"></path></svg>{{vChipTxt}}</span>
+            </div>
+            <sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}">
+              <div class="lockbar"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg><span style="flex: 1 1 240px">Mentor PIN needed to change suppliers, part numbers, links, pack sizes, prices or the preferred vendor.</span><button class="btn navy sm" onClick="{{unlockVendors}}">Unlock</button></div>
+            </sc-if>
+            <sc-if value="{{addNote}}" hint-placeholder-val="{{false}}">
+              <div class="lockbar" style="background: #FFF7DB; color: #1A1411"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 11v5.5 M12 7.5v.01"></path></svg><span style="flex: 1 1 240px; font-weight: 400">New item: fill in where to buy it now. Price is optional. After saving, these fields lock behind the PIN. <strong>(SPEC F6)</strong></span></div>
+            </sc-if>
+            <sc-for list="{{vendors}}" as="v" hint-placeholder-count="2">
+              <div class="{{v.cls}}">
+                <div class="vhead">
+                  <button class="radio" disabled="{{vLocked}}" onClick="{{v.makePref}}" role="radio" aria-checked="{{v.prefStr}}"><span class="dot"><sc-if value="{{v.pref}}" hint-placeholder-val="{{true}}"><span></span></sc-if></span>{{v.prefTxt}}</button>
+                  <span class="small muted" style="flex: 1">Option {{v.n}} of 3</span>
+                  <sc-if value="{{v.canRemove}}" hint-placeholder-val="{{false}}"><button class="btn sm dangero" onClick="{{v.remove}}">Remove option</button></sc-if>
+                </div>
+                <div class="row2">
+                  <div>
+                    <label class="lbl">Supplier <span class="req">*</span><sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN-locked"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></label>
+                    <select class="{{v.supCls}}" disabled="{{vLocked}}" value="{{v.supplier}}" onChange="{{v.setSup}}">
+                      <option value="">Choose…</option>
+                      <sc-for list="{{supOpts}}" as="o" hint-placeholder-count="5"><option value="{{o}}">{{o}}</option></sc-for>
+                    </select>
+                    <sc-if value="{{v.errSup}}" hint-placeholder-val="{{false}}"><div class="err">Choose a supplier.</div></sc-if>
+                  </div>
+                  <div>
+                    <label class="lbl">Part # <sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN-locked"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></label>
+                    <input class="field" disabled="{{vLocked}}" value="{{v.part}}" onChange="{{v.setPart}}" placeholder="Supplier part number">
+                  </div>
+                </div>
+                <div>
+                  <label class="lbl">Product page link <sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN-locked"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></label>
+                  <input class="field" disabled="{{vLocked}}" value="{{v.url}}" onChange="{{v.setUrl}}" placeholder="https://…" inputmode="url">
+                </div>
+                <div class="row3">
+                  <div>
+                    <label class="lbl">Pack size <sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN-locked"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></label>
+                    <input class="{{v.psCls}}" disabled="{{vLocked}}" inputmode="numeric" value="{{v.ps}}" onChange="{{v.setPs}}">
+                    <sc-if value="{{v.errPs}}" hint-placeholder-val="{{false}}"><div class="err">Whole number, 1 or more.</div></sc-if>
+                  </div>
+                  <div>
+                    <label class="lbl">Pack price $ <sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN-locked"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></label>
+                    <input class="field" disabled="{{vLocked}}" inputmode="decimal" value="{{v.price}}" onChange="{{v.setPrice}}" placeholder="No price">
+                  </div>
+                  <div>
+                    <label class="lbl">Checked <sc-if value="{{vLocked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN-locked"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></label>
+                    <button class="field" disabled="{{vLocked}}" style="text-align: left; cursor: pointer" onClick="{{v.today}}">{{v.checked}}</button>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+            <sc-if value="{{canAddVendor}}" hint-placeholder-val="{{false}}"><button class="btn" onClick="{{addVendor}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg><span>Add vendor option ({{vendorCount}} of 3)</span></button></sc-if>
+            <div class="small muted">Supplier list: alphabetical, “other” last. Manage it in More › Suppliers.</div>
+          </div>
+          <sc-if value="{{isEdit}}" hint-placeholder-val="{{true}}">
+            <a class="btn dangero" href="{{deleteHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13"></path></svg>Delete this item… <span class="chip lock" style="height: 28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></a>
+          </sc-if>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+  </div>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn sm" style="background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","unlocked","add","error"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2',
+  pencil: 'M4 20h4L19 9l-4-4L4 16z M13.5 6.5l4 4'
+};
+const UNITS = ['each', 'ft', 'm', 'kit', 'stick', 'sheet', 'set', 'roll', 'can', 'box'];
+function fmtDate(iso) { if (!iso) return 'Never'; const d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+    fetch(DATA_URL).then(r => r.json()).then(d => {
+      const st = { data: d, mode: (v === 'add' || v === 'error') ? 'add' : 'edit' };
+      if (st.mode === 'add') {
+        st.f = { id: 'new', name: '', category: 'Structure', subcategory: '', newSub: 'Standoffs', addingSub: true, location: '', unit: 'each', on_hand: 0, desired: 0, spares: 0, barcode: '', notes: '', photo: '', pv: 1,
+          vendors: [{ supplier: '', part_no: '', url: '', pack_size: 1, pack_price: null, price_checked: '' }] };
+        if (v === 'error') { st.f.vendors[0].pack_size = '2.5'; st.f.desired = 4; st.tried = true; st.f.newSub = 'Standoffs'; }
+      } else {
+        const it = d.items.find(i => i.id === 'st-0063');
+        st.f = JSON.parse(JSON.stringify(it));
+        if (v === 'unlocked') st.unlockAt = Date.now() - 31000;
+      }
+      this.setState(st);
+    });
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  unlocked() { const s = this.state || {}; return !!s.unlockAt && Date.now() - s.unlockAt < 300000; }
+  upd(patch) { this.setState({ f: Object.assign({}, (this.state || {}).f, patch) }); }
+  updV(i, patch) { const f = (this.state || {}).f; const vs = f.vendors.map((x, j) => j === i ? Object.assign({}, x, patch) : x); this.upd({ vendors: vs }); }
+  errors() {
+    const f = (this.state || {}).f; const e = { list: [] };
+    if (!f.name.trim()) { e.name = true; e.list.push('Name is required.'); }
+    f.vendors.forEach((v, i) => {
+      if (!v.supplier) { e['sup' + i] = true; e.list.push('Vendor option ' + (i + 1) + ': choose a supplier' + (i === f.pv - 1 ? ' (it is the preferred vendor).' : '.')); }
+      const ps = String(v.pack_size);
+      if (!/^\d+$/.test(ps) || parseInt(ps, 10) < 1) { e['ps' + i] = true; e.list.push('Vendor option ' + (i + 1) + ': pack size “' + ps + '” must be a whole number of 1 or more.'); }
+    });
+    return e;
+  }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait, P = portrait ? '-P' : '';
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0;
+    const isAdd = s.mode === 'add';
+    const out = {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('inv', portrait),
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock,
+      lockText: on ? 'Unlocked ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes' }),
+      pinOpen: !!s.pin, pinReason: s.pin || '',
+      onPinDone: () => this.setState({ pin: null, unlockAt: Date.now() }), onPinCancel: () => this.setState({ pin: null }),
+      unlockVendors: () => this.setState({ pin: 'Vendor and price fields need the mentor PIN' }),
+      hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' }),
+      photoMsg: () => this.setState({ toast: 'The tablet camera or gallery opens here; photos are resized to about 1024 px.' }),
+      title: isAdd ? 'Add item' : 'Edit item', sub: isAdd ? 'New team item — anyone can add' : 'Loading…', saveText: isAdd ? 'Add item' : 'Save',
+      cancelHref: isAdd ? 'Main' + P + '.dc.html' : 'Detail' + P + '.dc.html', deleteHref: 'Detail-Delete.dc.html',
+      ready: false, hasErrors: false, errList: [], errCount: 0, vendors: [], counts: [], catOpts: [], subOpts: [], supOpts: [], locChips: [], unitChips: [], f: {}
+    };
+    if (!s.f || !s.data) return out;
+    const f = s.f, d = s.data;
+    const vLocked = !isAdd && !on;
+    const e = s.tried ? this.errors() : { list: [] };
+    const subs = (d.categories.find(c => c.name === f.category) || { subs: [] }).subs;
+    const sups = d.suppliers.map(x => x.name).sort((a, b) => a === 'other' ? 1 : b === 'other' ? -1 : a.localeCompare(b));
+    const locs = []; d.items.forEach(i => { if (i.location && locs.indexOf(i.location) < 0) locs.push(i.location); });
+    // Managed Location list (F25), shown in walk order; locations added here join the end.
+    const allLocs = locs.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })).concat(s.extraLocs || []);
+    const nl = (f.newLoc || '').trim().toLowerCase();
+    const locDupOf = nl ? allLocs.find(l => l.toLowerCase() === nl) : null;
+    const qf = (k, label) => ({ label: label, val: f[k], decA: label + ' minus one', incA: label + ' plus one',
+      dec: () => { const p = {}; p[k] = Math.max(0, f[k] - 1); this.upd(p); }, inc: () => { const p = {}; p[k] = f[k] + 1; this.upd(p); },
+      set: (ev) => { const n = parseInt(ev.target.value, 10); const p = {}; p[k] = isNaN(n) ? 0 : Math.max(0, n); this.upd(p); } });
+    Object.assign(out, {
+      ready: true, f: f, sub: isAdd ? 'New team item — anyone can add' : f.id + ' · ' + (f.source === 'starter' ? 'starter item' : 'team item'),
+      title: isAdd ? 'Add item' : f.name,
+      hasPhoto: !!f.photo, noPhoto: !f.photo, removePhoto: () => this.upd({ photo: '' }),
+      nameCls: e.name ? 'field bad' : 'field', errName: !!e.name,
+      setName: ev => this.upd({ name: ev.target.value }), setLoc: ev => this.upd({ location: ev.target.value }),
+      setBc: ev => this.upd({ barcode: ev.target.value }), setNotes: ev => this.upd({ notes: ev.target.value }),
+      setNewSub: ev => this.upd({ newSub: ev.target.value }),
+      catOpts: d.categories.map(c => c.name), setCat: ev => this.upd({ category: ev.target.value, subcategory: '', addingSub: false }),
+      subOpts: subs, subSel: f.addingSub ? '__new' : (f.subcategory || ''), newSub: !!f.addingSub,
+      setSub: ev => ev.target.value === '__new' ? this.upd({ addingSub: true }) : this.upd({ subcategory: ev.target.value, addingSub: false }),
+      locChips: locs.slice(0, 5).map(l => ({ label: l, cls: f.location === l ? 'fchip on' : 'fchip', pick: () => this.upd({ location: l, addingLoc: false }) })),
+      locOpts: allLocs, locSel: f.addingLoc ? '__new' : (f.location || ''), addingLoc: !!f.addingLoc,
+      setLocSel: ev => ev.target.value === '__new' ? this.upd({ addingLoc: true, newLoc: '' }) : this.upd({ location: ev.target.value, addingLoc: false }),
+      newLoc: f.newLoc || '', setNewLoc: ev => this.upd({ newLoc: ev.target.value }), locDup: !!locDupOf, locDupOf: locDupOf || '', newLocCls: locDupOf ? 'field bad' : 'field',
+      saveNewLoc: () => { const n = (f.newLoc || '').trim(); if (!n || locDupOf) return; this.setState({ extraLocs: (s.extraLocs || []).concat([n]), toast: 'Added location “' + n + '”.' }); this.upd({ location: n, addingLoc: false, newLoc: '' }); },
+      unitChips: UNITS.map(u => ({ label: u, cls: f.unit === u ? 'fchip on' : 'fchip', pr: f.unit === u ? 'true' : 'false', pick: () => this.upd({ unit: u }) })),
+      counts: [qf('on_hand', 'On hand'), qf('desired', 'Desired'), qf('spares', 'Spares')],
+      vLocked: vLocked, addNote: isAdd,
+      vChipCls: vLocked ? 'chip lock' : 'chip open', vChipIcon: vLocked ? IC.lock : (isAdd ? IC.pencil : IC.unlock), vChipTxt: vLocked ? 'PIN-locked' : (isAdd ? 'Open for a new item' : 'Unlocked'),
+      supOpts: sups, vendorCount: f.vendors.length, canAddVendor: !vLocked && f.vendors.length < 3,
+      addVendor: () => this.upd({ vendors: f.vendors.concat([{ supplier: '', part_no: '', url: '', pack_size: 1, pack_price: null, price_checked: '' }]) }),
+      vendors: f.vendors.map((v, i) => ({
+        n: i + 1, pref: i === f.pv - 1, prefStr: i === f.pv - 1 ? 'true' : 'false', prefTxt: i === f.pv - 1 ? 'Preferred vendor' : 'Make preferred',
+        cls: i === f.pv - 1 ? 'vopt pref' : 'vopt', makePref: () => this.upd({ pv: i + 1 }),
+        canRemove: !vLocked && f.vendors.length > 1, remove: () => this.upd({ vendors: f.vendors.filter((x, j) => j !== i), pv: 1 }),
+        supplier: v.supplier, supCls: e['sup' + i] ? 'field bad' : 'field', errSup: !!e['sup' + i], setSup: ev => this.updV(i, { supplier: ev.target.value }),
+        part: v.part_no, setPart: ev => this.updV(i, { part_no: ev.target.value }),
+        url: v.url, setUrl: ev => this.updV(i, { url: ev.target.value }),
+        ps: v.pack_size, psCls: e['ps' + i] ? 'field bad' : 'field', errPs: !!e['ps' + i], setPs: ev => this.updV(i, { pack_size: ev.target.value }),
+        price: v.pack_price == null ? '' : Number(v.pack_price).toFixed(2), setPrice: ev => this.updV(i, { pack_price: ev.target.value === '' ? null : ev.target.value }),
+        checked: fmtDate(v.price_checked) + ' · tap = today', today: () => this.updV(i, { price_checked: '2026-10-17' })
+      })),
+      isEdit: !isAdd,
+      hasErrors: e.list.length > 0, errList: e.list, errCount: e.list.length,
+      save: () => { const er = this.errors(); if (er.list.length) this.setState({ tried: true }); else this.setState({ tried: false, toast: isAdd ? 'Item added. (Mockup — not stored.)' : 'Saved. (Mockup — not stored.)' }); }
+    });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

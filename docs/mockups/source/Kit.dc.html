@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Shared components and tokens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.kit{width:1280px;height:980px;box-sizing:border-box;padding:28px 32px;background:#F2EFEA;color:#1A1411;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:16px;line-height:1.35;display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:20px}
+.kit *{box-sizing:border-box}
+.panel{background:#fff;border:1px solid #DDD5CB;border-radius:16px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+.ph{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px}
+.k{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A403A}
+.sw{display:grid;grid-template-columns:40px minmax(0,1fr);gap:4px 10px;align-items:center}
+.sq{width:40px;height:32px;border-radius:8px;border:1px solid #CFC6BB}
+.ic{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;font-weight:700;font-size:15px;letter-spacing:.03em;white-space:nowrap}
+.red{background:#B3122E;color:#fff}.yel{background:#F5B700;color:#1A1411}.ok{border:2px solid #CFC6BB;color:#4A403A;background:#fff}
+.stale{border:2px solid #1F3A5F;color:#1F3A5F;background:#fff}.np{border:2px dashed #4A403A;color:#4A403A;background:#fff}.lock{background:#E3EAF3;color:#1F3A5F}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 18px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:17px;white-space:nowrap}
+.pri{background:#8A3315;border-color:#8A3315;color:#fff}.dgr{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.step{width:64px;height:64px;border-radius:14px;border:2px solid #1A1411;background:#fff;display:inline-flex;align-items:center;justify-content:center}
+.step.plus{background:#1A1411;color:#fff}
+.num{width:84px;height:64px;border:3px solid #1A1411;border-radius:12px;display:inline-flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px}
+.pill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font-weight:700;font-size:16px}
+.pill.on{background:#1F3A5F;color:#fff}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.small{font-size:14px;color:#4A403A}
+</style>
+</helmet>
+<div class="kit">
+  <div style="display: flex; flex-direction: column; gap: 16px">
+    <div>
+      <div style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 34px; line-height: 1">Shared components &amp; tokens</div>
+      <div class="small">Light theme · adaptive navigation · rust for chrome only</div>
+    </div>
+    <div class="panel">
+      <h3 class="ph">Color tokens</h3>
+      <div class="sw">
+        <span class="sq" style="background: #2E1710"></span><span><strong>Rail</strong> #2E1710 · side rail / bottom tabs</span>
+        <span class="sq" style="background: #8A3315"></span><span><strong>Rust</strong> #8A3315 · primary buttons, active nav</span>
+        <span class="sq" style="background: #1A1411"></span><span><strong>Ink</strong> #1A1411 · text, steppers</span>
+        <span class="sq" style="background: #4A403A"></span><span><strong>Muted</strong> #4A403A · secondary text (9:1)</span>
+        <span class="sq" style="background: #F2EFEA"></span><span><strong>Ground</strong> #F2EFEA · page; white cards</span>
+        <span class="sq" style="background: #B3122E"></span><span><strong>Short</strong> #B3122E · status only</span>
+        <span class="sq" style="background: #F5B700"></span><span><strong>Low spares</strong> #F5B700 · status only</span>
+        <span class="sq" style="background: #1F3A5F"></span><span><strong>Navy</strong> #1F3A5F · PIN, banners, stale</span>
+        <span class="sq" style="background: #1A1411; border: 3px solid #E5484D"></span><span><strong>Destructive</strong> black + red outline #E5484D · delete / replace / remove</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3 class="ph">Type</h3>
+      <div style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 34px; line-height: 1">Barlow Condensed 34 / 26</div>
+      <div style="font-size: 19px; font-weight: 700">Atkinson Hyperlegible 19 bold — item names</div>
+      <div>Body 18 · meta 15 · <span class="k">labels 13 caps</span></div>
+      <div class="small">Both fonts ship inside the app so it works offline.</div>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 16px">
+    <div class="panel">
+      <h3 class="ph">Stock status (SPEC §4) — shape + word + color</h3>
+      <div class="row"><span class="chip red"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>SHORT 6</span><span class="small">on hand &lt; desired · octagon · row tint #FDEEF1</span></div>
+      <div class="row"><span class="chip yel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01"></path></svg>LOW SPARES</span><span class="small">desired ≤ on hand &lt; desired + spares · triangle · tint #FFF7DB</span></div>
+      <div class="row"><span class="chip ok"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>OK</span><span class="small">on hand ≥ desired + spares · check · no tint</span></div>
+      <div class="small">Readable in grayscale: dark filled / light filled / outlined, plus a different icon and word for each.</div>
+      <div class="k">Group headers</div>
+      <div class="row"><span class="chip red"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>5 short</span><span class="chip yel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01"></path></svg>2 low spares</span><span class="chip ok"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>All stocked</span></div>
+    </div>
+    <div class="panel">
+      <h3 class="ph">Order-list flags</h3>
+      <div class="row"><span class="chip stale"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg>Price 95 days old</span><span class="chip np">NO PRICE — not in total</span></div>
+    </div>
+    <div class="panel">
+      <h3 class="ph">Mentor PIN</h3>
+      <div class="row"><span class="pill"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>Locked</span><span class="pill on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2"></path></svg>Unlocked 4:32</span><span class="chip lock"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>PIN</span></div>
+      <div style="min-height: 56px; border: 2px dashed #8FA3BC; background: #EEF2F7; border-radius: 12px; display: flex; align-items: center; padding: 0 14px; color: #3A4A5E">Locked field — dashed, blue-gray, lock in label</div>
+    </div>
+  </div>
+  <div style="display: flex; flex-direction: column; gap: 16px">
+    <div class="panel">
+      <h3 class="ph">Buttons</h3>
+      <div class="row"><span class="btn pri">Primary</span><span class="btn">Secondary</span><span class="btn dgr">Delete</span></div>
+      <div class="small">56 px tall (64 px for the main action on a screen). Icon + word, never icon alone except close (×) with a label for screen readers. Destructive = black with red outline (Dan, 14:43), never a red fill, so it can’t be mistaken for a SHORT badge.</div>
+    </div>
+    <div class="panel">
+      <h3 class="ph">Quick adjust (F3)</h3>
+      <div class="k">On hand (each) · tap − / + or type</div>
+      <div class="row"><span class="step"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px; stroke-width: 3"><path d="M5 12h14"></path></svg></span><span class="num">12</span><span class="step plus"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 30px; height: 30px; stroke-width: 3"><path d="M12 5v14 M5 12h14"></path></svg></span></div>
+      <div class="small">Labeled “On hand” on every screen. 64 px in lists; 80 px on detail, scan and count-in; the number opens the numeric keypad.</div>
+    </div>
+    <div class="panel">
+      <h3 class="ph">Touch &amp; reach</h3>
+      <div>Minimum target <strong>48 px</strong> (≈ 9 mm on the Tab S8)</div>
+      <div>Rail items 104 × 76 · tabs 88 tall</div>
+      <div>Steppers 64 / 80 · keypad keys 68–72 tall</div>
+      <div>Text ≥ 15 px; names 19 px; counts 26–64 px</div>
+    </div>
+    <div class="panel" style="background: #1F3A5F; color: #fff; border-color: #1F3A5F">
+      <h3 class="ph">Banners</h3>
+      <div>Navy = information (backup reminder, count-in progress). Amber-tinted = needs attention (stale prices). Red is never used for banners.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":980}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

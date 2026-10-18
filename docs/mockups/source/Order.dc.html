@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Order list</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.onb{border-color:#fff;color:#fff;background:transparent;min-height:48px}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:12px;border:2px solid #CFC6BB;background:#fff;color:#1A1411;cursor:pointer;flex:none;text-decoration:none;padding:0}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:16px;height:16px;stroke-width:2.5}
+.chip.stale{border:2px solid #1F3A5F;color:#1F3A5F;background:#fff}
+.chip.np{border:2px dashed #4A403A;color:#4A403A;background:#fff}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg{background:#fff;border-radius:20px;padding:28px;width:860px;max-width:100%;max-height:100%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:16px}
+.banner{flex:none;display:flex;align-items:center;gap:14px;padding:8px 16px 8px 24px;background:#1F3A5F;color:#fff;font-weight:700}
+.app.p .banner{padding:8px 12px 8px 16px;flex-wrap:wrap}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+.nophoto{display:flex;align-items:center;justify-content:center;color:#8C8178;background:#F7F4F0}
+/* order */
+.sum{flex:none;display:flex;gap:12px;padding:14px 24px;flex-wrap:wrap;border-bottom:1px solid #DDD5CB}
+.app.p .sum{padding:12px 16px}
+.tile{background:#fff;border:1px solid #DDD5CB;border-radius:14px;padding:10px 16px;display:flex;flex-direction:column;justify-content:center;min-height:72px}
+.tile .k{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A403A}
+.tile .v{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:30px;line-height:1.05}
+.tile.big .v{font-size:40px}
+.olist{flex:1 1 auto;min-height:0;overflow:auto;background:#fff}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 150px 64px 70px 64px 84px 96px 108px;gap:10px;align-items:center}
+.app.p .grid{grid-template-columns:minmax(0,1fr) auto}
+.colh{padding:8px 24px;background:#FBF9F6;border-bottom:1px solid #DDD5CB;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A403A;position:sticky;top:0;z-index:2}
+.app.p .colh{display:none}
+.shdr{display:flex;align-items:center;gap:12px;padding:10px 24px;background:#F2EFEA;border-bottom:1px solid #DDD5CB;flex-wrap:wrap}
+.app.p .shdr{padding:10px 16px}
+.sname{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px}
+.line{padding:10px 24px;border-bottom:1px solid #E6DFD6;min-height:68px}
+.app.p .line{padding:10px 16px}
+.lname{display:flex;align-items:center;gap:12px;background:none;border:0;padding:0;font:inherit;color:inherit;text-align:left;cursor:pointer;min-height:48px;min-width:0}
+.lname img,.lname .nophoto{width:48px;height:48px;border-radius:8px;border:1px solid #DDD5CB;object-fit:contain;background:#fff;flex:none}
+.lt{font-weight:700;font-size:17px;line-height:1.25}
+.n{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px;text-align:right}
+.n.l{font-size:24px}
+.pmeta{display:none}
+.app.p .pmeta{display:block;font-size:15px;color:#4A403A;grid-column:1 / -1}
+.app.p .wide{display:none}
+.subt{display:flex;justify-content:flex-end;gap:16px;padding:10px 24px 16px;border-bottom:2px solid #1A1411;font-weight:700}
+.gt{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:18px 24px 40px;flex-wrap:wrap}
+.state{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;background:#fff}
+.bigic{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ECE7E1;color:#1A1411}
+.bigic .ic{width:44px;height:44px}
+.csv{border:1px solid #DDD5CB;border-radius:12px;overflow:auto;max-height:300px}
+.csv table{border-collapse:collapse;font-size:13px;white-space:nowrap}
+.csv td,.csv th{padding:6px 10px;border-bottom:1px solid #EEE7DE;text-align:left}
+.csv th{background:#FBF9F6;position:sticky;top:0}
+.csv tr.st td{font-weight:700;background:#F7F4F0}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:36;background:#fff;border-radius:20px 20px 0 0;padding:20px 24px 28px;box-shadow:0 -10px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:16px}
+.share{display:flex;gap:16px;flex-wrap:wrap}
+.share button{width:120px;min-height:104px;border-radius:16px;border:2px solid #DDD5CB;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;color:#1A1411}
+.embed{position:absolute;inset:0;z-index:20}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; min-width: 0">
+        <h1 class="h1">Order list</h1>
+        <span class="small muted">{{asOf}}</span>
+      </div>
+      <button class="btn pri" onClick="{{openExport}}" disabled="{{empty}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg>Export CSV</button>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+    </header>
+    <sc-if value="{{showCountBanner}}" hint-placeholder-val="{{true}}">
+      <div class="banner" role="status">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4"></path></svg>
+        <span style="flex: 1 1 300px">Count-in: {{counted}} of {{total}} items counted. Uncounted items are treated as 0 on hand, so this total is too high.</span>
+        <a class="btn onb" href="{{countHref}}">Continue count</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{showStaleBanner}}" hint-placeholder-val="{{false}}">
+      <div class="banner" role="status" style="background: #FFF7DB; color: #1A1411; border-bottom: 1px solid #E8D9A8">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg>
+        <span style="flex: 1 1 300px">{{staleCount}} of {{lineCount}} prices were checked more than 90 days ago. Refresh prices before ordering: export a data-only backup, ask Claude to check prices, then import the price update.</span>
+        <a class="btn" style="min-height: 48px" href="Backup.dc.html">Price refresh steps</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+      <div class="state">
+        <div class="bigic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>
+        <h2 class="h2">Nothing to order</h2>
+        <p style="margin: 0; max-width: 560px">Every item has at least its desired amount plus spares on hand. Items appear here as soon as a count drops below that, or when you raise a desired amount.</p>
+        <a class="btn" href="{{invHref}}">Back to inventory</a>
+      </div>
+    </sc-if>
+    <sc-if value="{{hasLines}}" hint-placeholder-val="{{true}}">
+      <div class="sum">
+        <div class="tile big"><span class="k">Grand total</span><span class="v">{{grand}}</span></div>
+        <div class="tile"><span class="k">Lines</span><span class="v">{{lineCount}}</span></div>
+        <div class="tile"><span class="k">Suppliers</span><span class="v">{{supCount}}</span></div>
+        <div class="tile" style="gap: 6px">
+          <span class="chip np"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v18 M16.5 7.5c-.8-1.2-2.4-2-4.5-2-2.8 0-4.5 1.4-4.5 3.2 0 4.3 9.5 2.3 9.5 6.8 0 1.9-1.9 3.4-4.8 3.4-2.3 0-4-.9-5-2.4 M4 4l16 16"></path></svg>{{npTxt}}</span>
+          <span class="chip stale"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg>{{staleTxt}}</span>
+        </div>
+      </div>
+      <div class="olist">
+        <div class="grid colh"><span>Item</span><span>Part #</span><span style="text-align: right">Need</span><span style="text-align: right">Pack</span><span style="text-align: right">Packs</span><span style="text-align: right">Order qty</span><span style="text-align: right">Pack price</span><span style="text-align: right">Line total</span></div>
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+          <div class="shdr">
+            <span class="sname">{{g.name}}</span>
+            <sc-if value="{{g.hasSite}}" hint-placeholder-val="{{true}}"><a class="ib" href="{{g.site}}" target="_blank" rel="noopener" aria-label="{{g.siteAria}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6"></path></svg></a></sc-if>
+            <span class="small muted" style="flex: 1 1 auto">{{g.meta}}</span>
+            <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 26px">{{g.subtotal}}</span>
+          </div>
+          <sc-for list="{{g.lines}}" as="l" hint-placeholder-count="3">
+            <div class="grid line">
+              <button class="lname" onClick="{{l.open}}" aria-label="{{l.aria}}">
+                <sc-if value="{{l.hasPhoto}}" hint-placeholder-val="{{true}}"><img src="{{l.photo}}" alt=""></sc-if>
+                <sc-if value="{{l.noPhoto}}" hint-placeholder-val="{{false}}"><span class="nophoto"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6"></path></svg></span></sc-if>
+                <span style="min-width: 0"><span class="lt">{{l.name}}</span>
+                  <span style="display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px">
+                    <sc-if value="{{l.stale}}" hint-placeholder-val="{{false}}"><span class="chip stale"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg>Price {{l.age}} days old</span></sc-if>
+                    <sc-if value="{{l.np}}" hint-placeholder-val="{{false}}"><span class="chip np">NO PRICE — not in total</span></sc-if>
+                  </span>
+                </span>
+              </button>
+              <span class="mono small wide">{{l.part}}</span>
+              <span class="n wide">{{l.need}}</span>
+              <span class="n wide">{{l.ps}}</span>
+              <span class="n wide">{{l.packs}}</span>
+              <span class="n">{{l.qty}}<span class="small muted" style="font-family: 'Atkinson Hyperlegible'; font-weight: 400"> {{l.unit}}</span></span>
+              <span class="n wide">{{l.price}}</span>
+              <span class="n l wide">{{l.total}}</span>
+              <span class="pmeta">{{l.pline}}</span>
+            </div>
+          </sc-for>
+          <div class="subt"><span class="muted" style="font-weight: 400">{{g.subNote}}</span><span>{{g.name}} subtotal</span><span>{{g.subtotal}}</span></div>
+        </sc-for>
+        <div class="gt">
+          <span class="muted">{{gtNote}}</span>
+          <span style="font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 36px">Grand total {{grand}}</span>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+      <div class="embed"><dc-import name="Detail" item-id="{{selId}}" item="{{selItem}}" embedded="{{true}}" portrait="{{portrait}}" on-close="{{closeSel}}" on-set="{{onSet}}" hint-size="100%,100%"></dc-import></div>
+    </sc-if>
+  </div>
+  <sc-if value="{{exportOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="dialog" aria-label="Export order list">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <h2 class="h2" style="flex: 1">Export order list (CSV)</h2>
+          <button class="ib" aria-label="Close" onClick="{{closeExport}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg></button>
+        </div>
+        <div><strong class="mono">{{fileName}}</strong><div class="small muted">{{lineCount}} lines · {{supCount}} supplier groups, each followed by a subtotal row · grand total row at the end · opens in Excel or Google Sheets</div></div>
+        <div class="csv">
+          <table>
+            <thead><tr><sc-for list="{{csvHead}}" as="h" hint-placeholder-count="13"><th>{{h}}</th></sc-for></tr></thead>
+            <tbody>
+              <sc-for list="{{csvRows}}" as="r" hint-placeholder-count="6"><tr class="{{r.cls}}"><sc-for list="{{r.cells}}" as="c" hint-placeholder-count="13"><td>{{c}}</td></sc-for></tr></sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div class="small muted">Preview shows the first supplier group and the grand-total row. Items without a price are listed with a blank line total and left out of subtotals.</div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap">
+          <button class="btn lg" onClick="{{closeExport}}">Cancel</button>
+          <button class="btn pri lg" onClick="{{openShare}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg>Share CSV…</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{shareOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim" style="z-index: 35"></div>
+    <div class="sheet" role="dialog" aria-label="Android share sheet (simulated)">
+      <div class="small muted">Android share sheet (simulated) · {{fileName}} · 9 KB</div>
+      <div class="share">
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12 M7 8l5-5 5 5 M5 13v7h14v-7"></path></svg>Quick Share</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 6l9 7 9-7"></path></svg>Gmail</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3h8l6 11-4 7H6l-4-7z M2 14h20"></path></svg>Drive</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10-5 4V3l5 4L7 17"></path></svg>Bluetooth</button>
+        <button onClick="{{shared}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"></path></svg>Files</button>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","stale","export","empty"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2'
+};
+function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function fmtDate(iso) { const d = new Date(iso + 'T12:00:00'); return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); }
+function days(a, b) { return Math.round((Date.parse(b) - Date.parse(a)) / 86400000); }
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+    fetch(DATA_URL).then(r => r.json()).then(d => {
+      let items = d.items;
+      if (v === 'empty') items = items.map(i => Object.assign({}, i, { on_hand: i.desired + i.spares, counted: '2026-10-17' }));
+      this.setState({ data: d, items: items, today: v === 'stale' ? '2027-01-20' : d.today, exportOpen: v === 'export' });
+    });
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  setItem(id, patch) { this.setState({ items: (this.state.items || []).map(i => i.id === id ? Object.assign({}, i, patch) : i) }); }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait, P = portrait ? '-P' : '';
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0;
+    const out = {
+      portrait: portrait, appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('order', portrait),
+      countHref: 'Count' + P + '.dc.html', invHref: 'Main' + P + '.dc.html',
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock,
+      lockText: on ? 'Unlocked ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes' }),
+      pinOpen: !!s.pin, pinReason: s.pin || '', onPinDone: () => this.setState({ pin: null, unlockAt: Date.now() }), onPinCancel: () => this.setState({ pin: null }),
+      exportOpen: !!s.exportOpen, openExport: () => this.setState({ exportOpen: true }), closeExport: () => this.setState({ exportOpen: false }),
+      shareOpen: !!s.shareOpen, openShare: () => this.setState({ shareOpen: true }), shared: () => this.setState({ shareOpen: false, exportOpen: false }),
+      hasSel: !!s.sel, selId: s.sel || '', closeSel: () => this.setState({ sel: null }), onSet: (id, p) => this.setItem(id, p), selItem: null,
+      groups: [], csvHead: [], csvRows: [], asOf: 'Loading…', empty: false, hasLines: false, showCountBanner: false, showStaleBanner: false
+    };
+    if (!s.data) return out;
+    const today = s.today, items = s.items;
+    const lines = [];
+    items.forEach(it => {
+      const v = it.vendors[it.pv - 1] || it.vendors[0];
+      const need = it.desired + it.spares - it.on_hand;
+      if (need <= 0) return;
+      const ps = v.pack_size || 1, packs = Math.ceil(need / ps);
+      const age = v.price_checked ? days(v.price_checked, today) : null;
+      lines.push({ it: it, v: v, need: need, ps: ps, packs: packs, qty: packs * ps, np: v.pack_price == null, total: v.pack_price == null ? 0 : packs * v.pack_price, age: age, stale: age != null && age > 90 });
+    });
+    const sups = []; lines.forEach(l => { if (sups.indexOf(l.v.supplier) < 0) sups.push(l.v.supplier); });
+    sups.sort((a, b) => a === 'other' ? 1 : b === 'other' ? -1 : a.localeCompare(b));
+    const site = {}; s.data.suppliers.forEach(x => { site[x.name] = x.website; });
+    let grand = 0;
+    const groups = sups.map(name => {
+      const ls = lines.filter(l => l.v.supplier === name);
+      const sub = ls.reduce((a, l) => a + l.total, 0); grand += sub;
+      const npN = ls.filter(l => l.np).length;
+      return { name: name, site: site[name] || '', hasSite: !!site[name], siteAria: 'Open ' + name + ' website', subtotal: money(sub),
+        meta: ls.length + ' line' + (ls.length > 1 ? 's' : '') + (npN ? ' · ' + npN + ' without a price' : ''), subNote: npN ? npN + ' item without a price not included' : '',
+        lines: ls.map(l => ({ name: l.it.name, photo: l.it.photo, hasPhoto: !!l.it.photo, noPhoto: !l.it.photo, aria: 'Open details for ' + l.it.name,
+          part: l.v.part_no || '—', need: l.need, ps: l.ps, packs: l.packs, qty: l.qty, unit: l.it.unit,
+          price: l.np ? '—' : money(l.v.pack_price), total: l.np ? '—' : money(l.total), np: l.np, stale: l.stale, age: l.age,
+          pline: (l.v.part_no || 'No part #') + ' · need ' + l.need + ' · ' + l.packs + ' × ' + (l.ps > 1 ? 'pack of ' + l.ps : '1') + ' · ' + (l.np ? 'no price' : money(l.v.pack_price) + ' → ' + money(l.total)),
+          open: () => this.setState({ sel: l.it.id }) }))
+      };
+    });
+    const npAll = lines.filter(l => l.np).length, staleAll = lines.filter(l => l.stale).length;
+    const counted = items.filter(i => i.counted).length;
+    const csvHead = ['Supplier', 'Part #', 'Item', 'Unit', 'Need', 'Pack size', 'Packs', 'Order qty', 'Pack price', 'Line total', 'Price checked', 'URL', 'Notes'];
+    const g0 = sups[0], l0 = lines.filter(l => l.v.supplier === g0);
+    const csvRows = l0.slice(0, 6).map(l => ({ cls: '', cells: [g0, l.v.part_no, l.it.name, l.it.unit, l.need, l.ps, l.packs, l.qty, l.np ? '' : l.v.pack_price.toFixed(2), l.np ? '' : l.total.toFixed(2), l.v.price_checked, l.v.url, (l.it.notes || '').slice(0, 28) + (l.it.notes && l.it.notes.length > 28 ? '…' : '')] }));
+    if (l0.length > 6) csvRows.push({ cls: '', cells: ['… ' + (l0.length - 6) + ' more ' + g0 + ' rows', '', '', '', '', '', '', '', '', '', '', '', ''] });
+    csvRows.push({ cls: 'st', cells: [g0 + ' subtotal', '', '', '', '', '', '', '', '', l0.reduce((a, l) => a + l.total, 0).toFixed(2), '', '', ''] });
+    if (sups.length > 1) csvRows.push({ cls: '', cells: ['… ' + (sups.length - 1) + ' more supplier groups, each with its subtotal row', '', '', '', '', '', '', '', '', '', '', '', ''] });
+    csvRows.push({ cls: 'st', cells: ['Grand total', '', '', '', '', '', '', '', '', grand.toFixed(2), '', '', ''] });
+    Object.assign(out, {
+      empty: lines.length === 0, hasLines: lines.length > 0, groups: groups, grand: money(grand), lineCount: lines.length, supCount: sups.length,
+      npTxt: npAll + ' without price', staleTxt: staleAll + ' stale (>90 days)', staleCount: staleAll,
+      showStaleBanner: staleAll > lines.filter(l => !l.np).length / 2, showCountBanner: counted < items.length && lines.length > 0, counted: counted, total: items.length,
+      asOf: 'Grouped by preferred supplier · ' + fmtDate(today) + (today !== s.data.today ? ' (demo date)' : ''),
+      gtNote: npAll ? 'Grand total leaves out ' + npAll + ' item' + (npAll > 1 ? 's' : '') + ' without a price.' : 'All lines have prices.',
+      csvHead: csvHead, csvRows: csvRows, fileName: 'order-list-' + today + '-1235.csv'
+    });
+    if (s.sel) out.selItem = items.find(i => i.id === s.sel) || null;
+    return out;
+  }
+}
+</script>
+</body>
+</html>

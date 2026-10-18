@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Count-in mode</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn.sm{min-height:48px;padding:0 14px;font-size:16px}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;font-weight:700;font-size:15px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:18px;height:18px;stroke-width:2.5}
+.chip.red{background:#B3122E;color:#fff}
+.chip.yel{background:#F5B700;color:#1A1411}
+.chip.ok{border:2px solid #CFC6BB;color:#4A403A;background:#fff}
+.chip.prop{background:#fff;color:#1A1411;border:2px dashed #1A1411}
+.fchip{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-weight:700;font-size:16px;color:#1A1411;cursor:pointer;white-space:nowrap;flex:none}
+.fchip.on{background:#1A1411;border-color:#1A1411;color:#fff}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.card{background:#fff;border:1px solid #DDD5CB;border-radius:16px}
+.bar{height:14px;border-radius:999px;background:#E6DFD6;overflow:hidden}
+.bar span{display:block;height:100%;background:#1A1411}
+/* start */
+.cbody{flex:1 1 auto;min-height:0;overflow:auto;padding:18px 24px 32px;display:flex;flex-direction:column;gap:16px}
+.app.p .cbody{padding:14px 16px 24px}
+.modes{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px}
+.app.p .modes{grid-template-columns:minmax(0,1fr)}
+.mode{display:flex;flex-direction:column;gap:6px;min-height:120px;padding:14px 16px;border:2px solid #CFC6BB;border-radius:16px;background:#fff;font:inherit;text-align:left;cursor:pointer;color:#1A1411}
+.mode.on{border-color:#1A1411;box-shadow:inset 0 0 0 2px #1A1411}
+.tog{display:inline-flex;align-items:center;gap:12px;min-height:56px;padding:0 14px;border:2px solid #CFC6BB;border-radius:14px;background:#fff;font:inherit;font-weight:700;cursor:pointer;color:#1A1411}
+.sw{width:52px;height:30px;border-radius:999px;background:#CFC6BB;position:relative;flex:none}
+.sw span{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff}
+.sw.on{background:#1A1411}
+.sw.on span{left:25px}
+.crow{display:grid;grid-template-columns:minmax(0,1fr) 140px 200px 150px;gap:14px;align-items:center;min-height:68px;padding:8px 16px;border-top:1px solid #EEE7DE}
+.app.p .crow{grid-template-columns:minmax(0,1fr) 120px 130px}
+.app.p .cbar{display:none}
+/* walk */
+.walk{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:420px minmax(0,1fr)}
+.app.p .walk{display:flex;flex-direction:column;overflow:auto}
+.wl{padding:18px 22px;display:flex;flex-direction:column;gap:12px;background:#FBF9F6;border-right:1px solid #DDD5CB;overflow:auto}
+.app.p .wl{border-right:0;border-bottom:1px solid #DDD5CB;display:grid;grid-template-columns:220px minmax(0,1fr);gap:14px;padding:14px 16px;overflow:visible}
+.wphoto{width:100%;aspect-ratio:1/1;max-height:300px;object-fit:contain;background:#fff;border:1px solid #DDD5CB;border-radius:16px}
+.wr{padding:16px 24px;display:flex;flex-direction:column;gap:12px;overflow:auto}
+.app.p .wr{padding:14px 16px;overflow:visible}
+.disp{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.val{min-width:180px;height:92px;border:3px solid #1A1411;border-radius:16px;background:#fff;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:64px;padding:0 18px}
+.val.empty{color:#8C8178;font-size:28px;font-family:'Atkinson Hyperlegible',sans-serif}
+.pad{display:grid;grid-template-columns:repeat(3, minmax(0, 1fr));gap:10px;max-width:420px}
+.pad button{height:68px;border-radius:14px;border:2px solid #1A1411;background:#fff;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;cursor:pointer;color:#1A1411}
+.pad button.alt{background:#F2EFEA;border-color:#CFC6BB;font-size:20px}
+.quick{display:flex;gap:8px;flex-wrap:wrap}
+.cam{position:relative;width:100%;aspect-ratio:4/3;border-radius:16px;overflow:hidden;background:radial-gradient(ellipse at 40% 45%, #3a3632 0%, #1d1b19 55%, #0e0d0c 100%);color:#fff}
+.cam .rt{position:absolute;left:50%;top:50%;width:180px;height:180px;transform:translate(-50%,-50%);border:4px solid rgba(255,255,255,.85);border-radius:16px}
+.locs{display:flex;gap:8px;flex-wrap:wrap}
+.sumgrid{display:grid;grid-template-columns:repeat(4, minmax(0, 1fr));gap:12px}
+.app.p .sumgrid{grid-template-columns:repeat(2, minmax(0, 1fr))}
+.tile{padding:12px 16px;background:#fff;border:1px solid #DDD5CB;border-radius:14px}
+.tile .k{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A403A}
+.tile .v{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:36px;line-height:1.05}
+.srow{display:flex;align-items:center;gap:12px;min-height:60px;padding:6px 16px;border-top:1px solid #EEE7DE}
+.srow img{width:44px;height:44px;object-fit:contain;border-radius:8px;border:1px solid #DDD5CB;background:#fff;flex:none}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <sc-if value="{{inWalk}}" hint-placeholder-val="{{false}}"><button class="btn" onClick="{{toStart}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>Pause</button></sc-if>
+      <div style="flex: 1 1 auto; min-width: 0">
+        <div style="display: flex; gap: 10px; align-items: center"><h1 class="h1">Count-in</h1><span class="chip prop">F24 · new in v0.4</span></div>
+        <span class="small muted">{{topSub}}</span>
+      </div>
+      <div style="min-width: 220px">
+        <div class="small" style="display: flex; justify-content: space-between; font-weight: 700"><span>{{overallTxt}}</span><span>{{overallPct}}%</span></div>
+        <div class="bar" style="margin-top: 6px"><span style="width: {{overallPct}}%"></span></div>
+      </div>
+    </header>
+
+    <sc-if value="{{isStart}}" hint-placeholder-val="{{true}}">
+      <div class="cbody">
+        <div class="card" style="padding: 16px 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; background: #FFF7DB; border-color: #E8D9A8">
+          <svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 36px; height: 36px"><path d="M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"></path></svg>
+          <div style="flex: 1 1 360px"><div style="font-weight: 700; font-size: 20px">Order list right now: {{orderTotal}}</div><div class="small">Every uncounted item counts as 0 on hand. The total drops as you count what’s already in the shop. Progress saves after every item, so the count can span several meetings.</div></div>
+        </div>
+        <div>
+          <h2 class="h2" style="margin-bottom: 8px">How do you want to walk the shop?</h2>
+          <div class="modes" role="radiogroup" aria-label="Count mode">
+            <sc-for list="{{modes}}" as="m" hint-placeholder-count="3">
+              <button class="{{m.cls}}" onClick="{{m.pick}}" role="radio" aria-checked="{{m.pr}}">
+                <span style="display: flex; gap: 10px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px"><path d="{{m.icon}}"></path></svg><span style="font-weight: 700; font-size: 20px">{{m.title}}</span></span>
+                <span class="small muted">{{m.desc}}</span>
+                <sc-if value="{{m.rec}}" hint-placeholder-val="{{false}}"><span class="small" style="font-weight: 700">Recommended for the first count</span></sc-if>
+              </button>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button class="tog" onClick="{{togLoc}}" role="switch" aria-checked="{{askLocStr}}"><span class="{{locSw}}"><span></span></span>Ask for a bin/shelf location while counting</button>
+          <button class="tog" onClick="{{togSkip}}" role="switch" aria-checked="{{skipZeroStr}}"><span class="{{skipSw}}"><span></span></span><span>Skip items with desired 0 ({{zeroCount}})</span></button>
+        </div>
+        <div class="card" style="overflow: hidden">
+          <div style="padding: 12px 16px; display: flex; align-items: center; gap: 12px"><h2 class="h2" style="flex: 1">{{groupTitle}}</h2><span class="small muted">{{groupHint}}</span></div>
+          <sc-for list="{{groups}}" as="g" hint-placeholder-count="8">
+            <div class="crow">
+              <div style="min-width: 0"><span style="font-weight: 700; font-size: 19px">{{g.name}}</span> <span class="small muted">{{g.sub}}</span></div>
+              <span style="font-weight: 700">{{g.prog}}</span>
+              <div class="bar cbar"><span style="width: {{g.pct}}%"></span></div>
+              <button class="{{g.btnCls}}" onClick="{{g.start}}">{{g.btn}}</button>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{inWalk}}" hint-placeholder-val="{{false}}">
+      <div class="walk">
+        <div class="wl">
+          <sc-if value="{{isScanMode}}" hint-placeholder-val="{{false}}">
+            <div class="cam" aria-label="Camera"><div class="rt"></div><div style="position: absolute; left: 12px; top: 10px; font-weight: 700">Scanning…</div>
+              <button class="btn sm" style="position: absolute; left: 12px; bottom: 12px; background: transparent; color: #fff; border: 2px dashed #F5B700" onClick="{{simScan}}">Mockup: simulate next scan</button></div>
+            <div class="small muted">Scan a QR label or barcode; the keypad fills in for that item. Items without a code: tap Find.</div>
+          </sc-if>
+          <sc-if value="{{notScanMode}}" hint-placeholder-val="{{true}}">
+            <sc-if value="{{w.hasPhoto}}" hint-placeholder-val="{{true}}"><img class="wphoto" src="{{w.photo}}" alt="{{w.name}}"></sc-if>
+            <sc-if value="{{w.noPhoto}}" hint-placeholder-val="{{false}}"><div class="wphoto" style="display: flex; align-items: center; justify-content: center; color: #8C8178">No photo</div></sc-if>
+          </sc-if>
+          <div style="display: flex; flex-direction: column; gap: 8px; min-width: 0">
+            <h2 class="h2" style="font-size: 28px">{{w.name}}</h2>
+            <div class="small muted">{{w.meta}}</div>
+            <div><span class="small muted">Desired</span> <strong>{{w.desired}}</strong> · <span class="small muted">spares</span> <strong>{{w.spares}}</strong> · <span class="small muted">unit</span> <strong>{{w.unit}}</strong></div>
+            <sc-if value="{{askLoc}}" hint-placeholder-val="{{true}}">
+              <div>
+                <div class="small" style="font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #4A403A; margin: 6px 0">Location: {{w.loc}}</div>
+                <div class="locs"><sc-for list="{{locChips}}" as="c" hint-placeholder-count="4"><button class="{{c.cls}}" onClick="{{c.pick}}">{{c.label}}</button></sc-for></div>
+              </div>
+            </sc-if>
+          </div>
+        </div>
+        <div class="wr">
+          <div class="small" style="display: flex; justify-content: space-between; font-weight: 700"><span>{{w.where}}</span><span>{{w.pos}}</span></div>
+          <div class="bar"><span style="width: {{w.pct}}%"></span></div>
+          <div style="font-weight: 700; font-size: 22px">How many are in the shop right now?</div>
+          <div class="disp">
+            <div class="{{valCls}}" aria-live="polite">{{valTxt}}</div>
+            <div style="display: flex; flex-direction: column; gap: 6px"><span class="muted">{{w.unit}}</span><sc-if value="{{hasPreview}}" hint-placeholder-val="{{false}}"><span class="{{pv.cls}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{pv.icon}}"></path></svg>After saving: {{pv.txt}}</span></sc-if></div>
+          </div>
+          <div class="pad">
+            <sc-for list="{{keys}}" as="k" hint-placeholder-count="12"><button class="{{k.cls}}" onClick="{{k.press}}" aria-label="{{k.aria}}">{{k.label}}</button></sc-for>
+          </div>
+          <div class="quick">
+            <button class="fchip" onClick="{{qDesired}}"><span>= desired ({{w.desired}})</span></button>
+            <button class="fchip" onClick="{{qMinus}}">−1</button>
+            <button class="fchip" onClick="{{qPlus}}">+1</button>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 4px">
+            <button class="btn" onClick="{{back}}" disabled="{{atFirst}}">Back</button>
+            <button class="btn" onClick="{{skip}}">Skip for now</button>
+            <button class="btn pri lg" style="flex: 1 1 220px" onClick="{{saveNext}}" disabled="{{noVal}}">Save &amp; next<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16 M14 6l6 6-6 6"></path></svg></button>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isDone}}" hint-placeholder-val="{{false}}">
+      <div class="cbody">
+        <div style="display: flex; gap: 16px; align-items: center"><span style="width: 72px; height: 72px; border-radius: 50%; background: #1A1411; color: #fff; display: flex; align-items: center; justify-content: center; flex: none"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 40px; height: 40px; stroke-width: 2.5"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><div><h2 class="h2" style="font-size: 34px">{{d.title}}</h2><div class="small muted">{{d.sub}}</div></div></div>
+        <div class="sumgrid">
+          <div class="tile"><div class="k">Counted</div><div class="v">{{d.counted}}</div></div>
+          <div class="tile"><div class="k">Short</div><div class="v" style="display: flex; gap: 8px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 28px; height: 28px; color: #B3122E"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>{{d.short}}</div></div>
+          <div class="tile"><div class="k">Skipped</div><div class="v">{{d.skipped}}</div></div>
+          <div class="tile"><div class="k">Order list</div><div class="v" style="font-size: 26px">{{d.before}} → {{d.after}}</div></div>
+        </div>
+        <div class="card" style="overflow: hidden">
+          <div style="padding: 12px 16px"><h2 class="h2">Just counted</h2></div>
+          <sc-for list="{{d.rows}}" as="r" hint-placeholder-count="4">
+            <div class="srow"><img src="{{r.photo}}" alt=""><span style="flex: 1; min-width: 0; font-weight: 700">{{r.name}}</span><span style="font-family: 'Barlow Condensed'; font-weight: 700; font-size: 24px; min-width: 70px; text-align: right">{{r.val}}</span><span class="{{r.cls}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{r.icon}}"></path></svg>{{r.txt}}</span></div>
+          </sc-for>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap">
+          <button class="btn pri lg" onClick="{{nextCat}}">{{d.nextTxt}}</button>
+          <a class="btn lg" href="Labels.dc.html">Print labels for {{d.cat}}</a>
+          <a class="btn lg" href="Backup.dc.html">Back up now</a>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","walk","scan","done"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  folder: 'M3 6h6l2 2h10v11H3z', pin: 'M12 21s-6.5-6-6.5-11.5a6.5 6.5 0 0 1 13 0C18.5 15 12 21 12 21z M10 9.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0',
+  alert: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01', tri: 'M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01', check: 'M5 12.5l4.5 4.5L19 7.5'
+};
+function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+function total(items, counts) {
+  let t = 0; items.forEach(i => { const oh = counts[i.id] != null ? counts[i.id] : i.on_hand; const v = i.vendors[i.pv - 1] || i.vendors[0]; const need = i.desired + i.spares - oh; if (need > 0 && v.pack_price != null) t += Math.ceil(need / v.pack_size) * v.pack_price; }); return t;
+}
+function status(i, oh) { return oh < i.desired ? { cls: 'chip red', icon: IC.alert, txt: 'SHORT ' + (i.desired - oh) } : oh < i.desired + i.spares ? { cls: 'chip yel', icon: IC.tri, txt: 'LOW SPARES' } : { cls: 'chip ok', icon: IC.check, txt: 'OK' }; }
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    this.setState({ screen: v === 'walk' || v === 'scan' ? 'walk' : v === 'done' ? 'done' : 'start', mode: v === 'scan' ? 'scan' : 'cat', askLoc: true, skipZero: false,
+      cat: v === 'done' ? 'Motors' : 'Drivetrain', idx: v === 'scan' ? 0 : 0, entry: v === 'walk' ? '2' : v === 'scan' ? '3' : '', counts: {}, skipped: {}, locs: {},
+      // Mockup only: example counts so the summary screen has something to show.
+      exampleDone: v === 'done' });
+    fetch(DATA_URL).then(r => r.json()).then(d => {
+      const st = { data: d };
+      if (v === 'done') st.counts = { 'st-0062': 8, 'st-0063': 0, 'st-0064': 2, 'st-0128': 1 };
+      if (v === 'scan') { st.scanOrder = ['st-0065', 'st-0063', 'st-0064', 'st-0101', 'st-0071']; }
+      this.setState(st);
+    });
+  }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait;
+    const out = {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('count', portrait),
+      isStart: s.screen === 'start', inWalk: s.screen === 'walk', isDone: s.screen === 'done', toStart: () => this.setState({ screen: 'start' }),
+      modes: [], groups: [], keys: [], locChips: [], w: {}, d: { rows: [] }, pv: {}, overallTxt: '', overallPct: 0, topSub: 'Loading…'
+    };
+    if (!s.data) return out;
+    const items = s.data.items, counts = s.counts || {}, skipped = s.skipped || {};
+    const isCounted = i => counts[i.id] != null || !!i.counted;
+    const nCounted = items.filter(isCounted).length;
+    out.overallTxt = nCounted + ' of ' + items.length + ' counted'; out.overallPct = Math.round(100 * nCounted / items.length);
+    out.topSub = s.screen === 'walk' ? (s.mode === 'scan' ? 'Scan as you go' : 'One item at a time · progress saves after each item') : 'A fast walk-through for the first inventory count';
+    out.orderTotal = money(total(items, counts));
+    const mode = s.mode || 'cat';
+    out.modes = [
+      { k: 'cat', title: 'By category', icon: IC.folder, rec: true, desc: 'Follows the inventory list order. Works now — starter items have no locations yet.' },
+      { k: 'loc', title: 'By location', icon: IC.pin, rec: false, desc: items.filter(i => i.location).length + ' items have a location. Fastest once bins are labeled: one shelf at a time.' },
+      { k: 'scan', title: 'Scan as you go', icon: IC.scan, rec: false, desc: items.filter(i => i.barcode).length + ' items have a manufacturer barcode today. Best after QR labels are printed.' }
+    ].map(m => Object.assign(m, { cls: mode === m.k ? 'mode on' : 'mode', pr: mode === m.k ? 'true' : 'false', pick: () => this.setState({ mode: m.k }) }));
+    out.askLoc = !!s.askLoc; out.askLocStr = s.askLoc ? 'true' : 'false'; out.locSw = s.askLoc ? 'sw on' : 'sw'; out.togLoc = () => this.setState({ askLoc: !s.askLoc });
+    out.skipZeroStr = s.skipZero ? 'true' : 'false'; out.skipSw = s.skipZero ? 'sw on' : 'sw'; out.togSkip = () => this.setState({ skipZero: !s.skipZero });
+    out.zeroCount = items.filter(i => i.desired === 0).length;
+    const keyOf = mode === 'loc' ? (i => i.location || 'No location yet') : (i => i.category);
+    const names = []; items.forEach(i => { const k = keyOf(i); if (names.indexOf(k) < 0) names.push(k); });
+    if (mode === 'loc') names.sort((a, b) => a.indexOf('No location') === 0 ? 1 : b.indexOf('No location') === 0 ? -1 : a.localeCompare(b, undefined, { numeric: true }));
+    const inScope = i => !(s.skipZero && i.desired === 0);
+    out.groupTitle = mode === 'loc' ? 'Locations' : 'Categories'; out.groupHint = mode === 'scan' ? 'Scan mode still tracks progress by category' : 'Tap a row to start or continue';
+    out.groups = names.map(nm => {
+      const its = items.filter(i => keyOf(i) === nm && inScope(i)); const c = its.filter(isCounted).length;
+      return { name: nm, sub: its.length + ' items', prog: c + ' / ' + its.length, pct: its.length ? Math.round(100 * c / its.length) : 0,
+        btn: c === 0 ? 'Start' : c < its.length ? 'Continue' : 'Recount', btnCls: c === 0 ? 'btn pri sm' : 'btn sm',
+        start: () => this.setState({ screen: 'walk', cat: nm, idx: 0, entry: '', keyMode: mode }) };
+    });
+    // walk
+    let list;
+    if (mode === 'scan' && s.scanOrder) list = s.scanOrder.map(id => items.find(i => i.id === id));
+    else list = items.filter(i => keyOf(i) === s.cat && inScope(i));
+    const idx = Math.min(s.idx || 0, Math.max(0, list.length - 1));
+    const it = list[idx];
+    if (it) {
+      const v = it.vendors[it.pv - 1] || it.vendors[0];
+      const loc = (s.locs || {})[it.id] != null ? s.locs[it.id] : it.location;
+      out.w = { name: it.name, photo: it.photo, hasPhoto: !!it.photo, noPhoto: !it.photo, desired: it.desired, spares: it.spares, unit: it.unit,
+        meta: it.category + (it.subcategory ? ' › ' + it.subcategory : '') + ' · ' + v.supplier + ' ' + (v.part_no || ''), loc: loc || 'not set',
+        where: mode === 'scan' ? 'Scan as you go' : s.cat + (it.subcategory ? ' › ' + it.subcategory : ''), pos: mode === 'scan' ? 'scan ' + (idx + 1) : 'Item ' + (idx + 1) + ' of ' + list.length,
+        pct: Math.round(100 * idx / Math.max(1, list.length)) };
+      const recent = []; items.forEach(i => { if (i.location && recent.indexOf(i.location) < 0) recent.push(i.location); });
+      out.locChips = recent.slice(0, 5).concat(['New location…']).map(l => ({ label: l, cls: loc === l ? 'fchip on' : 'fchip', pick: () => { if (l === 'New location…') { this.setState({ toast: 'A name field opens here; new locations need no PIN (F25).' }); return; } const L = Object.assign({}, s.locs || {}); L[it.id] = l; this.setState({ locs: L }); } }));
+      const e = s.entry || '';
+      const add = ch => this.setState({ entry: (e === '0' ? '' : e) + ch });
+      out.keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(n => ({ label: n, aria: n, cls: '', press: () => add(n) }))
+        .concat([{ label: '⌫', aria: 'Delete last digit', cls: 'alt', press: () => this.setState({ entry: e.slice(0, -1) }) }, { label: '0', aria: '0', cls: '', press: () => add('0') }, { label: 'None', aria: 'None — zero', cls: 'alt', press: () => this.setState({ entry: '0' }) }]);
+      out.valTxt = e === '' ? 'Type the count' : e; out.valCls = e === '' ? 'val empty' : 'val'; out.noVal = e === '';
+      out.hasPreview = e !== ''; out.pv = e !== '' ? status(it, parseInt(e, 10)) : {};
+      out.qDesired = () => this.setState({ entry: String(it.desired) });
+      out.qMinus = () => this.setState({ entry: String(Math.max(0, (parseInt(e || '0', 10)) - 1)) });
+      out.qPlus = () => this.setState({ entry: String((parseInt(e || '0', 10)) + 1) });
+      out.atFirst = idx === 0; out.back = () => this.setState({ idx: Math.max(0, idx - 1), entry: '' });
+      const advance = (patch) => { const last = idx >= list.length - 1; this.setState(Object.assign(patch, last && mode !== 'scan' ? { screen: 'done', entry: '' } : { idx: last ? idx : idx + 1, entry: '' })); };
+      out.skip = () => { const k = Object.assign({}, skipped); k[it.id] = 1; advance({ skipped: k }); };
+      out.saveNext = () => { const c = Object.assign({}, counts); c[it.id] = parseInt(e, 10); advance({ counts: c }); };
+      out.isScanMode = mode === 'scan'; out.notScanMode = mode !== 'scan';
+      out.simScan = () => this.setState({ idx: Math.min(idx + 1, list.length - 1), entry: '' });
+    }
+    // done
+    const dl = items.filter(i => keyOf(i) === s.cat && inScope(i));
+    const before = total(items, {}), after = total(items, counts);
+    const ci = names.indexOf(s.cat), next = names[ci + 1];
+    out.d = { cat: s.cat, title: s.cat + ' counted', sub: s.exampleDone ? 'Example counts for the mockup' : dl.filter(isCounted).length + ' of ' + dl.length + ' items in this group',
+      counted: dl.filter(isCounted).length + ' / ' + dl.length, short: dl.filter(i => counts[i.id] != null && counts[i.id] < i.desired).length, skipped: dl.filter(i => skipped[i.id]).length,
+      before: money(before), after: money(after), nextTxt: next ? 'Next: ' + next + ' (' + items.filter(i => keyOf(i) === next).length + ')' : 'All groups counted',
+      rows: dl.filter(i => counts[i.id] != null).map(i => Object.assign({ name: i.name, photo: i.photo, val: counts[i.id] + ' ' + i.unit }, status(i, counts[i.id]))) };
+    out.nextCat = () => next ? this.setState({ screen: 'walk', cat: next, idx: 0, entry: '', exampleDone: false }) : this.setState({ screen: 'start' });
+    return out;
+  }
+}
+</script>
+</body>
+</html>

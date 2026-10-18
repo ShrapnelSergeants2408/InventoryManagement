@@ -1,0 +1,471 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Inventory list</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.sp{flex:1 1 auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.dark{background:#1A1411;color:#fff}
+.btn.danger{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.ghost{border-color:transparent;background:transparent}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn.onb{border-color:#fff;color:#fff;background:transparent;min-height:48px}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;border-radius:12px;border:2px solid #CFC6BB;background:#fff;color:#1A1411;cursor:pointer;flex:none;text-decoration:none;padding:0}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px;border-radius:999px;font-weight:700;font-size:15px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:18px;height:18px;stroke-width:2.5}
+.chip.red{background:#B3122E;color:#fff}
+.chip.yel{background:#F5B700;color:#1A1411}
+.chip.ok{border:2px solid #CFC6BB;color:#4A403A;background:#fff}
+.chip.mut{background:#ECE7E1;color:#4A403A;font-weight:400;letter-spacing:0}
+.fchip{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-weight:700;font-size:16px;color:#1A1411;cursor:pointer;white-space:nowrap;flex:none}
+.fchip.on{background:#1A1411;border-color:#1A1411;color:#fff}
+.fchip .ic{width:20px;height:20px}
+.field{width:100%;min-height:56px;padding:0 16px;border:2px solid #CFC6BB;border-radius:12px;background:#fff;font:inherit;font-size:18px;color:#1A1411}
+.step{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:14px;border:2px solid #1A1411;background:#fff;color:#1A1411;cursor:pointer;flex:none;padding:0}
+.step.plus{background:#1A1411;color:#fff}
+.step .ic{width:30px;height:30px;stroke-width:3}
+.num{width:84px;height:64px;border:3px solid #1A1411;border-radius:12px;text-align:center;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;color:#1A1411;background:#fff;padding:0}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.banner{flex:none;display:flex;align-items:center;gap:14px;padding:8px 16px 8px 24px;background:#1F3A5F;color:#fff;font-weight:700}
+.app.p .banner{padding:8px 12px 8px 16px;flex-wrap:wrap}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.thumb{width:64px;height:64px;border-radius:10px;background:#fff;border:1px solid #DDD5CB;object-fit:contain;flex:none}
+.nophoto{display:flex;align-items:center;justify-content:center;color:#8C8178;background:#F7F4F0}
+/* list */
+.searchwrap{position:relative;flex:1 1 360px;min-width:0}
+.app.p .searchwrap{order:9;flex:1 1 100%}
+.searchwrap .ic{position:absolute;left:16px;top:16px;color:#4A403A}
+.searchwrap .field{padding-left:50px;padding-right:56px}
+.clr{position:absolute;right:4px;top:4px;width:48px;height:48px;border:0;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#1A1411}
+.frow{flex:none;display:flex;gap:10px;padding:12px 24px;overflow-x:auto;border-bottom:1px solid #DDD5CB}
+.app.p .frow{padding:10px 16px}
+.list{flex:1 1 auto;min-height:0;overflow:auto;background:#fff}
+.cathdr{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;padding:8px 24px;border:0;border-bottom:1px solid #DDD5CB;background:#F7F4F0;font:inherit;color:#1A1411;cursor:pointer;text-align:left;flex-wrap:wrap}
+.app.p .cathdr{padding:8px 16px}
+.cn{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:25px;line-height:1.1}
+.subhdr{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:6px 24px 6px 60px;border:0;border-bottom:1px solid #E6DFD6;background:#FBF9F6;font:inherit;font-weight:700;color:#1A1411;cursor:pointer;text-align:left;flex-wrap:wrap}
+.app.p .subhdr{padding-left:44px}
+.hc{font-size:15px;color:#4A403A;font-weight:400}
+.row{display:grid;grid-template-columns:minmax(0,1fr) 264px 156px 228px;align-items:center;gap:16px;padding:12px 24px;min-height:92px;border-bottom:1px solid #E6DFD6;background:#fff}
+.row.red{background:#FDEEF1}
+.row.yel{background:#FFF7DB}
+.app.p .row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"link chip" "nums step";padding:12px 16px;row-gap:10px}
+.app.p .rlink{grid-area:link}
+.app.p .nums{grid-area:nums}
+.app.p .rchip{grid-area:chip}
+.app.p .stepper{grid-area:step}
+.rlink{display:flex;align-items:center;gap:14px;min-width:0;color:inherit;background:none;border:0;padding:0;font:inherit;text-align:left;cursor:pointer;min-height:64px}
+.rname{font-weight:700;font-size:19px;line-height:1.25}
+.rname .ic{width:20px;height:20px;vertical-align:-3px;margin-left:6px;color:#1F3A5F}
+.rmeta{font-size:15px;color:#4A403A;margin-top:3px;display:flex;flex-wrap:wrap;gap:2px 12px;align-items:center}
+.rmeta .ic{width:16px;height:16px;vertical-align:-2px}
+.noloc{font-style:italic}
+.nums{display:flex;gap:12px}
+.col{width:72px;display:flex;flex-direction:column}
+.col.w{width:96px}
+.cl{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#4A403A}
+.cv{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1.1}
+.cs{font-size:13px;color:#4A403A}
+.stepper{display:flex;flex-direction:column;align-items:center;gap:4px;justify-self:end}
+.ohl{white-space:nowrap}
+.rchip{justify-self:start}
+.fpanel{position:absolute;top:0;right:0;bottom:0;width:440px;z-index:31;background:#fff;box-shadow:-12px 0 40px rgba(0,0,0,.25);display:flex;flex-direction:column}
+.app.p .fpanel{top:auto;left:0;width:auto;height:74%;border-radius:20px 20px 0 0}
+.fsec{padding:16px 24px;border-bottom:1px solid #E6DFD6}
+.fsec h3{margin:0 0 10px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#4A403A}
+.fgrid{display:flex;flex-wrap:wrap;gap:8px}
+.skel{height:18px;border-radius:6px;background:#ECE7E1}
+.state{flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:32px;background:#fff}
+.bigic{width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:#ECE7E1;color:#1A1411}
+.bigic .ic{width:44px;height:44px}
+.embed{position:absolute;inset:0;z-index:20}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <div style="display: flex; flex-direction: column; gap: 4px; margin-right: 8px">
+        <h1 class="h1">Inventory</h1>
+        <span class="small muted">{{summary}}</span>
+      </div>
+      <div class="searchwrap">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a7 7 0 1 0 14 0a7 7 0 1 0 -14 0 M20 20l-4.2-4.2"></path></svg>
+        <input class="field" type="search" aria-label="Search inventory" placeholder="Search name, part #, supplier, location…" value="{{q}}" onChange="{{onQ}}">
+        <sc-if value="{{hasQ}}" hint-placeholder-val="{{false}}">
+          <button class="clr" aria-label="Clear search" onClick="{{clearQ}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="position: static"><path d="M6 6l12 12 M18 6L6 18"></path></svg></button>
+        </sc-if>
+      </div>
+      <button class="btn" onClick="{{openSheet}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7.5V18l-4 2v-7.5z"></path></svg>{{filterBtn}}</button>
+      <a class="btn pri" href="Edit-Add.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg>Add item</a>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+    </header>
+    <sc-if value="{{showBanner}}" hint-placeholder-val="{{true}}">
+      <div class="banner" role="status">
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 1 0 -18 0 M12 7v5l3.5 2"></path></svg>
+        <span style="flex: 1 1 260px">No backup in the last 7 days (last backup: never). Back up before the data is lost.</span>
+        <a class="btn onb" href="{{backupHref}}">Back up now</a>
+        <button class="btn onb" style="border-color: transparent" onClick="{{hideBanner}}">Later</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{showFrow}}" hint-placeholder-val="{{true}}"><div class="frow" role="toolbar" aria-label="Quick filters">
+      <button class="{{fNeeds.cls}}" onClick="{{fNeeds.tog}}" aria-pressed="{{fNeeds.pr}}">Needs order · {{fNeeds.n}}</button>
+      <button class="{{fRed.cls}}" onClick="{{fRed.tog}}" aria-pressed="{{fRed.pr}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>Short only · {{fRed.n}}</button>
+      <button class="{{fYel.cls}}" onClick="{{fYel.tog}}" aria-pressed="{{fYel.pr}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01"></path></svg>Low spares only · {{fYel.n}}</button>
+      <button class="{{catChip.cls}}" onClick="{{openSheet}}">Category: {{catChip.v}}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <button class="{{supChip.cls}}" onClick="{{openSheet}}">Supplier: {{supChip.v}}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <button class="{{locChip.cls}}" onClick="{{openSheet}}">Location: {{locChip.v}}<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+      <sc-if value="{{anyFilter}}" hint-placeholder-val="{{false}}"><button class="fchip" style="border-color: transparent; text-decoration: underline" onClick="{{clearAll}}">Clear all</button></sc-if>
+    </div></sc-if>
+
+    <sc-if value="{{isLoading}}" hint-placeholder-val="{{false}}">
+      <div class="list" aria-busy="true" aria-label="Loading inventory">
+        <div class="cathdr" style="cursor: default"><div class="skel" style="width: 220px; height: 24px"></div><span class="hc">Loading inventory from this tablet…</span></div>
+        <sc-for list="{{skel}}" as="k" hint-placeholder-count="7">
+          <div class="row"><div style="display: flex; gap: 14px; align-items: center"><div class="thumb nophoto"></div><div style="flex: 1"><div class="skel" style="width: 80%"></div><div class="skel" style="width: 45%; margin-top: 10px; height: 14px"></div></div></div><div class="skel" style="height: 40px"></div><div class="skel" style="height: 34px; width: 110px"></div><div class="skel" style="height: 64px"></div></div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isError}}" hint-placeholder-val="{{false}}">
+      <div class="state" role="alert">
+        <div class="bigic" style="background: #FDEEF1; color: #A3122B"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3z M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6 M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"></path></svg></div>
+        <h2 class="h2">Can’t open the inventory on this tablet</h2>
+        <p style="margin: 0; max-width: 620px">The browser blocked or cleared this app’s storage. Nothing you see here is lost if you have a backup. A mentor can restore the latest backup file (ZIP or CSV) from the Downloads folder, Drive, or email.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center">
+          <button class="btn" onClick="{{retry}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.4-5.7 M20 4v6h-6"></path></svg>Try again</button>
+          <a class="btn pri" href="Backup-Restore.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>Restore from backup</a>
+        </div>
+        <p class="small muted" style="margin: 0">Error: IndexedDB “inventory” could not be opened (storage was cleared). Persistent storage: not granted.</p>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
+      <div class="state">
+        <div class="bigic"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11a7 7 0 1 0 14 0a7 7 0 1 0 -14 0 M20 20l-4.2-4.2"></path></svg></div>
+        <h2 class="h2">{{emptyTitle}}</h2>
+        <p style="margin: 0; max-width: 560px">Search looks at names, part numbers, suppliers, locations and notes. Try fewer letters, or a part number like REV-21-1653.</p>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center">
+          <button class="btn" onClick="{{clearAll}}">Clear search and filters</button>
+          <a class="btn pri" href="Edit-Add.dc.html"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg>{{emptyAdd}}</a>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{showList}}" hint-placeholder-val="{{true}}">
+      <div class="list">
+        <sc-for list="{{lines}}" as="ln" hint-placeholder-count="8">
+          <sc-if value="{{ln.isCat}}" hint-placeholder-val="{{false}}">
+            <button class="cathdr" onClick="{{ln.toggle}}" aria-expanded="{{ln.exp}}">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ln.chev}}"></path></svg>
+              <span class="cn">{{ln.name}}</span>
+              <span class="hc">{{ln.sub}}</span>
+              <span class="sp"></span>
+              <sc-if value="{{ln.hasRed}}" hint-placeholder-val="{{true}}"><span class="chip red"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>{{ln.red}} short</span></sc-if>
+              <sc-if value="{{ln.hasYel}}" hint-placeholder-val="{{false}}"><span class="chip yel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01"></path></svg>{{ln.yel}} low spares</span></sc-if>
+              <sc-if value="{{ln.allOk}}" hint-placeholder-val="{{false}}"><span class="chip ok"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>All stocked</span></sc-if>
+            </button>
+          </sc-if>
+          <sc-if value="{{ln.isSub}}" hint-placeholder-val="{{false}}">
+            <button class="subhdr" onClick="{{ln.toggle}}" aria-expanded="{{ln.exp}}">
+              <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ln.chev}}"></path></svg>
+              <span>{{ln.name}}</span>
+              <span class="hc">{{ln.sub}}</span>
+              <span class="sp"></span>
+              <sc-if value="{{ln.hasRed}}" hint-placeholder-val="{{false}}"><span class="chip red"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01"></path></svg>{{ln.red}} short</span></sc-if>
+              <sc-if value="{{ln.hasYel}}" hint-placeholder-val="{{false}}"><span class="chip yel"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01"></path></svg>{{ln.yel}} low spares</span></sc-if>
+              <sc-if value="{{ln.allOk}}" hint-placeholder-val="{{false}}"><span class="chip ok"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>All stocked</span></sc-if>
+            </button>
+          </sc-if>
+          <sc-if value="{{ln.isItem}}" hint-placeholder-val="{{true}}">
+            <div class="{{ln.rowCls}}">
+              <button class="rlink" onClick="{{ln.open}}" aria-label="{{ln.aria}}">
+                <sc-if value="{{ln.hasPhoto}}" hint-placeholder-val="{{true}}"><img class="thumb" src="{{ln.photo}}" alt=""></sc-if>
+                <sc-if value="{{ln.noPhoto}}" hint-placeholder-val="{{false}}"><span class="thumb nophoto"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15 9.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0"></path></svg></span></sc-if>
+                <span style="min-width: 0">
+                  <span class="rname">{{ln.name}}<sc-if value="{{ln.hasNote}}" hint-placeholder-val="{{false}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="Has notes"><path d="M4 4h16v12H9l-5 4z M8 9h8 M8 12.5h5"></path></svg></sc-if></span>
+                  <span class="rmeta"><span>{{ln.part}}</span><span>{{ln.sup}}</span><span>{{ln.price}}</span><span class="{{ln.locCls}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-6-6.5-11.5a6.5 6.5 0 0 1 13 0C18.5 15 12 21 12 21z M10 9.5a2 2 0 1 0 4 0a2 2 0 1 0 -4 0"></path></svg> {{ln.loc}}</span></span>
+                </span>
+              </button>
+              <div class="nums">
+                <div class="col"><span class="cl">Desired</span><span class="cv">{{ln.desired}}</span></div>
+                <div class="col"><span class="cl">Spares</span><span class="cv">{{ln.spares}}</span></div>
+                <div class="col w"><span class="cl">Order</span><span class="cv">{{ln.order}}</span><span class="cs">{{ln.orderSub}}</span></div>
+              </div>
+              <span class="rchip"><span class="{{ln.chipCls}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ln.chipIcon}}"></path></svg>{{ln.chipTxt}}</span></span>
+              <div class="stepper" role="group" aria-label="{{ln.adjAria}}">
+                <span class="cl ohl">On hand <span style="font-weight: 400; letter-spacing: 0; text-transform: none">({{ln.unit}}) · tap − / + or type</span></span>
+                <div style="display: flex; align-items: center; gap: 8px">
+                  <button class="step" onClick="{{ln.dec}}" aria-label="Minus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"></path></svg></button>
+                  <input class="num" type="number" inputmode="numeric" min="0" aria-label="On hand" value="{{ln.onHand}}" onChange="{{ln.setv}}">
+                  <button class="step plus" onClick="{{ln.inc}}" aria-label="Plus one"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg></button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </sc-for>
+        <div style="padding: 20px 24px 32px" class="small muted">{{footer}}</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{sheet}}" hint-placeholder-val="{{false}}">
+      <div class="scrim" style="z-index: 30" onClick="{{closeSheet}}"></div>
+      <div class="fpanel" role="dialog" aria-label="Filters">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px 12px 24px; border-bottom: 1px solid #DDD5CB">
+          <h2 class="h2" style="flex: 1">Filters</h2>
+          <button class="ib" aria-label="Close filters" onClick="{{closeSheet}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18"></path></svg></button>
+        </div>
+        <div style="flex: 1 1 auto; overflow: auto">
+          <div class="fsec"><h3>Stock</h3><div class="fgrid">
+            <button class="{{fNeeds.cls}}" onClick="{{fNeeds.tog}}" aria-pressed="{{fNeeds.pr}}">Needs order · {{fNeeds.n}}</button>
+            <button class="{{fRed.cls}}" onClick="{{fRed.tog}}" aria-pressed="{{fRed.pr}}">Short · {{fRed.n}}</button>
+            <button class="{{fYel.cls}}" onClick="{{fYel.tog}}" aria-pressed="{{fYel.pr}}">Low spares · {{fYel.n}}</button>
+          </div></div>
+          <div class="fsec"><h3>Category</h3><div class="fgrid">
+            <sc-for list="{{catOpts}}" as="o" hint-placeholder-count="6"><button class="{{o.cls}}" onClick="{{o.pick}}" aria-pressed="{{o.pr}}">{{o.label}}</button></sc-for>
+          </div></div>
+          <div class="fsec"><h3>Preferred supplier</h3><div class="fgrid">
+            <sc-for list="{{supOpts}}" as="o" hint-placeholder-count="6"><button class="{{o.cls}}" onClick="{{o.pick}}" aria-pressed="{{o.pr}}">{{o.label}}</button></sc-for>
+          </div></div>
+          <div class="fsec"><h3>Location</h3><div class="fgrid">
+            <sc-for list="{{locOpts}}" as="o" hint-placeholder-count="6"><button class="{{o.cls}}" onClick="{{o.pick}}" aria-pressed="{{o.pr}}">{{o.label}}</button></sc-for>
+          </div></div>
+        </div>
+        <div style="display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid #DDD5CB">
+          <button class="btn" onClick="{{clearAll}}">Clear all</button>
+          <button class="btn pri" style="flex: 1" onClick="{{closeSheet}}">Show {{shownCount}} items</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{hasSel}}" hint-placeholder-val="{{false}}">
+      <div class="embed"><dc-import name="Detail" item-id="{{selId}}" item="{{selItem}}" embedded="{{true}}" portrait="{{portrait}}" on-close="{{closeSel}}" on-set="{{onSet}}" hint-size="100%,100%"></dc-import></div>
+    </sc-if>
+  </div>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","search","filter","empty","loading","error"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2',
+  alert: 'M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z M12 7.5v5.5 M12 16.5v.01',
+  tri: 'M12 3.5L21.5 20h-19z M12 10v4.5 M12 17.5v.01',
+  check: 'M5 12.5l4.5 4.5L19 7.5',
+  chevD: 'M6 9l6 6 6-6',
+  chevR: 'M9 6l6 6-6 6'
+};
+function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function calc(it, today) {
+  const v = it.vendors[it.pv - 1] || it.vendors[0] || {};
+  const need = it.desired + it.spares - it.on_hand;
+  const ps = v.pack_size || 1;
+  const packs = need > 0 ? Math.ceil(need / ps) : 0;
+  const st = it.on_hand < it.desired ? 'red' : (it.on_hand < it.desired + it.spares ? 'yel' : 'ok');
+  return { v: v, ps: ps, need: Math.max(need, 0), packs: packs, qty: packs * ps, hasPrice: v.pack_price != null, line: v.pack_price != null ? packs * v.pack_price : 0, st: st };
+}
+function chipFor(it, c) {
+  if (c.st === 'red') return { cls: 'chip red', icon: IC.alert, txt: 'SHORT ' + (it.desired - it.on_hand) };
+  if (c.st === 'yel') return { cls: 'chip yel', icon: IC.tri, txt: 'LOW SPARES' };
+  return { cls: 'chip ok', icon: IC.check, txt: 'OK' };
+}
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    const init = { q: '', f: {}, open: { 'Fasteners': 1, 'Fasteners/Bolts & Screws': 1, 'Motors': 1 }, banner: true, loading: true };
+    if (v === 'search') init.q = 'neo';
+    if (v === 'filter') { init.f = { needs: 1, red: 1 }; init.sheet = true; }
+    if (v === 'empty') init.q = 'falcon 500';
+    this.setState(init);
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+    if (v === 'loading') return;
+    if (v === 'error') { this.setState({ loading: false, err: true }); return; }
+    this.load();
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  load() {
+    fetch(DATA_URL).then(r => r.json()).then(d => this.setState({ data: d, items: d.items, loading: false, err: false }))
+      .catch(() => this.setState({ loading: false, err: true }));
+  }
+  setItem(id, patch) {
+    const items = ((this.state || {}).items || []).map(it => it.id === id ? Object.assign({}, it, patch) : it);
+    this.setState({ items: items });
+  }
+  setF(k, val) { const f = Object.assign({}, (this.state || {}).f || {}); if (val) f[k] = val; else delete f[k]; this.setState({ f: f }); }
+  lockVals() {
+    const s = this.state || {};
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0;
+    return {
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock,
+      lockText: on ? 'Unlocked ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes' }),
+      pinOpen: !!s.pin, pinReason: s.pin || '',
+      onPinDone: () => this.setState({ pin: null, unlockAt: Date.now() }),
+      onPinCancel: () => this.setState({ pin: null })
+    };
+  }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait;
+    const out = Object.assign({
+      portrait: portrait, W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, appCls: portrait ? 'app p' : 'app',
+      nav: navItems('inv', portrait), backupHref: portrait ? 'Backup-P.dc.html' : 'Backup.dc.html',
+      q: s.q || '', hasQ: !!s.q, onQ: (e) => this.setState({ q: e.target.value }), clearQ: () => this.setState({ q: '' }),
+      openSheet: () => this.setState({ sheet: true }), closeSheet: () => this.setState({ sheet: false }), sheet: !!s.sheet,
+      showBanner: s.banner !== false && !s.err, hideBanner: () => this.setState({ banner: false }),
+      clearAll: () => this.setState({ q: '', f: {} }), retry: () => { this.setState({ loading: true, err: false }); this.load(); },
+      skel: [1, 2, 3, 4, 5, 6, 7], isLoading: !!s.loading, isError: !s.loading && !!s.err, showFrow: !s.err,
+      hasSel: !!s.sel, selId: s.sel || '', closeSel: () => this.setState({ sel: null }),
+      onSet: (id, patch) => this.setItem(id, patch),
+      lines: [], summary: s.err ? 'Storage unavailable' : 'Loading…', footer: '', isEmpty: false, showList: false, emptyTitle: '', emptyAdd: '',
+      fNeeds: { n: 0, cls: 'fchip' }, fRed: { n: 0, cls: 'fchip' }, fYel: { n: 0, cls: 'fchip' }, catChip: { cls: 'fchip', v: 'All' }, supChip: { cls: 'fchip', v: 'All' }, locChip: { cls: 'fchip', v: 'All' },
+      catOpts: [], supOpts: [], locOpts: [], shownCount: 0, anyFilter: false, filterBtn: 'Filters', selItem: null
+    }, this.lockVals());
+    if (s.loading || s.err || !s.data) return out;
+    const d = s.data, today = d.today, items = s.items || d.items;
+    const q = (s.q || '').trim().toLowerCase();
+    const f = s.f || {};
+    items.forEach(it => {
+      it._c = calc(it, today);
+      it._h = [it.name, it.location, it.notes].concat(it.vendors.map(v => v.part_no + ' ' + v.supplier)).join(' ').toLowerCase();
+    });
+    const pass = (it, skip) => {
+      const c = it._c;
+      if (skip !== 'needs' && f.needs && c.qty <= 0) return false;
+      if (skip !== 'st' && (f.red || f.yel) && !((f.red && c.st === 'red') || (f.yel && c.st === 'yel'))) return false;
+      if (f.cat && it.category !== f.cat) return false;
+      if (f.sup && c.v.supplier !== f.sup) return false;
+      if (f.loc && (it.location || 'No location') !== f.loc) return false;
+      if (q && it._h.indexOf(q) < 0) return false;
+      return true;
+    };
+    const filtering = !!q || Object.keys(f).length > 0;
+    const nRed = items.filter(i => i._c.st === 'red').length, nYel = items.filter(i => i._c.st === 'yel').length;
+    out.summary = items.length + ' items · ' + nRed + ' short · ' + nYel + ' low spares';
+    const tog = (k, n) => ({ cls: f[k] ? 'fchip on' : 'fchip', pr: f[k] ? 'true' : 'false', n: n, tog: () => this.setF(k, f[k] ? 0 : 1) });
+    out.fNeeds = tog('needs', items.filter(i => i._c.qty > 0).length);
+    out.fRed = tog('red', nRed); out.fYel = tog('yel', nYel);
+    out.catChip = { cls: f.cat ? 'fchip on' : 'fchip', v: f.cat || 'All' };
+    out.supChip = { cls: f.sup ? 'fchip on' : 'fchip', v: f.sup || 'All' };
+    out.locChip = { cls: f.loc ? 'fchip on' : 'fchip', v: f.loc || 'All' };
+    const opt = (k, label) => ({ label: label, cls: f[k] === label ? 'fchip on' : 'fchip', pr: f[k] === label ? 'true' : 'false', pick: () => this.setF(k, f[k] === label ? 0 : label) });
+    out.catOpts = d.categories.map(c => opt('cat', c.name));
+    const sups = []; items.forEach(i => { if (sups.indexOf(i._c.v.supplier) < 0) sups.push(i._c.v.supplier); });
+    sups.sort((a, b) => a === 'other' ? 1 : b === 'other' ? -1 : a.localeCompare(b));
+    out.supOpts = sups.map(x => opt('sup', x));
+    const locs = []; items.forEach(i => { const l = i.location || 'No location'; if (locs.indexOf(l) < 0) locs.push(l); });
+    locs.sort((a, b) => a === 'No location' ? 1 : b === 'No location' ? -1 : a.localeCompare(b, undefined, { numeric: true }));
+    out.locOpts = locs.map(x => opt('loc', x));
+    const nF = Object.keys(f).length;
+    out.anyFilter = filtering; out.filterBtn = nF ? 'Filters (' + nF + ')' : 'Filters';
+    const open = s.open || {};
+    const lines = [];
+    let shown = 0;
+    const counts = list => {
+      const r = list.filter(i => i._c.st === 'red').length, y = list.filter(i => i._c.st === 'yel').length;
+      return { red: r, yel: y, hasRed: r > 0, hasYel: y > 0, allOk: r === 0 && y === 0 };
+    };
+    const itemLine = it => {
+      const c = it._c, ch = chipFor(it, c), v = c.v;
+      const setOn = n => this.setItem(it.id, { on_hand: Math.max(0, n) });
+      return {
+        isItem: true, id: it.id, name: it.name, photo: it.photo, hasPhoto: !!it.photo, noPhoto: !it.photo, hasNote: !!it.notes,
+        aria: 'Open details for ' + it.name,
+        part: v.part_no || 'No part #', sup: v.supplier, price: v.pack_price != null ? money(v.pack_price) + (c.ps > 1 ? ' / ' + c.ps : '') : 'No price',
+        loc: it.location || 'No location', locCls: it.location ? '' : 'noloc',
+        desired: it.desired, spares: it.spares, order: c.qty > 0 ? c.qty : '—', orderSub: c.qty > 0 ? (c.ps > 1 ? c.packs + ' × ' + c.ps : it.unit) : '',
+        rowCls: 'row ' + c.st, chipCls: ch.cls, chipIcon: ch.icon, chipTxt: ch.txt,
+        onHand: it.on_hand, unit: it.unit, adjAria: 'On hand for ' + it.name,
+        dec: () => setOn(it.on_hand - 1), inc: () => setOn(it.on_hand + 1),
+        setv: (e) => { const n = parseInt(e.target.value, 10); setOn(isNaN(n) ? 0 : n); },
+        open: () => this.setState({ sel: it.id })
+      };
+    };
+    d.categories.forEach(cat => {
+      const all = items.filter(i => i.category === cat.name);
+      const vis = all.filter(i => pass(i));
+      if (filtering && vis.length === 0) return;
+      const exp = filtering || !!open[cat.name];
+      const counted = all.filter(i => i.counted).length;
+      lines.push(Object.assign({ isCat: true, name: cat.name, exp: exp ? 'true' : 'false', chev: exp ? IC.chevD : IC.chevR,
+        sub: filtering ? vis.length + ' of ' + all.length + ' items match' : all.length + ' items · ' + counted + ' counted',
+        toggle: () => { const o = Object.assign({}, open); o[cat.name] = o[cat.name] ? 0 : 1; this.setState({ open: o }); } }, counts(all)));
+      if (!exp) return;
+      const subs = cat.subs.concat(['']);
+      subs.forEach(sub => {
+        const sAll = all.filter(i => (i.subcategory || '') === sub);
+        const sVis = vis.filter(i => (i.subcategory || '') === sub);
+        if (!sAll.length || (filtering && !sVis.length)) return;
+        const key = cat.name + '/' + sub;
+        const sExp = sub === '' || filtering || !!open[key];
+        if (sub !== '') {
+          lines.push(Object.assign({ isSub: true, name: sub, exp: sExp ? 'true' : 'false', chev: sExp ? IC.chevD : IC.chevR,
+            sub: sAll.length + ' items',
+            toggle: () => { const o = Object.assign({}, open); o[key] = o[key] ? 0 : 1; this.setState({ open: o }); } }, counts(sAll)));
+        }
+        if (sExp) sVis.forEach(i => lines.push(itemLine(i)));
+      });
+      shown += vis.length;
+    });
+    out.lines = lines; out.shownCount = filtering ? shown : items.length;
+    out.isEmpty = filtering && shown === 0; out.showList = !out.isEmpty;
+    out.emptyTitle = q ? 'No items match “' + s.q + '”' : 'No items match these filters';
+    out.emptyAdd = q ? 'Add “' + s.q + '” as a new item' : 'Add an item';
+    out.footer = filtering ? shown + ' matching items' : 'Tap a category to expand or collapse it — the app remembers which are open. Tap an item for its detail card.';
+    if (s.sel) out.selItem = items.find(i => i.id === s.sel) || null;
+    return out;
+  }
+}
+</script>
+</body>
+</html>

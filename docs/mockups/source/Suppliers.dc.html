@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Manage suppliers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.app{position:relative;display:flex;overflow:hidden;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;font-size:18px;line-height:1.35;color:#1A1411;background:#F2EFEA}
+.app *{box-sizing:border-box}
+.app.p{flex-direction:column-reverse}
+.main{flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;position:relative}
+.nav{flex:none;width:104px;background:#2E1710;display:flex;flex-direction:column;gap:6px;padding:12px 0}
+.app.p .nav{width:auto;height:88px;flex-direction:row;padding:6px 8px;gap:4px}
+.nav-logo{display:flex;justify-content:center;padding:2px 0 10px}
+.nav-logo img{width:76px;height:76px;border-radius:50%;background:#fff;object-fit:contain}
+.app.p .nav-logo{display:none}
+.nav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:76px;margin:0 10px;border-radius:14px;color:#F1DDD2;text-decoration:none;font-weight:700;font-size:14px;letter-spacing:.02em}
+.app.p .nav a{flex:1 1 0;margin:0;min-height:0}
+.nav a.on{background:#8A3315;color:#fff}
+.ic{width:24px;height:24px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ic.lg{width:32px;height:32px}
+.top{flex:none;min-height:76px;display:flex;align-items:center;gap:12px;padding:10px 24px;background:#fff;border-bottom:1px solid #DDD5CB}
+.app.p .top{padding:10px 16px;flex-wrap:wrap;row-gap:10px}
+.h1{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:34px;line-height:1;letter-spacing:.01em}
+.h2{margin:0;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:28px;line-height:1.1}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:56px;padding:0 20px;border-radius:12px;border:2px solid #1A1411;background:#fff;color:#1A1411;font:inherit;font-weight:700;font-size:18px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn.pri{background:#8A3315;border-color:#8A3315;color:#fff}
+.btn.danger{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.dangero{background:#1A1411;border:3px solid #E5484D;color:#fff}
+.btn.lg{min-height:64px;font-size:20px;padding:0 24px}
+.btn.sm{min-height:48px;padding:0 14px;font-size:16px}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.ib{display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:12px;border:2px solid #CFC6BB;background:#fff;color:#1A1411;cursor:pointer;flex:none;text-decoration:none;padding:0}
+.lockpill{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #1F3A5F;color:#1F3A5F;background:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;white-space:nowrap}
+.lockpill.on{background:#1F3A5F;color:#fff}
+.chip{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 10px;border-radius:999px;font-weight:700;font-size:14px;letter-spacing:.03em;white-space:nowrap;flex:none}
+.chip .ic{width:16px;height:16px;stroke-width:2.5}
+.chip.lock{background:#E3EAF3;color:#1F3A5F}
+.chip.mut{background:#ECE7E1;color:#4A403A}
+.fchip{display:inline-flex;align-items:center;gap:8px;min-height:48px;padding:0 16px;border-radius:999px;border:2px solid #CFC6BB;background:#fff;font:inherit;font-weight:700;font-size:16px;color:#1A1411;cursor:pointer;white-space:nowrap;flex:none}
+.fchip.on{background:#1A1411;border-color:#1A1411;color:#fff}
+.lbl{display:block;font-size:14px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#4A403A;margin-bottom:6px}
+.field{width:100%;min-height:56px;padding:0 16px;border:2px solid #CFC6BB;border-radius:12px;background:#fff;font:inherit;font-size:18px;color:#1A1411}
+.field.bad{border-color:#A3122B;background:#FFF5F6}
+.err{color:#A3122B;font-weight:700;font-size:15px;margin-top:6px}
+.scrim{position:absolute;inset:0;z-index:30;background:rgba(26,20,17,.6);display:flex;align-items:center;justify-content:center;padding:24px}
+.dlg{background:#fff;border-radius:20px;padding:28px;width:620px;max-width:100%;max-height:100%;overflow:auto;box-shadow:0 20px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;gap:16px}
+.muted{color:#4A403A}
+.small{font-size:15px}
+.toast{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);z-index:40;background:#1A1411;color:#fff;border-radius:14px;padding:14px 20px;font-weight:700;display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px rgba(0,0,0,.3);max-width:90%}
+.slist{flex:1 1 auto;min-height:0;overflow:auto;padding:16px 24px 32px}
+.app.p .slist{padding:12px 16px 24px}
+.srow{display:grid;grid-template-columns:minmax(0,1fr) 200px auto;gap:16px;align-items:center;padding:14px 18px;background:#fff;border:1px solid #DDD5CB;border-radius:14px;margin-bottom:10px}
+.app.p .srow{grid-template-columns:minmax(0,1fr) auto}
+.app.p .used{grid-column:1 / -1;order:3}
+.acts{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+</style>
+</helmet>
+<div class="{{appCls}}" style="width: {{W}}px; height: {{H}}px">
+  <nav class="nav" aria-label="Main">
+    <div class="nav-logo"><img src="/_blob/961f964f9583dc2e9b250633dbcccd0a" alt="Shrapnel Sergeants, FRC Team 2408"></div>
+    <sc-for list="{{nav}}" as="n" hint-placeholder-count="6">
+      <a href="{{n.href}}" class="{{n.cls}}"><svg class="ic lg" viewBox="0 0 24 24" aria-hidden="true"><path d="{{n.icon}}"></path></svg><span>{{n.label}}</span></a>
+    </sc-for>
+  </nav>
+  <div class="main">
+    <header class="top">
+      <a class="btn" href="{{moreHref}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"></path></svg>More</a>
+      <div style="flex: 1 1 auto; min-width: 0"><h1 class="h1">Suppliers</h1><span class="small muted">{{summary}}</span></div>
+      <button class="{{lockCls}}" onClick="{{onLockPill}}" aria-label="Mentor PIN status"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="{{lockIcon}}"></path></svg>{{lockText}}</button>
+      <button class="btn pri" onClick="{{openAdd}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14"></path></svg>Add supplier<sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN needed"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></button>
+    </header>
+    <div class="slist">
+      <div class="small muted" style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg>Adding, renaming and removing suppliers needs the mentor PIN. Item editors list suppliers A–Z with “other” last.</div>
+      <sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+        <div class="srow">
+          <div style="min-width: 0">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap"><span style="font-weight: 700; font-size: 21px">{{r.name}}</span><sc-if value="{{r.hasSite}}" hint-placeholder-val="{{true}}"><a class="ib" href="{{r.site}}" target="_blank" rel="noopener" aria-label="{{r.siteAria}}"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6"></path></svg></a></sc-if></div>
+            <div class="small muted">{{r.notes}}</div>
+          </div>
+          <div class="used"><span style="font-weight: 700">{{r.used}}</span><div class="small muted">{{r.pref}}</div></div>
+          <div class="acts">
+            <button class="btn sm" onClick="{{r.rename}}">Rename<sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN needed" style="width: 18px; height: 18px"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></button>
+            <sc-if value="{{r.removable}}" hint-placeholder-val="{{true}}"><button class="btn sm dangero" onClick="{{r.remove}}">Remove<sc-if value="{{locked}}" hint-placeholder-val="{{true}}"><svg class="ic" viewBox="0 0 24 24" role="img" aria-label="PIN needed" style="width: 18px; height: 18px"><path d="M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11"></path></svg></sc-if></button></sc-if>
+            <sc-if value="{{r.isOther}}" hint-placeholder-val="{{false}}"><span class="chip mut" style="height: 48px; padding: 0 14px">Fallback — can’t remove</span></sc-if>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  <sc-if value="{{addOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="dialog" aria-label="Add supplier">
+        <h2 class="h2">Add a supplier</h2>
+        <div><label class="lbl" for="sn">Name *</label><input id="sn" class="{{nameCls}}" value="{{newName}}" onChange="{{setNewName}}" placeholder="e.g. Digi-Key"><sc-if value="{{dup}}" hint-placeholder-val="{{false}}"><div class="err" role="alert">“{{newName}}” is already in the list as “{{dupOf}}”. Names are compared ignoring capitals.</div></sc-if></div>
+        <div><label class="lbl" for="sw">Website (optional)</label><input id="sw" class="field" inputmode="url" value="{{newSite}}" onChange="{{setNewSite}}" placeholder="https://"></div>
+        <div><label class="lbl" for="so">Notes (optional)</label><input id="so" class="field" value="{{newNotes}}" onChange="{{setNewNotes}}" placeholder="e.g. team account login is in the mentor binder"></div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap"><button class="btn lg" onClick="{{closeDlg}}">Cancel</button><button class="btn pri lg" onClick="{{saveAdd}}" disabled="{{cantAdd}}">Add supplier</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{renOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="dialog" aria-label="Rename supplier">
+        <h2 class="h2">Rename “{{tName}}”</h2>
+        <input class="field" aria-label="New name" value="{{renName}}" onChange="{{setRenName}}">
+        <p style="margin: 0">Updates {{tUsed}} and the order-list group name. Backups made after this use the new name.</p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap"><button class="btn lg" onClick="{{closeDlg}}">Cancel</button><button class="btn pri lg" onClick="{{saveRen}}">Rename</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{remOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim">
+      <div class="dlg" role="alertdialog" aria-label="Remove supplier">
+        <h2 class="h2">Remove “{{tName}}”?</h2>
+        <p style="margin: 0; font-size: 20px"><strong>{{tUsed}}</strong> use {{tName}} ({{tPref}}). They need a new supplier first.</p>
+        <div><span class="lbl">Move them to</span>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap" role="radiogroup" aria-label="Replacement supplier"><sc-for list="{{repl}}" as="o" hint-placeholder-count="8"><button class="{{o.cls}}" onClick="{{o.pick}}" role="radio" aria-checked="{{o.pr}}">{{o.name}}</button></sc-for></div>
+        </div>
+        <p class="small muted" style="margin: 0">Part numbers, links and prices stay as they are; check them later, since they belonged to {{tName}}.</p>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; flex-wrap: wrap"><button class="btn lg" onClick="{{closeDlg}}">Keep {{tName}}</button><button class="btn danger lg" onClick="{{doRemove}}">Move to {{replName}} and remove</button></div>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{pinOpen}}" hint-placeholder-val="{{false}}">
+    <div class="scrim"><dc-import name="PinPad" reason="{{pinReason}}" on-done="{{onPinDone}}" on-cancel="{{onPinCancel}}" hint-size="440px,700px"></dc-import></div>
+  </sc-if>
+  <sc-if value="{{hasToast}}" hint-placeholder-val="{{false}}">
+    <div class="toast" role="status">{{toast}}<button class="btn sm" style="background: transparent; color: #fff; border-color: #fff" onClick="{{hideToast}}">OK</button></div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"variant":{"editor":"enum","options":["","add","remove","locked"],"default":""},"portrait":{"editor":"boolean","default":false},"$preview":{"width":1280,"height":800}}'>
+const DATA_URL = '/_blob/5cb72b4e022ff875d8db89f46c84ffd7';
+const IC = {
+  inv: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',
+  order: 'M3 4h2.5l2.2 11h10.6l2.2-8H6.4 M8 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0 M15 20a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0',
+  scan: 'M4 8V5a1 1 0 0 1 1-1h3 M16 4h3a1 1 0 0 1 1 1v3 M20 16v3a1 1 0 0 1-1 1h-3 M8 20H5a1 1 0 0 1-1-1v-3 M7 12h10',
+  count: 'M9 3h6v3H9z M9 4.5H6v16.5h12V4.5h-3 M9 13.5l2 2 4-4',
+  labels: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h2v2h-2z M18 18h2v2h-2z M18 14h2v2 M14 18h2v2',
+  more: 'M4 4h7v7H4z M13 4h7v7h-7z M4 13h7v7H4z M13 13h7v7h-7z',
+  lock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 7 0V11',
+  unlock: 'M6 11h12v10H6z M8.5 11V7.5a3.5 3.5 0 0 1 6.8-1.2'
+};
+function navItems(active, portrait) {
+  const P = portrait ? '-P' : '';
+  return [['inv', 'Inventory', 'Main'], ['order', 'Order', 'Order'], ['scan', 'Scan', 'Scan'], ['count', 'Count', 'Count'], ['labels', 'Labels', 'Labels'], ['more', 'More', 'More']]
+    .map(function (a) { return { key: a[0], label: a[1], href: a[2] + P + '.dc.html', icon: IC[a[0]], cls: a[0] === active ? 'on' : '' }; });
+}
+const sortSup = (a, b) => a.name === 'other' ? 1 : b.name === 'other' ? -1 : a.name.localeCompare(b.name);
+class Component extends DCLogic {
+  componentDidMount() {
+    const v = this.props.variant || '';
+    const st = { unlockAt: v === 'locked' ? 0 : Date.now() - 63000 };
+    if (v === 'add') Object.assign(st, { dlg: 'add', newName: 'andymark', newSite: '', newNotes: '' });
+    if (v === 'remove') Object.assign(st, { dlg: 'remove', target: 'WCP', repl: 'other' });
+    if (v === 'locked') { st.pin = 'Adding a supplier needs the mentor PIN'; this.after = () => this.setState({ dlg: 'add', newName: '', newSite: '', newNotes: '' }); }
+    this.setState(st);
+    this.timer = setInterval(() => { const s = this.state || {}; if (s.unlockAt) this.forceUpdate(); }, 1000);
+    fetch(DATA_URL).then(r => r.json()).then(d => this.setState({ data: d, sups: d.suppliers.slice() }));
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  unlocked() { const s = this.state || {}; return !!s.unlockAt && Date.now() - s.unlockAt < 300000; }
+  requirePin(reason, then) { if (this.unlocked()) then(); else { this.after = then; this.setState({ pin: reason }); } }
+  renderVals() {
+    const s = this.state || {};
+    const portrait = !!this.props.portrait, P = portrait ? '-P' : '';
+    const left = s.unlockAt ? Math.max(0, 300 - Math.floor((Date.now() - s.unlockAt) / 1000)) : 0;
+    const on = left > 0;
+    const out = {
+      appCls: portrait ? 'app p' : 'app', W: portrait ? 800 : 1280, H: portrait ? 1280 : 800, nav: navItems('more', portrait), moreHref: 'More' + P + '.dc.html',
+      lockCls: on ? 'lockpill on' : 'lockpill', lockIcon: on ? IC.unlock : IC.lock, locked: !on,
+      lockText: on ? 'Unlocked ' + Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0') : 'Locked',
+      onLockPill: () => on ? this.setState({ unlockAt: 0 }) : this.setState({ pin: 'Unlock mentor tools for 5 minutes' }),
+      pinOpen: !!s.pin, pinReason: s.pin || '',
+      onPinDone: () => { this.setState({ pin: null, unlockAt: Date.now() }); const a = this.after; this.after = null; if (a) a(); },
+      onPinCancel: () => { this.after = null; this.setState({ pin: null }); },
+      closeDlg: () => this.setState({ dlg: null }), hasToast: !!s.toast, toast: s.toast || '', hideToast: () => this.setState({ toast: '' }),
+      addOpen: s.dlg === 'add', renOpen: s.dlg === 'rename', remOpen: s.dlg === 'remove',
+      openAdd: () => this.requirePin('Adding a supplier needs the mentor PIN', () => this.setState({ dlg: 'add', newName: '', newSite: '', newNotes: '' })),
+      rows: [], repl: [], summary: 'Loading…'
+    };
+    if (!s.data) return out;
+    const items = s.data.items, sups = (s.sups || []).slice().sort(sortSup);
+    const use = name => { let n = 0, p = 0; items.forEach(i => i.vendors.forEach((v, k) => { if (v.supplier === name) { n++; if (k === i.pv - 1) p++; } })); return { n: n, p: p }; };
+    const optTxt = n => n + ' vendor option' + (n === 1 ? '' : 's');
+    out.summary = sups.length + ' suppliers · used by ' + items.reduce((a, i) => a + i.vendors.length, 0) + ' vendor options';
+    out.rows = sups.map(x => {
+      const u = use(x.name);
+      return { name: x.name, site: x.website, hasSite: !!x.website, siteAria: 'Open ' + x.name + ' website', notes: x.notes || ' ',
+        used: u.n ? optTxt(u.n) : 'Not used yet', pref: u.n ? u.p + ' as preferred vendor' : 'Safe to remove',
+        isOther: x.name === 'other', removable: x.name !== 'other',
+        rename: () => this.requirePin('Renaming a supplier needs the mentor PIN', () => this.setState({ dlg: 'rename', target: x.name, renName: x.name })),
+        remove: () => this.requirePin('Removing a supplier needs the mentor PIN', () => this.setState({ dlg: 'remove', target: x.name, repl: 'other' })) };
+    });
+    const nn = (s.newName || '').trim();
+    const dupOf = sups.find(x => x.name.toLowerCase() === nn.toLowerCase());
+    Object.assign(out, {
+      newName: s.newName || '', newSite: s.newSite || '', newNotes: s.newNotes || '', dup: !!dupOf, dupOf: dupOf ? dupOf.name : '',
+      nameCls: dupOf ? 'field bad' : 'field', cantAdd: !nn || !!dupOf,
+      setNewName: e => this.setState({ newName: e.target.value }), setNewSite: e => this.setState({ newSite: e.target.value }), setNewNotes: e => this.setState({ newNotes: e.target.value }),
+      saveAdd: () => { if (!nn || dupOf) return; this.setState({ sups: (s.sups || []).concat([{ name: nn, website: s.newSite || '', notes: s.newNotes || '' }]), dlg: null, toast: 'Added “' + nn + '”.' }); }
+    });
+    if (s.target) {
+      const u = use(s.target);
+      Object.assign(out, { tName: s.target, tUsed: optTxt(u.n), tPref: u.p + ' preferred', renName: s.renName || '', setRenName: e => this.setState({ renName: e.target.value }),
+        saveRen: () => this.setState({ sups: (s.sups || []).map(x => x.name === s.target ? Object.assign({}, x, { name: s.renName }) : x), dlg: null, toast: 'Renamed. ' + optTxt(u.n) + ' updated.' }),
+        repl: sups.filter(x => x.name !== s.target).map(x => ({ name: x.name, cls: s.repl === x.name ? 'fchip on' : 'fchip', pr: s.repl === x.name ? 'true' : 'false', pick: () => this.setState({ repl: x.name }) })),
+        replName: s.repl || 'other',
+        doRemove: () => this.setState({ sups: (s.sups || []).filter(x => x.name !== s.target), dlg: null, toast: 'Removed ' + s.target + '. ' + optTxt(u.n) + ' moved to ' + (s.repl || 'other') + '. (Mockup)' }) });
+    }
+    return out;
+  }
+}
+</script>
+</body>
+</html>

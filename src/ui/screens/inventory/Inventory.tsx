@@ -9,6 +9,7 @@ import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
+import { BackupBanner } from '../../shell/BackupBanner';
 import { FilterPanel, NO_LOCATION_LABEL } from './FilterPanel';
 import { ItemRow } from './ItemRow';
 import { StorageError } from '../StorageError';
@@ -122,6 +123,7 @@ export function InventoryScreen() {
         </a>
       </TopBar>
 
+      <BackupBanner />
       <QuickFilters view={view} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} />
 
       {!view || !snap ? (

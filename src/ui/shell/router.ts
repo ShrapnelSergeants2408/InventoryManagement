@@ -10,7 +10,8 @@ export type Route =
   | { tab: 'inventory'; screen: 'item'; id: string }
   | { tab: 'inventory'; screen: 'edit'; id: string }
   | { tab: 'inventory'; screen: 'add'; name: string }
-  | { tab: 'more'; screen: ManagedList };
+  | { tab: 'more'; screen: ManagedList }
+  | { tab: 'more'; screen: 'backup' };
 
 const TABS: readonly Tab[] = ['inventory', 'order', 'scan', 'count', 'labels', 'more'];
 const LISTS: readonly ManagedList[] = ['suppliers', 'categories', 'locations'];
@@ -31,6 +32,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'more') {
     const list = LISTS.find((l) => l === parts[1]);
     if (list) return { tab: 'more', screen: list };
+    if (parts[1] === 'backup') return { tab: 'more', screen: 'backup' };
   }
   const tab = TABS.find((t) => t === parts[0]);
   return { tab: tab ?? 'inventory', screen: 'tab' };
@@ -42,6 +44,7 @@ export const href = {
   edit: (id: string) => `#/item/${encodeURIComponent(id)}/edit`,
   add: (name = '') => (name ? `#/add?${new URLSearchParams({ name })}` : '#/add'),
   list: (l: ManagedList) => `#/more/${l}`,
+  backup: '#/more/backup',
 };
 
 // History entries are numbered and remember the screen they were opened from, so Back can

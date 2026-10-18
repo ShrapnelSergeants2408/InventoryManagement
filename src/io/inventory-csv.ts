@@ -163,11 +163,13 @@ export function parseInventoryCsv(text: string): ParsedInventory {
   return { items, photoFiles, problems, ignoredColumns };
 }
 
-export function photoPathFor(id: string): string {
-  return `photos/${id}.jpg`;
+/** Photo path inside a full backup ZIP (§7); the extension follows the photo's type. */
+export function photoPathFor(id: string, type = 'image/jpeg'): string {
+  const ext = type === 'image/png' ? 'png' : type === 'image/webp' ? 'webp' : 'jpg';
+  return `photos/${id}.${ext}`;
 }
 
-export function inventoryRow(item: Item): string[] {
+export function inventoryRow(item: Item, photoPath: (id: string) => string = photoPathFor): string[] {
   const cells: Record<string, string> = {
     id: item.id,
     name: item.name,
@@ -182,7 +184,7 @@ export function inventoryRow(item: Item): string[] {
     notes: item.notes,
     source: item.source,
     preferred_vendor: String(item.preferredVendor),
-    photo_file: item.hasPhoto ? photoPathFor(item.id) : '',
+    photo_file: item.hasPhoto ? photoPath(item.id) : '',
     last_counted: item.lastCounted,
   };
   for (const slot of VENDOR_SLOTS) {
@@ -197,6 +199,6 @@ export function inventoryRow(item: Item): string[] {
   return INVENTORY_COLUMNS.map((c) => cells[c] ?? '');
 }
 
-export function serializeInventoryCsv(items: readonly Item[]): string {
-  return writeCsv(INVENTORY_COLUMNS, items.map(inventoryRow));
+export function serializeInventoryCsv(items: readonly Item[], photoPath: (id: string) => string = photoPathFor): string {
+  return writeCsv(INVENTORY_COLUMNS, items.map((i) => inventoryRow(i, photoPath)));
 }

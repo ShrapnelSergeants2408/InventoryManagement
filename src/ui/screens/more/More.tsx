@@ -1,7 +1,9 @@
-// More (§17, mockup 9a): Suppliers, Categories and Locations now; backup (M5) and the
-// mentor PIN and settings (M6) are listed as coming later.
+// More (§17, mockup 9a): Suppliers, Categories, Locations, Backup; the mentor PIN and
+// settings (M6) are listed as coming later.
 import { TopBar, plural } from '../../components/common';
-import { useSnapshot } from '../../data-hooks';
+import { daysSinceBackup } from '../../../domain/backup-reminder';
+import { formatBytes } from '../../../domain/dates';
+import { useNow, useSettings, useSnapshot, useStorageStatus } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { href } from '../../shell/router';
 
@@ -38,6 +40,13 @@ function Row(props: { icon: IconName; title: string; sub: string; chip?: string;
 export function MoreScreen() {
   const live = useSnapshot();
   const snap = live.state === 'ready' ? live.value : null;
+  const settings = useSettings();
+  const days = daysSinceBackup(settings.lastBackupAt, useNow());
+  const storage = useStorageStatus();
+  const storageText = !storage
+    ? ''
+    : ` · persistent storage ${storage.persisted === null ? 'unknown' : storage.persisted ? 'granted' : 'not granted'}${storage.usage === null ? '' : ` · ${formatBytes(storage.usage)} used`}`;
+  const backupSub = `Last backup: ${days === null ? 'never' : days === 0 ? 'today' : `${plural(days, 'day')} ago`} · full or data only`;
   return (
     <>
       <TopBar title="More" />
@@ -65,7 +74,7 @@ export function MoreScreen() {
               chip="PIN to rename/remove"
               to={href.list('locations')}
             />
-            <Row icon="upload" title="Backup, restore & price import" sub="" later="Coming in a later build (M5)" />
+            <Row icon="upload" title="Backup, restore & price import" sub={backupSub} chip="PIN to restore/import" to={href.backup} />
           </div>
           <div class="grp">
             <h3>Mentor PIN &amp; settings</h3>
@@ -75,7 +84,7 @@ export function MoreScreen() {
           </div>
           <div class="grp">
             <h3>About</h3>
-            <Row icon="database" title="FRC 2408 Inventory Management" sub={snap ? `${plural(snap.items.length, 'item')} on this tablet` : 'Stored on this tablet'} />
+            <Row icon="database" title="FRC 2408 Inventory Management" sub={`${snap ? `${plural(snap.items.length, 'item')} on this tablet` : 'Stored on this tablet'}${storageText}`} />
           </div>
         </div>
       </div>

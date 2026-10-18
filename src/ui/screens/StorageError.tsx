@@ -40,7 +40,8 @@ export function StorageError({ error, onRetry }: { error: unknown; onRetry?: () 
         file (ZIP or CSV) from the Downloads folder, Drive, or email.
       </p>
       <p class="state-text small muted">
-        Restore from backup arrives in a later update. Until then, try again, and don’t clear Chrome’s site data for this app.
+        Try again first. If the inventory still can’t be opened, the app has to be set up again before a backup can be restored; that path arrives with first-launch
+        setup in a later update. Until then, don’t clear Chrome’s site data for this app.
       </p>
       <p class="small muted state-detail">
         Error: {describe(error)}. Persistent storage: {persisted}.

@@ -9,6 +9,7 @@ import { DbContext } from './data-hooks';
 import { InventoryScreen } from './screens/inventory/Inventory';
 import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
+import { BackupScreen } from './screens/more/Backup';
 import { CategoriesScreen } from './screens/more/Categories';
 import { LocationsScreen } from './screens/more/Locations';
 import { MoreScreen } from './screens/more/More';
@@ -35,7 +36,14 @@ async function openDb(): Promise<InventoryDb> {
     const seed = await readSeed(await res.arrayBuffer());
     if (!seed.ok) throw new Error(seed.problems.map((p) => p.message).join('; '));
     await replaceAll(db, seed.data);
-    await db.settings.put({ key: STARTER_MARKER, value: Date.now() });
+    const now = Date.now();
+    await db.settings.bulkPut([{ key: STARTER_MARKER, value: now }, { key: 'setupDoneAt', value: now }]);
+  }
+  // The backup reminder runs from setup (D7); tablets that loaded the starter catalog before
+  // M5 get their setup time from the starter-load marker.
+  if (!(await db.settings.get('setupDoneAt'))) {
+    const marker = await db.settings.get(STARTER_MARKER);
+    if (marker) await db.settings.put({ key: 'setupDoneAt', value: marker.value });
   }
   return db;
 }
@@ -54,6 +62,8 @@ function Screen({ route }: { route: Route }) {
       return <CategoriesScreen />;
     case 'locations':
       return <LocationsScreen />;
+    case 'backup':
+      return <BackupScreen />;
     case 'tab':
       break;
   }

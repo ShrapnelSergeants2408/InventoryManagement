@@ -444,7 +444,7 @@ input[type="date"].field { padding: 0 12px; }
 .rinput { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 26px; letter-spacing: .08em; text-transform: uppercase; }
 .setup { height: 100%; display: grid; grid-template-columns: 340px minmax(0, 1fr); background: var(--ground); }
 .setup-side { background: #2e1710; color: #f4e9e2; padding: 32px 28px; display: flex; flex-direction: column; gap: 10px; }
-.setup-logo { width: 180px; height: 180px; border-radius: 50%; align-self: center; margin-bottom: 12px; }
+.setup-logo { width: 180px; height: 180px; border-radius: 50%; background: #fff; padding: 6px; align-self: center; margin-bottom: 12px; }
 .setup-title { margin: 0; font-family: var(--font-display); font-size: 32px; line-height: 1.1; color: #fff; }
 .setup-steps { list-style: none; margin: 18px 0 0; padding: 0; display: flex; flex-direction: column; gap: 14px; font-weight: 700; color: #b9a69b; }
 .setup-steps li { display: flex; align-items: center; gap: 12px; }

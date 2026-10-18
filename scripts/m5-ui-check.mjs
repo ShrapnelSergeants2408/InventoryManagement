@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PIN_H } from './pin-helpers.mjs';
 
 const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
@@ -62,13 +63,7 @@ const H = `
   const click = async (sel, t) => { const b = byText(sel, t); if (!b) throw new Error('nothing like ' + sel + ' with text ' + t); b.click(); await settle(); return b; };
   const type = async (el, v) => { if (typeof el === 'string') el = $(el); el.focus(); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); await settle(120); };
   const pick = async (el, v) => { if (typeof el === 'string') el = $(el); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); await settle(200); };
-  const gateDlg = () => $('[aria-label="Mentor PIN needed"]');
-  const answerGate = async (yes) => {
-    for (let i = 0; i < 30 && !gateDlg(); i++) await settle(100);
-    if (!gateDlg()) throw new Error('the PIN gate did not appear');
-    byText('[aria-label="Mentor PIN needed"] button', yes ? 'Continue' : 'Cancel').click();
-    await settle(450);
-  };
+${PIN_H}
   const dlg = (label) => $('[role=dialog][aria-label="' + label + '"], [role=alertdialog][aria-label="' + label + '"]');
   const idb = (store, key) => new Promise((res, rej) => {
     const r = indexedDB.open('frc2408-inventory');
@@ -136,6 +131,8 @@ try {
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await size(1280, 800);
   await send('Page.navigate', { url: 'http://localhost:4321/' });
+  await waitFor(`document.querySelector('.setup')`, 60000);
+  await js(`await doSetup();`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
 
   // ── Boot records the setup time; no reminder on day 1 (D7) ──
@@ -241,7 +238,7 @@ try {
   await js(`await go('#/more/backup');`);
   const before13 = await js(`return JSON.stringify((await idb('items', 'st-0013')).vendors)`);
   await js(`await choose(1, 'prices-bad.csv', new TextEncoder().encode('id,v1_pack_size,v4_pack_price\\nst-0013,2.5,\\n'), 'text/csv'); await waitDlg('Couldn’t import — nothing was changed');`);
-  check('bad price file (8e): every problem by row, no PIN asked', await js(`return [[...document.querySelectorAll('.problems li')].map((l) => norm(l.textContent)), !document.querySelector('[aria-label="Mentor PIN needed"]')]`), [['Row 1: column “v4_pack_price” isn’t recognized — items have at most 3 vendor options (v1_, v2_, v3_)'], true]);
+  check('bad price file (8e): every problem by row, no PIN asked', await js(`return [[...document.querySelectorAll('.problems li')].map((l) => norm(l.textContent)), !document.querySelector('[aria-label="Mentor PIN"]')]`), [['Row 1: column “v4_pack_price” isn’t recognized — items have at most 3 vendor options (v1_, v2_, v3_)'], true]);
   await js(`await click('.dlg button', 'OK');`);
   await js(`await choose(1, 'prices-bad2.csv', new TextEncoder().encode('id,v1_pack_size\\nst-0013,2.5\\n'), 'text/csv'); await waitDlg('Couldn’t import — nothing was changed');`);
   check('bad row named with row number and id', await js(`return norm(document.querySelector('.problems li').textContent)`), 'Row 2 (st-0013): v1_pack_size "2.5" must be a whole number ≥ 1');

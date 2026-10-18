@@ -162,10 +162,9 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
       return;
     }
     setErrors([]);
-    if (vendorChangesNeedPin(base, r.item) && !vendorsOpen) {
-      if (!(await gate('Saving changes to vendors or prices needs the mentor PIN.'))) return;
-      setVendorsOpen(true);
-    }
+    // Vendor changes are saved only while unlocked: if mentor tools relocked (timer or the
+    // lock button) since the fields were opened, the PIN is asked again (§6).
+    if (vendorChangesNeedPin(base, r.item) && !(await gate('Saving changes to vendors or prices needs the mentor PIN.'))) return;
     setBusy(true);
     try {
       const saved = base ? await updateItem(db, base, r.item) : await addItem(db, r.item);

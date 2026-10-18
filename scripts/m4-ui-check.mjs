@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PIN_H } from './pin-helpers.mjs';
 
 const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
@@ -61,13 +62,7 @@ const H = `
   const click = async (sel, t) => { const b = byText(sel, t); if (!b) throw new Error('nothing like ' + sel + ' with text ' + t); b.click(); await settle(); return b; };
   const type = async (el, v) => { if (typeof el === 'string') el = $(el); el.focus(); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); await settle(120); };
   const pick = async (el, v) => { if (typeof el === 'string') el = $(el); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); await settle(200); };
-  const gateDlg = () => $('[aria-label="Mentor PIN needed"]');
-  const answerGate = async (yes) => {
-    for (let i = 0; i < 30 && !gateDlg(); i++) await settle(100);
-    if (!gateDlg()) throw new Error('the PIN gate did not appear');
-    byText('[aria-label="Mentor PIN needed"] button', yes ? 'Continue' : 'Cancel').click();
-    await settle(450);
-  };
+${PIN_H}
   const dlg = (label) => $('[role=dialog][aria-label="' + label + '"], [role=alertdialog][aria-label="' + label + '"]');
   const idb = (store, key) => new Promise((res, rej) => {
     const r = indexedDB.open('frc2408-inventory');
@@ -119,6 +114,8 @@ try {
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await size(1280, 800);
   await send('Page.navigate', { url: 'http://localhost:4321/' });
+  await waitFor(`document.querySelector('.setup')`, 60000);
+  await js(`await doSetup();`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
   await js(`location.hash = '#/order';`);
   await waitFor(`document.querySelector('.tile .v')`);

@@ -139,6 +139,8 @@ describe('price-update import: the whole file is checked first (F18)', () => {
 
   it('a new slot without supplier or pack size is an error', () => {
     expect(problems(csv('id,v2_pack_price', 'st-0002,5'))[0]!.message).toMatch(/vendor option 2 is empty.*v2_supplier and v2_pack_size/);
+    expect(problems(csv('id,v2_supplier', 'st-0002,REV'))[0]!.message).toMatch(/vendor option 2 is empty/);
+    expect(problems(csv('id,v2_pack_size', 'st-0002,4'))[0]!.message).toMatch(/vendor option 2 is empty/);
   });
 
   it('negative pack sizes and prices are rejected', () => {

@@ -81,6 +81,20 @@ export function useNow(ms = 60_000): number {
   return now;
 }
 
+/** Persistent-storage status and space used (§2); null fields when the browser can't say. */
+export type StorageStatus = { persisted: boolean | null; usage: number | null };
+
+export function useStorageStatus(): StorageStatus | null {
+  const [s, setS] = useState<StorageStatus | null>(null);
+  useEffect(() => {
+    const st = navigator.storage;
+    Promise.all([st?.persisted?.().catch(() => null) ?? null, st?.estimate?.().catch(() => null) ?? null]).then(([p, e]) =>
+      setS({ persisted: p, usage: e?.usage ?? null }),
+    );
+  }, []);
+  return s;
+}
+
 /** The full-size photo (detail card, §8) as an object URL while the screen is open. */
 export function usePhotoUrl(itemId: string, hasPhoto: boolean): string | null {
   const db = useDb();

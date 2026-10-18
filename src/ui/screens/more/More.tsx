@@ -2,7 +2,8 @@
 // settings (M6) are listed as coming later.
 import { TopBar, plural } from '../../components/common';
 import { daysSinceBackup } from '../../../domain/backup-reminder';
-import { useNow, useSettings, useSnapshot } from '../../data-hooks';
+import { formatBytes } from '../../../domain/dates';
+import { useNow, useSettings, useSnapshot, useStorageStatus } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { href } from '../../shell/router';
 
@@ -41,6 +42,10 @@ export function MoreScreen() {
   const snap = live.state === 'ready' ? live.value : null;
   const settings = useSettings();
   const days = daysSinceBackup(settings.lastBackupAt, useNow());
+  const storage = useStorageStatus();
+  const storageText = !storage
+    ? ''
+    : ` · persistent storage ${storage.persisted === null ? 'unknown' : storage.persisted ? 'granted' : 'not granted'}${storage.usage === null ? '' : ` · ${formatBytes(storage.usage)} used`}`;
   const backupSub = `Last backup: ${days === null ? 'never' : days === 0 ? 'today' : `${plural(days, 'day')} ago`} · full or data only`;
   return (
     <>
@@ -79,7 +84,7 @@ export function MoreScreen() {
           </div>
           <div class="grp">
             <h3>About</h3>
-            <Row icon="database" title="FRC 2408 Inventory Management" sub={snap ? `${plural(snap.items.length, 'item')} on this tablet` : 'Stored on this tablet'} />
+            <Row icon="database" title="FRC 2408 Inventory Management" sub={`${snap ? `${plural(snap.items.length, 'item')} on this tablet` : 'Stored on this tablet'}${storageText}`} />
           </div>
         </div>
       </div>

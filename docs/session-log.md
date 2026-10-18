@@ -166,3 +166,33 @@ High for the money: the full starter-catalog CSV is recomputed to the cent from 
 
 **Next:** Dan merges PR #4 (M4), then M5 (backup, restore, price import; high risk; fresh-session review recommended afterwards).
 
+
+---
+
+## Session 4 — 2026-10-18 — M5
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: M5 (backup, restore, share, price import).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| before 07:27 | Dan merged PR #4 (M4); merge commit `48e6a33` |
+| ~07:27 | Branch `m5-backup-restore` from `main`; read SPEC F15–F18, §7, §10, spec-questions Q1/Q3/Q4/Q5/Q8/Q10/D7, mockups 8a–8e |
+| 07:27–07:36 | Backup ZIP/CSV build, restore plan and one-transaction apply (`replaceAll` with keep-photos), price-import plan and apply, reminder clock; 38 new tests; commit `fc2057d` |
+| 07:36–07:43 | Backup & restore screen, restore dialog, problem and summary dialogs, reminder banner on Inventory and Backup, More row; `scripts/m5-ui-check.mjs` (37 checks); 2 bugs found by it and fixed; commit `e5ae0f2` |
+| 07:43–07:55 | M5 verification: mutation check (26 mutants, 25 applicable caught after 2 test gaps closed), Windows-1252 fallback, storage status in About, regression of the M2–M4 browser checks, `docs/reviews/M5.md` |
+
+**WORK COMPLETED**
+M5: F15, F16, F17, F18, §2 storage status. 313 tests; 37 browser checks; the M2, M3 and M4 checks still pass (28, 50, 25).
+
+**DELIVERABLES PRODUCED**
+`src/io/{backup,restore,price-import}.ts`, `src/data/{backup,price-import}.ts`, `src/domain/backup-reminder.ts`, `src/ui/screens/more/{Backup,RestoreDialog,ImportDialogs,export-backup}.tsx/ts`, `src/ui/shell/BackupBanner.tsx`, `scripts/m5-ui-check.mjs`, `tests/{backup-restore,price-import,backup-reminder}.test.ts`, `docs/reviews/M5.md`.
+
+**PREDECESSORS / CONTEXT**
+Sessions 1–3 (M1–M4); mockups 8a–8f; `io/bundle.ts` (M1 reader) reused for restore.
+
+**CONFIDENCE**
+High for the data paths: byte-for-byte round-trip tests, a forced mid-transaction failure, mutants, and a real-browser restore read back from IndexedDB. Medium for share/download and the file picker on the Tab S8 (Stage 5). **Flag:** restore and price import are behind the PIN stand-in until M6. **An independent fresh-session review of M5 is recommended** (stage4-plan §4).
+
+**Next:** Dan merges PR #5 (M5), ideally after a fresh-session review; then M6 (mentor PIN and settings; high risk).

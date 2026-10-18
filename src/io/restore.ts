@@ -2,7 +2,6 @@
 // what. Nothing here touches the database; data/restore.ts applies a plan in one transaction.
 import type { InventorySnapshot } from '../data/inventory';
 import type { Category, Item, Location, Supplier } from '../domain/types';
-import { validateItem } from '../domain/validate';
 import { dateFromFileName } from './backup';
 import { readBackupZip, readInventoryCsvBundle, type Bundle } from './bundle';
 import { decodeCsvBytes, type FileProblem } from './csv';
@@ -55,16 +54,11 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
     problems.push({ file: file.name, row: null, message: 'the backup has no items, so restoring it would empty the tablet' });
     return { ok: false, problems, warnings };
   }
+  // Items were checked while the file was read, and every supplier they use is now in the
+  // list, so the plan always passes replaceAll's check.
   const suppliers = completeSuppliers(bundle.suppliers ?? current.suppliers, bundle.items);
   const locations = completeLocations(bundle.locations ?? current.locations, bundle.items);
   const categories = completeCategories(bundle.categories ?? current.categories, bundle.items);
-
-  // Same check the save does, so a plan that's shown can always be applied.
-  const names = suppliers.list.map((s) => s.name);
-  for (const item of bundle.items) {
-    for (const e of validateItem(item, names)) problems.push({ file: file.name, row: null, message: `item ${item.id}: ${e.message}` });
-  }
-  if (problems.length > 0) return { ok: false, problems, warnings };
 
   return {
     ok: true,

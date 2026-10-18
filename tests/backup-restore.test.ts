@@ -99,7 +99,8 @@ describe('backup file names (§7)', () => {
     expect(dateFromFileName('inventory-backup-2026-10-10-1535 (1).zip')).toEqual(new Date(2026, 9, 10, 15, 35));
     expect(dateFromFileName('backup.zip')).toBeNull();
     expect(dateFromFileName('x-2026-02-30.zip')).toBeNull();
-    expect(dateFromFileName('x-2026-02-03-2575.zip')).toBeNull();
+    expect(dateFromFileName('x-2026-02-03-1075.zip')).toBeNull();
+    expect(dateFromFileName('x-2026-02-03-2410.zip')).toBeNull();
   });
 });
 
@@ -333,5 +334,17 @@ describe('starter catalog through restore matches the first-launch load', () => 
     await applyPlan(db, plan);
     await setOnHand(db, 'st-0001', 2);
     expect((await loadSnapshot(db)).items.find((i) => i.id === 'st-0001')!.onHand).toBe(2);
+  });
+});
+
+describe('CSV files saved by Excel as plain "CSV" (Windows-1252)', () => {
+  it('are read correctly, with a warning', async () => {
+    // "Bolt 10-32 × ¾" in Windows-1252: × = 0xD7, ¾ = 0xBE.
+    const head = new TextEncoder().encode('id,name,category,unit,on_hand,desired,v1_supplier,v1_pack_size\nw1,Bolt 10-32 ');
+    const bytes = new Uint8Array([...head, 0xd7, 0x20, 0xbe, ...new TextEncoder().encode(',Fasteners,each,1,1,REV,1\n')]);
+    const read = await readRestoreFile({ name: 'excel.csv', bytes }, await loadSnapshot(newDb()));
+    if (!read.ok) throw new Error(JSON.stringify(read.problems));
+    expect(read.plan.items[0]!.name).toBe('Bolt 10-32 × ¾');
+    expect(read.plan.warnings[0]).toMatch(/isn’t UTF-8/);
   });
 });

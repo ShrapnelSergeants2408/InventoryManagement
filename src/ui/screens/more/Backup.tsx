@@ -13,7 +13,7 @@ import { planPriceImport, type PricePlan, type PriceProblem } from '../../../io/
 import { readRestoreFile, type RestorePlan } from '../../../io/restore';
 import { gate } from '../../../security/gate';
 import { BackButton, TopBar, plural } from '../../components/common';
-import { useDb, useNow, useSettings, useSnapshot } from '../../data-hooks';
+import { useDb, useNow, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
@@ -42,19 +42,6 @@ function usePhotoStats(db: InventoryDb): PhotoStats | null {
     return () => sub.unsubscribe();
   }, [db]);
   return stats;
-}
-
-type Storage = { persisted: boolean | null; usage: number | null };
-
-function useStorageStatus(): Storage | null {
-  const [s, setS] = useState<Storage | null>(null);
-  useEffect(() => {
-    const st = navigator.storage;
-    Promise.all([st?.persisted?.().catch(() => null) ?? null, st?.estimate?.().catch(() => null) ?? null]).then(([p, e]) =>
-      setS({ persisted: p, usage: e?.usage ?? null }),
-    );
-  }, []);
-  return s;
 }
 
 /** Opens the system file picker and resolves with the chosen file's name and bytes. */
@@ -286,7 +273,7 @@ export function BackupScreen() {
   );
 }
 
-function StorageNote({ storage }: { storage: Storage | null }) {
+function StorageNote({ storage }: { storage: StorageStatus | null }) {
   if (!storage) return null;
   const used = storage.usage === null ? '' : ` Using ${formatBytes(storage.usage)} on this tablet.`;
   if (storage.persisted)

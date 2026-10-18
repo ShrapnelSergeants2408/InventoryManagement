@@ -2,7 +2,7 @@
 // failure leaves the tablet unchanged (stage4-plan §3).
 import type { Category, Item, Location, Supplier } from '../domain/types';
 import { validateItem } from '../domain/validate';
-import { fromItemRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb } from './db';
+import { fromItemRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb, type ItemRow } from './db';
 
 export interface InventorySnapshot {
   items: Item[];
@@ -54,30 +54,47 @@ export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = 
   });
 }
 
-/** Quick adjust (F3): sets on_hand only. Does not set last_counted (spec-questions Q7). */
-export async function setOnHand(db: InventoryDb, id: string, onHand: number, now = Date.now()): Promise<void> {
-  if (!Number.isSafeInteger(onHand) || onHand < 0) throw new RangeError('on hand must be a whole number ≥ 0');
+/** The counts a stepper can change without the PIN (F3; desired and spares on the detail card, F7). */
+export type CountField = 'onHand' | 'desired' | 'spares';
+
+const COUNT_LABEL: Record<CountField, string> = { onHand: 'on hand', desired: 'desired', spares: 'spares' };
+
+function countPatch(field: CountField, value: number, now: number): Partial<ItemRow> {
+  const patch: Partial<ItemRow> = { updatedAt: now };
+  patch[field] = value;
+  return patch;
+}
+
+/** Sets one count. Quick adjust does not set last_counted (spec-questions Q7). */
+export async function setCount(db: InventoryDb, id: string, field: CountField, value: number, now = Date.now()): Promise<void> {
+  if (!Number.isSafeInteger(value) || value < 0) throw new RangeError(`${COUNT_LABEL[field]} must be a whole number ≥ 0`);
   await db.transaction('rw', db.items, db.settings, async () => {
-    const n = await db.items.update(id, { onHand, updatedAt: now });
+    const n = await db.items.update(id, countPatch(field, value, now));
     if (n === 0) throw new Error(`no item with id ${id}`);
     await db.settings.put({ key: 'lastChangeAt', value: now });
   });
 }
 
 /**
- * Quick adjust ± (F3): read-modify-write in one transaction, so fast repeated taps
- * never lose a step. Never goes below 0. Returns the new on_hand.
+ * ± on one count: read-modify-write in one transaction, so fast repeated taps never lose
+ * a step. Never goes below 0. Returns the new value.
  */
-export async function adjustOnHand(db: InventoryDb, id: string, delta: number, now = Date.now()): Promise<number> {
+export async function adjustCount(db: InventoryDb, id: string, field: CountField, delta: number, now = Date.now()): Promise<number> {
   if (!Number.isSafeInteger(delta)) throw new RangeError('adjustment must be a whole number');
   return db.transaction('rw', db.items, db.settings, async () => {
     const row = await db.items.get(id);
     if (!row) throw new Error(`no item with id ${id}`);
-    const onHand = Math.max(0, row.onHand + delta);
-    if (onHand !== row.onHand) {
-      await db.items.update(id, { onHand, updatedAt: now });
+    const value = Math.max(0, row[field] + delta);
+    if (value !== row[field]) {
+      await db.items.update(id, countPatch(field, value, now));
       await db.settings.put({ key: 'lastChangeAt', value: now });
     }
-    return onHand;
+    return value;
   });
 }
+
+/** Quick adjust (F3): sets on_hand only. */
+export const setOnHand = (db: InventoryDb, id: string, onHand: number, now = Date.now()) => setCount(db, id, 'onHand', onHand, now);
+
+/** Quick adjust ± (F3). Returns the new on_hand. */
+export const adjustOnHand = (db: InventoryDb, id: string, delta: number, now = Date.now()) => adjustCount(db, id, 'onHand', delta, now);

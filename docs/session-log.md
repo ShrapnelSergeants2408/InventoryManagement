@@ -106,3 +106,18 @@ Session 1 (M1); mockups 1a–1g.
 High for the list logic (tests, mutants, real browser). Medium for touch and keyboard feel until the Tab S8. **Flag (M10, medium):** the site's origin is team2408.com, shared with the team website (see M2 review, finding 8).
 
 **Next:** Dan merges PR #1 (use **"Create a merge commit"** so the M2 PR stays clean), then I check the deploy and the live site. Then the M2 PR, then M3.
+
+---
+
+## Session 3 — 2026-10-17 — deploy check, M3
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: deploy check, then M3.
+
+**DATES & TIMES**
+| Time | Activity |
+|---|---|
+| 23:12 | Dan merged PR #1 and PR #2 (both "Create a merge commit") |
+| ~23:14 | Deploy check: the run for #1 was cancelled because the #2 run replaced it (one deploy at a time); the run for #2 **succeeded** (34 s). `shrapnelsergeants2408.github.io/InventoryManagement/` → 301 → `team2408.com/InventoryManagement/` → 200. Headless Chrome on the live URL: starter catalog loaded in about 1 s, "129 items · 124 short · 0 low spares", 12 categories, thumbnails render, secure context, no console errors |
+| ~23:16 | Local `main` fast-forwarded to `origin/main` (it had no extra commits after all) |
+| 23:18 | Branch `m3-edit-lists`: M3 started (item detail, add/edit/remove, suppliers, categories, locations) |

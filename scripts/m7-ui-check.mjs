@@ -156,6 +156,10 @@ try {
   await js(`await go('#/item/st-0099'); await settle(400);`);
   await jsP(`await give('camera', await picture(1500, 3000));`);
   check('camera: portrait 1500×3000 replaces it as 512×1024 (80×160 thumbnail)', await jsP(`return [await stored('st-0099'), gates()]`), [{ full: [512, 1024, 'image/jpeg'], thumb: [80, 160], taken: true }, 0]);
+  // The delete confirmation's thumbnail stays mounted on the card while the photo changes.
+  await jsP(`await closeToast(); await click('.dacts button', 'Delete item'); await answerGate(true, true); await settle(600);`);
+  check('delete confirmation shows the replaced photo (80×160), not the old one', await js(`const i = dlg('Delete item')?.querySelector('.del-thumb'); return i ? [i.naturalWidth, i.naturalHeight] : null`), [80, 160]);
+  await js(`await click('.dlg button', 'Keep item'); await relockNow(); window.__gates = 0;`); // Delete needs the PIN (F8); photos don't
   await js(`history.back(); await settle(900); document.querySelector('a.rlink[href="#/item/st-0099"]')?.scrollIntoView(); await settle(800);`);
   check('back on the list, the row thumbnail is the replacement (80×160)', await jsP(`const i = rowThumb(); return i ? [i.naturalWidth, i.naturalHeight] : null`), [80, 160]);
 

@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PIN_H } from './pin-helpers.mjs';
 
 const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
@@ -67,6 +68,8 @@ try {
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await size(1280, 800);
   await send('Page.navigate', { url: 'http://localhost:4319/' });
+  await waitFor(`document.querySelector('.setup')`, 60000);
+  await js(`const $ = (s) => document.querySelector(s); const $$ = (s) => [...document.querySelectorAll(s)]; const norm = (s) => s.replace(/\\s+/g, ' ').trim(); const byText = (sel, t) => $$(sel).find((b) => norm(b.textContent).includes(t)); const settle = (ms = 350) => new Promise((r) => setTimeout(r, ms)); ${PIN_H} await doSetup();`);
   await waitFor(`[...document.querySelectorAll('.cathdr')].length >= 12`, 60000);
   await sleep(500);
   check('header summary', await js(`return document.querySelector('.top .small').textContent`), '129 items · 124 short · 0 low spares');

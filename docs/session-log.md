@@ -196,3 +196,33 @@ Sessions 1–3 (M1–M4); mockups 8a–8f; `io/bundle.ts` (M1 reader) reused for
 High for the data paths: byte-for-byte round-trip tests, a forced mid-transaction failure, mutants, and a real-browser restore read back from IndexedDB. Medium for share/download and the file picker on the Tab S8 (Stage 5). **Flag:** restore and price import are behind the PIN stand-in until M6. **An independent fresh-session review of M5 is recommended** (stage4-plan §4).
 
 **Next:** Dan merges PR #5 (M5), ideally after a fresh-session review; then M6 (mentor PIN and settings; high risk).
+
+
+---
+
+## Session 5 — 2026-10-18 — M6
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: M6 (mentor PIN and settings).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| 08:55 | Dan merged PR #5 (M5); merge commit `cf9b665`. Branch `m6-pin-settings` from `main`. Read SPEC §6, §17, D6, S9, Q2 and mockups 0b, 9a–9g |
+| 08:55–09:05 | PIN hashing and recovery code, unlock timer, gate checks the unlock, wrong-try wait, PIN pad, first-launch setup, live lock button, More lock card, Change/Forgot PIN, Reminders & limits screen, Escape only closes the top dialog; 24 new tests; commit `aa27471` |
+| 09:05–09:32 | M2–M5 browser checks switched to the real setup and PIN (`scripts/pin-helpers.mjs`), all still pass; `scripts/m6-ui-check.mjs`; vendor saves re-check the lock; commit `375b8f0` |
+| 09:32–10:05 | M6 verification: unit mutation check (27/27 after 4 test gaps closed), settings relock check, `docs/reviews/M6.md`. The interface mutation run was stopped by Claude Code for low memory after 1 of 7 (caught); its leftover mutant was reverted from git and the clean build re-checked (49/49 twice) |
+
+**WORK COMPLETED**
+M6: §6 in full (setup, hashing, recovery, unlock length, lock button, wait after wrong tries, settings, change PIN) and the real gate behind every PIN step from M3–M5. 339 tests; 49 browser checks; the M2–M5 checks pass with the real PIN.
+
+**DELIVERABLES PRODUCED**
+`src/security/{pin,lock,gate}.ts`, `src/data/pin.ts`, `src/domain/settings-limits.ts`, `src/ui/components/PinPad.tsx`, `src/ui/shell/{GateHost,LockPill,PinFlows}.tsx`, `src/ui/screens/Setup.tsx`, `src/ui/screens/more/{Settings,PinDialogs}.tsx`, `scripts/{pin-helpers,m6-ui-check}.mjs`, `tests/pin.test.ts`, `docs/reviews/M6.md`.
+
+**PREDECESSORS / CONTEXT**
+Sessions 1–4 (M1–M5); `gate(reason)` calls from M3–M5 kept unchanged; mockups 0b and 9a–9g.
+
+**CONFIDENCE**
+High for the PIN logic: fake-timer tests of the exact expiry, mutants, and a real-browser run with the real 30-second wait and 1-minute relock. Medium for PBKDF2 speed and the pad's feel on the Tab S8 (Stage 5). **An independent fresh-session review of M6 is recommended** (stage4-plan §4).
+
+**Next:** Dan merges PR #6 (M6), ideally after a fresh-session review; then M7 (photos; low risk).

@@ -5,6 +5,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { PIN_H } from './pin-helpers.mjs';
 
 const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
@@ -62,13 +63,7 @@ const H = `
   const click = async (sel, t) => { const b = byText(sel, t); if (!b) throw new Error('nothing like ' + sel + ' with text ' + t); b.click(); await settle(); return b; };
   const type = async (el, v) => { if (typeof el === 'string') el = $(el); el.focus(); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); await settle(120); };
   const pick = async (el, v) => { if (typeof el === 'string') el = $(el); el.value = v; el.dispatchEvent(new Event('change', { bubbles: true })); await settle(200); };
-  const gateDlg = () => $('[aria-label="Mentor PIN needed"]');
-  const answerGate = async (yes) => {
-    for (let i = 0; i < 30 && !gateDlg(); i++) await settle(100);
-    if (!gateDlg()) throw new Error('the PIN gate did not appear');
-    byText('[aria-label="Mentor PIN needed"] button', yes ? 'Continue' : 'Cancel').click();
-    await settle(450);
-  };
+${PIN_H}
   const dlg = (label) => $('[role=dialog][aria-label="' + label + '"], [role=alertdialog][aria-label="' + label + '"]');
   const idb = (store, key) => new Promise((res, rej) => {
     const r = indexedDB.open('frc2408-inventory');
@@ -88,7 +83,7 @@ const H = `
 const COUNT_GATES = `
   window.__gates = 0;
   new MutationObserver(() => {
-    const d = document.querySelector('[aria-label="Mentor PIN needed"]');
+    const d = document.querySelector('[aria-label="Mentor PIN"]');
     if (d && !d.__seen) { d.__seen = true; window.__gates++; }
   }).observe(document.body, { childList: true, subtree: true });
 `;
@@ -101,6 +96,8 @@ try {
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await size(1280, 800);
   await send('Page.navigate', { url: 'http://localhost:4320/' });
+  await waitFor(`document.querySelector('.setup')`, 60000);
+  await js(`await doSetup();`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
   await js(COUNT_GATES);
 
@@ -133,13 +130,14 @@ try {
   check('Back after saving skips the editor', await js(`return [location.hash === '' || location.hash === '#/inventory', !!document.querySelector('.cathdr')]`), [true, true]);
 
   // ── Edit vendors: PIN asked once, price date filled (Q9) ──
-  await js(`await go('#/item/st-0063/edit'); await click('.lockbar button', 'Unlock'); await answerGate(true);`);
+  await js(`await go('#/item/st-0063/edit'); await click('.lockbar button', 'Unlock'); await answerGate(true, true);`);
   check('Unlock asks the PIN once and opens the vendor fields', await js(`return [gates(), document.querySelectorAll('.vopt select:disabled, .vopt input:disabled').length, norm(document.querySelector('.vtitle .chip').textContent)]`), [1, 0, 'Unlocked']);
   await js(`await type('#v1-price', '60.00'); await settle(100);`);
   check('changing the price fills "checked" with today (Q9b)', await js(`return document.querySelector('#v1-chk').value`), today);
   await shot('03-edit-unlocked');
   await js(`await click('.top button', 'Save'); await settle(600);`);
   check('save after unlocking asks no second PIN; new price shown', await js(`return [gates(), document.querySelector('.ordbox .small').textContent]`), [1, '10 × $60.00 = $600.00 from REV (preferred vendor)']);
+  await js(`document.querySelector('.lockpill.on')?.click(); await settle(150);`);
 
   // ── Cancel with changes asks before discarding ──
   await js(`await go('#/item/st-0063/edit'); await type('#nm', 'scratch'); await click('.top button', 'Cancel');`);

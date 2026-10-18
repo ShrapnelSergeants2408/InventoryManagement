@@ -25,6 +25,7 @@ import { checkName, sortSupplierNames, takenLocationNames } from '../../../domai
 import type { Item } from '../../../domain/types';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { gate } from '../../../security/gate';
+import { isUnlocked } from '../../../security/lock';
 import { PinMark, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
@@ -93,7 +94,8 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const [initial] = useState<ItemDraft>(() => (base ? draftFromItem(base) : newDraft(snap.categories[0]?.name ?? '', props.startName)));
   const [d, setD] = useState<ItemDraft>(initial);
   const [errors, setErrors] = useState<FormError[]>([]);
-  const [vendorsOpen, setVendorsOpen] = useState(false);
+  // Already unlocked (§6): vendor fields open straight away.
+  const [vendorsOpen, setVendorsOpen] = useState(isUnlocked);
   const [busy, setBusy] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
@@ -160,10 +162,9 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
       return;
     }
     setErrors([]);
-    if (vendorChangesNeedPin(base, r.item) && !vendorsOpen) {
-      if (!(await gate('Saving changes to vendors or prices needs the mentor PIN.'))) return;
-      setVendorsOpen(true);
-    }
+    // Vendor changes are saved only while unlocked: if mentor tools relocked (timer or the
+    // lock button) since the fields were opened, the PIN is asked again (§6).
+    if (vendorChangesNeedPin(base, r.item) && !(await gate('Saving changes to vendors or prices needs the mentor PIN.'))) return;
     setBusy(true);
     try {
       const saved = base ? await updateItem(db, base, r.item) : await addItem(db, r.item);

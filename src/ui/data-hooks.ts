@@ -5,6 +5,7 @@ import { useContext, useEffect, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
 import { getThumbnail } from '../data/photos';
+import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
 import { makeThumbnail } from '../io/image';
 
 export const DbContext = createContext<InventoryDb | null>(null);
@@ -28,6 +29,17 @@ export function useSnapshot(): Live<InventorySnapshot> {
     return () => sub.unsubscribe();
   }, [db]);
   return live;
+}
+
+/** Device settings (stale-price age etc.), live; defaults until loaded or if the read fails. */
+export function useSettings(): Settings {
+  const db = useDb();
+  const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
+  useEffect(() => {
+    const sub = liveQuery(() => getSettings(db)).subscribe({ next: setSettings, error: () => undefined });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return settings;
 }
 
 // Thumbnails: object URLs cached for the session, made one at a time so a fully expanded

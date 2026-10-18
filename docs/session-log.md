@@ -142,3 +142,27 @@ High for the list rewrites and the PIN rule (tests, mutants, real browser with I
 **Process note:** during the review, `git checkout --` on one file to undo a deliberate test mutation also discarded that file's uncommitted fix. It was restored from a copy taken just before; tests confirmed nothing was lost. From now on, mutations are reverted from a saved copy only.
 
 **Next:** Dan merges PR #3 (M3), then M4 (order list, high risk: money).
+
+---
+
+## Session 3 (continued) — 2026-10-18 — M3 deploy check, M4
+
+| Time | Activity |
+|---|---|
+| 00:03 | Dan merged PR #3 (M3). Deploy run **succeeded** (37 s). A manual `workflow_dispatch` deploy also ran at 23:33 on the 17th (not started by me; it succeeded). Live site serves the M3 build (`index-DeAVgDPs.js`, same as the local final build): detail card, Suppliers and the locked editor all work on team2408.com |
+| 00:04 | Branch `m4-order-list` |
+| 00:04–00:09 | Order domain: catalog-order lines, supplier groups ignoring capitals, stale prices, banners, order CSV, share-or-download; commit `9349866` (274 tests) |
+| 00:09–00:13 | Order screen, export dialog, price-refresh steps; `scripts/m4-ui-check.mjs` (25 checks); banner and preview layout fixed from the screenshots; commit `b83e6d1` |
+| 00:13–00:18 | M4 verification: mutation check 18/18 (added a spring-DST test), code read, `docs/reviews/M4.md` |
+
+**WORK COMPLETED**
+M4: F12, F13, F14 (and §4 on screen). 274 tests; 25 browser checks; M2 and M3 checks still pass.
+
+**DELIVERABLES PRODUCED**
+`src/domain/stale.ts`, `src/io/order-csv.ts`, `src/io/share.ts`, `src/ui/screens/order/*`, `scripts/m4-ui-check.mjs`, `tests/order-list.test.ts`, `docs/reviews/M4.md`.
+
+**CONFIDENCE**
+High for the money: the full starter-catalog CSV is recomputed to the cent from its text, and every row is checked in the browser. Medium for share versus download on the Tab S8 (Stage 5, Q1).
+
+**Next:** Dan merges PR #4 (M4), then M5 (backup, restore, price import; high risk; fresh-session review recommended afterwards).
+

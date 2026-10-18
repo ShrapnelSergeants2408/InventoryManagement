@@ -7,6 +7,7 @@ import { hasPin } from '../data/pin';
 import { readSeed } from '../io/seed';
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
+import { CountScreen } from './screens/count/Count';
 import { InventoryScreen } from './screens/inventory/Inventory';
 import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
@@ -18,7 +19,6 @@ import { SettingsScreen } from './screens/more/Settings';
 import { SuppliersScreen } from './screens/more/Suppliers';
 import { OrderScreen } from './screens/order/Order';
 import { LabelsScreen } from './screens/labels/Labels';
-import { Placeholder } from './screens/Placeholder';
 import { ScanScreen } from './screens/scan/Scan';
 import { SetupScreen } from './screens/Setup';
 import { StorageError } from './screens/StorageError';
@@ -84,7 +84,7 @@ function Screen({ route }: { route: Route }) {
     case 'scan':
       return <ScanScreen />;
     case 'count':
-      return <Placeholder title="Count" milestone="M9" what="Count-in walks you through counting stock by category or location." />;
+      return <CountScreen />;
     case 'labels':
       return <LabelsScreen ids={null} />;
     case 'more':

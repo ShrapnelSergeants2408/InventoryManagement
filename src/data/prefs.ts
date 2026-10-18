@@ -1,6 +1,7 @@
-// UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1), filters (F5) and
-// the last label layout (§9).
+// UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1), filters (F5),
+// the last label layout (§9) and the count-in options and pause point (F24).
 // Never inventory data. Any read/write failure (private mode, blocked storage) falls back to defaults.
+import type { CountMode } from '../domain/count';
 import { NO_FILTERS, type Filters } from '../domain/filters';
 
 export type KeyValueStore = Pick<Storage, 'getItem' | 'setItem'>;
@@ -73,4 +74,51 @@ export function loadLabelChoice(store = browserStore()): { layoutId: string | nu
 
 export function saveLabelChoice(choice: { layoutId: string; plainQr: number }, store = browserStore()): void {
   write(store, LABEL_LAYOUT, choice);
+}
+
+const COUNT_OPTIONS = 'frc2408.count.options';
+
+export interface CountOptions {
+  mode: CountMode;
+  /** Ask for a location while counting (F24: on by default). */
+  askLocation: boolean;
+  skipZero: boolean;
+}
+
+export const DEFAULT_COUNT_OPTIONS: CountOptions = { mode: 'category', askLocation: true, skipZero: false };
+
+export function loadCountOptions(store = browserStore()): CountOptions {
+  const v = read(store, COUNT_OPTIONS);
+  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
+  const d = DEFAULT_COUNT_OPTIONS;
+  return {
+    mode: o.mode === 'category' || o.mode === 'location' || o.mode === 'scan' ? o.mode : d.mode,
+    askLocation: typeof o.askLocation === 'boolean' ? o.askLocation : d.askLocation,
+    skipZero: typeof o.skipZero === 'boolean' ? o.skipZero : d.skipZero,
+  };
+}
+
+export function saveCountOptions(options: CountOptions, store = browserStore()): void {
+  write(store, COUNT_OPTIONS, options);
+}
+
+const COUNT_PAUSE = 'frc2408.count.paused';
+
+/** Where a walk was paused, so the start screen can offer to pick it up (F24 resume). */
+export interface CountPause {
+  mode: 'category' | 'location';
+  group: string;
+  /** The item that was on screen. */
+  itemId: string;
+}
+
+export function loadCountPause(store = browserStore()): CountPause | null {
+  const v = read(store, COUNT_PAUSE);
+  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
+  if ((o.mode !== 'category' && o.mode !== 'location') || typeof o.group !== 'string' || typeof o.itemId !== 'string') return null;
+  return { mode: o.mode, group: o.group, itemId: o.itemId };
+}
+
+export function saveCountPause(pause: CountPause | null, store = browserStore()): void {
+  write(store, COUNT_PAUSE, pause);
 }

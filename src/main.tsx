@@ -7,6 +7,7 @@ import './styles/base.css';
 import './styles/app.css';
 import './styles/labels.css';
 import './styles/scan.css';
+import './styles/count.css';
 import { render } from 'preact';
 import { App } from './ui/App';
 

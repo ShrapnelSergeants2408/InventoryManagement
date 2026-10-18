@@ -318,6 +318,7 @@ try {
   check('portrait: no horizontal overflow on Scan', await js(`return document.documentElement.scrollWidth <= innerWidth`), true);
   await size(1280, 800);
   check('touch targets ≥ 48 px in the scan panel and top bar', await js(`return [...document.querySelectorAll('.spanel button, .spanel a, .spanel input, .ctop button')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 47.5 || r.width < 47.5); }).map((e) => norm(e.textContent || e.getAttribute('aria-label')) + ' ' + Math.round(e.getBoundingClientRect().height))`), []);
+  check('the reticle scan line is a thin line (M9 fix: the order list .line class no longer applies)', await js(`return Math.round(document.querySelector('.scan .reticle .line').getBoundingClientRect().height)`), 3);
   check('scanning never asked for the PIN', await js(`return gates()`), 0);
 } catch (e) {
   results.push('FAIL  script error: ' + e.message);

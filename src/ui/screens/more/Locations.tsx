@@ -9,6 +9,7 @@ import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../compone
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
+import { useCloseOnRelock } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
@@ -28,6 +29,8 @@ export function LocationsScreen() {
   const db = useDb();
   const live = useSnapshot();
   const [open, setOpen] = useState<Open>(null);
+  // Dialogs opened behind the PIN close when mentor tools relock.
+  useCloseOnRelock(open?.kind === 'edit' || open?.kind === 'remove', () => setOpen(null));
   const [reorder, setReorder] = useState(false);
   const back = <BackButton label="More" fallback={href.tab('more')} />;
 

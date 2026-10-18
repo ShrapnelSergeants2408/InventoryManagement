@@ -49,9 +49,18 @@ function PinDialog({ reason, answer }: { reason: string; answer: (ok: boolean) =
 
   const submit = async (pin: string) => {
     setBusy(true);
-    const r = await tryPin(db, pin);
-    setBusy(false);
-    refresh();
+    let r: Awaited<ReturnType<typeof tryPin>>;
+    try {
+      r = await tryPin(db, pin);
+    } catch (e) {
+      // Never leave the pad stuck busy: show the problem and let the mentor try again or cancel.
+      setClearKey((k) => k + 1);
+      setError(`Couldn’t check the PIN: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    } finally {
+      setBusy(false);
+      refresh();
+    }
     if (r.ok) answer(true);
     else {
       setClearKey((k) => k + 1);

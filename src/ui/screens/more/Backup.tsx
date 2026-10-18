@@ -20,7 +20,7 @@ import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { exportBackup, exportMessage } from './export-backup';
-import { PriceImportDone, ProblemsDialog } from './ImportDialogs';
+import { PriceImportDone, PriceImportPreview, ProblemsDialog } from './ImportDialogs';
 import { RestoreDialog, type TabletNow } from './RestoreDialog';
 
 const BACKUP_ACCEPT = '.zip,.csv,application/zip,application/x-zip-compressed,text/csv,text/comma-separated-values';
@@ -67,6 +67,7 @@ function usePicker(accept: string, onFile: (f: { name: string; bytes: Uint8Array
 type Dlg =
   | { kind: 'restore'; plan: RestorePlan }
   | { kind: 'problems'; title: string; fileName: string; problems: PriceProblem[]; warnings: string[]; footer: string }
+  | { kind: 'pricePreview'; plan: PricePlan }
   | { kind: 'priceDone'; plan: PricePlan };
 
 export function BackupScreen() {
@@ -78,6 +79,7 @@ export function BackupScreen() {
   const storage = useStorageStatus();
   const [busy, setBusy] = useState<string | null>(null);
   const [dlg, setDlg] = useState<Dlg | null>(null);
+  const [importing, setImporting] = useState(false);
   const snap = live.state === 'ready' ? live.value : null;
   const csvBytes = useMemo(() => (snap ? new TextEncoder().encode(buildDataCsv(snap)).length : null), [snap]);
 
@@ -133,15 +135,28 @@ export function BackupScreen() {
       }
       const plan = read.plan;
       const changes = plan.items.length > 0 || plan.newSuppliers.length > 0;
-      if (changes && !(await gate('A price-update import changes vendor prices, pack sizes and links.'))) return;
-      if (changes) await applyPriceImport(db, plan);
-      setDlg({ kind: 'priceDone', plan });
+      // What will change is shown first; the PIN is asked at "Import changes".
+      setDlg({ kind: changes ? 'pricePreview' : 'priceDone', plan });
     } catch (e) {
       showToast(`Couldn’t import ${f.name}: ${e instanceof Error ? e.message : String(e)} Nothing was changed.`);
     } finally {
       setBusy(null);
     }
   });
+
+  const importPrices = async (plan: PricePlan) => {
+    if (importing || !(await gate('A price-update import changes vendor prices, pack sizes and links.'))) return;
+    setImporting(true);
+    try {
+      await applyPriceImport(db, plan);
+      setDlg({ kind: 'priceDone', plan });
+    } catch (e) {
+      setDlg(null);
+      showToast(`Couldn’t import ${plan.fileName}: ${e instanceof Error ? e.message : String(e)} Nothing was changed.`);
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const top = <TopBar title="Backup & restore" back={<BackButton label="More" fallback={href.tab('more')} />} />;
   if (live.state === 'error') {
@@ -268,6 +283,7 @@ export function BackupScreen() {
       {dlg?.kind === 'problems' && (
         <ProblemsDialog title={dlg.title} fileName={dlg.fileName} problems={dlg.problems} warnings={dlg.warnings} footer={dlg.footer} onClose={() => setDlg(null)} />
       )}
+      {dlg?.kind === 'pricePreview' && <PriceImportPreview plan={dlg.plan} busy={importing} onImport={() => void importPrices(dlg.plan)} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'priceDone' && <PriceImportDone plan={dlg.plan} onClose={() => setDlg(null)} />}
     </>
   );

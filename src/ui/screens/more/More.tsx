@@ -8,7 +8,7 @@ import { useNow, useSettings, useSnapshot, useStorageStatus } from '../../data-h
 import { Icon, type IconName } from '../../icons';
 import { lockNow, formatRemaining } from '../../../security/lock';
 import { gate } from '../../../security/gate';
-import { unlockReason, useUnlockRemaining } from '../../shell/LockPill';
+import { unlockReason, useCloseOnRelock, useUnlockRemaining } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { ChangePinDialog, ForgotPinDialog } from './PinDialogs';
 
@@ -59,6 +59,7 @@ export function MoreScreen() {
     ? ''
     : ` · persistent storage ${storage.persisted === null ? 'unknown' : storage.persisted ? 'granted' : 'not granted'}${storage.usage === null ? '' : ` · ${formatBytes(storage.usage)} used`}`;
   const [dialog, setDialog] = useState<'change' | 'forgot' | null>(null);
+  useCloseOnRelock(dialog === 'change', () => setDialog(null));
   const backupSub = `Last backup: ${days === null ? 'never' : days === 0 ? 'today' : `${plural(days, 'day')} ago`} · full or data only`;
   return (
     <>

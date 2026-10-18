@@ -8,6 +8,7 @@ import { PinMark } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
+import { useCloseOnRelock } from '../../shell/LockPill';
 import { href, replaceRoute } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 
@@ -17,10 +18,15 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
   const [busy, setBusy] = useState(false);
   const thumb = useThumbnail(item.id, item.hasPhoto);
 
+  useCloseOnRelock(confirming && !busy, () => setConfirming(false));
+
+  const reason = 'Deleting an item needs the mentor PIN.';
   const ask = async () => {
-    if (await gate('Deleting an item needs the mentor PIN.')) setConfirming(true);
+    if (await gate(reason)) setConfirming(true);
   };
   const doDelete = async () => {
+    // Checked again here: the tablet may have relocked while the confirmation was open.
+    if (busy || !(await gate(reason))) return;
     setBusy(true);
     try {
       await deleteItem(db, item.id);

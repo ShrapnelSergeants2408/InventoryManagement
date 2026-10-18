@@ -211,7 +211,7 @@ try {
     r.removeCategory = await asks(() => click('button.btn.sm', 'Remove'));
     await go('#/more/locations'); r.renameLocation = await asks(() => click('.lrow button', 'Rename'));
     r.removeLocation = await asks(() => click('.lrow button', 'Remove'));
-    await go('#/more/backup'); r.priceImport = await asks(() => choose(1, 'prices.csv', new TextEncoder().encode('id,v1_pack_price\\nst-0063,99.99\\n'), 'text/csv'));
+    await go('#/more/backup'); r.priceImport = await asks(async () => { await choose(1, 'prices.csv', new TextEncoder().encode('id,v1_pack_price\\nst-0063,99.99\\n'), 'text/csv'); await waitDlg('Check the price update'); await click('.dlg button', 'Import changes'); }); await escape();
     await go('#/more/settings'); r.changeSettings = await asks(() => click('.lockbar button', 'Unlock'));
     await go('#/more'); r.changePin = await asks(() => click('button.mrow', 'Change PIN'));
     return r;`);
@@ -236,6 +236,29 @@ try {
 
   check('relocked while editing: saving a vendor change asks the PIN again', await J(`await unlock(); await go('#/item/st-0063/edit'); await lock(); await type('#v1-price', '61.00'); await click('.top button', 'Save'); await settle(300); const asked = !!pinDlg(); byText('[aria-label="Mentor PIN"] button', 'Cancel').click(); await settle(300); return [asked, (await idb('items', 'st-0063')).vendors[0].packPriceCents, location.hash]`), [true, 5500, '#/item/st-0063/edit']);
   check('…and with the PIN it saves', await J(`await click('.top button', 'Save'); await enterPin('2408'); await settle(700); const p = (await idb('items', 'st-0063')).vendors[0].packPriceCents; await lock(); return [p, location.hash]`), [6100, '#/item/st-0063']);
+
+  // ── Independent review, M6 finding 1: dialogs opened behind the PIN close when it relocks ──
+  check('relock closes the delete confirmation; the item stays', await J(`await unlock(); await go('#/item/st-0063'); await click('.dacts button', 'Delete item'); const open = !!dlg('Delete item'); await lock(); await settle(300); return [open, !dlg('Delete item'), !pinDlg(), !!(await idb('items', 'st-0063'))]`), [true, true, true, true]);
+  check('relock closes Rename supplier, Remove supplier and Change PIN', await J(`
+    const r = [];
+    await unlock(); await go('#/more/suppliers'); await click('.srow button', 'Rename'); r.push(!!$('[role=dialog]')); await lock(); await settle(300); r.push(!$('[role=dialog]'));
+    await unlock(); await click('.srow button', 'Remove'); r.push(!!dlg('Remove supplier')); await lock(); await settle(300); r.push(!dlg('Remove supplier'));
+    await unlock(); await go('#/more'); await click('button.mrow', 'Change PIN'); r.push(!!dlg('Change PIN')); await lock(); await settle(300); r.push(!dlg('Change PIN'));
+    return r;`), [true, true, true, true, true, true]);
+  check('a dialog that needs no PIN stays open on relock (Add location)', await J(`await unlock(); await go('#/more/locations'); await click('.top button', 'Add location'); const open = !!$('[role=dialog]'); await lock(); await settle(300); const still = !!$('[role=dialog]'); await escape(); return [open, still]`), [true, true]);
+
+  // ── Independent review, M6 finding 2: a PIN check that fails doesn't freeze the pad ──
+  check('PIN check error: message shown, keys and Cancel work, the right PIN works after', await J(`
+    const good = await idb('settings', 'pinHash');
+    await idbPut('settings', { key: 'pinHash', value: { ...good.value, iter: 0 } });
+    $('.top .lockpill').click(); await settle(300); await enterPin('2408'); await settle(300);
+    const msg = norm($('.pin-err')?.textContent ?? '');
+    const keysOn = !$$('.pkey').find((b) => norm(b.textContent) === '5').disabled;
+    const cancelOn = !byText('[aria-label="Mentor PIN"] button', 'Cancel').disabled;
+    await idbPut('settings', good);
+    await enterPin('2408'); await settle(300);
+    const unlocked = pill().startsWith('Unlocked'); await lock();
+    return [msg.startsWith('Couldn’t check the PIN'), keysOn, cancelOn, unlocked]`), [true, true, true, true]);
 
   // ── Escape closes only the PIN pad over the restore dialog (M5 finding 7) ──
   await J(CAPTURE + `await go('#/more/backup'); window.__files = []; $$('.bkopt')[1].click(); for (let i = 0; i < 100 && !window.__files.length; i++) await settle(100); const f = window.__files[0]; await choose(0, f.name, f.bytes, 'text/csv'); await waitDlg('Replace all inventory with this backup?'); $('.tick input').click(); await settle(150); await click('.dlg button', 'Replace everything');`);

@@ -32,4 +32,8 @@ export const PIN_H = `
     if (!stay) $('.lockpill.on')?.click();
     await settle(150);
   };
+  // Locks if unlocked. Since the independent M6 review, dialogs opened behind the PIN close when
+  // mentor tools relock, so a check that uses such a dialog answers with stay = true and
+  // relocks with this before its next PIN step.
+  const relockNow = async () => { $('.lockpill.on')?.click(); await settle(150); };
 `;

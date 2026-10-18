@@ -156,7 +156,7 @@ try {
   check('pack size 2.5 rejected', await js(`return [...document.querySelectorAll('.errsum li')].map((l) => l.textContent)`), ['Vendor option 1: pack size “2.5” must be a whole number of 1 or more.']);
   await js(`await type('#v1-ps', '4'); await type('#v1-price', '5'); await pick('#loc', '__new'); await type('[aria-label="New location name"]', 'Pit cart'); await click('.inline-add button', 'Add'); await settle(400);`);
   check('a new location is added from the editor without the PIN (F25)', await js(`return [gates(), document.querySelector('#loc').value, (await idb('locations')).map((l) => l.name)]`), [1, 'Pit cart', ['Pit cart']]);
-  await js(`await click('.ecol button', 'Add vendor option'); await answerGate(false);`);
+  await js(`await relockNow(); await click('.ecol button', 'Add vendor option'); await answerGate(false);`);
   check('a second vendor option while adding asks the PIN; cancel keeps one option (F6)', await js(`return [gates(), document.querySelectorAll('.vopt').length]`), [2, 1]);
   await js(`await click('.top button', 'Add item'); await settle(700);`);
   const newId = await js(`return decodeURIComponent(location.hash.split('/')[2] ?? '')`);
@@ -166,12 +166,12 @@ try {
   check('header count now 130 items (the new one is short)', await js(`await go('#/inventory'); return document.querySelector('.top .small').textContent`), '130 items · 125 short · 0 low spares');
 
   // ── Delete (F8) ──
-  await js(`await go('#/item/' + encodeURIComponent(${JSON.stringify(newId)})); await click('.dacts button', 'Delete item'); await answerGate(true);`);
+  await js(`await relockNow(); await go('#/item/' + encodeURIComponent(${JSON.stringify(newId)})); await click('.dacts button', 'Delete item'); await answerGate(true, true);`);
   check('delete asks the PIN, then confirms with name and on hand (mockup 2c)', await js(`const d = dlg('Delete item'); return [gates(), norm(d.querySelector('.del-name').textContent), norm(d.querySelector('.dlg-big').textContent)]`), [3, 'Standoff 1/2 in. hex, test', 'On hand: 3 each']);
   await shot('05-delete-confirm');
   await js(`await click('[aria-label="Delete item"] button', 'Keep item');`);
   check('Keep item changes nothing', await js(`return [!dlg('Delete item'), !!(await idb('items', ${JSON.stringify(newId)}))]`), [true, true]);
-  await js(`await click('.dacts button', 'Delete item'); await answerGate(true); await click('[aria-label="Delete item"] button', 'Delete item'); await settle(600);`);
+  await js(`await relockNow(); await click('.dacts button', 'Delete item'); await answerGate(true, true); await click('[aria-label="Delete item"] button', 'Delete item'); await settle(600);`);
   check('delete removes the item and returns to the list', await js(`return [location.hash, (await idb('items', ${JSON.stringify(newId)})) ?? null, document.querySelector('.top .small').textContent]`), ['#/inventory', null, '129 items · 124 short · 0 low spares']);
   check('a deleted item’s link shows "not found"', await js(`await go('#/item/' + encodeURIComponent(${JSON.stringify(newId)})); return document.querySelector('.state h2').textContent`), `No item “${newId}” on this tablet`);
 
@@ -181,20 +181,20 @@ try {
   check('"other" has no Remove button', await js(`const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'other'); return [!!byText('.srow button', 'Edit notes'), !row.querySelector('button.danger'), norm(row.querySelector('.chip').textContent)]`), [true, true, 'Fallback — can’t remove']);
   await shot('06-suppliers');
   const g0 = await js(`return gates()`);
-  await js(`await click('.top button', 'Add supplier'); await answerGate(true); await type('#en-name', 'andymark');`);
+  await js(`await relockNow(); await click('.top button', 'Add supplier'); await answerGate(true, true); await type('#en-name', 'andymark');`);
   check('duplicate supplier rejected as you type (mockup 7b)', await js(`const d = dlg('Add a supplier'); return [norm(d.querySelector('.err').textContent), d.querySelector('button[type=submit]').disabled]`), ['“andymark” is already in the list as “AndyMark”. Names are compared ignoring capitals.', true]);
   await js(`await type('#en-name', 'Digi-Key'); await type('#en-site', 'digikey.com'); await click('[aria-label="Add a supplier"] button', 'Add supplier'); await settle(500);`);
   check('supplier added, website gets https://', await js(`const s = await idb('suppliers', 'digi-key'); return [s.name, s.website, gates() - ${g0}]`), ['Digi-Key', 'https://digikey.com', 1]);
-  await js(`const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'WCP'); row.querySelector('button').click(); await settle(); await answerGate(false);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'WCP'); row.querySelector('button').click(); await settle(); await answerGate(false);`);
   check('PIN cancelled → no rename dialog', await js(`return !document.querySelector('[role=dialog]')`), true);
-  await js(`const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'WCP'); row.querySelector('button').click(); await settle(); await answerGate(true); await type('#en-name', 'West Coast Products'); await click('.dlg button[type=submit]', 'Rename'); await settle(600);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'WCP'); row.querySelector('button').click(); await settle(); await answerGate(true, true); await type('#en-name', 'West Coast Products'); await click('.dlg button[type=submit]', 'Rename'); await settle(600);`);
   check('rename updates every vendor option (F23)', await js(`const items = await idb('items'); const names = items.flatMap((i) => i.vendors.filter(Boolean).map((v) => v.supplier)); return [names.filter((n) => n === 'WCP').length, names.filter((n) => n === 'West Coast Products').length > 0]`), [0, true]);
-  await js(`const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'AndyMark'); row.querySelector('button.danger').click(); await settle(); await answerGate(true);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'AndyMark'); row.querySelector('button.danger').click(); await settle(); await answerGate(true, true);`);
   check('remove shows the count and defaults to other (mockup 7c)', await js(`const d = dlg('Remove supplier'); return [/^\\d+ vendor options use AndyMark \\(\\d+ preferred\\)/.test(norm(d.querySelector('.dlg-big').textContent)), norm(d.querySelector('[aria-checked="true"]').textContent), norm(byText('.dlg button', 'and remove').textContent)]`), [true, 'other', 'Move to other and remove']);
   await shot('07-supplier-remove');
   await js(`await click('[aria-label="Remove supplier"] button', 'Move to other and remove'); await settle(600);`);
   check('AndyMark removed; its options now use other', await js(`const items = await idb('items'); const names = items.flatMap((i) => i.vendors.filter(Boolean).map((v) => v.supplier)); return [!(await idb('suppliers', 'andymark')), names.includes('AndyMark'), names.filter((n) => n === 'other').length > 0]`), [true, false, true]);
-  await js(`const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'Digi-Key'); row.querySelector('button.danger').click(); await settle(); await answerGate(true);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.srow')].find((r) => r.querySelector('.sname').textContent === 'Digi-Key'); row.querySelector('button.danger').click(); await settle(); await answerGate(true, true);`);
   check('unused supplier: plain remove', await js(`const d = dlg('Remove supplier'); const b = byText('.dlg button', 'Remove Digi-Key'); b.click(); await settle(500); return [!!d, !(await idb('suppliers', 'digi-key'))]`), [true, true]);
 
   // ── Locations (F25) ──
@@ -208,11 +208,11 @@ try {
   await js(`await click('.top button', 'Done');`);
   // Put an item in Bin F1, then remove Bin F1 → No location.
   await js(`await go('#/item/st-0001/edit'); await pick('#loc', 'Bin F1'); await click('.top button', 'Save'); await settle(500); await go('#/more/locations');`);
-  await js(`const row = [...document.querySelectorAll('.lrow')].find((r) => r.querySelector('.ln').textContent === 'Bin F1'); row.querySelector('button.danger').click(); await settle(); await answerGate(true);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.lrow')].find((r) => r.querySelector('.ln').textContent === 'Bin F1'); row.querySelector('button.danger').click(); await settle(); await answerGate(true, true);`);
   check('remove a used location asks where its items go (mockup 7j)', await js(`const d = dlg('Remove location'); return [norm(d.querySelector('.dlg-big').textContent).startsWith('It holds 1 item: '), d.querySelector('#mv').value, norm(byText('.dlg button', 'and remove').textContent)]`), [true, '', 'Move to No location and remove']);
   await js(`await click('[aria-label="Remove location"] button', 'and remove'); await settle(500);`);
   check('items moved to No location; location gone', await js(`return [(await idb('items', 'st-0001')).location, (await idb('locations')).map((l) => l.name).sort()]`), ['', ['Bin F2', 'Pit cart']]);
-  await js(`const row = [...document.querySelectorAll('.lrow')].find((r) => r.querySelector('.ln').textContent === 'Pit cart'); row.querySelector('button').click(); await settle(); await answerGate(true); await type('#en-name', 'Pit cart A'); await click('.dlg button[type=submit]', 'Save'); await settle(500);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.lrow')].find((r) => r.querySelector('.ln').textContent === 'Pit cart'); row.querySelector('button').click(); await settle(); await answerGate(true, true); await type('#en-name', 'Pit cart A'); await click('.dlg button[type=submit]', 'Save'); await settle(500);`);
   check('rename location asks the PIN', await js(`return [(await idb('locations')).map((l) => l.name).sort(), gates() - ${gL}]`), [['Bin F2', 'Pit cart A'], 2]);
 
   // ── Categories (F9) ──
@@ -224,16 +224,17 @@ try {
   await js(`document.querySelector('[aria-label="Expand Structure"]').click(); await settle(); await click('.subrow button', 'Add subcategory to Structure'); await type('#en-name', 'Spacers'); await click('.dlg button[type=submit]', 'Add subcategory'); await settle(400);`);
   check('add category, subcategory and reorder need no PIN', await js(`const cats = (await idb('categories')).sort((a, b) => a.order - b.order); return [gates() - ${gC}, cats.at(-2).name, cats[0].subcategories.at(-1)]`), [0, 'Game Pieces', 'Spacers']);
   await shot('09-categories');
-  await js(`document.querySelector('[aria-label="Expand Pneumatics"]').click(); await settle(); const row = [...document.querySelectorAll('.subrow')].find((r) => r.textContent.includes('Valves')); row.querySelector('button.danger').click(); await settle(); await answerGate(true);`);
+  await js(`await relockNow(); document.querySelector('[aria-label="Expand Pneumatics"]').click(); await settle(); const row = [...document.querySelectorAll('.subrow')].find((r) => r.textContent.includes('Valves')); row.querySelector('button.danger').click(); await settle(); await answerGate(true, true);`);
   check('a subcategory with items can’t be removed until they move (mockup 7g)', await js(`const d = dlg('Remove category'); return [norm(d.querySelector('h2').textContent), d.querySelector('#mv').selectedOptions[0].textContent]`), ['“Pneumatics › Valves” isn’t empty yet', 'Pneumatics']);
   const valves = await js(`return (await idb('items')).filter((i) => i.category === 'Pneumatics' && i.subcategory === 'Valves').map((i) => i.id)`);
   await js(`const sel = document.querySelector('#mv'); await pick(sel, [...sel.options].find((o) => o.textContent === 'Pneumatics › Air Supply').value); await click('.dlg button', 'and remove'); await settle(600);`);
   check('items moved, subcategory removed', await js(`const items = await idb('items'); return [${JSON.stringify(valves)}.every((id) => items.find((i) => i.id === id).subcategory === 'Air Supply'), (await idb('categories', 'Pneumatics')).subcategories.includes('Valves')]`), [true, false]);
-  await js(`const row = [...document.querySelectorAll('.crow')].find((r) => r.querySelector('.cn').textContent === 'Motors'); row.querySelector('.acts button').click(); await settle(); await answerGate(true); await type('#en-name', 'Motors & Gearboxes'); await click('.dlg button[type=submit]', 'Rename'); await settle(600);`);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.crow')].find((r) => r.querySelector('.cn').textContent === 'Motors'); row.querySelector('.acts button').click(); await settle(); await answerGate(true, true); await type('#en-name', 'Motors & Gearboxes'); await click('.dlg button[type=submit]', 'Rename'); await settle(600);`);
   check('rename category moves its items (F9)', await js(`const items = await idb('items'); return [items.filter((i) => i.category === 'Motors').length, items.filter((i) => i.category === 'Motors & Gearboxes').length, gates() - ${gC}]`), [0, 4, 2]);
   check('inventory shows the new name; a saved filter on the old name is dropped', await js(`await go('#/inventory'); await settle(400); return [[...document.querySelectorAll('.cathdr .cn')].some((e) => e.textContent === 'Motors & Gearboxes'), byText('.top .btn', 'Filters').textContent.trim(), JSON.parse(localStorage.getItem('frc2408.inventory.filters')).category]`), [true, 'Filters', null]);
 
   // ── Portrait and touch targets ──
+  await js(`await relockNow();`);
   await size(800, 1280);
   await js(`await go('#/item/st-0063'); await settle(400);`);
   await shot('10-detail-portrait');

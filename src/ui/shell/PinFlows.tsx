@@ -74,9 +74,16 @@ export function RecoveryFlow({ onDone, onCancel }: { onDone: () => void; onCance
   const check = async () => {
     if (busy || !typed.trim()) return;
     setBusy(true);
-    const r = await checkRecoveryCode(db, typed);
-    setBusy(false);
-    refresh();
+    let r: Awaited<ReturnType<typeof checkRecoveryCode>>;
+    try {
+      r = await checkRecoveryCode(db, typed);
+    } catch (e) {
+      setError(`Couldn’t check the code: ${e instanceof Error ? e.message : String(e)}`);
+      return;
+    } finally {
+      setBusy(false);
+      refresh();
+    }
     if (r.ok) {
       setError(null);
       setStep('pin');

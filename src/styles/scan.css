@@ -13,7 +13,8 @@
 .reticle .b { right: 0; top: 0; border-width: 6px 6px 0 0; border-radius: 0 14px 0 0; }
 .reticle .c { left: 0; bottom: 0; border-width: 0 0 6px 6px; border-radius: 0 0 0 14px; }
 .reticle .d { right: 0; bottom: 0; border-width: 0 6px 6px 0; border-radius: 0 0 14px 0; }
-.reticle .line { left: 24px; right: 24px; top: 50%; height: 3px; width: auto; border: 0; background: var(--amber); box-shadow: 0 0 16px var(--amber); }
+/* min-height and padding reset: the order list also has a .line class (app.css). */
+.reticle .line { left: 24px; right: 24px; top: 50%; height: 3px; min-height: 0; padding: 0; width: auto; border: 0; background: var(--amber); box-shadow: 0 0 16px var(--amber); }
 .chint { position: absolute; left: 0; right: 0; top: calc(46% + 196px); text-align: center; font-weight: 700; font-size: 20px; text-shadow: 0 1px 4px #000; padding: 0 16px; }
 .cam-paused { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); display: flex; align-items: flex-start; padding: 96px 24px; font-weight: 700; color: #fff; z-index: 2; }
 
@@ -49,6 +50,7 @@
 .scan-dlg .cam { height: 360px; flex: none; border-radius: 14px; }
 .scan-dlg .reticle { width: 240px; height: 160px; top: 50%; }
 .scan-dlg .reticle span { width: 40px; height: 40px; }
+.scan-dlg .reticle .line { width: auto; height: 3px; }
 
 @media (orientation: portrait) {
   .reticle { top: 40%; }

@@ -7,12 +7,13 @@ import { LockPill } from '../shell/LockPill';
 import { goBack } from '../shell/router';
 
 /** Color, icon and word together; never color alone (§17). */
-export function StatusChip({ status }: { status: StockStatus }) {
+export function StatusChip({ status, prefix = '' }: { status: StockStatus; prefix?: string }) {
   const [cls, icon]: [string, IconName] =
     status.kind === 'short' ? ['chip red', 'short'] : status.kind === 'low' ? ['chip yel', 'low'] : ['chip ok', 'check'];
   return (
     <span class={cls}>
       <Icon name={icon} />
+      {prefix}
       {statusLabel(status)}
     </span>
   );

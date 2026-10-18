@@ -117,6 +117,16 @@ function subcategoryOrder(cat: Category, items: readonly Item[]): string[] {
   return out;
 }
 
+/** Every item in Inventory list order: category list, then subcategory list, then stored order. */
+export function listOrder(items: readonly Item[], categories: readonly Category[]): Item[] {
+  const out: Item[] = [];
+  for (const cat of categoryOrder(categories, items)) {
+    const inCat = items.filter((i) => i.category === cat.name);
+    for (const sub of subcategoryOrder(cat, inCat)) out.push(...inCat.filter((i) => i.subcategory === sub));
+  }
+  return out;
+}
+
 export interface ViewInput {
   /** In list order (the order they are stored in: starter catalog order, then team items). */
   items: readonly Item[];

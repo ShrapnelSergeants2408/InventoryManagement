@@ -151,10 +151,10 @@ try {
   await shot('07-portrait');
   await size(1280, 800);
 
-  // Other tabs are placeholders; the router works with reload
+  // The router works with reload: a tab opened by URL (Count, since M9 the last placeholder is gone)
   await send('Page.navigate', { url: 'http://localhost:4319/#/count' });
-  await waitFor(`document.querySelector('.state .h2')`);
-  check('Count tab placeholder (M9), opened by URL', await js(`return [document.querySelector('.h1').textContent, document.querySelector('.nav a.on span').textContent]`), ['Count', 'Count']);
+  await waitFor(`document.querySelector('.modes')`);
+  check('Count tab opened by URL', await js(`return [document.querySelector('.h1').textContent, document.querySelector('.nav a.on span').textContent]`), ['Count-in', 'Count']);
 
   // Touch targets ≥ 48 px (§2, §17) on the Inventory screen
   await send('Page.navigate', { url: 'http://localhost:4319/#/inventory' });

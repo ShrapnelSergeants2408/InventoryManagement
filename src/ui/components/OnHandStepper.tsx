@@ -1,15 +1,23 @@
-// Quick adjust (F3): −, typed number, +. Labeled "On hand" wherever it appears.
+// Quick adjust (F3): −, typed number, +. Labeled "On hand" wherever it appears; the same
+// control sets desired and spares on the detail card (F7, no PIN).
+import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { parseWholeNumber } from '../../domain/validate';
 import { Icon } from '../icons';
 
-export function OnHandStepper(props: {
+export type StepperLabel = 'On hand' | 'Desired' | 'Spares';
+
+export function CountStepper(props: {
+  label: StepperLabel;
   value: number;
-  unit: string;
   itemName: string;
   onStep: (delta: number) => void;
   /** Saves a typed number; a rejected promise puts the old number back. */
   onSet: (value: number) => Promise<unknown>;
+  /** 'xl' = 80 px (detail card, §17); default 64 px (lists). */
+  size?: 'xl';
+  /** Shown above the buttons (list rows: "On hand (each) · tap − / + or type"). */
+  caption?: ComponentChildren;
 }) {
   // While typing, the box holds the draft; otherwise it shows the stored value.
   const [draft, setDraft] = useState<string | null>(null);
@@ -42,7 +50,7 @@ export function OnHandStepper(props: {
       show(props.value);
       return;
     }
-    const parsed = parseWholeNumber(raw, 'On hand');
+    const parsed = parseWholeNumber(raw, props.label);
     if (!parsed.ok) {
       setError(parsed.error);
       show(props.value);
@@ -54,16 +62,16 @@ export function OnHandStepper(props: {
     props.onSet(parsed.value).catch(() => show(before));
   };
 
+  const xl = props.size === 'xl';
+  const onHand = props.label === 'On hand';
   return (
-    <div class="stepper" role="group" aria-label={`On hand for ${props.itemName}`}>
-      <span class="cl ohl">
-        On hand <span class="ohl-hint">({props.unit}) · tap − / + or type</span>
-      </span>
+    <div class={xl ? 'stepper xl' : 'stepper'} role="group" aria-label={`${props.label} for ${props.itemName}`}>
+      {props.caption}
       <div class="stepper-row">
         <button
           class="step"
           type="button"
-          aria-label="Minus one"
+          aria-label={onHand ? 'Minus one' : `${props.label} minus one`}
           disabled={props.value <= 0}
           onClick={() => {
             setDraft(null);
@@ -80,7 +88,7 @@ export function OnHandStepper(props: {
           pattern="[0-9]*"
           enterKeyHint="done"
           autoComplete="off"
-          aria-label="On hand"
+          aria-label={props.label}
           aria-invalid={error ? 'true' : undefined}
           value={draft ?? String(props.value)}
           onFocus={(e) => {
@@ -102,7 +110,7 @@ export function OnHandStepper(props: {
         <button
           class="step plus"
           type="button"
-          aria-label="Plus one"
+          aria-label={onHand ? 'Plus one' : `${props.label} plus one`}
           onClick={() => {
             setDraft(null);
             props.onStep(1);
@@ -117,5 +125,29 @@ export function OnHandStepper(props: {
         </span>
       )}
     </div>
+  );
+}
+
+/** The list-row stepper (F3): "On hand (unit) · tap − / + or type". */
+export function OnHandStepper(props: {
+  value: number;
+  unit: string;
+  itemName: string;
+  onStep: (delta: number) => void;
+  onSet: (value: number) => Promise<unknown>;
+}) {
+  return (
+    <CountStepper
+      label="On hand"
+      value={props.value}
+      itemName={props.itemName}
+      onStep={props.onStep}
+      onSet={props.onSet}
+      caption={
+        <span class="cl ohl">
+          On hand <span class="ohl-hint">({props.unit}) · tap − / + or type</span>
+        </span>
+      }
+    />
   );
 }

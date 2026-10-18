@@ -7,8 +7,15 @@ import { readSeed } from '../io/seed';
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
 import { InventoryScreen } from './screens/inventory/Inventory';
+import { DetailScreen } from './screens/item/Detail';
+import { EditorScreen } from './screens/item/Editor';
+import { CategoriesScreen } from './screens/more/Categories';
+import { LocationsScreen } from './screens/more/Locations';
+import { MoreScreen } from './screens/more/More';
+import { SuppliersScreen } from './screens/more/Suppliers';
 import { Placeholder } from './screens/Placeholder';
 import { StorageError } from './screens/StorageError';
+import { GateHost } from './shell/GateHost';
 import { Shell } from './shell/Shell';
 import { useRoute, type Route } from './shell/router';
 
@@ -33,11 +40,21 @@ async function openDb(): Promise<InventoryDb> {
 }
 
 function Screen({ route }: { route: Route }) {
-  if (route.screen === 'item') {
-    return <Placeholder title="Item detail" milestone="M3" what="The detail card shows full notes, the photo, every vendor option with links, and +/− buttons." back />;
-  }
-  if (route.screen === 'add') {
-    return <Placeholder title="Add item" milestone="M3" what="Anyone can add an item to any category, with its first vendor option." back />;
+  switch (route.screen) {
+    case 'item':
+      return <DetailScreen key={route.id} id={route.id} />;
+    case 'edit':
+      return <EditorScreen key={`edit-${route.id}`} mode="edit" id={route.id} />;
+    case 'add':
+      return <EditorScreen key={`add-${route.name}`} mode="add" name={route.name} />;
+    case 'suppliers':
+      return <SuppliersScreen />;
+    case 'categories':
+      return <CategoriesScreen />;
+    case 'locations':
+      return <LocationsScreen />;
+    case 'tab':
+      break;
   }
   switch (route.tab) {
     case 'inventory':
@@ -51,7 +68,7 @@ function Screen({ route }: { route: Route }) {
     case 'labels':
       return <Placeholder title="Labels" milestone="M8" what="Print QR labels on Avery sheets or plain paper." />;
     case 'more':
-      return <Placeholder title="More" milestone="M3, M5 and M6" what="Suppliers, categories, locations, backup and restore, and mentor settings live here." />;
+      return <MoreScreen />;
   }
 }
 
@@ -91,6 +108,7 @@ export function App() {
     <DbContext.Provider value={boot.db}>
       <Shell tab={route.tab}>
         <Screen route={route} />
+        <GateHost />
       </Shell>
     </DbContext.Provider>
   );

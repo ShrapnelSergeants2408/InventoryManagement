@@ -277,6 +277,7 @@ input[type="date"].field { padding: 0 12px; }
 .photo-side { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
 .thumbL { width: 96px; height: 96px; border-radius: 12px; border: 1px solid var(--line); background: #fff; object-fit: contain; flex: none; }
 .inline-add { display: flex; gap: 10px; margin-top: 10px; }
+.lbl + .inline-add { margin-top: 0; }
 .counts { display: flex; flex-direction: column; gap: 10px; }
 .count-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .count-line .lbl { flex: 1 1 120px; margin: 0; }

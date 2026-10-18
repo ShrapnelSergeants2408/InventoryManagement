@@ -2,6 +2,7 @@
 // updates it implies, so a failure leaves the tablet unchanged.
 import { mergeEdit } from '../domain/item-form';
 import { pushRecent } from '../domain/lists';
+import { QR_PREFIX, barcodeKey, cleanCode } from '../domain/scan';
 import { nameKey, type Item } from '../domain/types';
 import { validateItem } from '../domain/validate';
 import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
@@ -86,5 +87,25 @@ export async function deleteItem(db: InventoryDb, id: string, now = Date.now()):
     await db.items.delete(id);
     await db.photos.delete(id);
     await db.settings.put({ key: 'lastChangeAt', value: now });
+  });
+}
+
+/**
+ * Attaches a scanned manufacturer barcode to an item (F21; no PIN, §6). Refused when another
+ * item already has the same code, so a scan never becomes ambiguous by accident.
+ */
+export async function setBarcode(db: InventoryDb, id: string, code: string, now = Date.now()): Promise<Item> {
+  const clean = cleanCode(code);
+  if (clean === '') throw new Error('the barcode is empty');
+  if (clean.toLowerCase().startsWith(QR_PREFIX)) throw new Error('that is a team QR label, not a manufacturer barcode');
+  return db.transaction('rw', db.items, db.settings, async () => {
+    const row = await db.items.get(id);
+    if (!row) throw new Error(`no item with id ${id}`);
+    const key = barcodeKey(clean);
+    const other = (await db.items.toArray()).find((i) => i.id !== id && i.barcode !== '' && barcodeKey(i.barcode) === key);
+    if (other) throw new Error(`barcode ${clean} is already on “${other.name}”`);
+    await db.items.put({ ...row, barcode: clean, updatedAt: now });
+    await db.settings.put({ key: 'lastChangeAt', value: now });
+    return fromItemRow({ ...row, barcode: clean });
   });
 }

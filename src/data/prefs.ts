@@ -1,4 +1,5 @@
-// UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1) and filters (F5).
+// UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1), filters (F5) and
+// the last label layout (§9).
 // Never inventory data. Any read/write failure (private mode, blocked storage) falls back to defaults.
 import { NO_FILTERS, type Filters } from '../domain/filters';
 
@@ -59,4 +60,17 @@ export function loadFilters(store = browserStore()): Filters {
 
 export function saveFilters(filters: Filters, store = browserStore()): void {
   write(store, FILTERS, filters);
+}
+
+const LABEL_LAYOUT = 'frc2408.labels.layout';
+
+/** The label layout and plain-paper QR size used last; checked by the caller. */
+export function loadLabelChoice(store = browserStore()): { layoutId: string | null; plainQr: number | null } {
+  const v = read(store, LABEL_LAYOUT);
+  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
+  return { layoutId: strOrNull(o.layoutId), plainQr: typeof o.plainQr === 'number' ? o.plainQr : null };
+}
+
+export function saveLabelChoice(choice: { layoutId: string; plainQr: number }, store = browserStore()): void {
+  write(store, LABEL_LAYOUT, choice);
 }

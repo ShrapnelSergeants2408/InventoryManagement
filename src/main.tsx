@@ -5,6 +5,8 @@ import '@fontsource/barlow-condensed/latin-700.css';
 import './styles/tokens.css';
 import './styles/base.css';
 import './styles/app.css';
+import './styles/labels.css';
+import './styles/scan.css';
 import { render } from 'preact';
 import { App } from './ui/App';
 

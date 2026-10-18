@@ -9,7 +9,11 @@ describe('hash routes', () => {
     ['#/more', { tab: 'more', screen: 'tab' }],
     ['#/nonsense', { tab: 'inventory', screen: 'tab' }],
     ['#/item/st-0001', { tab: 'inventory', screen: 'item', id: 'st-0001' }],
-    ['#/add', { tab: 'inventory', screen: 'add', name: '' }],
+    ['#/add', { tab: 'inventory', screen: 'add', name: '', barcode: '' }],
+    ['#/labels', { tab: 'labels', screen: 'tab' }],
+    ['#/labels?ids=st-0063', { tab: 'labels', screen: 'labels', ids: ['st-0063'] }],
+    ['#/labels?ids=', { tab: 'labels', screen: 'tab' }],
+    ['#/scan', { tab: 'scan', screen: 'tab' }],
     ['#/item/st-0063/edit', { tab: 'inventory', screen: 'edit', id: 'st-0063' }],
     ['#/more/suppliers', { tab: 'more', screen: 'suppliers' }],
     ['#/more/backup', { tab: 'more', screen: 'backup' }],
@@ -23,7 +27,10 @@ describe('hash routes', () => {
 
   it('round-trips item ids and add names with special characters', () => {
     expect(parseHash(href.item('tm-7K/3 x'))).toEqual({ tab: 'inventory', screen: 'item', id: 'tm-7K/3 x' });
-    expect(parseHash(href.add('falcon 500 & “more”?'))).toEqual({ tab: 'inventory', screen: 'add', name: 'falcon 500 & “more”?' });
+    expect(parseHash(href.add('falcon 500 & “more”?'))).toEqual({ tab: 'inventory', screen: 'add', name: 'falcon 500 & “more”?', barcode: '' });
+    expect(parseHash(href.add('', '012345678905'))).toEqual({ tab: 'inventory', screen: 'add', name: '', barcode: '012345678905' });
+    expect(href.add()).toBe('#/add');
+    expect(parseHash(href.labels(['st-0063', 'tm-7K3QX']))).toEqual({ tab: 'labels', screen: 'labels', ids: ['st-0063', 'tm-7K3QX'] });
     expect(parseHash(href.edit('tm-7K/3 x'))).toEqual({ tab: 'inventory', screen: 'edit', id: 'tm-7K/3 x' });
     expect(parseHash(href.list('locations'))).toEqual({ tab: 'more', screen: 'locations' });
   });

@@ -30,6 +30,7 @@ import { isUnlocked } from '../../../security/lock';
 import { PinMark, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { PhotoButtons } from '../../components/PhotoButtons';
+import { ScanDialog } from '../../components/ScanDialog';
 import { forgetThumbnail, useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { goBack, href, openedFrom, replaceRoute } from '../../shell/router';
@@ -40,7 +41,7 @@ import { ItemMissing } from './Detail';
 
 const NEW = '__new';
 
-export function EditorScreen(props: { mode: 'add'; name: string } | { mode: 'edit'; id: string }) {
+export function EditorScreen(props: { mode: 'add'; name: string; barcode?: string } | { mode: 'edit'; id: string }) {
   const live = useSnapshot();
   const fallback = props.mode === 'edit' ? href.item(props.id) : href.tab('inventory');
   const cancel = (
@@ -72,7 +73,7 @@ export function EditorScreen(props: { mode: 'add'; name: string } | { mode: 'edi
     if (!item) return <ItemMissing id={props.id} back={cancel} />;
     return <Form snap={live.value} base={item} startName="" fallback={fallback} />;
   }
-  return <Form snap={live.value} base={null} startName={props.name} fallback={fallback} />;
+  return <Form snap={live.value} base={null} startName={props.name} startBarcode={props.barcode ?? ''} fallback={fallback} />;
 }
 
 /** Field-level message under an input. */
@@ -87,13 +88,13 @@ function FieldError({ errors, field }: { errors: FormError[]; field: string }) {
   );
 }
 
-function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; fallback: string }) {
+function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; startBarcode?: string; fallback: string }) {
   const db = useDb();
   const { snap } = props;
   const adding = props.base === null;
   // The editor works on the item as it was when opened; later list changes don't reset the form.
   const [base] = useState(props.base);
-  const [initial] = useState<ItemDraft>(() => (base ? draftFromItem(base) : newDraft(snap.categories[0]?.name ?? '', props.startName)));
+  const [initial] = useState<ItemDraft>(() => (base ? draftFromItem(base) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName), barcode: props.startBarcode ?? '' }));
   const [d, setD] = useState<ItemDraft>(initial);
   const [errors, setErrors] = useState<FormError[]>([]);
   // Already unlocked (§6): vendor fields open straight away.
@@ -102,6 +103,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const [discarding, setDiscarding] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
   const [newLoc, setNewLoc] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const today = localIsoDate();
   const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
   // A photo taken or removed in the form; undefined keeps the stored one.
@@ -380,15 +382,21 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
               <FieldError errors={errors} field="unit" />
             </div>
             <Field id="bc" label="Manufacturer barcode" optional>
-              <input
-                id="bc"
-                class="field"
-                inputMode="numeric"
-                value={d.barcode}
-                onInput={(e) => set({ barcode: (e.currentTarget as HTMLInputElement).value })}
-                placeholder="Type the UPC (scanning comes in M8)"
-                autoComplete="off"
-              />
+              <div class="inline-add">
+                <input
+                  id="bc"
+                  class="field"
+                  inputMode="numeric"
+                  value={d.barcode}
+                  onInput={(e) => set({ barcode: (e.currentTarget as HTMLInputElement).value })}
+                  placeholder="Type or scan the UPC"
+                  autoComplete="off"
+                />
+                <button type="button" class="btn" onClick={() => setScanning(true)}>
+                  <Icon name="scan" />
+                  Scan
+                </button>
+              </div>
             </Field>
           </div>
 
@@ -482,6 +490,16 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
         </div>
       </div>
 
+      {scanning && (
+        <ScanDialog
+          onClose={() => setScanning(false)}
+          onCode={(code) => {
+            set({ barcode: code });
+            setScanning(false);
+            showToast(`Barcode ${code} filled in. Save to keep it.`);
+          }}
+        />
+      )}
       {discarding && (
         <Dialog label="Discard changes" onClose={() => setDiscarding(false)}>
           <h2 class="h2">Discard your changes?</h2>

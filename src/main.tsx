@@ -4,7 +4,8 @@ import '@fontsource/barlow-condensed/latin-400.css';
 import '@fontsource/barlow-condensed/latin-700.css';
 import './styles/tokens.css';
 import './styles/base.css';
+import './styles/app.css';
 import { render } from 'preact';
-import { DevStatus } from './ui/DevStatus';
+import { App } from './ui/App';
 
-render(<DevStatus />, document.getElementById('app')!);
+render(<App />, document.getElementById('app')!);

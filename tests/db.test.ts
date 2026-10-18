@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
 import { InventoryDb } from '../src/data/db';
-import { getItem, loadSnapshot, replaceAll, setOnHand } from '../src/data/inventory';
+import { adjustOnHand, getItem, loadSnapshot, replaceAll, setOnHand } from '../src/data/inventory';
 import { DEFAULT_SETTINGS, getSettings, setSettings } from '../src/data/settings';
 import { item, vendor } from './helpers';
 
@@ -71,6 +71,37 @@ describe('setOnHand (F3 quick adjust)', () => {
     await expect(setOnHand(db, 'a', -1)).rejects.toThrow(RangeError);
     await expect(setOnHand(db, 'a', 1.5)).rejects.toThrow(RangeError);
     await expect(setOnHand(db, 'zzz', 1)).rejects.toThrow(/no item/);
+  });
+});
+
+describe('adjustOnHand (F3 quick adjust ±)', () => {
+  it('steps up and down and never goes below 0', async () => {
+    fresh();
+    await replaceAll(db, { ...lists, items: [item({ id: 'a', onHand: 1 })], photos: new Map() });
+    expect(await adjustOnHand(db, 'a', -1)).toBe(0);
+    expect(await adjustOnHand(db, 'a', -1)).toBe(0);
+    expect(await adjustOnHand(db, 'a', 1)).toBe(1);
+    expect(await getItem(db, 'a')).toMatchObject({ onHand: 1, lastCounted: '' });
+  });
+  it('fast repeated taps are never lost', async () => {
+    fresh();
+    await replaceAll(db, { ...lists, items: [item({ id: 'a', onHand: 0 })], photos: new Map() });
+    await Promise.all(Array.from({ length: 10 }, () => adjustOnHand(db, 'a', 1)));
+    expect((await getItem(db, 'a'))!.onHand).toBe(10);
+  });
+  it('records the change time only when the number changes', async () => {
+    fresh();
+    await replaceAll(db, { ...lists, items: [item({ id: 'a', onHand: 0 })], photos: new Map() }, 100);
+    await adjustOnHand(db, 'a', -1, 200);
+    expect((await getSettings(db)).lastChangeAt).toBe(100);
+    await adjustOnHand(db, 'a', 1, 300);
+    expect((await getSettings(db)).lastChangeAt).toBe(300);
+  });
+  it('rejects fractional steps and unknown ids', async () => {
+    fresh();
+    await replaceAll(db, { ...lists, items: [item({ id: 'a' })], photos: new Map() });
+    await expect(adjustOnHand(db, 'a', 0.5)).rejects.toThrow(RangeError);
+    await expect(adjustOnHand(db, 'zzz', 1)).rejects.toThrow(/no item/);
   });
 });
 

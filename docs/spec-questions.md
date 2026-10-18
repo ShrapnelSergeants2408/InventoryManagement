@@ -87,3 +87,11 @@ An installed PWA on Android may stay in memory for days, so "next launch" may ef
 | D6 | §6 | PIN hashed with PBKDF2-SHA256 (Web Crypto), random salt. Recovery code: 10 characters, stored hashed. Using it lets you set a new PIN and shows a **new** recovery code. After 5 wrong PINs there's a 30-second wait (accident prevention, not security). The unlock lives in memory only, so reloading the app locks it. |
 | D7 | F16 | The reminder clock starts when first-launch setup finishes, so there's no banner on day 1. |
 | D8 | F24 | "Overall progress" counts all items; "skip items with desired 0" removes them from the walk, not from the total. |
+
+---
+
+## Later decisions
+
+| When (CDT) | Topic | Decision |
+|---|---|---|
+| 2026-10-17 ~17:55 | Vendor photos on the public site (SPEC §8) | **Dan: "accept it".** The repo and the Pages site are public, so the hosted starter-catalog ZIP (and its vendor product photos) can be downloaded by anyone with the URL. Accepted as-is. The site carries `noindex, nofollow` so it isn't listed by search engines. No change to the seed or to SPEC §8. |

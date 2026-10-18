@@ -34,6 +34,7 @@ describe('stale prices (F14, Q9a)', () => {
   it('day counting is by calendar date, across a DST change and a leap day', () => {
     expect(daysBetween('2026-10-17', '2026-10-17')).toBe(0);
     expect(daysBetween('2026-10-31', '2026-11-02')).toBe(2); // US DST ends Nov 1
+    expect(daysBetween('2027-03-13', '2027-03-15')).toBe(2); // US DST starts Mar 14 (a 23-hour day)
     expect(daysBetween('2028-02-28', '2028-03-01')).toBe(2);
     expect(daysBetween('2026-10-18', '2026-10-17')).toBe(-1);
   });

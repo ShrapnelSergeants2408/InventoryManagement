@@ -47,6 +47,16 @@ describe('hashing (D6: PBKDF2-SHA256, random salt)', () => {
     expect(await verifySecret('2408', h)).toBe(true);
     for (const wrong of ['2409', '24080', '240', '']) expect(await verifySecret(wrong, h), wrong).toBe(false);
   });
+  it('compares the whole hash: one changed byte at either end fails', async () => {
+    const h = await hashSecret('2408', 1000);
+    const bytes = Uint8Array.from(atob(h.hash), (c) => c.charCodeAt(0));
+    for (const i of [0, bytes.length - 1]) {
+      const t = bytes.slice();
+      t[i]! ^= 1;
+      expect(await verifySecret('2408', { ...h, hash: btoa(String.fromCharCode(...t)) }), `byte ${i}`).toBe(false);
+    }
+    expect(await verifySecret('2408', { ...h, hash: btoa(String.fromCharCode(...bytes.slice(0, -1))) })).toBe(false);
+  });
   it('uses a new salt every time, and the stored iteration count', async () => {
     const [a, b] = await Promise.all([hashSecret('2408', 1000), hashSecret('2408', 1000)]);
     expect(a.salt).not.toBe(b.salt);
@@ -65,6 +75,8 @@ describe('recovery code (D6: 10 characters)', () => {
       codes.add(c);
     }
     expect(codes.size).toBe(200);
+    // Every character of the alphabet turns up (2000 draws, about 65 of each).
+    expect(new Set([...codes].join('')).size).toBe(TEAM_ID_ALPHABET.length);
   });
   it('is shown as two groups of five; capitals, spaces and the dash don’t matter when typed', () => {
     expect(formatRecoveryCode('K7QM4D2X9H')).toBe('K7QM4-D2X9H');
@@ -102,6 +114,16 @@ describe('unlock timer (§6)', () => {
     unlockFor(10 * MIN);
     vi.advanceTimersByTime(4 * MIN + 1);
     expect(isUnlocked()).toBe(true);
+  });
+
+  it('a second unlock restarts the timer', () => {
+    unlockFor(5 * MIN);
+    vi.advanceTimersByTime(4 * MIN);
+    unlockFor(5 * MIN);
+    vi.advanceTimersByTime(2 * MIN);
+    expect(isUnlocked()).toBe(true);
+    vi.advanceTimersByTime(3 * MIN);
+    expect(isUnlocked()).toBe(false);
   });
 
   it('counts down as m:ss', () => {
@@ -180,6 +202,8 @@ describe('PIN on the tablet', () => {
     expect((await tryPin(db, '2408')).ok).toBe(false);
     expect((await tryPin(db, '135790')).ok).toBe(true);
     expect((await checkRecoveryCode(db, 'k7qm4-d2x9h')).ok).toBe(true);
+    await expect(savePin(db, '12345a')).rejects.toThrow('4 to 6 digits');
+    expect((await tryPin(db, '135790')).ok).toBe(true);
   });
 
   it('the recovery code works once: setting the new PIN replaces it', async () => {

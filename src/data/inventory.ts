@@ -35,22 +35,35 @@ export interface ReplaceAllInput extends InventorySnapshot {
 
 /**
  * Replaces every item, photo and list in one transaction (starter catalog load, F22;
- * restore, F17). Settings — including the PIN — are not touched.
+ * restore, F17). With `keepPhotos` (a CSV-only restore), `photos` is ignored: the tablet's
+ * photos are kept for item ids that are still there and the rest are deleted (Q5).
+ * Settings — including the PIN — are not touched. Returns how many items have a photo.
  */
-export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = Date.now()): Promise<void> {
+export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = Date.now(), opts: { keepPhotos?: boolean } = {}): Promise<number> {
   const supplierNames = input.suppliers.map((s) => s.name);
   for (const item of input.items) {
     const errors = validateItem(item, supplierNames);
     if (errors.length > 0) throw new Error(`item ${item.id}: ${errors.map((e) => e.message).join('; ')}`);
   }
-  await db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.settings], async () => {
-    await Promise.all([db.items.clear(), db.photos.clear(), db.suppliers.clear(), db.locations.clear(), db.categories.clear()]);
-    await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: input.photos.has(i.id) }, now)));
-    await db.photos.bulkAdd([...input.photos].map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now })));
+  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.settings], async () => {
+    let withPhoto: Set<string>;
+    if (opts.keepPhotos) {
+      const ids = new Set(input.items.map((i) => i.id));
+      const existing = await db.photos.toCollection().primaryKeys();
+      await db.photos.bulkDelete(existing.filter((id) => !ids.has(id)));
+      withPhoto = new Set(existing.filter((id) => ids.has(id)));
+    } else {
+      await db.photos.clear();
+      await db.photos.bulkAdd([...input.photos].map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now })));
+      withPhoto = new Set(input.photos.keys());
+    }
+    await Promise.all([db.items.clear(), db.suppliers.clear(), db.locations.clear(), db.categories.clear()]);
+    await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: withPhoto.has(i.id) }, now)));
     await db.suppliers.bulkAdd(input.suppliers.map(toSupplierRow));
     await db.locations.bulkAdd(input.locations.map(toLocationRow));
     await db.categories.bulkAdd(input.categories);
     await db.settings.put({ key: 'lastChangeAt', value: now });
+    return input.items.filter((i) => withPhoto.has(i.id)).length;
   });
 }
 

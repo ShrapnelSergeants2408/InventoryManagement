@@ -74,3 +74,18 @@ export function normalizeDate(raw: string): string | null {
   if (m) return `${m[3]}-${m[1]!.padStart(2, '0')}-${m[2]!.padStart(2, '0')}`;
   return null;
 }
+
+/**
+ * Text of a CSV file from disk. UTF-8 (with or without a BOM) is expected; a file that isn't
+ * valid UTF-8 is most likely Excel's plain "CSV" (Windows-1252), so it's read that way.
+ */
+export function decodeCsvBytes(bytes: Uint8Array): { text: string; warnings: string[] } {
+  try {
+    return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), warnings: [] };
+  } catch {
+    return {
+      text: new TextDecoder('windows-1252').decode(bytes),
+      warnings: ['The file isn’t UTF-8, so it was read as a Windows (Excel “CSV”) file. Check names with symbols like × or ¾.'],
+    };
+  }
+}

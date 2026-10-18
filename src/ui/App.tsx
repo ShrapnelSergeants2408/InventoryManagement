@@ -13,6 +13,7 @@ import { CategoriesScreen } from './screens/more/Categories';
 import { LocationsScreen } from './screens/more/Locations';
 import { MoreScreen } from './screens/more/More';
 import { SuppliersScreen } from './screens/more/Suppliers';
+import { OrderScreen } from './screens/order/Order';
 import { Placeholder } from './screens/Placeholder';
 import { StorageError } from './screens/StorageError';
 import { GateHost } from './shell/GateHost';
@@ -60,7 +61,7 @@ function Screen({ route }: { route: Route }) {
     case 'inventory':
       return <InventoryScreen />;
     case 'order':
-      return <Placeholder title="Order" milestone="M4" what="The order list groups what needs ordering by supplier, with subtotals, a grand total and CSV export." />;
+      return <OrderScreen />;
     case 'scan':
       return <Placeholder title="Scan" milestone="M8" what="Scan a QR label or barcode to open that item." />;
     case 'count':

@@ -268,5 +268,5 @@ High for the four fixes:
 
 Also untested: the wall-clock close after the tablet sleeps.
 
-**Next:** open the M6 pull request (M6 plus these fixes) for Dan to merge, then M7 (photos).
+**Next:** Dan merges PR #7 (M6 plus these fixes), then M7 (photos).
 

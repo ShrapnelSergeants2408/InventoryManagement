@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   MAX_DIGITS,
+  cleanSince,
+  isCounted,
   countGroups,
   entryValue,
   firstToCount,
@@ -179,6 +181,37 @@ describe('group summary (10d)', () => {
     const before = [item({ id: 'a', desired: 4, vendors: [v, null, null] })];
     expect(orderTotalCents(before)).toBe(4000);
     expect(orderTotalCents([{ ...before[0]!, onHand: 3 }])).toBe(1000);
+  });
+});
+
+describe('count rounds — "counted since <date>" (SPEC v0.6 F24)', () => {
+  const old = item({ id: 'old', lastCounted: '2026-09-30' });
+  const onDay = item({ id: 'day', lastCounted: '2026-10-01' });
+  const never = item({ id: 'never' });
+  const all = [old, onDay, never];
+
+  it('blank since: counted at any time', () => {
+    expect([old, onDay, never].map((i) => isCounted(i))).toEqual([true, true, false]);
+  });
+  it('a date: counted on or after it', () => {
+    expect([old, onDay, never].map((i) => isCounted(i, '2026-10-01'))).toEqual([false, true, false]);
+  });
+  it('progress, groups, Continue and the summary all follow the round', () => {
+    const cats = [{ name: 'Motors', order: 0, subcategories: [] }];
+    expect(overallProgress(all, '2026-10-01')).toEqual({ counted: 1, total: 3 });
+    const [g] = countGroups(all, cats, [], 'category', false, '2026-10-01');
+    expect([g!.counted, g!.action]).toEqual([1, 'continue']);
+    expect(firstToCount(all, '2026-10-01')).toBe(0);
+    expect(firstToCount(all)).toBe(2);
+    expect(summarize(['old', 'day', 'never'], all, new Set(), new Set(), '2026-10-01').counted).toBe(1);
+  });
+  it('a new round with nothing counted yet starts every group again', () => {
+    const cats = [{ name: 'Motors', order: 0, subcategories: [] }];
+    const [g] = countGroups([old, onDay], cats, [], 'category', false, '2026-10-18');
+    expect([g!.counted, g!.action]).toEqual([0, 'start']);
+  });
+  it('cleanSince keeps a YYYY-MM-DD date and turns anything else into none', () => {
+    expect(['2026-10-18', '', '2026-1-8', 'yesterday', 42, null].map(cleanSince)).toEqual(['2026-10-18', '', '', '', '', '']);
   });
 });
 

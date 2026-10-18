@@ -292,6 +292,31 @@ try {
   check('typed code with the camera blocked', await js(`return !!$('.wname')`), true);
   await js(`navigator.mediaDevices.getUserMedia = window.__gum; await click('.top .btn', 'Pause');`);
 
+  // ── Count rounds: "counted since <date>" (SPEC v0.6) ──
+  await js(`await click('.mode', 'By category');`);
+  check('no round yet: "First count" with Start a new count', await js(`return [norm($('.cround-h').textContent), $$('.cround .btn').map((b) => norm(b.textContent))]`), ['First count', ['Start a new count…']]);
+  // Backdate st-0001's count (it was counted today above) to before the round, straight in IndexedDB, then reload.
+  await js(`await new Promise((res, rej) => { const r = indexedDB.open('frc2408-inventory'); r.onsuccess = () => { const db = r.result; const t = db.transaction('items', 'readwrite'); const s = t.objectStore('items'); const g = s.get('st-0001'); g.onsuccess = () => { s.put({ ...g.result, lastCounted: '2026-01-05' }); }; t.oncomplete = () => { db.close(); res(); }; t.onerror = () => rej(t.error); }; });`);
+  await send('Page.reload');
+  await waitFor(`document.querySelector('.cround')`, 30000);
+  await js(COUNT_GATES);
+  const everBefore = await js(`return prog()[0]`);
+  const structBefore = await js(`return rows()[0][1]`);
+  await js(`await click('.cround .btn', 'Start a new count');`);
+  check('new count dialog: today by default, a future date refused', await js(`const i = $('#round-date'); const v = i.value; await type(i, '2999-01-01'); const bad = [!!$('[aria-label="Start a new count"] .err'), byText('[aria-label="Start a new count"] .btn', 'Start new count').disabled]; await type(i, v); return [v === today, ...bad]`), [true, true, true]);
+  await js(`await click('[aria-label="Start a new count"] .btn', 'Start new count'); await settle(400);`);
+  const todayTxt = await js(`return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`);
+  const countedToday = await js(`return (await idb('items')).filter((i) => i.lastCounted !== '' && i.lastCounted >= today).length`);
+  check('round started: the card, and overall progress counts only items counted since today', await js(`return [norm($('.cround-h').textContent), prog()[0], (await idb('settings', 'countSince')).value === today]`), [`Counting since ${todayTxt}`, `${countedToday} of 129 counted since ${todayTxt}`, true]);
+  check('the item counted before the round is no longer counted in its group (Structure one less)', await js(`return rows()[0][1]`), `${+structBefore.split(' / ')[0] - 1} / ${structBefore.split(' / ')[1]}`);
+  check('starting the round erased nothing', await js(`const i = await idb('items', 'st-0001'); return [i.lastCounted, i.onHand]`), ['2026-01-05', 3]);
+  await js(`await click('.cg-row .btn', 'Continue');`);
+  check('Continue opens at the item counted before the round', await js(`return [pos()[1], wname()]`), ['Item 1 of 12', expectFirst.names[0]]);
+  await js(`await key('4'); await act('Save & next'); await click('.top .btn', 'Pause');`);
+  check('counting it again brings it into the round', await js(`return rows()[0][1]`), structBefore);
+  await js(`await click('.cround .btn', 'Count from the beginning'); await settle(300);`);
+  check('Count from the beginning: back to "First count" and all-time progress', await js(`return [norm($('.cround-h').textContent), prog()[0]]`), ['First count', everBefore]);
+
   // ── Layout ──
   await js(`await click('.mode', 'By category'); await click('.cg-row .btn', 'Continue'); await key('1');`);
   check('touch targets ≥ 48 px on the walk screen', await js(`return [...document.querySelectorAll('.main button, .main a, .main input, .main select')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 47.5 || r.width < 47.5); }).map((e) => norm(e.textContent || e.getAttribute('aria-label')) + ' ' + Math.round(e.getBoundingClientRect().height))`), []);

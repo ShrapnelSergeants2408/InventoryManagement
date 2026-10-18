@@ -1,5 +1,6 @@
 // Count-in save (F24): on_hand and last_counted together, and the location when one was
 // picked, in one transaction. No PIN (§6).
+import { cleanSince } from '../domain/count';
 import { localIsoDate } from '../domain/dates';
 import { pushRecent } from '../domain/lists';
 import { nameKey, type Item } from '../domain/types';
@@ -37,4 +38,17 @@ export async function saveCount(db: InventoryDb, id: string, onHand: number, loc
       });
     return fromItemRow(saved);
   });
+}
+
+export const COUNT_SINCE = 'countSince';
+
+/** The "counting since" date of the current count round (F24), or '' for the first count. */
+export async function getCountSince(db: InventoryDb): Promise<string> {
+  return cleanSince((await db.settings.get(COUNT_SINCE))?.value);
+}
+
+/** Starts a count round from `since` (YYYY-MM-DD), or '' to count from the beginning. Erases nothing. */
+export async function setCountSince(db: InventoryDb, since: string): Promise<void> {
+  if (since !== '' && cleanSince(since) === '') throw new RangeError(`not a date: ${since}`);
+  await db.settings.put({ key: COUNT_SINCE, value: since });
 }

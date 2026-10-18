@@ -13,6 +13,10 @@
 .ctotal > .ic { flex: none; }
 .ctotal-h { font-weight: 700; font-size: 20px; }
 .cpause { border-radius: 14px; }
+.cround { padding: 12px 16px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.cround > .ic { flex: none; }
+.cround > .grow { flex: 1 1 360px; }
+.cround-h { font-weight: 700; font-size: 19px; }
 .cq { margin-bottom: 8px; }
 .modes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .mode { display: flex; flex-direction: column; gap: 6px; min-height: 120px; padding: 14px 16px; border: 2px solid var(--line-2); border-radius: 16px; background: #fff; font: inherit; text-align: left; cursor: pointer; color: var(--ink); }

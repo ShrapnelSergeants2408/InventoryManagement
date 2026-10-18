@@ -258,7 +258,7 @@ try {
   await shot('07-backup-portrait');
   await size(1280, 800);
   await sleep(300);
-  check('touch targets ≥ 48 px', await js(`return [...document.querySelectorAll('.main button, .main a, .main input:not([type=file])')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 47.5 || r.width < 47.5); }).map((e) => (e.getAttribute('aria-label') || e.textContent.trim()) + ' ' + Math.round(e.getBoundingClientRect().height))`), []);
+  check('touch targets ≥ 48 px', await js(`return [...document.querySelectorAll('.main button, .main a, .main input:not([type=file])')].filter((e) => { if (e.classList.contains('vh')) return false; const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 47.5 || r.width < 47.5); }).map((e) => (e.getAttribute('aria-label') || e.textContent.trim()) + ' ' + Math.round(e.getBoundingClientRect().height))`), []);
   check('text ≥ 15 px', await js(`const bad = new Set(); for (const e of document.querySelectorAll('.main *')) { if (![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue; const fs = parseFloat(getComputedStyle(e).fontSize); if (fs < 15 && e.getBoundingClientRect().width > 0) bad.add(e.className + ' ' + fs); } return [...bad]`), []);
 } catch (e) {
   results.push('FAIL  script error: ' + e.message);

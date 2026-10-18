@@ -159,7 +159,7 @@ try {
   // Touch targets ≥ 48 px (§2, §17) on the Inventory screen
   await send('Page.navigate', { url: 'http://localhost:4319/#/inventory' });
   await waitFor(`document.querySelectorAll('.row').length > 0`);
-  const small = await js(`return [...document.querySelectorAll('button, a, input')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 48 || r.width < 48); }).map((e) => e.className + ':' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height))`);
+  const small = await js(`return [...document.querySelectorAll('button, a, input')].filter((e) => { if (e.classList.contains('vh')) return false; const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 48 || r.width < 48); }).map((e) => e.className + ':' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height))`);
   check('touch targets ≥ 48 px', small, []);
 
   // SPEC §2 storage-error screen: make IndexedDB unusable before the app loads.

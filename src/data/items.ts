@@ -5,6 +5,7 @@ import { pushRecent } from '../domain/lists';
 import { nameKey, type Item } from '../domain/types';
 import { validateItem } from '../domain/validate';
 import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
+import { applyPhotoChange, type PhotoChange } from './photos';
 
 export const RECENT_LOCATIONS = 'recentLocations';
 
@@ -44,24 +45,27 @@ async function touch(db: InventoryDb, item: Item, now: number): Promise<void> {
   }
 }
 
-const TABLES = (db: InventoryDb) => [db.items, db.suppliers, db.categories, db.locations, db.settings];
+const TABLES = (db: InventoryDb) => [db.items, db.photos, db.suppliers, db.categories, db.locations, db.settings];
 
-/** Adds a new item (F6). The id must be unused. */
-export async function addItem(db: InventoryDb, item: Item, now = Date.now()): Promise<Item> {
+/** Adds a new item (F6), with its photo if one was taken in the form. The id must be unused. */
+export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photo?: PhotoChange): Promise<Item> {
   return db.transaction('rw', TABLES(db), async () => {
     if (await db.items.get(item.id)) throw new Error(`an item with id ${item.id} already exists`);
     const fitted = await fitToLists(db, { ...item, hasPhoto: false });
     await db.items.add(toItemRow(fitted, now));
     await touch(db, fitted, now);
-    return fitted;
+    if (!photo) return fitted;
+    await applyPhotoChange(db, fitted.id, photo, now);
+    return { ...fitted, hasPhoto: photo !== 'remove' };
   });
 }
 
 /**
  * Saves an edit (F7). `base` is the item as the editor loaded it; only the fields that
- * differ from it are applied to the item as stored now (see mergeEdit).
+ * differ from it are applied to the item as stored now (see mergeEdit). A photo change made
+ * in the form is saved in the same transaction.
  */
-export async function updateItem(db: InventoryDb, base: Item, edited: Item, now = Date.now()): Promise<Item> {
+export async function updateItem(db: InventoryDb, base: Item, edited: Item, now = Date.now(), photo?: PhotoChange): Promise<Item> {
   if (base.id !== edited.id) throw new Error('an edit cannot change the item id');
   return db.transaction('rw', TABLES(db), async () => {
     const row = await db.items.get(base.id);
@@ -69,7 +73,9 @@ export async function updateItem(db: InventoryDb, base: Item, edited: Item, now 
     const fitted = await fitToLists(db, mergeEdit(base, edited, fromItemRow(row)));
     await db.items.put(toItemRow(fitted, now));
     await touch(db, fitted, now);
-    return fitted;
+    if (!photo) return fitted;
+    await applyPhotoChange(db, fitted.id, photo, now);
+    return { ...fitted, hasPhoto: photo !== 'remove' };
   });
 }
 

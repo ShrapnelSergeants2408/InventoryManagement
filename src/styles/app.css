@@ -13,6 +13,7 @@
 
 .ic { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .ic.lg { width: 32px; height: 32px; }
+.ic.xl { width: 40px; height: 40px; }
 
 /* Top bar */
 .top { flex: none; min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: var(--card); border-bottom: 1px solid var(--line); }
@@ -171,6 +172,11 @@
 /* Destructive (§17): black with a red outline, never a red fill. */
 .btn.danger { background: var(--destructive-fill); border: 3px solid var(--destructive-outline); color: #fff; }
 .btn:disabled { opacity: .45; cursor: default; }
+.btn.disabled { opacity: .45; cursor: default; pointer-events: none; }
+/* Visually hidden but still focusable (the photo file inputs inside their label buttons). */
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; opacity: 0; }
+label.btn { position: relative; }
+label.btn:focus-within { outline: 3px solid var(--navy); outline-offset: 2px; }
 .btn .pinmark { width: 18px; height: 18px; margin-left: 2px; opacity: .85; }
 .ib:disabled { opacity: .35; cursor: default; }
 .ib.plain { border-color: transparent; }
@@ -226,6 +232,9 @@ input[type="date"].field { padding: 0 12px; }
 .photo.nophoto { cursor: default; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #8c8178; background: #fff; }
 .nophoto-t { font-weight: 700; color: var(--ink-2); }
 .dacts { display: flex; flex-direction: column; gap: 10px; }
+.pacts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pacts .btn { min-height: 48px; padding: 0 14px; font-size: 16px; border-color: #cfc6bb; }
+.lb-acts { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 .dright { overflow: auto; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px; }
 .dchips { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .bigchip .chip { height: 40px; font-size: 17px; padding: 0 16px; }
@@ -251,6 +260,7 @@ input[type="date"].field { padding: 0 12px; }
 .lb { position: fixed; inset: 0; z-index: 46; background: rgba(10, 8, 7, .92); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
 .lb img { max-width: 90%; max-height: 74%; object-fit: contain; background: #fff; border-radius: 12px; }
 .lb-cap { color: #fff; font-weight: 700; text-align: center; }
+.lb-note { font-weight: 400; opacity: .85; margin-top: 4px; }
 
 /* Item editor (F6, F7) */
 .fbody { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 20px 24px 40px; }
@@ -263,7 +273,8 @@ input[type="date"].field { padding: 0 12px; }
 .h2-note { font-family: var(--font-body); font-weight: 400; font-size: 15px; color: var(--ink-2); }
 .row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .row3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.photo-row { display: flex; gap: 14px; align-items: center; }
+.photo-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.photo-side { flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 6px; }
 .thumbL { width: 96px; height: 96px; border-radius: 12px; border: 1px solid var(--line); background: #fff; object-fit: contain; flex: none; }
 .inline-add { display: flex; gap: 10px; margin-top: 10px; }
 .counts { display: flex; flex-direction: column; gap: 10px; }

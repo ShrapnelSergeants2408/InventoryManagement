@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PHOTO_LONG_SIDE, THUMB_LONG_SIDE, fitWithin } from '../src/domain/image-size';
+import { MAX_PICKED_BYTES, PHOTO_LONG_SIDE, THUMB_LONG_SIDE, fitWithin, pickedFileProblem } from '../src/domain/image-size';
 
 describe('image resize math (SPEC §8)', () => {
   it.each([
@@ -21,5 +21,25 @@ describe('image resize math (SPEC §8)', () => {
 
   it('constants', () => {
     expect([PHOTO_LONG_SIDE, THUMB_LONG_SIDE]).toEqual([1024, 160]);
+  });
+});
+
+describe('picked file check (F19)', () => {
+  it.each([
+    ['camera JPEG', { type: 'image/jpeg', size: 4_000_000 }],
+    ['PNG', { type: 'image/png', size: 10 }],
+    ['no type given (some gallery apps)', { type: '', size: 10 }],
+    ['exactly the limit', { type: 'image/jpeg', size: MAX_PICKED_BYTES }],
+  ])('%s is tried', (_n, file) => {
+    expect(pickedFileProblem(file)).toBeNull();
+  });
+
+  it.each([
+    ['empty', { type: 'image/jpeg', size: 0 }, /empty/],
+    ['a PDF', { type: 'application/pdf', size: 10 }, /isn’t a picture/],
+    ['a video', { type: 'video/mp4', size: 10 }, /isn’t a picture/],
+    ['over the limit', { type: 'image/jpeg', size: MAX_PICKED_BYTES + 1 }, /too large/],
+  ])('%s is refused', (_n, file, msg) => {
+    expect(pickedFileProblem(file)).toMatch(msg);
   });
 });

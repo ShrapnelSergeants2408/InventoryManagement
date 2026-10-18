@@ -44,22 +44,42 @@ export const href = {
   list: (l: ManagedList) => `#/more/${l}`,
 };
 
-// History entries are numbered, so Back can tell whether the previous screen is in the app
-// (then it goes back, keeping the list's place) or not (then it opens the parent screen).
+// History entries are numbered and remember the screen they were opened from, so Back can
+// tell whether the previous screen is in the app (then it goes back, keeping the list's
+// place) or not (then it opens the parent screen).
+interface Stamp {
+  appIndex: number;
+  from: string | null;
+}
+const isStamp = (s: unknown): s is Stamp => typeof (s as Stamp | null)?.appIndex === 'number';
+
 let replacing = false;
 let index = 0;
+let here = '';
+let hereFrom: string | null = null;
 
 function stamp(): void {
-  const s = history.state as { appIndex?: unknown } | null;
-  if (typeof s?.appIndex === 'number') index = s.appIndex;
-  else {
+  const s: unknown = history.state;
+  if (isStamp(s)) {
+    index = s.appIndex;
+    hereFrom = s.from;
+  } else {
+    // A replaced entry keeps the place it was opened from.
+    const from = replacing ? hereFrom : here;
     if (!replacing) index += 1;
-    history.replaceState({ appIndex: index }, '');
+    history.replaceState({ appIndex: index, from } satisfies Stamp, '');
+    hereFrom = from;
   }
+  here = location.hash;
   replacing = false;
 }
 
-/** Opens `to` in place of the current screen (after a save, so Back skips the editor). */
+/** The screen (hash) the current one was opened from, when it was opened inside the app. */
+export function openedFrom(): string | null {
+  return hereFrom;
+}
+
+/** Opens `to` in place of the current screen (after a save, so Back skips the form). */
 export function replaceRoute(to: string): void {
   replacing = true;
   location.replace(to);
@@ -67,17 +87,20 @@ export function replaceRoute(to: string): void {
 
 /** Back button: the previous in-app screen, or `fallback` when the app was opened here. */
 export function goBack(fallback: string): void {
-  const s = history.state as { appIndex?: unknown } | null;
-  if (typeof s?.appIndex === 'number' && s.appIndex > 0) history.back();
+  const s: unknown = history.state;
+  if (isStamp(s) && s.appIndex > 0) history.back();
   else replaceRoute(fallback);
 }
 
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseHash(location.hash));
   useEffect(() => {
-    const s = history.state as { appIndex?: unknown } | null;
-    if (typeof s?.appIndex === 'number') index = s.appIndex;
-    else history.replaceState({ appIndex: 0 }, '');
+    const s: unknown = history.state;
+    here = location.hash;
+    if (isStamp(s)) {
+      index = s.appIndex;
+      hereFrom = s.from;
+    } else history.replaceState({ appIndex: 0, from: null } satisfies Stamp, '');
     const on = () => {
       stamp();
       setRoute(parseHash(location.hash));

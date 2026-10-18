@@ -162,7 +162,7 @@
 /* ── M3: detail, editor, dialogs, More and the managed lists (mockups 2a–2e, 3a–3e, 7a–7k, 9a) ── */
 .grow { flex: 1 1 auto; min-width: 0; }
 .block { display: block; }
-.top-title.grow { flex: 1 1 auto; min-width: 0; }
+.top-title.grow { flex: 1 1 0; min-width: 0; }
 .h1.clip { font-size: 30px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .btn.sm { min-height: 48px; padding: 0 14px; font-size: 16px; }
 .btn.lg { min-height: 64px; font-size: 20px; padding: 0 24px; }
@@ -195,8 +195,9 @@ input[type="date"].field { padding: 0 12px; }
 .err .ic { width: 18px; height: 18px; }
 .hint { margin-top: 6px; }
 .chips-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
-.lockline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 0 0 4px; }
-.lockline .ic { width: 18px; height: 18px; }
+.lockline { margin: 0 0 4px; }
+.lockline .ic { width: 18px; height: 18px; vertical-align: -3px; margin: 0 6px 0 4px; }
+.lockline .ic:first-child { margin-left: 0; }
 .note-box { margin: 0; padding: 12px 14px; border-radius: 12px; background: #e3eaf3; color: var(--navy); font-size: 16px; }
 
 /* Dialogs */

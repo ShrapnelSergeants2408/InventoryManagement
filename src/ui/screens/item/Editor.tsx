@@ -29,7 +29,7 @@ import { PinMark, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
-import { goBack, href, replaceRoute } from '../../shell/router';
+import { goBack, href, openedFrom, replaceRoute } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { DeleteItemButton } from './DeleteItem';
@@ -168,7 +168,10 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     try {
       const saved = base ? await updateItem(db, base, r.item) : await addItem(db, r.item);
       showToast(base ? 'Saved.' : `Added “${saved.name}”.`);
-      replaceRoute(href.item(saved.id));
+      // Opened from this item's card: go back to it. Otherwise (a new item, or the editor
+      // opened directly) the card replaces the form, so Back never returns to the form.
+      if (base && openedFrom() === href.item(saved.id)) history.back();
+      else replaceRoute(href.item(saved.id));
     } catch (e) {
       setBusy(false);
       showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);

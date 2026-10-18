@@ -89,7 +89,7 @@ export function CategoriesScreen() {
       />
       <div class="mlist">
         <p class="small muted lockline">
-          Anyone can add or reorder.
+          Anyone can add or reorder.{' '}
           <Icon name="lock" />
           Rename and remove need the mentor PIN; a category must be empty (or its items moved) before it can be removed.
         </p>

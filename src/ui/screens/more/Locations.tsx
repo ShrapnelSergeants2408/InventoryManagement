@@ -71,7 +71,7 @@ export function LocationsScreen() {
       />
       <div class="mlist">
         <p class="small muted lockline">
-          The list order is the&nbsp;<strong>walk order</strong>&nbsp;for count-in by location and labels by location. Anyone can add or reorder.
+          The list order is the <strong>walk order</strong> for count-in by location and labels by location. Anyone can add or reorder.{' '}
           <Icon name="lock" />
           Rename and remove need the mentor PIN.
         </p>

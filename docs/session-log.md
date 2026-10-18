@@ -285,7 +285,7 @@ Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: M7 (
 | ~12:11 | PR #7 (M6 plus review fixes) already merged, as `ade857a`. Branch `m7-photos` from `origin/main`. Read SPEC §8, F19, mockups 2a/2b/2d/3a and the existing photo code (thumbnails and the detail photo came in M3) |
 | 12:11–12:24 | `setPhoto` / `applyPhotoChange` (photo row and `hasPhoto` in one transaction); `addItem` / `updateItem` take a photo change; `preparePhoto` (one decode, 1024 px JPEG and a 160 px thumbnail); `PhotoButtons`; Detail (Take/Retake, Gallery, Remove with a confirmation, Replace from the enlarged photo); Editor (staged photo, saved with the item); thumbnail change notices; 20 new tests; `scripts/m7-ui-check.mjs`. Commit `a9c95c6` |
 | ~12:20 | Dan asked about worktree agent branches with unfinished commits or PRs. Checked them (see WORK COMPLETED) |
-| 12:24–12:45 | M7 verification: unit mutants 15/15; M2–M6 browser checks as regression; interface mutants 6/6 after closing one test gap (the delete dialog's thumbnail); `docs/reviews/M7.md` |
+| 12:24–12:38 | M7 verification: unit mutants 15/15; M2–M6 browser checks as regression; interface mutants 6/6 after closing one test gap (the delete dialog's thumbnail); `docs/reviews/M7.md` |
 
 **WORK COMPLETED**
 - M7: F19 and §8 in full: take or choose, resize on the tablet, thumbnail, full size on the card, enlarge, replace and remove with no PIN. 377 tests; 32 browser checks. The M2–M6 checks still pass (28, 50, 25, 39, 54).

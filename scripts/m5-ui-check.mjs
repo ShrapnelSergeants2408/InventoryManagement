@@ -222,7 +222,12 @@ try {
 
   // ── Price-update import (F18, 8d, 8e) ──
   const priceCsv = 'id,v1_pack_price,v1_price_checked,v1_supplier,on_hand\r\nst-0001,123.45,11/02/2026,,77\r\nst-0003,,2026-11-02,FIRST Storefront,\r\nst-0200,1.00,,,\r\n';
-  await js(`await choose(1, 'prices-2026-11-02.csv', new TextEncoder().encode(${JSON.stringify(priceCsv)}), 'text/csv'); await answerGate(true); await waitDlg('Price update imported');`);
+  const pickPrices = `await choose(1, 'prices-2026-11-02.csv', new TextEncoder().encode(${JSON.stringify(priceCsv)}), 'text/csv'); await waitDlg('Check the price update');`;
+  const vendorsBefore = await js(`return [(await idb('items', 'st-0001')).vendors[0], (await idb('items', 'st-0003')).vendors[0]]`);
+  check('price preview before the PIN: changes listed, supplier change flagged, no PIN yet', await js(pickPrices + `const d = dlg('Check the price update'); return [norm(d.querySelector('.pv-warn').textContent).startsWith('1 change besides prices and dates'), [...d.querySelectorAll('.pv-flag')].map((e) => norm(e.textContent)).some((t) => t.startsWith('! supplier:') && t.endsWith('→ FIRST Storefront')), d.querySelectorAll('.pv-list > li').length, !pinDlg()]`), [true, true, 2, true]);
+  await shot('05a-price-preview');
+  check('preview Cancel: nothing changed, no PIN asked', await js(`await click('.dlg button', 'Cancel'); await settle(300); return [!dlg('Check the price update'), !pinDlg(), JSON.stringify([(await idb('items', 'st-0001')).vendors[0], (await idb('items', 'st-0003')).vendors[0]])]`), [true, true, JSON.stringify(vendorsBefore)]);
+  await js(pickPrices + `await click('.dlg button', 'Import changes'); await answerGate(true); await waitDlg('Price update imported');`);
   check('price import summary (8d)', await js(`return [...document.querySelectorAll('.sumt tr')].map((r) => norm(r.textContent))`), [
     '2vendor options updated — price, pack size, link, price-checked date',
     '0vendor options already up to date',

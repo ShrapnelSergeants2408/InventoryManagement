@@ -226,3 +226,47 @@ Sessions 1–4 (M1–M5); `gate(reason)` calls from M3–M5 kept unchanged; mock
 High for the PIN logic: fake-timer tests of the exact expiry, mutants, and a real-browser run with the real 30-second wait and 1-minute relock. Medium for PBKDF2 speed and the pad's feel on the Tab S8 (Stage 5). **An independent fresh-session review of M6 is recommended** (stage4-plan §4).
 
 **Next:** Dan merges PR #6 (M6), ideally after a fresh-session review; then M7 (photos; low risk).
+
+
+---
+
+## Session 6 — 2026-10-18 — independent review of M5 and M6
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. The fresh-session reviews of M5 and M6 that stage4-plan §4 recommends, then fixes.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| 10:33–10:45 | Read the M5/M6 reviews, the plan and the session log. Ran `npm test` (339/339), the build, and `m5-` and `m6-ui-check.mjs` (37/37 and 49/49, twice each) |
+| 10:35–10:42 | Two separate senior reviewers (M5, M6), each in its own git worktree, checked the code against the SPEC and wrote tests that prove each finding. The Director reproduced their tests on the main checkout and read the code for the top findings |
+| ~10:50 | Reported to Dan. He asked for fixes to M6 findings 1–2 and M5 findings 1–2, for the reviewers' tests to be added, and for the results to go in docs/reviews |
+| 10:55–11:20 | Fixes: gated dialogs close on relock and Delete asks again at confirm; the PIN pad and recovery check recover from errors; a price-import preview before the PIN; `v01_` headers refused. Reviewer tests added. M5/M6 browser checks extended; the M3 check relocks between dialog steps. Commit `7b4fb9e` |
+| 11:20–11:47 | A separate verifier undid each fix (mutation check) and reviewed the diff: 6 of 8 mutants caught. Gaps: the recovery-check fix had no test, and relock-close depended on a timer that can fire late |
+| 11:47–11:55 | Added the recovery-check browser check (its mutant is now caught) and a once-a-second wall-clock check in `useCloseOnRelock`. Fixed stale test titles. Wrote `docs/reviews/M5-independent.md` and `M6-independent.md` |
+
+**WORK COMPLETED**
+- Independent review of M5 and M6. No way past the PIN from a locked start, and no data loss in backup or restore, were found.
+- Four findings fixed; the remaining findings are recorded as open (all low).
+
+**DELIVERABLES PRODUCED**
+- `src/ui/shell/LockPill.tsx` (`useCloseOnRelock`); `DeleteItem`, `Suppliers`, `Categories`, `Locations` and `More` use it.
+- `GateHost.tsx` and `PinFlows.tsx` (try/finally).
+- `src/io/price-import.ts` (preview, `detailChanges`, `v01_` check); `ImportDialogs.tsx` (`PriceImportPreview`); `Backup.tsx`; `app.css`.
+- `tests/review-m5.test.ts` and `tests/m6-review.test.ts`.
+- `scripts/{m3,m5,m6}-ui-check.mjs` and `scripts/pin-helpers.mjs` (`relockNow`).
+- `docs/reviews/M5-independent.md` and `M6-independent.md`.
+
+**PREDECESSORS / CONTEXT**
+Sessions 4–5 (M5, M6) and their reviews.
+
+**CONFIDENCE**
+High for the four fixes:
+- 357 unit tests pass.
+- Browser checks pass: M2 28/28, M3 50/50, M4 25/25, M5 39/39, M6 54/54.
+- Every fix but one has a mutant that is caught. The exception is Delete's second PIN check at confirm, which is backup protection behind the close-on-relock.
+
+Also untested: the wall-clock close after the tablet sleeps.
+
+**Next:** Dan merges PR #7 (M6 plus these fixes), then M7 (photos).
+

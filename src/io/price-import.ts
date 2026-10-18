@@ -6,7 +6,12 @@
 // backup works as the input. Anything else is an error. A blank cell leaves the field as it is.
 // A row can fill an empty vendor slot (supplier and pack size needed) but can't remove one or
 // change the preferred vendor.
-import { parsePrice } from '../domain/money';
+//
+// Because a data-only export has every vendor cell filled, re-importing an old export would also
+// write back vendor details edited (or options deleted) since then. The plan therefore carries a
+// field-by-field preview, shown before the PIN, that flags anything other than a price or a
+// price-checked date.
+import { formatCents, parsePrice } from '../domain/money';
 import { VENDOR_SLOTS, nameKey, type Item, type Supplier, type Vendor, type VendorSlot } from '../domain/types';
 import { normalizeUrl } from '../domain/url';
 import { isIsoDate, parseWholeNumber } from '../domain/validate';
@@ -32,6 +37,28 @@ export interface ItemUpdate {
   updates: SlotUpdate[];
 }
 
+export type PriceField = 'supplier' | 'part #' | 'link' | 'pack size' | 'pack price' | 'price checked';
+
+export interface FieldChange {
+  field: PriceField;
+  /** As shown to the mentor: "$12.99", "no price", "blank". */
+  before: string;
+  after: string;
+}
+
+export interface OptionPreview {
+  slot: VendorSlot;
+  /** The slot was empty on the tablet: the file adds a vendor option. */
+  adds: boolean;
+  changes: FieldChange[];
+}
+
+export interface ItemPreview {
+  id: string;
+  name: string;
+  options: OptionPreview[];
+}
+
 export interface PricePlan {
   fileName: string;
   /** Data rows read (blank rows skipped). */
@@ -42,6 +69,13 @@ export interface PricePlan {
   optionsAdded: number;
   /** Options the file mentions whose values already match. */
   optionsUnchanged: number;
+  /** What changes, item by item, in the same order as `items`. */
+  preview: ItemPreview[];
+  /**
+   * Changes to anything other than a price or price-checked date (supplier, part #, link, pack
+   * size), plus added options. Expected rarely from a price refresh; the preview warns about them.
+   */
+  detailChanges: number;
   /** Ids in the file that aren't on the tablet (skipped, not an error). */
   notFound: string[];
   /** Supplier names not in the Supplier list; added on import, as spelled in the file. */
@@ -65,6 +99,30 @@ function sameVendor(a: Vendor, b: Vendor): boolean {
   );
 }
 
+const FIELD_LABELS: [keyof Vendor, PriceField][] = [
+  ['supplier', 'supplier'],
+  ['partNo', 'part #'],
+  ['url', 'link'],
+  ['packSize', 'pack size'],
+  ['packPriceCents', 'pack price'],
+  ['priceChecked', 'price checked'],
+];
+
+function shown(field: keyof Vendor, v: Vendor | null): string {
+  if (!v) return '—';
+  if (field === 'packPriceCents') return v.packPriceCents === null ? 'no price' : formatCents(v.packPriceCents);
+  const s = String(v[field]);
+  return s === '' ? 'blank' : s;
+}
+
+/** The fields that differ between an option before and after an update. */
+export function fieldChanges(before: Vendor | null, after: Vendor): FieldChange[] {
+  return FIELD_LABELS.filter(([k]) => !before || before[k] !== after[k]).map(([k, field]) => ({ field, before: shown(k, before), after: shown(k, after) }));
+}
+
+/** True for a change a price refresh shouldn't normally make. */
+export const isDetailChange = (c: FieldChange): boolean => c.field !== 'pack price' && c.field !== 'price checked';
+
 /** The vendor option after an update; null when a new slot lacks supplier or pack size. */
 export function applySlot(current: Vendor | null, set: Partial<Vendor>): Vendor | null {
   if (current) return { ...current, ...set };
@@ -86,7 +144,8 @@ export function planPriceImport(text: string, fileName: string, current: { items
     const m = /^v(\d+)_(.+)$/.exec(key);
     if (m && VENDOR_FIELD_SET.has(m[2]!)) {
       const n = Number(m[1]);
-      if (n >= 1 && n <= 3) slotColumns.add(key);
+      // "v01_…" would be read as slot 1 but its cells looked up as "v1_…", so it's refused.
+      if (n >= 1 && n <= 3 && m[1] === String(n)) slotColumns.add(key);
       else problems.push({ file, row: 1, message: `column “${h}” isn’t recognized — items have at most 3 vendor options (v1_, v2_, v3_)` });
     } else if (INVENTORY_SET.has(key)) ignoredColumns.push(h);
     else problems.push({ file, row: 1, message: `column “${h}” isn’t recognized — a price file can have id and v1_…v3_ supplier, part_no, url, pack_size, pack_price, price_checked` });
@@ -107,6 +166,8 @@ export function planPriceImport(text: string, fileName: string, current: { items
   let optionsChanged = 0;
   let optionsAdded = 0;
   let optionsUnchanged = 0;
+  const preview: ItemPreview[] = [];
+  let detailChanges = 0;
 
   for (const { row, cells } of table.rows) {
     const get = cellGetter(table, cells);
@@ -125,6 +186,7 @@ export function planPriceImport(text: string, fileName: string, current: { items
     const item = byId.get(id) ?? byKey.get(id.toLowerCase()) ?? null;
 
     const updates: SlotUpdate[] = [];
+    const options: OptionPreview[] = [];
     let rowChanged = 0;
     let rowAdded = 0;
     let rowUnchanged = 0;
@@ -170,6 +232,9 @@ export function planPriceImport(text: string, fileName: string, current: { items
         continue;
       }
       updates.push({ slot, set, adds: !before });
+      const changes = fieldChanges(before, after);
+      options.push({ slot, adds: !before, changes });
+      detailChanges += before ? changes.filter(isDetailChange).length : 1;
       // Only a supplier that ends up on an item is added to the list.
       if (set.supplier !== undefined && !supplierByKey.has(nameKey(set.supplier))) newSuppliers.set(nameKey(set.supplier), set.supplier);
       if (before) rowChanged++;
@@ -182,7 +247,10 @@ export function planPriceImport(text: string, fileName: string, current: { items
     optionsChanged += rowChanged;
     optionsAdded += rowAdded;
     optionsUnchanged += rowUnchanged;
-    if (updates.length > 0) items.push({ row, id: item.id, updates });
+    if (updates.length > 0) {
+      items.push({ row, id: item.id, updates });
+      preview.push({ id: item.id, name: item.name, options });
+    }
   }
 
   if (problems.length > 0) return { ok: false, problems };
@@ -195,6 +263,8 @@ export function planPriceImport(text: string, fileName: string, current: { items
       optionsChanged,
       optionsAdded,
       optionsUnchanged,
+      preview,
+      detailChanges,
       notFound,
       newSuppliers: [...newSuppliers.values()],
       ignoredColumns,

@@ -413,6 +413,12 @@ input[type="date"].field { padding: 0 12px; }
 .sumt { border-collapse: collapse; }
 .sumt td { padding: 6px 12px 6px 0; vertical-align: top; }
 .sumt td.n { font-family: var(--font-display); font-weight: 700; font-size: 26px; min-width: 64px; }
+/* Price-update preview: what will change, before the PIN */
+.pv-warn { border-left: 4px solid var(--short); padding: 8px 12px; background: #fbeaec; border-radius: 8px; }
+.pv-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; max-height: 340px; overflow: auto; }
+.pv-opt { padding-left: 14px; }
+.pv-opt ul { margin: 2px 0 0; padding-left: 20px; }
+.pv-flag { color: var(--short-text); font-weight: 700; }
 .dlg.busy { width: auto; align-items: center; font-size: 18px; }
 @media (orientation: portrait) {
   .bk { grid-template-columns: minmax(0, 1fr); padding: 16px; }

@@ -17,7 +17,9 @@ import { MoreScreen } from './screens/more/More';
 import { SettingsScreen } from './screens/more/Settings';
 import { SuppliersScreen } from './screens/more/Suppliers';
 import { OrderScreen } from './screens/order/Order';
+import { LabelsScreen } from './screens/labels/Labels';
 import { Placeholder } from './screens/Placeholder';
+import { ScanScreen } from './screens/scan/Scan';
 import { SetupScreen } from './screens/Setup';
 import { StorageError } from './screens/StorageError';
 import { GateHost } from './shell/GateHost';
@@ -58,7 +60,9 @@ function Screen({ route }: { route: Route }) {
     case 'edit':
       return <EditorScreen key={`edit-${route.id}`} mode="edit" id={route.id} />;
     case 'add':
-      return <EditorScreen key={`add-${route.name}`} mode="add" name={route.name} />;
+      return <EditorScreen key={`add-${route.name}-${route.barcode}`} mode="add" name={route.name} barcode={route.barcode} />;
+    case 'labels':
+      return <LabelsScreen key={route.ids.join(',')} ids={route.ids} />;
     case 'suppliers':
       return <SuppliersScreen />;
     case 'categories':
@@ -78,11 +82,11 @@ function Screen({ route }: { route: Route }) {
     case 'order':
       return <OrderScreen />;
     case 'scan':
-      return <Placeholder title="Scan" milestone="M8" what="Scan a QR label or barcode to open that item." />;
+      return <ScanScreen />;
     case 'count':
       return <Placeholder title="Count" milestone="M9" what="Count-in walks you through counting stock by category or location." />;
     case 'labels':
-      return <Placeholder title="Labels" milestone="M8" what="Print QR labels on Avery sheets or plain paper." />;
+      return <LabelsScreen ids={null} />;
     case 'more':
       return <MoreScreen />;
   }

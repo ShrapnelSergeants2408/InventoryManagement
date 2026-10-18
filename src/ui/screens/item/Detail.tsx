@@ -139,6 +139,10 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
               <Icon name="pencil" />
               Edit item
             </a>
+            <a class="btn" href={href.labels([item.id])}>
+              <Icon name="print" />
+              Print QR label
+            </a>
             <DeleteItemButton item={item} />
           </div>
         </div>

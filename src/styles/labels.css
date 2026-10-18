@@ -1,0 +1,98 @@
+/* QR labels (mockups 6a–6d) and their print pages (SPEC §9). */
+
+.lsteps { display: flex; gap: 8px; align-items: center; flex: none; }
+.stp { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; color: var(--ink-2); white-space: nowrap; }
+.stp b { width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--ink-2); display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+.stp.on { color: var(--ink); }
+.stp.on b { background: var(--ink); border-color: var(--ink); color: #fff; }
+
+/* Step 1 */
+.lbody { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+.lpane { overflow: auto; padding: 8px 24px 32px; background: var(--card); }
+.lpane > .chips-row { margin: 8px 0; }
+.rpane { border-left: 1px solid var(--line); display: flex; flex-direction: column; background: #fbf9f6; min-height: 0; }
+.rsum { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+.bignum { font-family: var(--font-display); font-weight: 700; font-size: 48px; line-height: 1; }
+.rlist { flex: 1 1 auto; overflow: auto; margin: 0; padding: 0 20px; list-style: none; }
+.rlist li { padding: 8px 0; border-bottom: 1px solid #e6dfd6; }
+.racts { padding: 16px 20px 20px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); }
+.lgrow { display: flex; align-items: center; gap: 12px; min-height: 60px; border-bottom: 1px solid #e6dfd6; }
+.cb { display: inline-flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 8px 0 0; background: none; border: 0; font: inherit; color: var(--ink); cursor: pointer; text-align: left; flex: 1 1 auto; min-width: 0; }
+.cbox { width: 32px; height: 32px; border-radius: 8px; border: 3px solid var(--ink); display: inline-flex; align-items: center; justify-content: center; flex: none; background: #fff; }
+.cbox.on { background: var(--ink); color: #fff; }
+.cbox .ic { width: 22px; height: 22px; stroke-width: 3; }
+.exp { width: 56px; height: 56px; border: 0; background: transparent; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--ink); flex: none; }
+.irow { display: flex; align-items: center; gap: 12px; min-height: 56px; padding-left: 44px; border-bottom: 1px solid #f0eae2; }
+.irow-t { min-width: 0; font-size: 16px; }
+.ithumb { width: 40px; height: 40px; object-fit: contain; border-radius: 6px; border: 1px solid var(--line); background: #fff; flex: none; }
+
+/* Step 2 */
+.cfg { display: grid; grid-template-columns: 400px minmax(0, 1fr); flex: 1 1 auto; min-height: 0; }
+.cfgl { overflow: auto; padding: 16px 20px 28px; display: flex; flex-direction: column; gap: 18px; background: var(--card); border-right: 1px solid var(--line); }
+.cfgl .h2 { margin-bottom: 8px; }
+.back-sel { align-self: flex-start; }
+.sec-p { margin: 0 0 8px; }
+.lays { display: flex; flex-direction: column; gap: 8px; }
+.lay { display: flex; flex-direction: column; gap: 4px; width: 100%; min-height: 64px; padding: 10px 14px; border: 2px solid var(--line); border-radius: 14px; background: #fff; font: inherit; text-align: left; cursor: pointer; color: var(--ink); }
+.lay.on { border-color: var(--ink); background: #fbf9f6; box-shadow: inset 0 0 0 1px var(--ink); }
+.mini { display: grid; gap: 4px; background: var(--ground); padding: 8px; border-radius: 10px; }
+.cell { min-height: 48px; border-radius: 6px; border: 2px solid var(--line-2); background: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; color: var(--ink); padding: 0; }
+.cell.used { background: repeating-linear-gradient(45deg, #d9d2c9 0 4px, #f2efea 4px 8px); color: var(--ink-2); }
+.cell.start { background: var(--ink); color: #fff; border-color: var(--ink); }
+.nuds { display: flex; flex-direction: column; gap: 10px; }
+.nud { display: flex; align-items: center; gap: 10px; }
+.nud-l { width: 64px; font-weight: 700; }
+.nud .step { width: 56px; height: 56px; }
+.nv { min-width: 104px; text-align: center; font-family: var(--font-display); font-weight: 700; font-size: 26px; }
+.prevcol { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.prev { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; overflow: auto; background: #e8e3dc; }
+.prev-head { display: flex; align-items: center; gap: 10px; }
+.prev-t { font-weight: 700; text-align: center; }
+/* The sheet is laid out in real inches and scaled down for the preview. */
+.prev-page { --k: .54; width: calc(8.5in * var(--k)); height: calc(11in * var(--k)); flex: none; box-shadow: 0 4px 18px rgba(0, 0, 0, .25); background: #fff; }
+.prev-page > .sheet { transform: scale(var(--k)); transform-origin: 0 0; }
+.pfoot { padding: 12px 20px 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--line); background: var(--card); }
+.remind { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--navy); color: #fff; font-weight: 700; }
+.pacts-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.dlg-list { margin: 0; padding-left: 26px; display: flex; flex-direction: column; gap: 10px; font-size: 20px; }
+.warn-t { color: var(--short-text); font-weight: 700; }
+
+/* A sheet: one letter page, positions in inches (domain/labels.ts). */
+.sheet { position: relative; background: #fff; overflow: hidden; color: #000; font-family: var(--font-body); }
+.lab { position: absolute; display: flex; align-items: center; gap: .06in; padding: .06in; overflow: hidden; box-sizing: border-box; }
+.lab.column { flex-direction: column; justify-content: center; gap: .03in; text-align: center; }
+.lab .qr { flex: none; display: block; }
+.lab-t { display: flex; flex-direction: column; gap: .02in; min-width: 0; line-height: 1.1; overflow: hidden; }
+.lab-n { font-weight: 700; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
+.lab.column .lab-n { -webkit-line-clamp: 2; }
+.lab-x { font-size: .85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lab.cut { outline: .01in dashed #888; outline-offset: -.005in; }
+.lab.used { background: repeating-linear-gradient(45deg, #e6dfd6 0 .04in, #fff .04in .08in); }
+.lab.outline { border: .01in solid #000; align-items: flex-start; justify-content: flex-start; font-size: 9pt; font-weight: 700; }
+.sheet-cap { position: absolute; left: 0; right: 0; bottom: .2in; text-align: center; font-size: 8pt; color: #333; }
+/* Preview only: show each label's edge so the layout is visible on screen. */
+.prev-page .lab:not(.outline):not(.used) { box-shadow: inset 0 0 0 .012in #b9afa4; }
+
+#print-root { display: none; }
+
+@media (orientation: portrait) {
+  .lbody { display: flex; flex-direction: column; overflow: auto; }
+  .lpane { overflow: visible; padding: 8px 16px 16px; }
+  .rpane { border-left: 0; border-top: 1px solid var(--line); }
+  .rlist { max-height: 240px; }
+  .cfg { display: flex; flex-direction: column; overflow: auto; }
+  .cfgl { overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); }
+  .prev { overflow: visible; }
+  .prev-page { --k: .58; }
+  .top .lsteps .stp { font-size: 15px; }
+}
+
+@media print {
+  @page { size: letter; margin: 0; }
+  html, body { background: #fff !important; margin: 0; padding: 0; height: auto; overflow: visible; }
+  body > :not(#print-root) { display: none !important; }
+  #print-root { display: block; }
+  #print-root .sheet { break-after: page; page-break-after: always; }
+  #print-root .sheet:last-child { break-after: auto; page-break-after: auto; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

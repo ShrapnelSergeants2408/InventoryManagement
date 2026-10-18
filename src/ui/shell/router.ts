@@ -9,7 +9,8 @@ export type Route =
   | { tab: Tab; screen: 'tab' }
   | { tab: 'inventory'; screen: 'item'; id: string }
   | { tab: 'inventory'; screen: 'edit'; id: string }
-  | { tab: 'inventory'; screen: 'add'; name: string }
+  | { tab: 'inventory'; screen: 'add'; name: string; barcode: string }
+  | { tab: 'labels'; screen: 'labels'; ids: string[] }
   | { tab: 'more'; screen: ManagedList }
   | { tab: 'more'; screen: 'backup' }
   | { tab: 'more'; screen: 'settings' };
@@ -29,7 +30,14 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'item' && parts[1]) {
     return parts[2] === 'edit' ? { tab: 'inventory', screen: 'edit', id: parts[1] } : { tab: 'inventory', screen: 'item', id: parts[1] };
   }
-  if (parts[0] === 'add') return { tab: 'inventory', screen: 'add', name: new URLSearchParams(query).get('name') ?? '' };
+  if (parts[0] === 'add') {
+    const q = new URLSearchParams(query);
+    return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '' };
+  }
+  if (parts[0] === 'labels' && query) {
+    const ids = (new URLSearchParams(query).get('ids') ?? '').split(',').filter(Boolean);
+    if (ids.length) return { tab: 'labels', screen: 'labels', ids };
+  }
   if (parts[0] === 'more') {
     const list = LISTS.find((l) => l === parts[1]);
     if (list) return { tab: 'more', screen: list };
@@ -44,7 +52,13 @@ export const href = {
   tab: (t: Tab) => `#/${t}`,
   item: (id: string) => `#/item/${encodeURIComponent(id)}`,
   edit: (id: string) => `#/item/${encodeURIComponent(id)}/edit`,
-  add: (name = '') => (name ? `#/add?${new URLSearchParams({ name })}` : '#/add'),
+  add: (name = '', barcode = '') => {
+    const q = new URLSearchParams();
+    if (name) q.set('name', name);
+    if (barcode) q.set('barcode', barcode);
+    return q.size ? `#/add?${q}` : '#/add';
+  },
+  labels: (ids: string[]) => `#/labels?${new URLSearchParams({ ids: ids.join(',') })}`,
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',
   settings: '#/more/settings',

@@ -157,7 +157,7 @@ try {
   check('PINs that don’t match: say so and start over', await J(`await enterPin('2408'); const again = norm($('.pin-sub').textContent); await enterPin('2409'); return [again, norm($('.pin-err').textContent), norm($('.pin-sub').textContent), dotsOn()]`), ['Type the same PIN again', 'The two PINs didn’t match. Choose the PIN again.', 'Choose 4–6 digits', 0]);
   check('keyboard digits and Enter work on the pad', await J(`for (const k of '2408') await key(k); await key('Enter'); await settle(200); return norm($('.pin-sub').textContent)`), 'Type the same PIN again');
   await J(`await enterPin('2408');`);
-  check('step 2: a 10-character recovery code; Finish needs the tick', await J(`return [norm($('.setup-steps li.now').textContent), norm($('.rcode').textContent), byText('.recovery button', 'Finish setup').disabled]`).then(([s, c, d]) => [s, CODE_RE.test(c), d]), ['2Save recovery code', true, true]);
+  check('step 2: a 10-character recovery code; Next needs the tick', await J(`return [norm($('.setup-steps li.now').textContent), norm($('.rcode').textContent), byText('.recovery button', 'Next').disabled]`).then(([s, c, d]) => [s, CODE_RE.test(c), d]), ['2Save recovery code', true, true]);
   await shot('02-setup-recovery');
   await send('Page.reload');
   await waitFor(`document.querySelector('.setup')`, 60000);
@@ -165,7 +165,7 @@ try {
   check('closed before “I wrote it down”: nothing saved, setup starts again', await J(`return [(await idb('settings', 'pinHash')) ?? null, (await idb('settings', 'recoveryHash')) ?? null, norm($('.setup-steps li.now').textContent)]`), [null, null, '1Set mentor PIN']);
   await J(`await enterPin('2408'); await enterPin('2408');`);
   const code1 = await J(`return norm($('.rcode').textContent)`);
-  await J(`$('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Finish setup').click(); await settle(800);`);
+  await J(`$('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Next').click(); await finishStart();`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
   check('after setup: inventory opens, locked; PIN and code stored hashed only', await J(`const p = await idb('settings', 'pinHash'); const r = await idb('settings', 'recoveryHash'); const all = JSON.stringify(await idb('settings')); return [pill(), p.value.alg, p.value.iter >= 100000, r.value.alg, all.includes('2408'), all.includes(${JSON.stringify(code1.replace('-', ''))})]`), ['Locked', 'PBKDF2-SHA256', true, 'PBKDF2-SHA256', false, false]);
 

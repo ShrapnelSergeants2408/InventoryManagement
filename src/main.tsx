@@ -10,5 +10,7 @@ import './styles/scan.css';
 import './styles/count.css';
 import { render } from 'preact';
 import { App } from './ui/App';
+import { startServiceWorker } from './ui/shell/UpdateBanner';
 
 render(<App />, document.getElementById('app')!);
+startServiceWorker();

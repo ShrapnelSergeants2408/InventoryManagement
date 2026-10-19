@@ -1,7 +1,12 @@
-# FRC 2408 Inventory Management — Specification v0.6
+# FRC 2408 Inventory Management — Specification v0.7
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed)
-**Status:** Draft for review · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT
+**Status:** Draft for review · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT
+
+**Changes in v0.7:** Two Stage 4 decisions approved 2026-10-17 (spec-questions Q3, Q8) written in, and two hardware questions removed from §15:
+- Categories are a list with their own order and subcategories (§3), saved as `categories.csv` in the full backup (§7).
+- The full backup includes `manifest.json` (app version, saved-at time, item and photo counts), used by the restore comparison (F17, §7).
+- §15: the NEO 2.0 / WCP-1011 test fit and the 2027 robot radio are robot questions, not app questions, and are closed here.
 
 **Changes in v0.6:** Count rounds for count-in (F24): progress shows items counted since a chosen date, so a later recount shows its own progress. Approved by Dan 2026-10-18 after the M9 review.
 
@@ -102,6 +107,15 @@ Default list on first launch: REV, AndyMark, CTRE, WCP, VEX, McMaster-Carr, Thri
 
 Empty on first launch (the starter catalog has no locations). Items with no location are grouped as "No location" wherever locations are listed.
 
+### Category (managed list, F9)
+| Field | Required | Notes |
+|---|---|---|
+| name | yes | Unique (case-insensitive). The starter list is in §11 |
+| order | yes | Position in the list. This is the Inventory list order (F1), the order for count-in by category (F24) and for labels by category (§9) |
+| subcategories | no | An ordered list of names, unique within the category (case-insensitive) |
+
+Categories and subcategories can be empty (added before any item uses them, or emptied by moving items).
+
 ## 4. Calculations
 
 ### Order quantity
@@ -185,11 +199,14 @@ One row per item. Vendor options flattened into column groups so the file opens 
 - Notes with commas or line breaks are quoted correctly (tested).
 
 ### Full backup (ZIP)
-`inventory.csv` + `suppliers.csv` (name, website, notes) + `locations.csv` (name, notes, order) + `photos/<item id>.jpg`.
+`inventory.csv` + `suppliers.csv` (name, website, notes) + `locations.csv` (name, notes, order) + `categories.csv` (category, subcategory, order) + `manifest.json` + `photos/<item id>.jpg`.
+
+- **`categories.csv`** has one row per category and subcategory, in list order; a category with no subcategories gets one row with a blank subcategory. `order` is the category's position. It keeps empty categories, empty subcategories and the custom order through a backup and restore. When it's missing (a data-only CSV, older ZIPs, the starter catalog), categories are rebuilt from `inventory.csv` in first-appearance order.
+- **`manifest.json`** holds the app name and version, `savedAt` (date and time, ISO 8601) and the item and photo counts. Restore never requires it. The restore comparison (F17) takes the saved date from it; without it, from the timestamp in the file name, then the ZIP's file dates, else "unknown". A CSV-only restore uses the file name or "unknown". The tablet tracks its own last-change time for the "on this tablet now" side.
 
 ### Both
 - Filenames include a timestamp, e.g. `inventory-backup-2026-10-17-1035.zip`.
-- The PIN and settings are not included. The Supplier and Location lists are data, not settings: they travel in `suppliers.csv` and `locations.csv`. A CSV-only restore rebuilds missing supplier names from the vendor columns and missing location names from the location column (appended to the end of the walk order) (F17).
+- The PIN and settings are not included. The Supplier, Location and Category lists are data, not settings: they travel in `suppliers.csv`, `locations.csv` and `categories.csv`. A CSV-only restore rebuilds missing supplier names from the vendor columns and missing location names from the location column (appended to the end of the walk order) (F17).
 - Export → restore must round-trip with no data loss (tested).
 - Full backups with many photos are larger; Bluetooth transfer will be slower than Quick Share or Drive. The starter catalog's photos are about 6 MB.
 
@@ -285,9 +302,8 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 ## 15. Open questions
 
 1. ~~Which Thrifty Bot swerve module version the team owns~~ — answered: TTB-SWERVE-8MM-8MM (Stage 2).
-2. Which label sheets you end up buying (any of the §9 layouts work; others can be added). Still open as of 2026-10-17 14:43.
-3. Test-fit NEO 2.0 with the WCP-1011 pinion on one module (shaft engagement, motor spacers, mounting pattern) before buying motors for all four.
-4. Which robot radio is legal for 2027 (VH-109 v1.5 is out of stock at CTRE and AndyMark; WCP lists a Robot Radio V2).
+2. Which label sheets you end up buying (any of the §9 layouts work; others can be added). Still open: waiting on a team purchase decision (2026-10-18).
+3. ~~Test-fit NEO 2.0 with the WCP-1011 pinion~~ and 4. ~~Which robot radio is legal for 2027~~ — closed 2026-10-18: robot questions, not app questions (Dan). The starter catalog keeps its items; the team can edit them in the app.
 5. ~~Stage 3 proposals S2, S4–S11~~ — approved 2026-10-17 15:34 and written into v0.5 (F7, F9, F14, F16, F17, F18, F21, F25, §2, §6, §9).
 
 ## 16. Decision log
@@ -314,6 +330,8 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-17 15:40 | v0.5: S2 barcode without PIN; S4 banner placement/snooze; S5 QR format; S6 restore confirmation; S7 all-or-nothing price import; S8 ▲/▼ reorder; S9 named settings; S10 stale summary banner; S11 storage status and error screen |
 | 2026-10-18 | Dan (after the M9 review): recounts should show their own progress, using "counted since <date>" → F24 count rounds |
 | 2026-10-18 | v0.6: F24 count rounds |
+| 2026-10-18 | Dan: write the approved Q3 (`categories.csv`) and Q8 (`manifest.json`) into the spec; label sheets wait for a team purchase decision; §15 items 3 (NEO 2.0 test fit) and 4 (robot radio) closed as not app questions |
+| 2026-10-18 | v0.7: Category list in §3; `categories.csv` and `manifest.json` in §7; §15 updated |
 
 ## 17. UI conventions (from Stage 3)
 

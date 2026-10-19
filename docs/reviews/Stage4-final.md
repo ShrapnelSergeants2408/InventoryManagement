@@ -51,6 +51,6 @@ Install to the home screen and the persistent-storage answer for the installed a
 
 ## For Dan
 
-- **Spec:** spec-questions Q3 (`categories.csv`) and Q8 (`manifest.json` in the full backup) are built as approved but not yet written into SPEC (v0.6 only added count rounds).
-- **Label sheets** are still undecided (§15 Q2); the layouts are data, so adding or correcting one is a small change.
+- **Spec:** Q3 (`categories.csv`) and Q8 (`manifest.json`) written into SPEC v0.7 (2026-10-18); §15 robot questions closed.
+- **Label sheets** wait for a team purchase decision (§15 Q2); the layouts are data, so adding or correcting one is a small change.
 - A **fresh-session review** before Stage 5 is optional: the high-stakes parts (order math, backup/restore, price import, PIN) already had one (M5, M6), and nothing in M7–M10 changed them.

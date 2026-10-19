@@ -16,7 +16,17 @@ export const PIN_H = `
     await enterPin(pin);
     $('.recovery input[type=checkbox]').click();
     await settle(150);
-    byText('.recovery button', 'Finish setup').click();
+    byText('.recovery button', 'Next').click();
+    await finishStart();
+  };
+  // Setup step 3 (M10, 9h–9j): load the starter catalog, then Go to inventory.
+  const finishStart = async () => {
+    for (let i = 0; i < 100 && !$('.sopts'); i++) await settle(100);
+    if (!$('.sopts')) throw new Error('setup step 3 did not appear');
+    byText('.setup-acts .btn', 'Load starter catalog').click();
+    for (let i = 0; i < 600 && !$('.sdone'); i++) await settle(100);
+    if (!$('.sdone')) throw new Error('the starter catalog did not finish loading');
+    byText('.setup-acts .btn', 'Go to inventory').click();
     await settle(800);
   };
   // yes: the PIN, then lock again at once (unless stay), so every later PIN step asks (as the

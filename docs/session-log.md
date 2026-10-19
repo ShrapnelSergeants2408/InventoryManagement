@@ -359,3 +359,35 @@ M1–M8; spec-questions Q7 and D8; M8's Scanner and Labels routes.
 High for the count logic and the save: walk order, progress, keypad, summary and `saveCount` are unit-tested with mutants (26/26), and the browser check reads the stored values back. Medium for scan as you go on the tablet (native BarcodeDetector, a long camera session) and for glove use (Stage 5). Open (low, for Dan): recounts have no "round", so after the first full count every group shows Recount 100% (see M9 review). A fresh-session review isn't needed.
 
 **Next:** Dan merges the M9 PR; then M10 (starter catalog first launch and offline/PWA; medium risk).
+
+
+---
+
+## Session 8, continued — 2026-10-18 — count rounds, M10, Stage 4 close
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine, same session as M9. Dan: "merged, continue with m10. for low priority decision - change spec to indication per-recount progress with counted since <date>".
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~18:42 | Dan merged PR #11 (M9), as `33487b5`. Branch `m10-starter-pwa` from `origin/main` |
+| 18:42–18:50 | SPEC v0.6 (F24 count rounds, change note, decision log); `countSince` setting, round-aware progress, Start a new count / Change date / Count from the beginning; 9 unit tests, 8 browser checks; mutants 7/7 after one gap. Commit `744b4c2` |
+| 18:50–19:10 | M10: setup step 3 (starter catalog with progress, restore a backup, start empty), Ready screen, persistent-storage request, storage-error "Set up again", boot seed load removed; `vite-plugin-pwa` 2.0.0, manifest and icons, precache, update banner; `tests/setup.test.ts`; `scripts/m10-ui-check.mjs` (offline with the server stopped); setup helper in the M2–M9 checks. Full regression M2–M10 during this time. Commits `481f44c`, `0acf613` |
+| 19:10–19:25 | M10 verification: unit mutants 4/4, interface mutants 8/8; `docs/reviews/M10.md`; Stage 4 final regression and F1–F25 trace, `docs/reviews/Stage4-final.md` |
+
+**WORK COMPLETED**
+- Count rounds (Dan's decision on the M9 open item): written into SPEC v0.6 and built.
+- M10: F22 and §2 in full, plus the Q2 recovery path. 504 tests; browser checks M2–M10 all pass (28, 50, 25, 39, 54, 32, 61, 71, 40 = 400) with no console errors.
+- Stage 4 close: every F1–F25 traced to checks that ran on the final source; all ✅, with Stage 5 items noted (share sheet, camera, native detector, real label print, install).
+
+**DELIVERABLES PRODUCED**
+`docs/SPEC.md` (v0.6), `src/domain/count.ts`, `src/data/count.ts`, `src/ui/screens/count/Count.tsx`, `src/styles/count.css`, `src/data/setup.ts`, `src/io/{bundle,seed}.ts` (photo progress), `src/ui/screens/{Setup,StorageError}.tsx`, `src/ui/shell/{UpdateBanner,Shell}.tsx`, `src/ui/App.tsx`, `src/main.tsx`, `src/styles/app.css`, `vite.config.ts`, `tsconfig.json`, `package.json` (`vite-plugin-pwa`), `public/icons/icon-{192,512}.png`, `tests/{setup,count,count-db}.test.ts`, `scripts/m10-ui-check.mjs`, `scripts/{m6,m9}-ui-check.mjs`, `scripts/pin-helpers.mjs`, `docs/reviews/{M9,M10,Stage4-final}.md`, `docs/stage4-plan.md` (Stage 5 list).
+
+**PREDECESSORS / CONTEXT**
+M1–M9; spec-questions Q2, D7, D8; the M9 review's open item.
+
+**CONFIDENCE**
+High for first launch and the data it writes (unit-tested with mutants; refused once setup is done) and for offline use (checked with the web server stopped, including a full first launch). Medium for what only the Tab S8 shows: installing, the persistent-storage answer for the installed app, and an update after a real deploy (Stage 5). Process note: the mutation runner doesn't check that a mutant compiles; one M10 mutant first showed as a false miss for that reason (a failed build can't produce a false catch).
+
+**Next:** Dan merges the M10 PR (Stage 4 complete); then Stage 5 on the Tab S8 (see `docs/reviews/Stage4-final.md`).

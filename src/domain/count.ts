@@ -8,17 +8,21 @@ import { nameKey, type Category, type Item, type Location } from './types';
 
 export type CountMode = 'category' | 'location' | 'scan';
 
-export const isCounted = (i: Item) => i.lastCounted !== '';
+/**
+ * Counted in this round (F24 count rounds): last_counted on or after `since` (ISO dates compare
+ * as text). A blank `since` (the first count) means counted at any time.
+ */
+export const isCounted = (i: Item, since = '') => i.lastCounted !== '' && i.lastCounted >= since;
+
+/** A "counting since" date as stored: YYYY-MM-DD, or '' for none. Anything else counts as none. */
+export const cleanSince = (v: unknown): string => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');
 
 /** "Skip items with desired 0" takes them out of the walk, not out of overall progress (D8). */
 export const inWalk = (i: Item, skipZero: boolean) => !(skipZero && i.desired === 0);
 
 /** Overall progress counts every item (D8). */
-export function overallProgress(items: readonly Item[]): {
-  counted: number;
-  total: number;
-} {
-  return { counted: items.filter(isCounted).length, total: items.length };
+export function overallProgress(items: readonly Item[], since = ''): { counted: number; total: number } {
+  return { counted: items.filter((i) => isCounted(i, since)).length, total: items.length };
 }
 
 export type GroupAction = 'start' | 'continue' | 'recount';
@@ -39,7 +43,7 @@ export const groupAction = (counted: number, total: number): GroupAction => (cou
  * (no location, or one that isn't in the list), items in list order inside each. Scan mode
  * tracks progress by category. Groups left empty by the desired-0 option are dropped.
  */
-export function countGroups(items: readonly Item[], categories: readonly Category[], locations: readonly Location[], mode: CountMode, skipZero: boolean): CountGroup[] {
+export function countGroups(items: readonly Item[], categories: readonly Category[], locations: readonly Location[], mode: CountMode, skipZero: boolean, since = ''): CountGroup[] {
   const ordered = listOrder(items, categories).filter((i) => inWalk(i, skipZero));
   const groups: Array<{ name: string; items: Item[] }> = [];
   if (mode === 'location') {
@@ -64,14 +68,14 @@ export function countGroups(items: readonly Item[], categories: readonly Categor
   return groups
     .filter((g) => g.items.length > 0)
     .map((g) => {
-      const counted = g.items.filter(isCounted).length;
+      const counted = g.items.filter((i) => isCounted(i, since)).length;
       return { ...g, counted, action: groupAction(counted, g.items.length) };
     });
 }
 
 /** Where Start/Continue opens a walk: the first item not counted yet, or the first item for a recount. */
-export function firstToCount(items: readonly Item[]): number {
-  const i = items.findIndex((x) => !isCounted(x));
+export function firstToCount(items: readonly Item[], since = ''): number {
+  const i = items.findIndex((x) => !isCounted(x, since));
   return i < 0 ? 0 : i;
 }
 
@@ -120,7 +124,7 @@ export const previewStatus = (item: Item, entry: string): StockStatus | null => 
 export const orderTotalCents = (items: readonly Item[]) => buildOrderList(items).grandTotalCents;
 
 export interface CountSummary {
-  /** Items in the group counted (ever), of the group size. */
+  /** Items in the group counted (in this round), of the group size. */
   counted: number;
   total: number;
   /** Items counted in this walk that are now short. */
@@ -135,12 +139,12 @@ export interface CountSummary {
  * The summary after a group (10d). `ids` is the walk as it started; `items` is the inventory
  * now, so an item moved to another location mid-walk still belongs to the walk it was in.
  */
-export function summarize(ids: readonly string[], items: readonly Item[], savedIds: ReadonlySet<string>, skippedIds: ReadonlySet<string>): CountSummary {
+export function summarize(ids: readonly string[], items: readonly Item[], savedIds: ReadonlySet<string>, skippedIds: ReadonlySet<string>, since = ''): CountSummary {
   const byId = new Map(items.map((i) => [i.id, i]));
   const walk = ids.flatMap((id) => byId.get(id) ?? []);
   const justCounted = walk.filter((i) => savedIds.has(i.id));
   return {
-    counted: walk.filter(isCounted).length,
+    counted: walk.filter((i) => isCounted(i, since)).length,
     total: walk.length,
     short: justCounted.filter((i) => stockStatus(i.onHand, i.desired, i.spares).kind === 'short').length,
     skipped: walk.filter((i) => skippedIds.has(i.id) && !savedIds.has(i.id)).length,

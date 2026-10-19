@@ -4,6 +4,7 @@ import logoUrl from '../../../assets/team-logo-512.png?url';
 import { Icon, type IconName } from '../icons';
 import { href, type Tab } from './router';
 import { ToastHost } from './toast';
+import { UpdateBanner } from './UpdateBanner';
 
 const NAV: ReadonlyArray<[Tab, string, IconName]> = [
   ['inventory', 'Inventory', 'inventory'],
@@ -28,7 +29,10 @@ export function Shell({ tab, children }: { tab: Tab; children: ComponentChildren
           </a>
         ))}
       </nav>
-      <main class="main">{children}</main>
+      <main class="main">
+        <UpdateBanner />
+        {children}
+      </main>
       <ToastHost />
     </div>
   );

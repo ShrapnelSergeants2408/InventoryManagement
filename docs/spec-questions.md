@@ -1,7 +1,7 @@
 # SPEC v0.5 — Questions from the Stage 4 review
 
 **Reviewed:** `docs/SPEC.md` v0.5, end to end, as an independent reviewer, cross-checked against `stage3-design-notes.md`, `stage3-verification.md`, the mockup sources and the seed ZIP.
-**Date:** 2026-10-17, CDT · **Status:** **Approved 2026-10-17 16:17 CDT — Dan: "defaults OK"** for Q1–Q10 and D1–D8; UI library: Preact. SPEC.md has **not** been edited; Q3 (`categories.csv`) and Q8 (`manifest.json`) add files to §7 and should be written into the next spec version (v0.6) by Dan.
+**Date:** 2026-10-17, CDT · **Status:** **Approved 2026-10-17 16:17 CDT — Dan: "defaults OK"** for Q1–Q10 and D1–D8; UI library: Preact. SPEC.md has **not** been edited; Q3 (`categories.csv`) and Q8 (`manifest.json`) add files to §7 and should be written into the next spec version (v0.6) by Dan. **Update 2026-10-18:** written into SPEC v0.7 (§3 Category list, §7) at Dan's request.
 
 Seed check (scripted, Python, against `seed/frc2408-starter-catalog-2026-10-17.zip`): 129 items, 168 vendor options, 128 photos (st-0099 SystemCore has none), 9 suppliers, every supplier name in `suppliers.csv`, preferred vendor = 1 for all items, order list at on_hand 0 = **124 lines, all priced, $8,413.66**, 5 items with desired 0, 10 barcodes, all prices dated 2026-10-17, all counts whole numbers, category/subcategory set matches §11 exactly. No contradictions between the seed and the spec.
 

@@ -1,10 +1,9 @@
-// Boot: open the database → storage error | first-launch setup (no PIN yet, §6) | app (SPEC §2).
+// Boot: open the database → storage error | first-launch setup (PIN, recovery code, then
+// what the inventory starts with: §6, F22, Q2) | app (SPEC §2).
 import { useEffect, useState } from 'preact/hooks';
-import seedUrl from '../../seed/frc2408-starter-catalog-2026-10-17.zip?url';
 import { InventoryDb } from '../data/db';
-import { itemCount, replaceAll } from '../data/inventory';
 import { hasPin } from '../data/pin';
-import { readSeed } from '../io/seed';
+import { SETUP_DONE, STARTER_LOADED, isSetUp } from '../data/setup';
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
 import { CountScreen } from './screens/count/Count';
@@ -26,31 +25,26 @@ import { GateHost } from './shell/GateHost';
 import { Shell } from './shell/Shell';
 import { useRoute, type Route } from './shell/router';
 
-const STARTER_MARKER = 'starterLoadedAt';
+/** Setup still to do: everything (no PIN yet), or only the inventory's starting point. */
+type SetupNeeded = 'all' | 'start' | null;
 
-type Boot = { state: 'opening' } | { state: 'ready'; db: InventoryDb; setup: boolean } | { state: 'error'; error: unknown };
+type Boot = { state: 'opening' } | { state: 'ready'; db: InventoryDb; setup: SetupNeeded } | { state: 'error'; error: unknown };
 
 async function openDb(): Promise<InventoryDb> {
   const db = new InventoryDb();
   await db.open();
-  // TEMPORARY until first-launch setup (M10, F22): a new tablet gets the starter catalog once.
-  // The marker stops it coming back after the team deletes every item.
-  if ((await itemCount(db)) === 0 && !(await db.settings.get(STARTER_MARKER))) {
-    const res = await fetch(seedUrl);
-    if (!res.ok) throw new Error(`starter catalog download failed (${res.status})`);
-    const seed = await readSeed(await res.arrayBuffer());
-    if (!seed.ok) throw new Error(seed.problems.map((p) => p.message).join('; '));
-    await replaceAll(db, seed.data);
-    const now = Date.now();
-    await db.settings.bulkPut([{ key: STARTER_MARKER, value: now }, { key: 'setupDoneAt', value: now }]);
-  }
-  // The backup reminder runs from setup (D7); tablets that loaded the starter catalog before
-  // M5 get their setup time from the starter-load marker.
-  if (!(await db.settings.get('setupDoneAt'))) {
-    const marker = await db.settings.get(STARTER_MARKER);
-    if (marker) await db.settings.put({ key: 'setupDoneAt', value: marker.value });
+  // Tablets that loaded the starter catalog before M5 get their setup time from the
+  // starter-load marker (the backup reminder runs from setup, D7).
+  if (!(await db.settings.get(SETUP_DONE))) {
+    const marker = await db.settings.get(STARTER_LOADED);
+    if (marker) await db.settings.put({ key: SETUP_DONE, value: marker.value });
   }
   return db;
+}
+
+async function setupNeeded(db: InventoryDb): Promise<SetupNeeded> {
+  if (!(await hasPin(db))) return 'all';
+  return (await isSetUp(db)) ? null : 'start';
 }
 
 function Screen({ route }: { route: Route }) {
@@ -98,7 +92,7 @@ export function App() {
   const start = () => {
     setBoot({ state: 'opening' });
     openDb().then(
-      async (db) => setBoot({ state: 'ready', db, setup: !(await hasPin(db)) }),
+      async (db) => setBoot({ state: 'ready', db, setup: await setupNeeded(db) }),
       (error: unknown) => setBoot({ state: 'error', error }),
     );
   };
@@ -108,7 +102,7 @@ export function App() {
     return (
       <Shell tab={route.tab}>
         <TopBar title="Inventory" subtitle="Storage unavailable" />
-        <StorageError error={boot.error} onRetry={start} />
+        <StorageError error={boot.error} onRetry={start} canReset />
       </Shell>
     );
   }
@@ -127,7 +121,7 @@ export function App() {
   if (boot.setup) {
     return (
       <DbContext.Provider value={boot.db}>
-        <SetupScreen onDone={() => setBoot({ ...boot, setup: false })} />
+        <SetupScreen pinSet={boot.setup === 'start'} onDone={() => setBoot({ ...boot, setup: null })} />
       </DbContext.Provider>
     );
   }

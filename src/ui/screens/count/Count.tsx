@@ -1,13 +1,15 @@
 // Count-in (F24; mockups 10a–10e): choose how to walk the shop, count one item per screen
 // with a keypad, then a summary per group. Each Save sets on_hand and last_counted straight
 // away, so a count can stop and resume across meetings. No PIN anywhere here (§6).
+import { liveQuery } from 'dexie';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { saveCount } from '../../../data/count';
+import { getCountSince, saveCount, setCountSince } from '../../../data/count';
 import { getRecentLocations } from '../../../data/items';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { addLocation } from '../../../data/lists';
 import { loadCountOptions, loadCountPause, saveCountOptions, saveCountPause, type CountOptions } from '../../../data/prefs';
 import {
+  cleanSince,
   countGroups,
   entryValue,
   firstToCount,
@@ -19,7 +21,7 @@ import {
   type CountGroup,
   type CountMode,
 } from '../../../domain/count';
-import { formatIsoDate } from '../../../domain/dates';
+import { formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { NO_LOCATION, checkName, takenLocationNames } from '../../../domain/lists';
 import { formatCents } from '../../../domain/money';
 import { resolveScan } from '../../../domain/scan';
@@ -27,6 +29,7 @@ import { matchesQuery } from '../../../domain/search';
 import { statusLabel, stockStatus } from '../../../domain/status';
 import { preferredVendorOf, type Item } from '../../../domain/types';
 import { StatusChip, TopBar, plural } from '../../components/common';
+import { Dialog, DialogActions } from '../../components/Dialog';
 import { Keypad } from '../../components/Keypad';
 import { Scanner, type CameraState } from '../../components/Scanner';
 import { useDb, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
@@ -81,6 +84,13 @@ function Count({ snap }: { snap: InventorySnapshot }) {
   const [recent, setRecent] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => void getRecentLocations(db).then(setRecent), [db]);
+  // The count round (F24): items count as done when counted on or after this date; '' = ever.
+  const [since, setSince] = useState('');
+  const [newRound, setNewRound] = useState(false);
+  useEffect(() => {
+    const sub = liveQuery(() => getCountSince(db)).subscribe({ next: setSince, error: () => undefined });
+    return () => sub.unsubscribe();
+  }, [db]);
 
   const setOptions = (patch: Partial<CountOptions>) => {
     const next = { ...options, ...patch };
@@ -88,9 +98,9 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     saveCountOptions(next);
   };
   const byId = useMemo(() => new Map(snap.items.map((i) => [i.id, i])), [snap.items]);
-  const groupsFor = (mode: CountMode) => countGroups(snap.items, snap.categories, snap.locations, mode, options.skipZero);
+  const groupsFor = (mode: CountMode) => countGroups(snap.items, snap.categories, snap.locations, mode, options.skipZero, since);
 
-  const openWalk = (mode: 'category' | 'location', g: CountGroup, index = firstToCount(g.items)) => {
+  const openWalk = (mode: 'category' | 'location', g: CountGroup, index = firstToCount(g.items, since)) => {
     const walk: Walk = {
       mode,
       group: g.name,
@@ -134,7 +144,8 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     }
   };
 
-  const progress = overallProgress(snap.items);
+  const progress = overallProgress(snap.items, since);
+  const everCounted = overallProgress(snap.items).counted;
   const pct = progress.total ? Math.round((100 * progress.counted) / progress.total) : 0;
   const walking = view.kind === 'walk' || view.kind === 'scan';
   const top = (
@@ -164,7 +175,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
       <div class="cprog" role="group" aria-label="Overall progress">
         <div class="cprog-t small">
           <span>
-            {progress.counted} of {progress.total} counted
+            {progress.counted} of {progress.total} counted{since && ` since ${formatIsoDate(since)}`}
           </span>
           <span>{pct}%</span>
         </div>
@@ -227,7 +238,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     return (
       <>
         {top}
-        <Summary walk={view.walk} snap={snap} next={nextGroup(groups, view.walk.group)} onNext={(g) => openWalk(view.walk.mode, g)} onStart={() => setView({ kind: 'start' })} />
+        <Summary walk={view.walk} snap={snap} since={since} next={nextGroup(groups, view.walk.group)} onNext={(g) => openWalk(view.walk.mode, g)} onStart={() => setView({ kind: 'start' })} />
       </>
     );
   }
@@ -308,7 +319,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
       icon: 'folder',
       title: 'By category',
       desc: 'Follows the inventory list order. Works before any item has a location.',
-      rec: progress.counted === 0 ? 'Recommended for the first count' : undefined,
+      rec: everCounted === 0 ? 'Recommended for the first count' : undefined,
     },
     {
       k: 'location',
@@ -332,13 +343,42 @@ function Count({ snap }: { snap: InventorySnapshot }) {
           <div class="grow">
             <div class="ctotal-h">Order list right now: {formatCents(orderTotalCents(snap.items))}</div>
             <div class="small">
-              {progress.counted < progress.total
+              {everCounted < progress.total
                 ? 'Every item not counted yet counts with the on-hand number it has now (starter items begin at 0). The total drops as you count what’s already in the shop. '
                 : 'Every item has been counted at least once. Recount a group whenever the shelves change. '}
               Progress saves after every item, so a count can span several meetings.
             </div>
           </div>
         </div>
+        <div class="card cround">
+          <Icon name="clock" class="ic xl" />
+          <div class="grow">
+            <div class="cround-h">{since ? `Counting since ${formatIsoDate(since)}` : 'First count'}</div>
+            <div class="small muted">
+              {since
+                ? 'Items counted before this date show as not counted yet, so this recount shows its own progress. Their numbers stay as they are until you count them.'
+                : 'An item is done once it has been counted at any time. Start a new count to recount the shop and see that recount’s progress.'}
+            </div>
+          </div>
+          <button type="button" class="btn" onClick={() => setNewRound(true)}>
+            {since ? 'Change date…' : 'Start a new count…'}
+          </button>
+          {since && (
+            <button
+              type="button"
+              class="btn"
+              onClick={() =>
+                void setCountSince(db, '').then(
+                  () => showToast('Progress now counts every item counted at any time.'),
+                  (e: unknown) => showToast(e instanceof Error ? e.message : String(e)),
+                )
+              }
+            >
+              Count from the beginning
+            </button>
+          )}
+        </div>
+        {newRound && <NewRoundDialog since={since} onClose={() => setNewRound(false)} />}
         {paused && (
           <div class="banner cpause" role="status">
             <Icon name="count" />
@@ -441,6 +481,54 @@ const ACTION = {
   recount: 'Recount',
 } as const;
 
+/** Start a count round (F24): progress counts items counted on or after the date. Erases nothing. */
+function NewRoundDialog(props: { since: string; onClose: () => void }) {
+  const db = useDb();
+  const today = localIsoDate();
+  const [date, setDate] = useState(props.since || today);
+  const [busy, setBusy] = useState(false);
+  const ok = cleanSince(date) !== '' && date <= today;
+  const submit = async (e: Event) => {
+    e.preventDefault();
+    if (!ok || busy) return;
+    setBusy(true);
+    try {
+      await setCountSince(db, date);
+      showToast(`Counting since ${formatIsoDate(date)}.`);
+      props.onClose();
+    } catch (err) {
+      setBusy(false);
+      showToast(err instanceof Error ? err.message : String(err));
+    }
+  };
+  return (
+    <Dialog label="Start a new count" onClose={() => !busy && props.onClose()}>
+      <form class="dlg-form" onSubmit={(e) => void submit(e)}>
+        <h2 class="h2">{props.since ? 'Change the count date' : 'Start a new count'}</h2>
+        <p class="dlg-p">Progress will count items counted on or after this date. Nothing is erased: every on-hand number and count date stays as it is.</p>
+        <div>
+          <label class="lbl" for="round-date">
+            Counting since
+          </label>
+          <input id="round-date" class="field" type="date" max={today} value={date} onInput={(e) => setDate((e.currentTarget as HTMLInputElement).value)} />
+          {!ok && (
+            <div class="err" role="alert">
+              Choose a date, today or earlier.
+            </div>
+          )}
+        </div>
+        <DialogActions>
+          <button type="button" class="btn lg" disabled={busy} onClick={props.onClose}>
+            Cancel
+          </button>
+          <button type="submit" class="btn pri lg" disabled={!ok || busy}>
+            {props.since ? 'Use this date' : 'Start new count'}
+          </button>
+        </DialogActions>
+      </form>
+    </Dialog>
+  );
+}
 function Toggle(props: { on: boolean; onClick: () => void; children: string | Array<string | number> }) {
   return (
     <button type="button" class="tog" role="switch" aria-checked={props.on} onClick={props.onClick}>
@@ -661,9 +749,9 @@ function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: s
 }
 // ── Group summary (10d) ──
 
-function Summary(props: { walk: Walk; snap: InventorySnapshot; next: CountGroup | null; onNext: (g: CountGroup) => void; onStart: () => void }) {
+function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; next: CountGroup | null; onNext: (g: CountGroup) => void; onStart: () => void }) {
   const w = props.walk;
-  const s = summarize(w.ids, props.snap.items, w.saved, w.skipped);
+  const s = summarize(w.ids, props.snap.items, w.saved, w.skipped, props.since);
   return (
     <div class="cbody">
       <div class="done-h">

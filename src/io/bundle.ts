@@ -76,7 +76,10 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
   };
 }
 
-export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob): Promise<BundleRead> {
+/** Reports photos read so far, of the photos the CSV names, once the items are read (first-launch progress, 9i). */
+export type PhotoProgress = (done: number, total: number, items: number) => void;
+
+export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPhoto?: PhotoProgress): Promise<BundleRead> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(data);
@@ -129,9 +132,12 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob): Prom
   const photos = new Map<string, Blob>();
   const used = new Set<string>();
   const missing: string[] = [];
+  const total = read.bundle.items.filter((i) => read.photoFiles.has(i.id)).length;
+  let done = 0;
   for (const item of read.bundle.items) {
     const path = read.photoFiles.get(item.id);
     if (!path) continue;
+    onPhoto?.(done++, total, read.bundle.items.length);
     const f = entry(path);
     const type = photoType(path);
     if (!f || !type) {
@@ -142,6 +148,7 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob): Prom
     photos.set(item.id, new Blob([await f.async('arraybuffer')], { type }));
     item.hasPhoto = true;
   }
+  onPhoto?.(total, total, read.bundle.items.length);
   if (missing.length > 0) warnings.push(`Photos named in ${INVENTORY_FILE} but not in the ZIP: ${missing.join(', ')}`);
   const unused = Object.values(zip.files).filter((f) => !f.dir && f.name.startsWith(`${prefix}photos/`) && !used.has(f.name));
   if (unused.length > 0) warnings.push(`${unused.length} photo file(s) in the ZIP aren't used by any item`);

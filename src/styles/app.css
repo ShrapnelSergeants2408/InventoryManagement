@@ -493,3 +493,26 @@ input[type="date"].field { padding: 0 12px; }
   .rcode { font-size: 32px; padding: 14px 18px; }
 }
 button.mrow { width: 100%; border: 0; border-top: 1px solid #eee7de; font: inherit; text-align: left; cursor: pointer; }
+
+/* M10: setup step 3 — starting point (9h), loading (9i), ready (9j) */
+.setup-start { max-width: 760px; display: flex; flex-direction: column; gap: 16px; }
+.setup-start .setup-h { margin: 0; }
+.sopts { display: flex; flex-direction: column; gap: 12px; }
+.sopt { display: flex; align-items: center; gap: 18px; width: 100%; min-height: 96px; padding: 14px 20px; border: 2px solid var(--line-2); border-radius: 16px; background: #fff; font: inherit; text-align: left; cursor: pointer; color: var(--ink); }
+.sopt.on { border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+.sdot { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--ink); flex: none; position: relative; }
+.sopt.on .sdot::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: var(--ink); }
+.sopt-t { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.sopt-h { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 700; font-size: 20px; }
+.setup-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+.sprog { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
+.sprog-t { display: flex; justify-content: space-between; gap: 12px; }
+.bar.rust > span { background: var(--rust); }
+.setup-note { margin: 0; font-size: 18px; color: var(--ink-2); }
+.sdone { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 18px; }
+.sdone li { display: flex; gap: 8px; align-items: flex-start; }
+.sdone .ic { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+.snext { padding: 16px 20px; display: flex; flex-direction: column; gap: 4px; background: #fff7db; border-color: #e8d9a8; }
+.snext > strong:first-child { font-size: 19px; }
+.sfile { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
+.swarn { margin: 4px 0 0; padding-left: 22px; }

@@ -110,3 +110,5 @@ After M10: a full regression and an end-to-end verification against every F1–F
 ## 5. Things only the Tab S8 can confirm (Stage 5 list, started now)
 
 ZIP share vs. Downloads (Q1) · native BarcodeDetector formats · camera permission prompt in the installed PWA · print at 100% and real label alignment · `storage.persist()` result · font rendering.
+
+Added during M7–M10 (full list in `docs/reviews/Stage4-final.md`): install to the home screen · an update arriving after a real GitHub Pages deploy (the Reload banner) · first-launch speed · camera and gallery photos, EXIF rotation, 12 MP decode time · scanning range, torch, a long count-in scan session · gloves on the keypad and steppers.

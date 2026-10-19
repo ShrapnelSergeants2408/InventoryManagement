@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
-import { saveCount } from '../src/data/count';
+import { getCountSince, saveCount, setCountSince } from '../src/data/count';
 import { InventoryDb } from '../src/data/db';
 import { getItem, loadSnapshot, replaceAll } from '../src/data/inventory';
 import { getRecentLocations } from '../src/data/items';
@@ -89,6 +89,41 @@ describe('saveCount (F24)', () => {
     expect(g!.action).toBe('continue');
     expect(g!.items[firstToCount(g!.items)]!.id).toBe('c');
     expect(overallProgress(snap.items)).toEqual({ counted: 2, total: 4 });
+  });
+});
+
+describe('count rounds (SPEC v0.6 F24)', () => {
+  it('no round until one is started; start, change, clear', async () => {
+    await setup();
+    expect(await getCountSince(db)).toBe('');
+    await setCountSince(db, '2026-10-24');
+    expect(await getCountSince(db)).toBe('2026-10-24');
+    await setCountSince(db, '');
+    expect(await getCountSince(db)).toBe('');
+  });
+
+  it('refuses something that is not a date, and keeps the round', async () => {
+    await setup();
+    await setCountSince(db, '2026-10-24');
+    await expect(setCountSince(db, 'Oct 24')).rejects.toThrow(RangeError);
+    expect(await getCountSince(db)).toBe('2026-10-24');
+  });
+
+  it('a stored value that is not a date reads as no round', async () => {
+    await setup();
+    await db.settings.put({ key: 'countSince', value: 20261024 });
+    expect(await getCountSince(db)).toBe('');
+  });
+
+  it('starting a round erases nothing', async () => {
+    await setup();
+    await saveCount(db, 'a', 5, undefined, '2026-10-01');
+    await setCountSince(db, '2026-10-24');
+    expect(await getItem(db, 'a')).toMatchObject({ onHand: 5, lastCounted: '2026-10-01' });
+    const snap = await loadSnapshot(db);
+    expect(overallProgress(snap.items, await getCountSince(db))).toEqual({ counted: 0, total: 4 });
+    await saveCount(db, 'a', 6, undefined, '2026-10-24');
+    expect(overallProgress((await loadSnapshot(db)).items, '2026-10-24')).toEqual({ counted: 1, total: 4 });
   });
 });
 

@@ -5,7 +5,7 @@
 // in headless Chrome over CDP.
 // Usage: npm run build && node scripts/m10-ui-check.mjs <chrome.exe> <screenshot dir>
 import { spawn } from 'node:child_process';
-import { copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { PIN_H, TEST_PIN } from './pin-helpers.mjs';
@@ -23,6 +23,9 @@ const files = mkdtempSync(join(tmpdir(), 'm10-files-'));
 const backupZip = join(files, 'frc2408-backup-full-2026-10-18.zip');
 copyFileSync(resolve('seed/frc2408-starter-catalog-2026-10-17.zip'), backupZip);
 const notBackup = join(files, 'shopping-notes.txt');
+// The update check changes dist/sw.js while the app runs; the original is put back at the end.
+const swPath = resolve('dist/sw.js');
+const swOriginal = readFileSync(swPath);
 writeFileSync(notBackup, 'buy more zip ties\n');
 
 let target;
@@ -173,6 +176,23 @@ try {
   check('precached: page, JS, CSS, both font families (woff2), icons, logo, starter catalog ZIP, scanner .wasm, manifest', [has(/\/index\.html$/), has(/\/assets\/index-.*\.js$/), has(/\/assets\/index-.*\.css$/), has(/atkinson-hyperlegible.*\.woff2$/), has(/barlow-condensed.*\.woff2$/), has(/icon-192\.png$/), has(/icon-512\.png$/), has(/team-logo-512.*\.png$/), has(/frc2408-starter-catalog.*\.zip$/), has(/zxing_reader.*\.wasm$/), has(/manifest\.webmanifest$/)], Array(11).fill(true));
   check('no .woff fallbacks precached (Chrome uses woff2)', sw.urls.filter((u) => /\.woff$/.test(u)), []);
 
+  // ── A new version (deploy): banner with Reload / Later, never an automatic reload ──
+  writeFileSync(swPath, Buffer.concat([swOriginal, Buffer.from('\n// a newer deploy\n')]));
+  await js(`window.__stillHere = true; const reg = await navigator.serviceWorker.ready; await reg.update();`);
+  await waitFor(`[...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version of the app is ready'))`, 30000);
+  const bannerBtns = `[...document.querySelectorAll('.banner')].find((b) => b.textContent.includes('A new version'))?.querySelectorAll('.btn') ?? []`;
+  check('a new version waits: the banner offers Reload and Later; the page did not reload by itself', await js(`return [[...${bannerBtns}].map((b) => norm(b.textContent)), window.__stillHere === true]`), [['Reload', 'Later'], true]);
+  await shot('05-update-banner');
+  await js(`[...${bannerBtns}].find((b) => b.textContent.includes('Later')).click(); await settle(300);`);
+  check('Later hides it', await js(`return [...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version'))`), false);
+  await send('Page.reload');
+  await waitFor(`[...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version of the app is ready'))`, 30000);
+  check('after a reload the waiting version is offered again', true, true);
+  await js(`[...${bannerBtns}].find((b) => b.textContent.includes('Reload')).click();`);
+  await sleep(2500);
+  await waitFor(`document.querySelector('.main')`, 30000);
+  check('Reload: the new version takes over and the banner is gone', await js(`const reg = await navigator.serviceWorker.getRegistration(); return [!reg.waiting, !!navigator.serviceWorker.controller, [...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version'))]`), [true, true, false]);
+
   // ── Offline: stop the web server ──
   await send('Page.reload');
   await waitFor(`navigator.serviceWorker.controller && document.querySelector('.modes')`, 30000);
@@ -249,6 +269,7 @@ try {
 } finally {
   console.log(results.join('\n'));
   console.log(problems.length ? 'Console problems:\n' + problems.join('\n') : 'No console errors or warnings');
+  writeFileSync(swPath, swOriginal);
   ws.close();
   proc.kill();
   preview.kill();

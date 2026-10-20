@@ -48,3 +48,21 @@ export async function requestPersistentStorage(storage: Pick<StorageManager, 'pe
     return null;
   }
 }
+
+/**
+ * Boot and install (Stage 5 T-01): asks again while the data isn't persistent yet, since
+ * Chrome may grant it later (after install, more use). Returns what persisted() then says;
+ * null when the browser can't say.
+ */
+export async function ensurePersistentStorage(
+  storage: Partial<Pick<StorageManager, 'persist' | 'persisted'>> | undefined = globalThis.navigator?.storage,
+): Promise<boolean | null> {
+  if (!storage?.persisted) return null;
+  try {
+    if (await storage.persisted()) return true;
+    if (storage.persist) await storage.persist();
+    return await storage.persisted();
+  } catch {
+    return null;
+  }
+}

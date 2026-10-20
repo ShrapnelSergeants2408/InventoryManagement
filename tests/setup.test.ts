@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { buildBackup } from '../src/data/backup';
 import { InventoryDb } from '../src/data/db';
 import { loadSnapshot, setOnHand } from '../src/data/inventory';
-import { SETUP_DONE, STARTER_LOADED, emptyStart, isSetUp, requestPersistentStorage, startInventory } from '../src/data/setup';
+import { SETUP_DONE, STARTER_LOADED, emptyStart, ensurePersistentStorage, isSetUp, requestPersistentStorage, startInventory } from '../src/data/setup';
 import { orderTotalCents } from '../src/domain/count';
 import { readRestoreFile } from '../src/io/restore';
 import { readSeed } from '../src/io/seed';
@@ -135,5 +135,61 @@ describe('requestPersistentStorage (SPEC §2)', () => {
         },
       }),
     ).toBeNull();
+  });
+});
+
+describe('ensurePersistentStorage on every launch (SPEC §2, Stage 5 T-01)', () => {
+  /** A fake navigator.storage: persist() grants when `grants` is true; counts the persist() calls. */
+  function fakeStorage(state: { granted: boolean; grants: boolean }) {
+    const calls = { persist: 0 };
+    const storage = {
+      persisted: async () => state.granted,
+      persist: async () => {
+        calls.persist++;
+        if (state.grants) state.granted = true;
+        return state.granted;
+      },
+    };
+    return { storage, calls };
+  }
+
+  it('granted: already persistent, so it doesn’t ask again', async () => {
+    const { storage, calls } = fakeStorage({ granted: true, grants: true });
+    expect(await ensurePersistentStorage(storage)).toBe(true);
+    expect(calls.persist).toBe(0);
+  });
+
+  it('not yet persistent and Chrome grants it now (after install): asks, then reports persisted()', async () => {
+    const { storage, calls } = fakeStorage({ granted: false, grants: true });
+    expect(await ensurePersistentStorage(storage)).toBe(true);
+    expect(calls.persist).toBe(1);
+  });
+
+  it('denied: asks on every launch and reports not granted each time', async () => {
+    const { storage, calls } = fakeStorage({ granted: false, grants: false });
+    expect(await ensurePersistentStorage(storage)).toBe(false);
+    expect(await ensurePersistentStorage(storage)).toBe(false);
+    expect(calls.persist).toBe(2);
+  });
+
+  it('the result is persisted(), not what persist() returned', async () => {
+    const storage = { persisted: async () => false, persist: async () => true };
+    expect(await ensurePersistentStorage(storage)).toBe(false);
+  });
+
+  it('unsupported: null with no Storage API, no persisted(), or an error', async () => {
+    expect(await ensurePersistentStorage(undefined)).toBeNull();
+    expect(await ensurePersistentStorage({ persist: async () => true })).toBeNull();
+    expect(
+      await ensurePersistentStorage({
+        persisted: async () => {
+          throw new Error('no');
+        },
+      }),
+    ).toBeNull();
+  });
+
+  it('with persisted() but no persist(): reports persisted() without asking', async () => {
+    expect(await ensurePersistentStorage({ persisted: async () => false })).toBe(false);
   });
 });

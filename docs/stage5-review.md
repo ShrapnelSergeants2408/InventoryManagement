@@ -197,7 +197,7 @@ None of this is harmful, and most of it is approved in `docs/spec-questions.md`.
 - **First launch** offers *restore a backup* and *start empty* as well as the starter catalog (Q2, `src/data/setup.ts:13`).
 - **"Set up again"** on the storage-error screen deletes the database (finding 1). The spec only asks for a path to Restore.
 - **Price-import preview** with before → after values and flagged non-price changes, shown before the PIN (`src/io/price-import.ts:10-13`).
-- **Wrong-PIN wait:** every 5th wrong PIN or recovery code in a row starts a 30-second wait (`src/data/pin.ts:12-13, 62`).
+- **Wrong-PIN wait:** every 5th wrong PIN or recovery code in a row starts a 30-second wait (`src/data/pin.ts:143-144, 193`).
 - **"Later" snooze** capped at 12 hours (Q10).
 - **New-version banner** (Reload / Later) after a service-worker update (`src/ui/shell/UpdateBanner.tsx`).
 - **Desired and spares steppers** on the detail card (`src/data/inventory.ts:70-107`).
@@ -250,4 +250,4 @@ These were run with a separate vitest config that resolves `@repo/...` to this r
 | 13:13–13:15 | Read data layer (`db`, `inventory`, `items`, `lists`, `setup`, `pin`, `price-import`), I/O (`restore`, `bundle`, `backup`, `inventory-csv`, `lists-csv`, `csv`, `price-import`), domain (`order`, `status`, `validate`, `lists`, `labels`), security, and the UI for boot, the storage error screen, restore, delete and the editor gates; traced every `gate()` call |
 | 13:15–13:16 | Probe tests P1–P5 in the scratchpad (first two runs fixed the probe config; P4's first assertion was wrong about Dexie 4 and was changed to report what happens) |
 | 13:16 | Collected test names and line numbers for evidence |
-| 13:19 | Report written to `docs/stage5-review.md`. No code changed; `git status` shows only this file. Headless-Chrome checks not re-run. Session stopped |
+| 13:17 | Report written to `docs/stage5-review.md`. No code changed; `git status` shows only this file. Headless-Chrome checks not re-run. Session stopped |

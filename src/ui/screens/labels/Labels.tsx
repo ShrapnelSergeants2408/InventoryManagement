@@ -24,7 +24,7 @@ import {
   type PlainQrSize,
 } from '../../../domain/labels';
 import type { Item } from '../../../domain/types';
-import { TopBar, plural } from '../../components/common';
+import { CheckBox, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
@@ -101,10 +101,6 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
 
 // ── Step 1: choose items ──
 
-function Box({ state }: { state: 'on' | 'some' | 'off' }) {
-  return <span class={state === 'off' ? 'cbox' : `cbox ${state}`}>{state === 'on' ? <Icon name="check" /> : state === 'some' ? <Icon name="minus" /> : null}</span>;
-}
-
 function Choose(props: {
   groups: LabelGroup[];
   by: 'category' | 'location';
@@ -157,7 +153,7 @@ function Choose(props: {
             <div key={g.name} class="lgroup">
               <div class="lgrow">
                 <button type="button" class="cb" role="checkbox" aria-checked={state === 'on' ? 'true' : state === 'some' ? 'mixed' : 'false'} onClick={() => set(g.items.map((i) => i.id), state !== 'on')}>
-                  <Box state={state} />
+                  <CheckBox state={state} />
                   <span>
                     <strong>{g.name}</strong> <span class="small muted">{n ? `${n} of ${g.items.length} selected` : plural(g.items.length, 'item')}</span>
                   </span>
@@ -170,7 +166,7 @@ function Choose(props: {
                 g.items.map((i) => (
                   <div key={i.id} class="irow">
                     <button type="button" class="cb" role="checkbox" aria-checked={selected.has(i.id)} onClick={() => set([i.id], !selected.has(i.id))}>
-                      <Box state={selected.has(i.id) ? 'on' : 'off'} />
+                      <CheckBox state={selected.has(i.id) ? 'on' : 'off'} />
                       <RowThumb item={i} />
                       <span class="irow-t">
                         <strong>{i.name}</strong> <span class="small muted">{by === 'category' ? i.location : i.category}</span>

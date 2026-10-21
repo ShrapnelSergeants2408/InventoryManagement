@@ -1,5 +1,5 @@
 import 'fake-indexeddb/auto';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InventoryDb } from '../src/data/db';
 import { adjustCount, getItem, loadSnapshot, replaceAll, setCount } from '../src/data/inventory';
 import { RECENT_LOCATIONS, addItem, deleteItem, getRecentLocations, updateItem } from '../src/data/items';
@@ -10,6 +10,7 @@ import {
   addSupplier,
   moveCategory,
   moveLocation,
+  moveItemsTo,
   moveSubcategory,
   removeCategory,
   removeLocation,
@@ -341,5 +342,82 @@ describe('starter catalog: supplier rename and remove at full size', async () =>
     expect(after.grandTotalCents).toBe(before.grandTotalCents); // $8,413.66
     expect(after.grandTotalCents).toBe(841366);
     expect(after.groups.some((g) => g.supplier === 'AndyMark')).toBe(false);
+  });
+});
+
+describe('bulk move (F28, SPEC §19)', () => {
+  const fields = (i: Awaited<ReturnType<typeof getItem>>) => {
+    const { category: _c, subcategory: _s, ...rest } = i!;
+    return rest;
+  };
+
+  it('moves the chosen items to a category and subcategory; only those two fields change; reports the count', async () => {
+    await setup();
+    const before = await snap();
+    expect(await moveItemsTo(db, ['v1', 'm1'], { category: 'Pneumatics', subcategory: 'Air Supply' }, {}, 70)).toBe(2);
+    const after = await snap();
+    for (const id of ['v1', 'm1']) {
+      const b = before.items.find((i) => i.id === id)!;
+      const a = after.items.find((i) => i.id === id)!;
+      expect([a.category, a.subcategory]).toEqual(['Pneumatics', 'Air Supply']);
+      expect(fields(a)).toEqual(fields(b));
+    }
+    // Items not chosen don't change; the lists don't change.
+    expect(after.items.find((i) => i.id === 'a1')).toEqual(before.items.find((i) => i.id === 'a1'));
+    expect(after.categories).toEqual(before.categories);
+    expect(await lastChange()).toBe(70);
+  });
+
+  it('to a category with no subcategory', async () => {
+    await setup();
+    await moveItemsTo(db, ['v1', 'a1'], { category: 'Empty', subcategory: '' });
+    expect((await snap()).items.filter((i) => i.category === 'Empty').map((i) => [i.id, i.subcategory]).sort()).toEqual([['a1', ''], ['v1', '']]);
+  });
+
+  it('"+ New subcategory…" and "+ New category…" are created in the same step; a name already there (other capitals) is reused', async () => {
+    await setup();
+    await moveItemsTo(db, ['m1'], { category: 'Motors', subcategory: 'Brushless' }, { create: true });
+    await moveItemsTo(db, ['v1'], { category: 'Game Pieces', subcategory: 'Balls' }, { create: true });
+    await moveItemsTo(db, ['a1'], { category: 'game pieces', subcategory: 'BALLS' }, { create: true });
+    const s = await snap();
+    expect(s.categories.map((c) => [c.name, c.order, c.subcategories])).toEqual([
+      ['Pneumatics', 0, ['Air Supply', 'Valves']],
+      ['Motors', 1, ['Brushless']],
+      ['Empty', 2, []],
+      ['Game Pieces', 3, ['Balls']],
+    ]);
+    expect(s.items.map((i) => [i.id, i.category, i.subcategory]).sort()).toEqual([
+      ['a1', 'Game Pieces', 'Balls'],
+      ['m1', 'Motors', 'Brushless'],
+      ['v1', 'Game Pieces', 'Balls'],
+    ]);
+  });
+
+  it('without create, an unknown category or subcategory is refused and nothing changes', async () => {
+    await setup();
+    const before = await snap();
+    await expect(moveItemsTo(db, ['m1'], { category: 'Nope', subcategory: '' })).rejects.toThrow(/isn't in the list/);
+    await expect(moveItemsTo(db, ['m1'], { category: 'Motors', subcategory: 'Nope' })).rejects.toThrow(/isn't a subcategory/);
+    await expect(moveItemsTo(db, [], { category: 'Motors', subcategory: '' })).rejects.toThrow(/at least one/);
+    expect(await snap()).toEqual(before);
+  });
+
+  it('all or nothing: a deleted item, or a failed write, leaves every item and list as it was', async () => {
+    await setup();
+    const before = await snap();
+    await expect(moveItemsTo(db, ['m1', 'gone'], { category: 'Game Pieces', subcategory: '' }, { create: true })).rejects.toThrow(/deleted meanwhile/);
+    expect(await snap()).toEqual(before);
+    const spy = vi.spyOn(db.items, 'bulkPut').mockRejectedValueOnce(new Error('disk full'));
+    await expect(moveItemsTo(db, ['m1', 'v1'], { category: 'Game Pieces', subcategory: 'Balls' }, { create: true })).rejects.toThrow('disk full');
+    spy.mockRestore();
+    expect(await snap()).toEqual(before);
+  });
+
+  it('items already there count but are not rewritten; each item counts once', async () => {
+    await setup();
+    const row = await db.items.get('a1');
+    expect(await moveItemsTo(db, ['a1', 'v1', 'v1'], { category: 'Pneumatics', subcategory: 'Air Supply' }, {}, 80)).toBe(2);
+    expect((await db.items.get('a1'))!.updatedAt).toBe(row!.updatedAt);
+    expect((await db.items.get('v1'))!.updatedAt).toBe(80);
   });
 });

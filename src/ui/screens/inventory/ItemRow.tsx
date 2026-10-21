@@ -8,7 +8,7 @@ import { useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 
-function Thumb({ itemId, hasPhoto }: { itemId: string; hasPhoto: boolean }) {
+export function Thumb({ itemId, hasPhoto }: { itemId: string; hasPhoto: boolean }) {
   const url = useThumbnail(itemId, hasPhoto);
   if (url) return <img class="thumb" src={url} alt="" />;
   return (

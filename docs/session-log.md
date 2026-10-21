@@ -490,3 +490,30 @@ High for the seed load, the order of the lists and the finding 2 fix (unit and b
 
 **Next:** an independent review of the M12 PR, then Dan merges and checks it in a fresh browser profile; then M13 (bulk move).
 | 15:10 | M12 independent review (a separate review agent, at Dan's request): "merge after one small fix" (`docs/reviews/M12-independent.md`). Dan: "yes, make the fixes". Fixed review finding 1 (the editor refused items stored with other capitals: `item-form.ts`, `Editor.tsx`) and finding 4 (comment, ZIP test). Unit tests 522; mutants 5/5; M12 check +3 editor checks (16/16), failing against the pre-fix editor (built with `vite build`, because `npm run build` kept the old dist when the type check failed). Regression M2–M12 428/428. Findings 2 and 3 recorded as known issues (pre-M12 data only) |
+
+
+---
+
+## Stage 6, M13 — 2026-10-21 — bulk move (F28)
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), same session (Dan also connected by Remote Control). Dan merged PR #16 (M12) and said "Build m13". Branch `m13-bulk-move` from `main` (`008fb5e`).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~15:50 | Branch created. Read the Inventory screen, Labels selection, the category data helpers and Dialog |
+| ~15:55–16:10 | `moveItemsTo` (data), `selection.ts` (domain), header `ids` and `shownIds` in the view; 14 unit tests; Select mode, `SelectRow`, `SelectBar`, `MoveDialog`, the shared `CheckBox`, CSS |
+| ~16:10–16:25 | `scripts/m13-ui-check.mjs` (25/25 after three script fixes); screenshots checked; mutants 16/16 after one test gap was closed; interface mutant caught |
+| ~16:25–16:17 | Regression M2–M12: M6 and M7 failed on Chrome IndexedDB "UnknownError" with C: full (2 GB free); both passed when re-run. `docs/reviews/M13.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F28 bulk move: Select mode with header and row checkboxes, Select all shown, a hidden-selection warning, the Move dialog with new category and subcategory, one-transaction save, no PIN. 536 unit tests.
+
+**DELIVERABLES PRODUCED**
+`src/data/lists.ts` (`moveItemsTo`), `src/domain/{selection,inventory-view}.ts`, `src/ui/screens/inventory/{Inventory,MoveDialog,ItemRow}.tsx`, `src/ui/components/common.tsx` (`CheckBox`), `src/ui/screens/labels/Labels.tsx` (uses `CheckBox`), `src/styles/app.css`, `tests/{selection,edits-db}.test.ts`, `scripts/m13-ui-check.mjs`, `docs/reviews/M13.md`.
+
+**CONFIDENCE**
+High: unit and browser checks with mutants caught, both orientations, screenshots looked at. Open: the test machine's drive is full, and old `cdp-*` Chrome profiles from the browser checks are a likely cause (M13 review, finding 3), for Dan to decide.
+
+**Next:** Dan merges the PR and tries bulk move on the Tab S8; then M14 (order-list search).

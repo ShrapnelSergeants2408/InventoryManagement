@@ -288,3 +288,49 @@ export async function moveSubcategory(db: InventoryDb, category: string, name: s
     await touch(db, now);
   });
 }
+
+/**
+ * Bulk move (F28): moves the chosen items to a category and subcategory in one transaction.
+ * Only category and subcategory change. With `create`, a category or subcategory that isn't in
+ * the list yet is added first ("+ New category…", "+ New subcategory…"); a typed name that
+ * matches one already there (ignoring capitals) just uses it, as in the item editor. No PIN
+ * (students can already change an item's category, F7). Returns how many items were chosen.
+ */
+export async function moveItemsTo(db: InventoryDb, ids: readonly string[], to: CategoryPlace, opts: { create?: boolean } = {}, now = Date.now()): Promise<number> {
+  return db.transaction('rw', db.categories, db.items, db.settings, async () => {
+    if (ids.length === 0) fail('Select at least one item to move.');
+    const list = await orderedCategories(db);
+    let changed = false;
+    let cat = list.find((c) => nameKey(c.name) === nameKey(to.category));
+    if (!cat) {
+      if (!opts.create) return fail(`category "${to.category}" isn't in the list`);
+      const checked = checkName(to.category, list.map((c) => c.name), 'Category');
+      if (!checked.ok) return fail(checked.error);
+      cat = { name: checked.name, order: list.length, subcategories: [] };
+      list.push(cat);
+      changed = true;
+    }
+    let subcategory = '';
+    if (to.subcategory.trim() !== '') {
+      const listed = cat.subcategories.find((s) => nameKey(s) === nameKey(to.subcategory));
+      if (listed) subcategory = listed;
+      else {
+        if (!opts.create) return fail(`“${to.subcategory}” isn't a subcategory of ${cat.name}`);
+        const checked = checkName(to.subcategory, cat.subcategories, 'Subcategory');
+        if (!checked.ok) return fail(checked.error);
+        subcategory = checked.name;
+        cat.subcategories = [...cat.subcategories, subcategory];
+        changed = true;
+      }
+    }
+    const unique = [...new Set(ids)];
+    const rows = await db.items.bulkGet(unique);
+    const gone = rows.filter((r) => !r).length;
+    if (gone > 0) fail(`${gone} of the selected items ${gone === 1 ? 'was' : 'were'} deleted meanwhile. Nothing was moved.`);
+    const moving = rows.map((r) => fromItemRow(r!)).filter((i) => i.category !== cat!.name || i.subcategory !== subcategory);
+    if (changed) await writeCategories(db, list);
+    await saveItems(db, moving.map((i) => ({ ...i, category: cat!.name, subcategory })), now);
+    await touch(db, now);
+    return unique.length;
+  });
+}

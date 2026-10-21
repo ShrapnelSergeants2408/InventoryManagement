@@ -107,3 +107,8 @@ export function PinMark() {
 }
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** The tick box inside a role="checkbox" button (Labels step 1, Inventory Select, F28). */
+export function CheckBox({ state }: { state: 'on' | 'some' | 'off' }) {
+  return <span class={state === 'off' ? 'cbox' : `cbox ${state}`}>{state === 'on' ? <Icon name="check" /> : state === 'some' ? <Icon name="minus" /> : null}</span>;
+}

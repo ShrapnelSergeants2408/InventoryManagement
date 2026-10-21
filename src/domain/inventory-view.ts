@@ -37,6 +37,8 @@ export interface CategoryLine extends StatusCounts {
   /** Items passing search and filters. */
   matching: number;
   counted: number;
+  /** Ids of the items passing search and filters, collapsed or not (F28 group checkbox). */
+  ids: string[];
 }
 
 export interface SubcategoryLine extends StatusCounts {
@@ -47,6 +49,8 @@ export interface SubcategoryLine extends StatusCounts {
   expanded: boolean;
   total: number;
   matching: number;
+  /** Ids of the items passing search and filters (F28). */
+  ids: string[];
 }
 
 export interface ItemLine {
@@ -67,6 +71,8 @@ export interface InventoryView {
   filtering: boolean;
   /** Items passing search and filters (all items when not filtering). */
   shown: number;
+  /** Their ids, in list order ("Select all shown", F28). */
+  shownIds: string[];
   totals: Totals;
 }
 
@@ -145,6 +151,7 @@ export function buildInventoryView(input: ViewInput): InventoryView {
 
   const lines: ListLine[] = [];
   let shown = 0;
+  const shownIds: string[] = [];
   for (const cat of categoryOrder(input.categories, input.items)) {
     const all = infos.filter((i) => i.item.category === cat.name);
     const visible = all.filter(passes);
@@ -159,9 +166,11 @@ export function buildInventoryView(input: ViewInput): InventoryView {
       total: all.length,
       matching: visible.length,
       counted: all.filter((i) => i.item.lastCounted !== '').length,
+      ids: visible.map((i) => i.item.id),
       ...countStatus(all),
     });
     shown += visible.length;
+    for (const sub of subcategoryOrder(cat, all.map((i) => i.item))) shownIds.push(...visible.filter((i) => i.item.subcategory === sub).map((i) => i.item.id));
     if (!expanded) continue;
     for (const sub of subcategoryOrder(cat, all.map((i) => i.item))) {
       const sAll = all.filter((i) => i.item.subcategory === sub);
@@ -180,6 +189,7 @@ export function buildInventoryView(input: ViewInput): InventoryView {
           expanded: sExpanded,
           total: sAll.length,
           matching: sVisible.length,
+          ids: sVisible.map((i) => i.item.id),
           ...countStatus(sAll),
         });
       }
@@ -191,6 +201,7 @@ export function buildInventoryView(input: ViewInput): InventoryView {
     lines,
     filtering,
     shown: filtering ? shown : infos.length,
+    shownIds,
     totals: { items: infos.length, needsOrder: infos.filter((i) => i.order !== null).length, ...countStatus(infos) },
   };
 }

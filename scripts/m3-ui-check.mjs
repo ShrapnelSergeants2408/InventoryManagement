@@ -98,14 +98,14 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4320/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await js(COUNT_GATES);
 
   // ── Detail card (F10, F11) ──
-  await js(`[...document.querySelectorAll('.cathdr')].find((b) => b.textContent.includes('Motors')).click(); await settle();`);
+  await js(`[...document.querySelectorAll('.cathdr')].find((b) => b.textContent.includes('Electrical')).click(); await settle(); [...document.querySelectorAll('.subhdr')].find((b) => b.textContent.includes('Motors')).click(); await settle();`);
   await js(`document.querySelector('.list').scrollTop = 200; await settle(100);`);
   await js(`await click('a.rlink', 'NEO 2.0 Brushless Motor'); await settle(400);`);
-  check('row tap opens the detail card', await js(`return [location.hash, document.querySelector('.top .h1').textContent, document.querySelector('.top .small').textContent]`), ['#/item/st-0063', 'NEO 2.0 Brushless Motor (15T spline shaft)', 'Motors']);
+  check('row tap opens the detail card', await js(`return [location.hash, document.querySelector('.top .h1').textContent, document.querySelector('.top .small').textContent]`), ['#/item/st-0063', 'NEO 2.0 Brushless Motor (15T spline shaft)', 'Electrical › Motors']);
   check('status, source, id and counted chips', await js(`return [...document.querySelectorAll('.dchips .chip')].map((c) => norm(c.textContent))`), ['SHORT 8', 'Starter item', 'ID st-0063', 'Not counted yet']);
   check('stock and order lines (§4)', await js(`return [...document.querySelectorAll('.qty-title')].map((e) => e.textContent).concat(document.querySelector('.ordbox .small').textContent)`), ['Short 8 for current needs', 'Order 8 each', '8 × $55.00 = $440.00 from REV (preferred vendor)']);
   check('vendor options open the product page in a new tab (F11)', await js(`return [...document.querySelectorAll('.vend a.btn')].map((a) => [a.target, a.rel, a.href.startsWith('https://')])[0]`), ['_blank', 'noopener noreferrer', true]);
@@ -150,7 +150,7 @@ try {
   await js(`await click('.top button', 'Add item');`);
   check('empty form lists every problem (mockup 3d)', await js(`return [...document.querySelectorAll('.errsum li')].map((l) => l.textContent)`), ['Name is required.', 'Vendor option 1: choose a supplier (it is the preferred vendor).']);
   await shot('04-add-errors');
-  await js(`await type('#nm', 'Standoff 1/2 in. hex, test'); await pick('#cat', 'Structure'); await pick('#sub', '__new'); await type('#ns', 'Standoffs Test');
+  await js(`await type('#nm', 'Standoff 1/2 in. hex, test'); await pick('#cat', 'Mechanical'); await pick('#sub', '__new'); await type('#ns', 'Standoffs Test');
     await pick('#v1-sup', 'REV'); await type('#v1-part', 'REV-29-2817'); await type('#v1-ps', '2.5'); await type('[aria-label="On hand"]', '3'); await type('[aria-label="Desired"]', '8');
     await click('.top button', 'Add item');`);
   check('pack size 2.5 rejected', await js(`return [...document.querySelectorAll('.errsum li')].map((l) => l.textContent)`), ['Vendor option 1: pack size “2.5” must be a whole number of 1 or more.']);
@@ -162,7 +162,7 @@ try {
   const newId = await js(`return decodeURIComponent(location.hash.split('/')[2] ?? '')`);
   check('add saves a team item with a tm- id and opens it; no PIN for vendor option 1', [/^tm-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/.test(newId), await js(`return gates()`)], [true, 2]);
   check('new item in IndexedDB: counted today, team, packs of 4 at $5.00', await js(`const r = await idb('items', ${JSON.stringify(newId)}); return [r.source, r.lastCounted, r.onHand, r.desired, r.subcategory, r.location, r.vendors[0].packSize, r.vendors[0].packPriceCents, r.vendors[0].priceChecked]`), ['team', today, 3, 8, 'Standoffs Test', 'Pit cart', 4, 500, today]);
-  check('new subcategory added to Structure (F6)', await js(`return (await idb('categories', 'Structure')).subcategories.at(-1)`), 'Standoffs Test');
+  check('new subcategory added to Mechanical (F6)', await js(`return (await idb('categories', 'Mechanical')).subcategories.at(-1)`), 'Standoffs Test');
   check('header count now 130 items (the new one is short)', await js(`await go('#/inventory'); return document.querySelector('.top .small').textContent`), '130 items · 125 short · 0 low spares');
 
   // ── Delete (F8) ──
@@ -216,22 +216,22 @@ try {
   check('rename location asks the PIN', await js(`return [(await idb('locations')).map((l) => l.name).sort(), gates() - ${gL}]`), [['Bin F2', 'Pit cart A'], 2]);
 
   // ── Categories (F9) ──
-  await js(`localStorage.setItem('frc2408.inventory.filters', JSON.stringify({ needsOrder: false, short: false, low: false, category: 'Motors', supplier: null, location: null }));`);
+  await js(`localStorage.setItem('frc2408.inventory.filters', JSON.stringify({ needsOrder: false, short: false, low: false, category: 'Assemblies', supplier: null, location: null }));`);
   await js(`await go('#/more/categories');`);
   const gC = await js(`return gates()`);
   await js(`await click('.top button', 'Add category'); await type('#en-name', 'Game Pieces'); await click('.dlg button[type=submit]', 'Add category'); await settle(400);`);
   await js(`await click('.top button', 'Reorder'); document.querySelector('[aria-label="Move Game Pieces up"]').click(); await settle(400); await click('.top button', 'Done');`);
-  await js(`document.querySelector('[aria-label="Expand Structure"]').click(); await settle(); await click('.subrow button', 'Add subcategory to Structure'); await type('#en-name', 'Spacers'); await click('.dlg button[type=submit]', 'Add subcategory'); await settle(400);`);
-  check('add category, subcategory and reorder need no PIN', await js(`const cats = (await idb('categories')).sort((a, b) => a.order - b.order); return [gates() - ${gC}, cats.at(-2).name, cats[0].subcategories.at(-1)]`), [0, 'Game Pieces', 'Spacers']);
+  await js(`document.querySelector('[aria-label="Expand Electrical"]').click(); await settle(); await click('.subrow button', 'Add subcategory to Electrical'); await type('#en-name', 'Relays'); await click('.dlg button[type=submit]', 'Add subcategory'); await settle(400);`);
+  check('add category, subcategory and reorder need no PIN', await js(`const cats = (await idb('categories')).sort((a, b) => a.order - b.order); return [gates() - ${gC}, cats.at(-2).name, cats[0].subcategories.at(-1)]`), [0, 'Game Pieces', 'Relays']);
   await shot('09-categories');
-  await js(`await relockNow(); document.querySelector('[aria-label="Expand Pneumatics"]').click(); await settle(); const row = [...document.querySelectorAll('.subrow')].find((r) => r.textContent.includes('Valves')); row.querySelector('button.danger').click(); await settle(); await answerGate(true, true);`);
-  check('a subcategory with items can’t be removed until they move (mockup 7g)', await js(`const d = dlg('Remove category'); return [norm(d.querySelector('h2').textContent), d.querySelector('#mv').selectedOptions[0].textContent]`), ['“Pneumatics › Valves” isn’t empty yet', 'Pneumatics']);
-  const valves = await js(`return (await idb('items')).filter((i) => i.category === 'Pneumatics' && i.subcategory === 'Valves').map((i) => i.id)`);
-  await js(`const sel = document.querySelector('#mv'); await pick(sel, [...sel.options].find((o) => o.textContent === 'Pneumatics › Air Supply').value); await click('.dlg button', 'and remove'); await settle(600);`);
-  check('items moved, subcategory removed', await js(`const items = await idb('items'); return [${JSON.stringify(valves)}.every((id) => items.find((i) => i.id === id).subcategory === 'Air Supply'), (await idb('categories', 'Pneumatics')).subcategories.includes('Valves')]`), [true, false]);
-  await js(`await relockNow(); const row = [...document.querySelectorAll('.crow')].find((r) => r.querySelector('.cn').textContent === 'Motors'); row.querySelector('.acts button').click(); await settle(); await answerGate(true, true); await type('#en-name', 'Motors & Gearboxes'); await click('.dlg button[type=submit]', 'Rename'); await settle(600);`);
-  check('rename category moves its items (F9)', await js(`const items = await idb('items'); return [items.filter((i) => i.category === 'Motors').length, items.filter((i) => i.category === 'Motors & Gearboxes').length, gates() - ${gC}]`), [0, 4, 2]);
-  check('inventory shows the new name; a saved filter on the old name is dropped', await js(`await go('#/inventory'); await settle(400); return [[...document.querySelectorAll('.cathdr .cn')].some((e) => e.textContent === 'Motors & Gearboxes'), byText('.top .btn', 'Filters').textContent.trim(), JSON.parse(localStorage.getItem('frc2408.inventory.filters')).category]`), [true, 'Filters', null]);
+  await js(`await relockNow(); document.querySelector('[aria-label="Expand Pneumatics"]').click(); await settle(); const row = [...document.querySelectorAll('.subrow')].find((r) => r.textContent.includes('Solenoids')); row.querySelector('button.danger').click(); await settle(); await answerGate(true, true);`);
+  check('a subcategory with items can’t be removed until they move (mockup 7g)', await js(`const d = dlg('Remove category'); return [norm(d.querySelector('h2').textContent), d.querySelector('#mv').selectedOptions[0].textContent]`), ['“Pneumatics › Solenoids” isn’t empty yet', 'Pneumatics']);
+  const solenoids = await js(`return (await idb('items')).filter((i) => i.category === 'Pneumatics' && i.subcategory === 'Solenoids').map((i) => i.id)`);
+  await js(`const sel = document.querySelector('#mv'); await pick(sel, [...sel.options].find((o) => o.textContent === 'Pneumatics › Accumulation').value); await click('.dlg button', 'and remove'); await settle(600);`);
+  check('items moved, subcategory removed', await js(`const items = await idb('items'); return [${JSON.stringify(solenoids)}.every((id) => items.find((i) => i.id === id).subcategory === 'Accumulation'), (await idb('categories', 'Pneumatics')).subcategories.includes('Solenoids')]`), [true, false]);
+  await js(`await relockNow(); const row = [...document.querySelectorAll('.crow')].find((r) => r.querySelector('.cn').textContent === 'Assemblies'); row.querySelector('.acts button').click(); await settle(); await answerGate(true, true); await type('#en-name', 'Complete Assemblies'); await click('.dlg button[type=submit]', 'Rename'); await settle(600);`);
+  check('rename category moves its items (F9)', await js(`const items = await idb('items'); return [items.filter((i) => i.category === 'Assemblies').length, items.filter((i) => i.category === 'Complete Assemblies').length, gates() - ${gC}]`), [0, 1, 2]);
+  check('inventory shows the new name; a saved filter on the old name is dropped', await js(`await go('#/inventory'); await settle(400); return [[...document.querySelectorAll('.cathdr .cn')].some((e) => e.textContent === 'Complete Assemblies'), byText('.top .btn', 'Filters').textContent.trim(), JSON.parse(localStorage.getItem('frc2408.inventory.filters')).category]`), [true, 'Filters', null]);
 
   // ── Portrait and touch targets ──
   await js(`await relockNow();`);

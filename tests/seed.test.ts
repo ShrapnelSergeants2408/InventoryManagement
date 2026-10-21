@@ -5,13 +5,7 @@ import { loadSnapshot, replaceAll } from '../src/data/inventory';
 import { buildOrderList } from '../src/domain/order';
 import { centsToPlain } from '../src/domain/money';
 import { readSeed } from '../src/io/seed';
-import { seedBytes } from './helpers';
-
-// SPEC §11 categories in their finalized order.
-const SPEC_CATEGORIES = [
-  'Structure', 'Fasteners', 'Motion', 'Drivetrain', 'Motors', 'Motor Controllers', 'Power & Electrical',
-  'Wiring & Connectors', 'Control System & Sensors', 'Pneumatics', 'Tools & Consumables', 'Pit & Safety',
-];
+import { SPEC_CATEGORIES, seedBytes } from './helpers';
 
 describe('starter catalog (SPEC §12, F22)', async () => {
   const seed = await readSeed(seedBytes());
@@ -41,11 +35,31 @@ describe('starter catalog (SPEC §12, F22)', async () => {
     expect(data.photos.get('st-0001')!.type).toBe('image/jpeg');
   });
 
-  it('categories are rebuilt in the §11 order', () => {
+  it('categories come from its categories.csv in the §11 order, subcategories in theirs', () => {
     expect(data.categories.map((c) => c.name)).toEqual(SPEC_CATEGORIES);
-    expect(data.categories.find((c) => c.name === 'Motion')!.subcategories).toEqual([
-      'Shafts & Spacers', 'Bearings', 'Collars', 'Sprockets & Chain', 'Pulleys & Belts',
+    expect(data.categories.map((c) => c.order)).toEqual(SPEC_CATEGORIES.map((_, i) => i));
+    const subs = (name: string) => data.categories.find((c) => c.name === name)!.subcategories;
+    expect(subs('Electrical')).toEqual([
+      'Control System', 'Sensors', 'Cameras', 'Speed Controllers', 'Motors', 'Servos', 'Batteries', 'Connectors', 'Cables/Wires', 'Power Distribution',
     ]);
+    expect(subs('Tools')).toEqual(['Hammers', 'Wrenches', 'Allen Wrenches', 'Sockets & Socket Wrenches', 'Power Tools', 'Wiring Tools', 'Specialty Tools']);
+    // 69 rows in the file: 11 categories and 58 subcategories (§11).
+    expect(data.categories.reduce((n, c) => n + c.subcategories.length, 0)).toBe(58);
+  });
+
+  it('keeps empty categories and subcategories (§11: Public Relations, Programming)', () => {
+    const used = new Set(data.items.map((i) => i.category));
+    expect(SPEC_CATEGORIES.filter((c) => !used.has(c))).toEqual(['Public Relations', 'Programming']);
+    expect(data.categories.find((c) => c.name === 'Public Relations')!.subcategories).toEqual(['Labels', 'Buttons']);
+    for (const name of ['Assemblies', 'Programming', 'Misc']) expect(data.categories.find((c) => c.name === name)!.subcategories).toEqual([]);
+  });
+
+  it('every item is in a listed category and subcategory, spelled as in the list', () => {
+    for (const i of data.items) {
+      const cat = data.categories.find((c) => c.name === i.category);
+      expect(cat, i.id).toBeDefined();
+      if (i.subcategory !== '') expect(cat!.subcategories, i.id).toContain(i.subcategory);
+    }
   });
 
   it('with on hand 0 the order list totals exactly $8,413.66 over 124 priced lines', () => {

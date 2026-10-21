@@ -178,6 +178,23 @@ export function completeLocations(list: readonly Location[], items: readonly Ite
   return { list: out, added };
 }
 
+/**
+ * Spells each item's category, subcategory and location the way the lists do. Names match
+ * ignoring capitals (§3), so a hand-edited `motors` becomes `Motors` (Stage 5 finding 2).
+ * Run after the complete* functions, so every name the items use is in the lists.
+ */
+export function spellLikeLists(items: readonly Item[], categories: readonly Category[], locations: readonly Location[]): Item[] {
+  const cats = new Map(categories.map((c) => [nameKey(c.name), c]));
+  const locs = new Map(locations.map((l) => [nameKey(l.name), l.name]));
+  return items.map((item) => {
+    const cat = cats.get(nameKey(item.category));
+    const category = cat?.name ?? item.category;
+    const subcategory = (item.subcategory !== '' && cat?.subcategories.find((s) => nameKey(s) === nameKey(item.subcategory))) || item.subcategory;
+    const location = (item.location !== '' && locs.get(nameKey(item.location))) || item.location;
+    return category === item.category && subcategory === item.subcategory && location === item.location ? item : { ...item, category, subcategory, location };
+  });
+}
+
 /** Appends categories and subcategories used by items, in first-appearance order. */
 export function completeCategories(list: readonly Category[], items: readonly Item[]): { list: Category[]; added: string[] } {
   const out = [...list].sort((a, b) => a.order - b.order).map((c, i) => ({ ...c, order: i, subcategories: [...c.subcategories] }));

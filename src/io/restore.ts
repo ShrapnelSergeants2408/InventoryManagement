@@ -5,7 +5,7 @@ import type { Category, Item, Location, Supplier } from '../domain/types';
 import { dateFromFileName } from './backup';
 import { readBackupZip, readInventoryCsvBundle, type Bundle } from './bundle';
 import { decodeCsvBytes, type FileProblem } from './csv';
-import { completeCategories, completeLocations, completeSuppliers } from './lists-csv';
+import { completeCategories, completeLocations, completeSuppliers, spellLikeLists } from './lists-csv';
 
 export interface RestorePlan {
   kind: 'zip' | 'csv';
@@ -66,7 +66,7 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
       kind: bundle.kind,
       fileName: file.name,
       fileSize: file.size,
-      items: bundle.items,
+      items: spellLikeLists(bundle.items, categories.list, locations.list),
       photos: bundle.photos,
       suppliers: suppliers.list,
       locations: locations.list,

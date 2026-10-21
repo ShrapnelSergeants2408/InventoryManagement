@@ -18,17 +18,21 @@ export async function getRecentLocations(db: InventoryDb): Promise<string[]> {
 /**
  * Checks the item against the lists and fills them in where the editor may add to them:
  * a new subcategory (F6) and a location typed in the editor (F25: anyone can add one).
- * Returns the item with the location spelled as in the list.
+ * Returns the item with its category, subcategory and location spelled as in the lists
+ * (names match ignoring capitals, §3; Stage 5 finding 2).
  */
-async function fitToLists(db: InventoryDb, item: Item): Promise<Item> {
+async function fitToLists(db: InventoryDb, given: Item): Promise<Item> {
   const suppliers = (await db.suppliers.toArray()).map((s) => s.name);
-  const errors = validateItem(item, suppliers);
+  const errors = validateItem(given, suppliers);
   if (errors.length > 0) throw new Error(errors.map((e) => e.message).join('; '));
 
-  const cat = await db.categories.get(item.category);
-  if (!cat) throw new Error(`category "${item.category}" isn't in the category list`);
-  if (item.subcategory !== '' && !cat.subcategories.includes(item.subcategory)) {
-    await db.categories.put({ ...cat, subcategories: [...cat.subcategories, item.subcategory] });
+  const cat = (await db.categories.get(given.category)) ?? (await db.categories.toArray()).find((c) => nameKey(c.name) === nameKey(given.category));
+  if (!cat) throw new Error(`category "${given.category}" isn't in the category list`);
+  let item: Item = { ...given, category: cat.name };
+  if (item.subcategory !== '') {
+    const listed = cat.subcategories.find((s) => nameKey(s) === nameKey(item.subcategory));
+    if (listed) item = { ...item, subcategory: listed };
+    else await db.categories.put({ ...cat, subcategories: [...cat.subcategories, item.subcategory] });
   }
 
   if (item.location === '') return item;

@@ -125,7 +125,7 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4328/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await js(COUNT_GATES);
   // window.print is replaced: each call records what the print pages held at that moment.
   await js(`window.__prints = []; window.print = () => { const r = document.querySelector('#print-root'); window.__prints.push({ mode: r?.dataset.mode, sheets: r?.querySelectorAll('.sheet').length, labels: r?.querySelectorAll('.lab[data-id]').length, outlines: r?.querySelectorAll('.lab.outline').length }); };`);
@@ -138,11 +138,12 @@ try {
 
   // ── Step 1: choose items (mockup 6a) ──
   await js(`await go('#/labels'); await settle(500);`);
-  check('Labels opens on step 1, grouped by category, nothing selected', await js(`return [norm(document.querySelector('.stp.on').textContent), document.querySelector('[role=tab][aria-selected=true]').textContent, document.querySelectorAll('.lgrow').length, norm(document.querySelector('.bignum').textContent), document.querySelector('.racts .btn.pri').disabled]`), ['1Choose items', 'By category', 12, '0 labels', true]);
-  await jsL(`groupRow('Fasteners').querySelector('.cb').click(); await settle(200); groupRow('Motors').querySelector('.exp').click(); await settle(200);`);
-  await jsL(`const rows = [...document.querySelectorAll('.irow .cb')]; for (const b of rows.slice(0, 3)) { b.click(); await settle(60); }`);
-  check('a whole category, plus 3 items from another; mixed state shown', await jsL(`return [groupRow('Fasteners').querySelector('.cb').getAttribute('aria-checked'), groupRow('Motors').querySelector('.cb').getAttribute('aria-checked'), norm(document.querySelector('.bignum').textContent), norm(document.querySelector('.rsum .small').textContent), document.querySelectorAll('.rlist li').length]`), ['true', 'mixed', '19 labels', 'Fasteners 16 · Motors 3', 19]);
-  check('tapping a fully selected category clears it', await jsL(`const b = groupRow('Fasteners').querySelector('.cb'); b.click(); await settle(150); const a = norm(document.querySelector('.bignum').textContent); b.click(); await settle(150); return [a, norm(document.querySelector('.bignum').textContent)]`), ['3 labels', '19 labels']);
+  check('Labels opens on step 1, grouped by category, nothing selected', await js(`return [norm(document.querySelector('.stp.on').textContent), document.querySelector('[role=tab][aria-selected=true]').textContent, document.querySelectorAll('.lgrow').length, norm(document.querySelector('.bignum').textContent), document.querySelector('.racts .btn.pri').disabled]`), ['1Choose items', 'By category', 9, '0 labels', true]);
+  // A whole category (Power Transfer, 17) plus the two NEO motors from Electrical (st-0063 is filed in Bin A): 19 labels.
+  await jsL(`groupRow('Power Transfer').querySelector('.cb').click(); await settle(200); groupRow('Electrical').querySelector('.exp').click(); await settle(200);`);
+  await jsL(`const rows = [...document.querySelectorAll('.irow')].filter((r) => ['NEO 2.0 Brushless Motor', 'NEO 550 Brushless Motor'].some((n) => r.textContent.includes(n))); for (const r of rows) { r.querySelector('.cb').click(); await settle(60); }`);
+  check('a whole category, plus 2 items from another; mixed state shown', await jsL(`return [groupRow('Power Transfer').querySelector('.cb').getAttribute('aria-checked'), groupRow('Electrical').querySelector('.cb').getAttribute('aria-checked'), norm(document.querySelector('.bignum').textContent), norm(document.querySelector('.rsum .small').textContent), document.querySelectorAll('.rlist li').length]`), ['true', 'mixed', '19 labels', 'Electrical 2 · Power Transfer 17', 19]);
+  check('tapping a fully selected category clears it', await jsL(`const b = groupRow('Power Transfer').querySelector('.cb'); b.click(); await settle(150); const a = norm(document.querySelector('.bignum').textContent); b.click(); await settle(150); return [a, norm(document.querySelector('.bignum').textContent)]`), ['2 labels', '19 labels']);
   await js(`byText('[role=tab]', 'By location').click(); await settle(300);`);
   check('By location: walk order (Shelf Z, Bin A), then No location', await js(`return [...document.querySelectorAll('.lgrow strong')].map((e) => e.textContent)`), ['Shelf Z', 'Bin A', 'No location']);
   await shot('01-labels-select');

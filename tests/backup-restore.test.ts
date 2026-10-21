@@ -10,7 +10,7 @@ import { buildOrderList } from '../src/domain/order';
 import { backupFileName, dateFromFileName } from '../src/io/backup';
 import { readRestoreFile, looksLikeZip, type RestorePlan } from '../src/io/restore';
 import { readSeed } from '../src/io/seed';
-import { item, seedBytes, vendor } from './helpers';
+import { SPEC_CATEGORIES, item, seedBytes, vendor } from './helpers';
 
 const dbs: InventoryDb[] = [];
 afterEach(() => {
@@ -173,7 +173,7 @@ describe('full backup ZIP (F15, §7)', () => {
   it('the starter catalog restores to the same 129 items and $8,413.66', async () => {
     const db = newDb();
     await replaceAll(db, tabletData());
-    const plan = await planFor(db, { name: 'frc2408-starter-catalog-2026-10-17.zip', bytes: seedBytes() });
+    const plan = await planFor(db, { name: 'frc2408-starter-catalog-2026-10-21.zip', bytes: seedBytes() });
     expect(plan.items).toHaveLength(129);
     expect(plan.photos.size).toBe(128);
     expect(plan.savedAtSource).toBe('file name');
@@ -182,9 +182,10 @@ describe('full backup ZIP (F15, §7)', () => {
     expect(snap.items).toHaveLength(129);
     expect(await db.photos.count()).toBe(128);
     expect(centsToPlain(buildOrderList(snap.items).grandTotalCents)).toBe('8413.66');
-    // The seed has no locations.csv or categories.csv: the tablet's lists are kept and completed.
+    // The seed has no locations.csv, so the tablet's locations are kept (Q5). It has a
+    // categories.csv (seed layout, §7), so its §11 list replaces the tablet's.
     expect(snap.locations.map((l) => l.name)).toEqual(['Pit cart', 'Bin F3', 'Empty shelf']);
-    expect(snap.categories.slice(0, 3).map((c) => c.name)).toEqual(['Motors', 'Empty category', 'Fasteners']);
+    expect(snap.categories.map((c) => c.name)).toEqual(SPEC_CATEGORIES);
     expect(snap.suppliers.map((s) => s.name)).toContain('other');
   });
 });
@@ -249,6 +250,23 @@ describe('data-only CSV backup and restore (F15, F17, Q5)', () => {
     expect(snap.suppliers).toHaveLength(3);
     expect(snap.locations).toEqual([{ name: 'Bin F3', notes: 'kept', order: 0 }, { name: 'Shelf Z', notes: '', order: 1 }]);
     expect(snap.categories.map((c) => c.name)).toEqual(['Motors', 'Empty category', 'Fasteners', 'New cat']);
+  });
+
+  it("hand-edited capitals take the lists' spelling, so rename and remove still find the item (Stage 5 finding 2, probe P1)", async () => {
+    const db = newDb();
+    const d = tabletData();
+    await replaceAll(db, { ...d, items: [d.items[1]!], photos: new Map(), locations: [{ name: 'Bin F3', notes: '', order: 0 }] });
+    const csv = ['id,name,category,subcategory,unit,on_hand,desired,location,v1_supplier,v1_pack_size', 'a1,A,motors,,each,1,1,bin f3,REV,1', 'a2,B,FASTENERS,nuts,each,1,1,,REV,1'].join('\n');
+    await applyPlan(db, await planFor(db, { name: 'hand.csv', bytes: new TextEncoder().encode(csv) }));
+    const snap = await loadSnapshot(db);
+    expect(snap.items.map((i) => [i.id, i.category, i.subcategory, i.location])).toEqual([
+      ['a1', 'Motors', '', 'Bin F3'],
+      ['a2', 'Fasteners', 'Nuts', ''],
+    ]);
+    // No second "motors" category, and Fasteners keeps one Nuts.
+    expect(snap.categories.map((c) => c.name)).toEqual(['Motors', 'Empty category', 'Fasteners']);
+    expect(snap.categories.find((c) => c.name === 'Fasteners')!.subcategories.filter((s) => s.toLowerCase() === 'nuts')).toEqual(['Nuts']);
+    expect(snap.locations.map((l) => l.name)).toEqual(['Bin F3']);
   });
 
   it('a full ZIP replaces the lists, and `other` always comes back', async () => {

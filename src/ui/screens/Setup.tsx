@@ -5,7 +5,7 @@
 // are saved together at the end, so closing the app part-way shows the remaining step again.
 import { useRef, useState } from 'preact/hooks';
 import logoUrl from '../../../assets/team-logo-512.png?url';
-import seedUrl from '../../../seed/frc2408-starter-catalog-2026-10-17.zip?url';
+import seedUrl from '../../../seed/frc2408-starter-catalog-2026-10-21.zip?url';
 import type { ReplaceAllInput } from '../../data/inventory';
 import { savePinAndRecovery } from '../../data/pin';
 import { emptyStart, requestPersistentStorage, startInventory, type StartChoice } from '../../data/setup';

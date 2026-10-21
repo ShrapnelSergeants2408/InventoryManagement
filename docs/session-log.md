@@ -462,3 +462,30 @@ F5 filter order (SPEC v0.8) in both places it shows. The Stage 6 plan (`docs/sta
 High: a layout-only change, checked in both orientations, with the mutant caught and the full regression green. One open wording note for Dan (M11 review, finding 1).
 
 **Next:** Dan merges the PR and checks the filter order on the Tab S8; then M12 (categories and the new seed).
+
+
+---
+
+## Stage 6, M12 — 2026-10-21 — categories, new seed, finding 2
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), same session. Dan merged PR #15 (M11, `36c84d4`) and said "build m12". Branch `m12-categories` from `main`.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~14:10 | Branch created. Stage 5 finding 2 fix (`spellLikeLists`, `itemsIn` and `fitToLists` ignore capitals); switched the seed to 2026-10-21 |
+| ~14:12–14:20 | Unit tests: 5 old-category expectations updated to §11 (shared `SPEC_CATEGORIES`); 10 new tests (seed order and empties, both `categories.csv` layouts, `spellLikeLists`, finding 2 restore and edit). A probe (scratchpad, not committed) listed the seed's categories. One shell command hung on `python -` reading stdin; stopped it and used the Edit tool |
+| ~14:20–14:35 | Mutation check 11/12 caught (the 12th is an unused constant). Updated the M2, M3, M7, M8, M9 and M10 browser checks for the new names; removed the old seed; wrote `scripts/m12-ui-check.mjs` (13/13) |
+| ~14:35–14:38 | Regression M2–M11 412/412 after fixing M10's three "12 categories" expectations; interface mutant (seed ignores `categories.csv`) caught; `docs/reviews/M12.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+§11 categories through the new seed, for both first-launch choices; `categories.csv` in both layouts pinned by tests; Stage 5 finding 2 fixed. 520 unit tests.
+
+**DELIVERABLES PRODUCED**
+`src/io/{lists-csv,restore,seed,backup}.ts`, `src/domain/lists.ts`, `src/data/items.ts`, `src/ui/screens/Setup.tsx`, tests (`helpers`, `seed`, `setup`, `inventory-view`, `lists-csv`, `backup-restore`, `edits-db`), browser checks M2, M3, M7, M8, M9, M10 (updated) and M12 (new), `docs/reviews/M12.md`. Removed `seed/frc2408-starter-catalog-2026-10-17.zip`.
+
+**CONFIDENCE**
+High for the seed load, the order of the lists and the finding 2 fix (unit and browser, mutants caught). The plan's independent fresh-session review for M12 is still to do before merging.
+
+**Next:** an independent review of the M12 PR, then Dan merges and checks it in a fresh browser profile; then M13 (bulk move).

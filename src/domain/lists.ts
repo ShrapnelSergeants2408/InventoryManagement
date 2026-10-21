@@ -123,9 +123,9 @@ export interface CategoryPlace {
 
 export const placeLabel = (p: CategoryPlace) => (p.subcategory ? `${p.category} › ${p.subcategory}` : p.category);
 
-/** The items in a category, or in one subcategory of it when `subcategory` is given. */
+/** The items in a category, or in one subcategory of it when `subcategory` is given. Names match ignoring capitals (§3). */
 export function itemsIn(items: readonly Item[], category: string, subcategory?: string): Item[] {
-  return items.filter((i) => i.category === category && (subcategory === undefined || i.subcategory === subcategory));
+  return items.filter((i) => nameKey(i.category) === nameKey(category) && (subcategory === undefined || nameKey(i.subcategory) === nameKey(subcategory)));
 }
 
 /**

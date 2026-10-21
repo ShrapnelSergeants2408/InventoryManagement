@@ -134,7 +134,7 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4327/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await js(COUNT_GATES);
 
   // ── No photo yet (mockup 2d) ──
@@ -151,7 +151,7 @@ try {
   await shot('02-detail-photo');
 
   // ── The list thumbnail follows a replaced photo without a reload (F2) ──
-  await js(`await go('#/inventory'); for (const [sel, t] of [['.cathdr', 'Control System'], ['.subhdr', 'Controller & Radio']]) { const h = [...document.querySelectorAll(sel)].find((b) => b.textContent.includes(t)); if (h.getAttribute('aria-expanded') !== 'true') { h.click(); await settle(400); } } document.querySelector('a.rlink[href="#/item/st-0099"]').scrollIntoView(); await settle(800);`);
+  await js(`await go('#/inventory'); for (const [sel, t] of [['.cathdr', 'Electrical'], ['.subhdr', 'Control System']]) { const h = [...document.querySelectorAll(sel)].find((b) => b.textContent.includes(t)); if (h.getAttribute('aria-expanded') !== 'true') { h.click(); await settle(400); } } document.querySelector('a.rlink[href="#/item/st-0099"]').scrollIntoView(); await settle(800);`);
   check('row thumbnail is the new photo (160×120)', await jsP(`const i = rowThumb(); return i ? [i.naturalWidth, i.naturalHeight] : null`), [160, 120]);
   await js(`await go('#/item/st-0099'); await settle(400);`);
   await jsP(`await give('camera', await picture(1500, 3000));`);
@@ -199,7 +199,7 @@ try {
     // The camera input gets a real seed JPEG (a vendor photo), like a picture from the camera.
     const JSZip = (await import('jszip')).default;
     const { readFileSync } = await import('node:fs');
-    const zip = await JSZip.loadAsync(readFileSync('seed/frc2408-starter-catalog-2026-10-17.zip'));
+    const zip = await JSZip.loadAsync(readFileSync('seed/frc2408-starter-catalog-2026-10-21.zip'));
     const file = join(mkdtempSync(join(tmpdir(), 'm7-')), 'camera.jpg');
     writeFileSync(file, await zip.file('photos/st-0001.jpg').async('nodebuffer'));
     await send('DOM.setFileInputFiles', { files: [file], backendNodeId: choosers[0].backendNodeId });

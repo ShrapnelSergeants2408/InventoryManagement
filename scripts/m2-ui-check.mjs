@@ -70,16 +70,16 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4319/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`const $ = (s) => document.querySelector(s); const $$ = (s) => [...document.querySelectorAll(s)]; const norm = (s) => s.replace(/\\s+/g, ' ').trim(); const byText = (sel, t) => $$(sel).find((b) => norm(b.textContent).includes(t)); const settle = (ms = 350) => new Promise((r) => setTimeout(r, ms)); ${PIN_H} await doSetup();`);
-  await waitFor(`[...document.querySelectorAll('.cathdr')].length >= 12`, 60000);
+  await waitFor(`[...document.querySelectorAll('.cathdr')].length >= 11`, 60000);
   await sleep(500);
   check('header summary', await js(`return document.querySelector('.top .small').textContent`), '129 items · 124 short · 0 low spares');
-  check('category headers', await js(`return document.querySelectorAll('.cathdr').length`), 12);
+  check('category headers', await js(`return document.querySelectorAll('.cathdr').length`), 11);
   check('quick filter counts', await js(`return [...document.querySelectorAll('.frow .fchip')].slice(0, 3).map((b) => b.textContent.trim())`), ['Needs order · 124', 'Short only · 124', 'Low spares only · 0']);
   await shot('01-landscape-collapsed');
 
-  // F1: expand Fasteners → Bolts & Screws
-  await js(`${H} hdr('Fasteners').click(); await settle(); hdr('Bolts & Screws').click(); await settle();`);
-  check('Fasteners and Bolts & Screws expanded, rows shown', await js(`${H} return [hdr('Fasteners').getAttribute('aria-expanded'), hdr('Bolts & Screws').getAttribute('aria-expanded'), document.querySelectorAll('.row').length >= Number(hdr('Bolts & Screws').querySelector('.hc').textContent.split(' ')[0])]`), ['true', 'true', true]);
+  // F1: expand Fasteners → Screws
+  await js(`${H} hdr('Fasteners').click(); await settle(); hdr('Screws').click(); await settle();`);
+  check('Fasteners and Screws expanded, rows shown', await js(`${H} return [hdr('Fasteners').getAttribute('aria-expanded'), hdr('Screws').getAttribute('aria-expanded'), document.querySelectorAll('.row').length >= Number(hdr('Screws').querySelector('.hc').textContent.split(' ')[0])]`), ['true', 'true', true]);
   await sleep(1500); // thumbnails
   await shot('02-landscape-expanded');
   check('thumbnails rendered', await js(`return document.querySelectorAll('img.thumb').length > 0 && [...document.querySelectorAll('img.thumb')].every((i) => i.complete && i.naturalWidth > 0 && i.naturalWidth <= 160)`), true);
@@ -125,24 +125,24 @@ try {
   check('empty state', await js(`return document.querySelector('.state .h2').textContent`), 'No items match “falcon 500”');
   await shot('05-empty');
   await js(`${H} [...document.querySelectorAll('.state .btn')].find((b) => b.textContent.includes('Clear')).click(); await settle();`);
-  check('Clear search and filters', await js(`return [document.querySelector('.searchwrap .field').value, document.querySelectorAll('.cathdr').length]`), ['', 12]);
+  check('Clear search and filters', await js(`return [document.querySelector('.searchwrap .field').value, document.querySelectorAll('.cathdr').length]`), ['', 11]);
 
   // F5 filters panel
   await js(`${H} [...document.querySelectorAll('.top .btn')].find((b) => b.textContent.includes('Filters')).click(); await settle();`);
   await js(`${H} [...document.querySelectorAll('.fpanel .fchip')].find((b) => b.textContent.startsWith('Short')).click(); await settle();`);
-  await js(`${H} [...document.querySelectorAll('.fpanel .fchip')].find((b) => b.textContent === 'Motors').click(); await settle();`);
+  await js(`${H} [...document.querySelectorAll('.fpanel .fchip')].find((b) => b.textContent === 'Electrical').click(); await settle();`);
   const motorsShort = await js(`return document.querySelector('.fpanel-foot .btn.pri').textContent`);
   await shot('06-filter-panel');
   await js(`${H} document.querySelector('.fpanel-foot .btn.pri').click(); await settle();`);
-  check('filter panel closes; list shows only Motors', await js(`return [!!document.querySelector('.fpanel'), [...document.querySelectorAll('.cathdr .cn')].map((c) => c.textContent)]`), [false, ['Motors']]);
+  check('filter panel closes; list shows only Electrical', await js(`return [!!document.querySelector('.fpanel'), [...document.querySelectorAll('.cathdr .cn')].map((c) => c.textContent)]`), [false, ['Electrical']]);
   check('Show n items matches rows', motorsShort, `Show ${await js(`return document.querySelectorAll('.row').length`)} items`);
   check('Filters button shows count', await js(`return [...document.querySelectorAll('.top .btn')].find((b) => b.textContent.includes('Filters')).textContent`), 'Filters (2)');
   await send('Page.reload');
   await waitFor(`document.querySelectorAll('.cathdr').length > 0`, 30000);
   await sleep(300);
-  check('filters remembered after reload', await js(`return [...document.querySelectorAll('.cathdr .cn')].map((c) => c.textContent)`), ['Motors']);
+  check('filters remembered after reload', await js(`return [...document.querySelectorAll('.cathdr .cn')].map((c) => c.textContent)`), ['Electrical']);
   await js(`${H} [...document.querySelectorAll('.frow .fchip')].find((b) => b.textContent === 'Clear all').click(); await settle();`);
-  check('Clear all', await js(`return document.querySelectorAll('.cathdr').length`), 12);
+  check('Clear all', await js(`return document.querySelectorAll('.cathdr').length`), 11);
 
   // Portrait (§17: bottom tabs)
   await size(800, 1280);
@@ -175,7 +175,7 @@ try {
   check('Try again while still blocked → error screen again', await js(`return document.querySelector('[role=alert] .h2')?.textContent`), 'Can’t open the inventory on this tablet');
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: blocker.result.identifier });
   await send('Page.reload');
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 30000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 30000);
   check('unblocked → inventory is back, data intact', await js(`return document.querySelector('.top .small').textContent`), '129 items · 124 short · 0 low spares');
 } catch (e) {
   results.push('ERROR ' + e.message);

@@ -28,7 +28,7 @@ export function backupFileName(kind: BackupKind, now: Date): string {
 
 /**
  * The date and time a file name carries (`…-2026-10-10-1535.zip`, or a date only, like the
- * starter catalog's `…-2026-10-17.zip`), as a local time; null when there is none (Q8).
+ * starter catalog's `…-2026-10-21.zip`), as a local time; null when there is none (Q8).
  */
 export function dateFromFileName(name: string): Date | null {
   const m = /(\d{4})-(\d{2})-(\d{2})(?:-(\d{2})(\d{2}))?(?!.*\d{4}-\d{2}-\d{2})/.exec(name);

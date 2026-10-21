@@ -163,9 +163,9 @@ describe('starter catalog in the list (SPEC §12 numbers)', async () => {
     expect(v.totals).toEqual({ items: 129, short: 124, low: 0, needsOrder: 124 });
   });
 
-  it('12 category headers whose item counts add up to 129', () => {
+  it('11 category headers (§11, empty ones included) whose item counts add up to 129', () => {
     const cats = v.lines.filter((l): l is CategoryLine => l.kind === 'category');
-    expect(cats).toHaveLength(12);
+    expect(cats).toHaveLength(11);
     expect(cats.reduce((n, c) => n + c.total, 0)).toBe(129);
     expect(cats.reduce((n, c) => n + c.short, 0)).toBe(124);
   });

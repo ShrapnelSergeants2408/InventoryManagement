@@ -283,6 +283,21 @@ describe('categories (F9)', () => {
     expect(s.items.filter((i) => i.category === 'Motors')).toHaveLength(3);
   });
 
+  it('an item stored with other capitals (before the finding 2 fix) still counts, edits and follows a rename', async () => {
+    await setup([...seedItems(), item({ id: 'lc', category: 'pneumatics', subcategory: 'valves', vendors: [vendor({ supplier: 'REV' }), null, null] })]);
+    // Remove is blocked: the item counts as in Pneumatics › Valves.
+    await expect(removeSubcategory(db, 'Pneumatics', 'Valves', null)).rejects.toThrow('still holds 2 items');
+    await expect(removeCategory(db, 'Pneumatics', null)).rejects.toThrow('still holds 3 items');
+    // An edit (notes only) saves, and takes the list's spelling without adding a "valves" subcategory.
+    const before = (await getItem(db, 'lc'))!;
+    const saved = await updateItem(db, before, { ...before, notes: 'checked' }, 60);
+    expect(saved).toMatchObject({ category: 'Pneumatics', subcategory: 'Valves', notes: 'checked' });
+    expect((await snap()).categories[0]!.subcategories).toEqual(['Air Supply', 'Valves']);
+    // A rename moves it too.
+    await renameCategory(db, 'Pneumatics', 'Air');
+    expect((await getItem(db, 'lc'))!.category).toBe('Air');
+  });
+
   it('an empty category or subcategory is removed without a destination', async () => {
     await setup();
     expect(await removeCategory(db, 'Empty', null)).toBe(0);

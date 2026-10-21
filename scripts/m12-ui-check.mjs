@@ -111,6 +111,19 @@ try {
   await waitFor(`document.querySelectorAll('.lgrow').length > 0`);
   check('Labels by category: §11 order, groups with items only', await js(`return [...document.querySelectorAll('.lgrow strong')].map((s) => s.textContent)`), CATS.filter((c) => c !== 'Public Relations' && c !== 'Programming'));
 
+  // ── An item stored with other capitals by an older build (Stage 5 finding 2; M12 independent review 1) ──
+  // Written straight into IndexedDB, as the pre-M12 restore could have left it; then the editor must open and save it.
+  await js(`await new Promise((res, rej) => { const r = indexedDB.open('frc2408-inventory'); r.onsuccess = () => { const db = r.result; const t = db.transaction('items', 'readwrite'); const s = t.objectStore('items'); const g = s.get('st-0001'); g.onsuccess = () => { s.put({ ...g.result, category: 'mechanical', subcategory: 'STRUCTURE' }); }; t.oncomplete = () => { db.close(); res(); }; t.onerror = () => rej(t.error); }; });`);
+  await send('Page.navigate', { url: ORIGIN + '/#/item/st-0001/edit' });
+  await send('Page.reload');
+  await waitFor(`document.querySelector('#cat') && document.querySelector('#nt')`, 30000);
+  await sleep(400);
+  check('editor: the stored "mechanical › STRUCTURE" shows as Mechanical › Structure', await js(`return [document.querySelector('#cat').value, document.querySelector('#sub').value]`), ['Mechanical', 'Structure']);
+  await js(`${PAGE} const t = $('#nt'); t.focus(); t.value = 'edited after the M12 fix'; t.dispatchEvent(new Event('input', { bubbles: true })); await settle(150); byText('.top button', 'Save').click(); await settle(700);`);
+  const saved = (await js(idbAll('items'))).find((i) => i.id === 'st-0001');
+  check('editor: a notes edit saves, with the list spelling', [saved.category, saved.subcategory, saved.notes], ['Mechanical', 'Structure', 'edited after the M12 fix']);
+  check('editor: no duplicate subcategory added', (await js(idbAll('categories'))).find((c) => c.name === 'Mechanical').subcategories.filter((s) => s.toLowerCase() === 'structure'), ['Structure']);
+
   // ── A fresh tablet: Start empty gets the §11 list too (9h) ──
   await send('Page.navigate', { url: 'about:blank' });
   await send('Storage.clearDataForOrigin', { origin: ORIGIN, storageTypes: 'all' });

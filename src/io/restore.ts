@@ -44,9 +44,10 @@ function savedDate(bundle: Bundle, fileName: string): Pick<RestorePlan, 'savedAt
 
 /**
  * Q5: a list file in the backup replaces that list; a list the backup doesn't have (any CSV
- * restore, older ZIPs, the starter catalog) keeps the tablet's list. Either way, names the
- * items use that aren't in a list are added (§7): suppliers and locations at the end, and
- * `other` always exists.
+ * restore, older ZIPs) keeps the tablet's list. The starter catalog has suppliers.csv and
+ * categories.csv but no locations.csv. Either way, names the items use that aren't in a list
+ * are added (§7): suppliers and locations at the end, and `other` always exists. Items then
+ * take the lists' spelling (Stage 5 finding 2).
  */
 export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { name: string; size: number }, warnings: string[] = []): RestoreRead {
   const problems: FileProblem[] = [];

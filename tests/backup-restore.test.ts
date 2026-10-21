@@ -286,6 +286,30 @@ describe('data-only CSV backup and restore (F15, F17, Q5)', () => {
     const names = (await loadSnapshot(dst)).suppliers.map((s) => s.name).sort();
     expect(names).toEqual(['other', 'REV'].sort());
   });
+
+  it("a ZIP without categories.csv (older backups) keeps the tablet's categories, adding only what the items use (Q5)", async () => {
+    const src = newDb();
+    const d = tabletData();
+    await replaceAll(src, { ...d, photos: new Map() });
+    const zip = await JSZip.loadAsync(new Uint8Array(await (await buildBackup(src, 'full', new Date())).arrayBuffer()));
+    zip.remove('categories.csv');
+    const older = await zip.generateAsync({ type: 'uint8array' });
+
+    const dst = newDb();
+    const tabletCats = [
+      { name: 'Fasteners', order: 0, subcategories: ['Washers', 'Nuts'] },
+      { name: 'Kept empty', order: 1, subcategories: ['Empty sub'] },
+    ];
+    await replaceAll(dst, { ...d, items: [], photos: new Map(), categories: tabletCats });
+    await applyPlan(dst, await planFor(dst, { name: 'older.zip', bytes: older }));
+    const cats = (await loadSnapshot(dst)).categories;
+    // The tablet's list, in its order, empty ones kept; the backup's other names appended.
+    expect(cats.slice(0, 2).map((c) => [c.name, c.subcategories.slice(0, 2)])).toEqual([
+      ['Fasteners', ['Washers', 'Nuts']],
+      ['Kept empty', ['Empty sub']],
+    ]);
+    expect(cats.map((c) => c.name)).toContain('Motors');
+  });
 });
 
 describe('restore never half-applies (F17)', () => {

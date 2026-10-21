@@ -43,7 +43,14 @@ export function blankVendor(): VendorDraft {
   return { supplier: '', partNo: '', url: '', packSize: '1', price: '', priceChecked: '' };
 }
 
-export function draftFromItem(item: Item): ItemDraft {
+/**
+ * The form for an existing item. With the category list, the category and subcategory take
+ * the list's spelling (names match ignoring capitals, §3), so an item stored with other
+ * capitals still shows its category in the picker and saves (Stage 5 finding 2).
+ */
+export function draftFromItem(item: Item, categories: readonly Category[] = []): ItemDraft {
+  const cat = categories.find((c) => nameKey(c.name) === nameKey(item.category));
+  const sub = (item.subcategory !== '' && cat?.subcategories.find((s) => nameKey(s) === nameKey(item.subcategory))) || item.subcategory;
   const vendors: VendorDraft[] = [];
   let preferred = 0;
   item.vendors.forEach((v, i) => {
@@ -61,8 +68,8 @@ export function draftFromItem(item: Item): ItemDraft {
   if (vendors.length === 0) vendors.push(blankVendor());
   return {
     name: item.name,
-    category: item.category,
-    subcategory: item.subcategory,
+    category: cat?.name ?? item.category,
+    subcategory: sub,
     newSubcategory: null,
     location: item.location,
     unit: item.unit,
@@ -149,10 +156,11 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
   const name = d.name.trim();
   if (name === '') err('name', 'Name is required');
 
-  const cat = ctx.categories.find((c) => c.name === d.category);
+  // Names match ignoring capitals (§3); the item takes the list's spelling.
+  const cat = ctx.categories.find((c) => nameKey(c.name) === nameKey(d.category));
   if (!cat) err('category', 'Choose a category');
 
-  let subcategory = d.subcategory;
+  let subcategory = (d.subcategory !== '' && cat?.subcategories.find((s) => nameKey(s) === nameKey(d.subcategory))) || d.subcategory;
   let newSubcategory: string | null = null;
   if (d.newSubcategory !== null) {
     const typed = d.newSubcategory.trim();
@@ -221,7 +229,7 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
   const item: Item = {
     id: ctx.id,
     name,
-    category: d.category,
+    category: cat?.name ?? d.category,
     subcategory,
     location: d.location.trim(),
     unit,

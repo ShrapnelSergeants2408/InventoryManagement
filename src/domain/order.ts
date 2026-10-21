@@ -1,4 +1,5 @@
-// Order quantity and order list (SPEC §4, F12).
+// Order quantity and order list (SPEC §4, F12), and the order-list search (F12).
+import { matchesTerms, normalize, queryTerms } from './search';
 import { OTHER_SUPPLIER, nameKey, preferredVendorOf, type Item, type Vendor } from './types';
 
 export interface OrderQuantity {
@@ -85,7 +86,10 @@ export function buildOrderList(items: readonly Item[]): OrderList {
     if (line.lineTotalCents === null) g.noPriceCount++;
     else g.subtotalCents += line.lineTotalCents;
   }
-  const groups = [...bySupplier.values()].sort((a, b) => compareSupplierNames(a.supplier, b.supplier));
+  return withTotals([...bySupplier.values()].sort((a, b) => compareSupplierNames(a.supplier, b.supplier)));
+}
+
+function withTotals(groups: SupplierGroup[]): OrderList {
   let grandTotalCents = 0;
   let lineCount = 0;
   let noPriceCount = 0;
@@ -95,4 +99,32 @@ export function buildOrderList(items: readonly Item[]): OrderList {
     noPriceCount += g.noPriceCount;
   }
   return { groups, grandTotalCents, lineCount, pricedLineCount: lineCount - noPriceCount, noPriceCount };
+}
+
+/** What an order line is searched by (F12): item name, part #, supplier and notes. */
+export function orderLineText(l: OrderLine): string {
+  return normalize([l.item.name, l.vendor.partNo, l.vendor.supplier, l.item.notes].join(' \n '));
+}
+
+/**
+ * F12 search: the lines containing every search word (as F4: capitals and accents ignored),
+ * with each supplier's subtotal, the grand total and the counts worked out for those lines
+ * only. Suppliers with no matching line drop out. A blank search gives the list back.
+ */
+export function filterOrderList(list: OrderList, query: string): OrderList {
+  const terms = queryTerms(query);
+  if (terms.length === 0) return list;
+  const groups: SupplierGroup[] = [];
+  for (const g of list.groups) {
+    const lines = g.lines.filter((l) => matchesTerms(orderLineText(l), terms));
+    if (lines.length === 0) continue;
+    let subtotalCents = 0;
+    let noPriceCount = 0;
+    for (const l of lines) {
+      if (l.lineTotalCents === null) noPriceCount++;
+      else subtotalCents += l.lineTotalCents;
+    }
+    groups.push({ supplier: g.supplier, lines, subtotalCents, noPriceCount });
+  }
+  return withTotals(groups);
 }

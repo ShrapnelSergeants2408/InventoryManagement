@@ -2,6 +2,7 @@
 // PIN. Pictures are made in the page (canvas) and handed to the file inputs; the enlarged
 // photo's Replace button is checked through Chrome's file chooser.
 // Usage: npm run build && node scripts/m7-ui-check.mjs <chrome.exe> <screenshot dir>
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +15,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4327', '--strictPort'], { stdio: 'ignore' });
 const port = 9343;
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
+track(proc);
 
 let target;
 for (let i = 0; i < 50 && !target; i++) {
@@ -200,7 +202,7 @@ try {
     const JSZip = (await import('jszip')).default;
     const { readFileSync } = await import('node:fs');
     const zip = await JSZip.loadAsync(readFileSync('seed/frc2408-starter-catalog-2026-10-21.zip'));
-    const file = join(mkdtempSync(join(tmpdir(), 'm7-')), 'camera.jpg');
+    const file = join(tempDir('m7-'), 'camera.jpg');
     writeFileSync(file, await zip.file('photos/st-0001.jpg').async('nodebuffer'));
     await send('DOM.setFileInputFiles', { files: [file], backendNodeId: choosers[0].backendNodeId });
     await js(`for (let i = 0; i < 50 && document.querySelector('.pacts[aria-busy=true]'); i++) await settle(100); await settle(700);`);

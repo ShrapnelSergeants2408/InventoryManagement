@@ -386,6 +386,7 @@ input[type="date"].field { padding: 0 12px; }
 .pmeta { display: none; }
 .gt { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 18px 24px 40px; }
 .gt-v { font-family: var(--font-display); font-weight: 700; font-size: 36px; }
+.xnote { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #fff4d6; font-size: 15px; }
 .csv { border: 1px solid var(--line); border-radius: 12px; overflow: auto; max-height: 300px; }
 .csv table { border-collapse: collapse; width: 100%; font-size: 15px; }
 .csv th, .csv td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #eee7de; vertical-align: top; }

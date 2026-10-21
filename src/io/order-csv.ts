@@ -2,7 +2,8 @@
 // supplier, the grand total at the end, then "n items without prices" when there are any.
 import { centsToPlain } from '../domain/money';
 import type { OrderList } from '../domain/order';
-import { writeCsv } from './csv';
+import { normalize } from '../domain/search';
+import { BOM, writeCsv } from './csv';
 
 export const ORDER_COLUMNS = [
   'Supplier',
@@ -73,12 +74,36 @@ export function orderCsvRows(list: OrderList): string[][] {
   return rows;
 }
 
-export function serializeOrderCsv(list: OrderList): string {
-  return writeCsv(ORDER_COLUMNS, orderCsvRows(list));
+/**
+ * The CSV file. `note` (Export shown lines only, F12) goes in the file's first row, before the
+ * column headers, so whoever opens the file sees it isn't the whole order.
+ */
+export function serializeOrderCsv(list: OrderList, note?: string): string {
+  const body = writeCsv(ORDER_COLUMNS, orderCsvRows(list));
+  if (note === undefined) return body;
+  // A one-cell row, quoted like any other; writeCsv with no data rows ends in a blank line,
+  // which is dropped. Both parts start with the byte-order mark; the file keeps only the first.
+  const noteRow = writeCsv([guardCell(note)], []).replace(/(\r\n)+$/, '\r\n');
+  return noteRow + body.slice(BOM.length);
 }
 
-/** order-list-2026-10-17-1235.csv (local time). */
-export function orderCsvFileName(now: Date): string {
+/** First-row note for Export shown lines only (F12). */
+export function filteredNote(query: string, shown: OrderList, all: OrderList): string {
+  return `Filtered order list: only the ${shown.lineCount} of ${all.lineCount} lines matching "${query.trim()}". Shown total ${centsToPlain(shown.grandTotalCents)}; whole list ${centsToPlain(all.grandTotalCents)}.`;
+}
+
+/**
+ * order-list-2026-10-17-1235.csv (local time). With a search (Export shown lines only, F12):
+ * order-list-filtered-neo-2-0-2026-10-17-1235.csv — the search text reduced to letters,
+ * digits and dashes, at most 30 characters.
+ */
+export function orderCsvFileName(now: Date, query?: string): string {
   const p = (n: number) => String(n).padStart(2, '0');
-  return `order-list-${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}.csv`;
+  const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}`;
+  if (query === undefined) return `order-list-${stamp}.csv`;
+  const slug = normalize(query)
+    .replace(/[^a-z0-9]+/g, '-')
+    .slice(0, 30)
+    .replace(/^-+|-+$/g, '');
+  return `order-list-filtered${slug ? `-${slug}` : ''}-${stamp}.csv`;
 }

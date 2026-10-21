@@ -1,8 +1,10 @@
 // Export order list (F13, mockup 4c): file name, a preview of the first supplier group and the
 // totals, then the share sheet — or a download when the browser can't share the file (Q1).
+// With a search (Export shown lines only, F12): just those lines, a note row first and
+// "filtered" in the file name.
 import { useState } from 'preact/hooks';
 import type { OrderList } from '../../../domain/order';
-import { ORDER_COLUMNS, orderCsvFileName, orderCsvRows, serializeOrderCsv } from '../../../io/order-csv';
+import { ORDER_COLUMNS, filteredNote, orderCsvFileName, orderCsvRows, serializeOrderCsv } from '../../../io/order-csv';
 import { shareOrDownload } from '../../../io/share';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { plural } from '../../components/common';
@@ -13,10 +15,12 @@ const PREVIEW_COLUMNS = ['Supplier', 'Part #', 'Item', 'Order qty', 'Line total'
 const RIGHT = new Set<string>(['Order qty', 'Line total']);
 const PREVIEW_LINES = 6;
 
-export function ExportDialog({ list, onClose }: { list: OrderList; onClose: () => void }) {
+export function ExportDialog({ list, whole, query, onClose }: { list: OrderList; whole?: OrderList; query?: string; onClose: () => void }) {
   const [now] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
-  const name = orderCsvFileName(now);
+  const filtered = whole !== undefined && query !== undefined;
+  const note = filtered ? filteredNote(query, list, whole) : undefined;
+  const name = orderCsvFileName(now, filtered ? query : undefined);
   const rows = orderCsvRows(list);
   const idx = PREVIEW_COLUMNS.map((c) => ORDER_COLUMNS.indexOf(c));
   const first = list.groups[0];
@@ -27,7 +31,7 @@ export function ExportDialog({ list, onClose }: { list: OrderList; onClose: () =
   const go = async () => {
     setBusy(true);
     try {
-      const file = new File([serializeOrderCsv(list)], name, { type: 'text/csv' });
+      const file = new File([serializeOrderCsv(list, note)], name, { type: 'text/csv' });
       const r = await shareOrDownload(file, 'Order list');
       if (r === 'cancelled') {
         setBusy(false);
@@ -45,7 +49,7 @@ export function ExportDialog({ list, onClose }: { list: OrderList; onClose: () =
   return (
     <Dialog label="Export order list" onClose={() => !busy && onClose()}>
       <div class="dlg-head">
-        <h2 class="h2 grow">Export order list (CSV)</h2>
+        <h2 class="h2 grow">{filtered ? 'Export shown lines only (CSV)' : 'Export order list (CSV)'}</h2>
         <button type="button" class="ib" aria-label="Close" onClick={onClose}>
           <Icon name="close" />
         </button>
@@ -56,6 +60,7 @@ export function ExportDialog({ list, onClose }: { list: OrderList; onClose: () =
           {plural(list.lineCount, 'line')} · {plural(list.groups.length, 'supplier group')}, each followed by a subtotal row · grand total row at the end · opens in Excel or
           Google Sheets
         </div>
+        {note && <div class="xnote">First row: {note}</div>}
       </div>
       <div class="csv">
         <table>

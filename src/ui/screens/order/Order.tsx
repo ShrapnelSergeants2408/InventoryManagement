@@ -1,9 +1,10 @@
 // Order list (F12): every item to order, grouped by preferred supplier with subtotals and a
-// grand total; stale-price flags and banner (F14); count-in banner; CSV export (F13).
+// grand total; stale-price flags and banner (F14); count-in banner; CSV export (F13); search,
+// with "Export shown lines only" (F12, SPEC v0.8).
 import { useMemo, useState } from 'preact/hooks';
 import { formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { formatCents } from '../../../domain/money';
-import { buildOrderList, type OrderLine, type OrderList } from '../../../domain/order';
+import { buildOrderList, filterOrderList, type OrderLine, type OrderList } from '../../../domain/order';
 import { orderAlerts, priceAge, staleLabel } from '../../../domain/stale';
 import { nameKey, type Supplier } from '../../../domain/types';
 import { safeHref } from '../../../domain/url';
@@ -18,18 +19,45 @@ import { PriceRefreshDialog } from './PriceRefreshDialog';
 export function OrderScreen() {
   const live = useSnapshot();
   const settings = useSettings();
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<'all' | 'shown' | null>(null);
+  const [query, setQuery] = useState('');
   const [refreshHelp, setRefreshHelp] = useState(false);
   const today = localIsoDate();
   const snap = live.state === 'ready' ? live.value : null;
   const list = useMemo(() => (snap ? buildOrderList(snap.items) : null), [snap]);
+  const shown = useMemo(() => (list ? filterOrderList(list, query) : null), [list, query]);
+  const searching = !!list && !!shown && shown !== list;
   const alerts = useMemo(() => (snap && list ? orderAlerts(list, snap.items, today, settings.staleDays) : null), [snap, list, today, settings.staleDays]);
 
   const empty = !!list && list.lineCount === 0;
   const top = (
     <TopBar title="Order list" subtitle={`Grouped by preferred supplier · ${formatIsoDate(today)}`}>
-      <span class="sp" />
-      <button type="button" class="btn pri" disabled={!list || empty} onClick={() => setExporting(true)}>
+      <div class="searchwrap">
+        <Icon name="search" />
+        <input
+          class="field"
+          type="search"
+          aria-label="Search the order list"
+          placeholder="Search item, part #, supplier, notes…"
+          value={query}
+          disabled={!list || empty}
+          onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+          autoComplete="off"
+          spellcheck={false}
+        />
+        {query && (
+          <button type="button" class="clr" aria-label="Clear search" onClick={() => setQuery('')}>
+            <Icon name="close" />
+          </button>
+        )}
+      </div>
+      {searching && (
+        <button type="button" class="btn" disabled={!shown || shown.lineCount === 0} onClick={() => setExporting('shown')}>
+          <Icon name="upload" />
+          Export shown lines only
+        </button>
+      )}
+      <button type="button" class="btn pri" disabled={!list || empty} onClick={() => setExporting('all')}>
         <Icon name="upload" />
         Export CSV
       </button>
@@ -44,7 +72,7 @@ export function OrderScreen() {
       </>
     );
   }
-  if (!snap || !list || !alerts) {
+  if (!snap || !list || !shown || !alerts) {
     return (
       <>
         {top}
@@ -99,30 +127,61 @@ export function OrderScreen() {
         </StateMessage>
       ) : (
         <>
-          <Summary list={list} staleLines={alerts.staleLines} staleDays={settings.staleDays} />
-          <Lines list={list} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} />
+          <Summary list={list} shown={searching ? shown : null} staleLines={alerts.staleLines} staleDays={settings.staleDays} />
+          {searching && shown.lineCount === 0 ? (
+            <StateMessage
+              icon="search"
+              title={`No lines match “${query.trim()}”`}
+              actions={
+                <button type="button" class="btn" onClick={() => setQuery('')}>
+                  Clear search
+                </button>
+              }
+            >
+              <p class="state-text">The search looks at item names, part numbers, suppliers and notes. Try fewer letters.</p>
+            </StateMessage>
+          ) : (
+            <Lines list={shown} whole={searching ? list : null} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} />
+          )}
         </>
       )}
-      {exporting && <ExportDialog list={list} onClose={() => setExporting(false)} />}
+      {exporting === 'all' && <ExportDialog list={list} onClose={() => setExporting(null)} />}
+      {exporting === 'shown' && <ExportDialog list={shown} whole={list} query={query} onClose={() => setExporting(null)} />}
       {refreshHelp && <PriceRefreshDialog onClose={() => setRefreshHelp(false)} />}
     </>
   );
 }
 
-function Summary({ list, staleLines, staleDays }: { list: OrderList; staleLines: number; staleDays: number }) {
+/** With a search (`shown`), the whole list's grand total stays, next to the lines shown and their total (F12). */
+function Summary({ list, shown, staleLines, staleDays }: { list: OrderList; shown: OrderList | null; staleLines: number; staleDays: number }) {
   return (
     <div class="sum">
       <div class="tile big">
         <span class="k">Grand total</span>
         <span class="v">{formatCents(list.grandTotalCents)}</span>
       </div>
-      <div class="tile">
-        <span class="k">Lines</span>
-        <span class="v">{list.lineCount}</span>
-      </div>
+      {shown ? (
+        <>
+          <div class="tile" role="status">
+            <span class="k">Showing</span>
+            <span class="v">
+              {shown.lineCount} of {plural(list.lineCount, 'line')}
+            </span>
+          </div>
+          <div class="tile">
+            <span class="k">Total shown</span>
+            <span class="v">{formatCents(shown.grandTotalCents)}</span>
+          </div>
+        </>
+      ) : (
+        <div class="tile">
+          <span class="k">Lines</span>
+          <span class="v">{list.lineCount}</span>
+        </div>
+      )}
       <div class="tile">
         <span class="k">Suppliers</span>
-        <span class="v">{list.groups.length}</span>
+        <span class="v">{shown ? `${shown.groups.length} of ${list.groups.length}` : list.groups.length}</span>
       </div>
       <div class="tile chips">
         <span class="chip np">{list.noPriceCount === 1 ? '1 without price' : `${list.noPriceCount} without price`}</span>
@@ -135,7 +194,7 @@ function Summary({ list, staleLines, staleDays }: { list: OrderList; staleLines:
   );
 }
 
-function Lines(props: { list: OrderList; suppliers: Supplier[]; today: string; staleDays: number }) {
+function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Supplier[]; today: string; staleDays: number }) {
   const sites = new Map(props.suppliers.map((s) => [nameKey(s.name), safeHref(s.website)]));
   return (
     <div class="olist">
@@ -173,8 +232,13 @@ function Lines(props: { list: OrderList; suppliers: Supplier[]; today: string; s
         );
       })}
       <div class="gt">
-        <span class="muted">{props.list.noPriceCount > 0 ? `${plural(props.list.noPriceCount, 'item')} without prices not included` : 'Every line has a price'}</span>
-        <span class="gt-v">Grand total {formatCents(props.list.grandTotalCents)}</span>
+        <span class="muted">
+          {props.list.noPriceCount > 0 ? `${plural(props.list.noPriceCount, 'item')} without prices not included` : 'Every line has a price'}
+          {props.whole && ` · Grand total of the whole list ${formatCents(props.whole.grandTotalCents)}`}
+        </span>
+        <span class="gt-v">
+          {props.whole ? 'Total shown' : 'Grand total'} {formatCents(props.list.grandTotalCents)}
+        </span>
       </div>
     </div>
   );

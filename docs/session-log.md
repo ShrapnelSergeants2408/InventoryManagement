@@ -518,3 +518,30 @@ High: unit and browser checks with mutants caught, both orientations, screenshot
 
 **Next:** Dan merges the PR and tries bulk move on the Tab S8; then M14 (order-list search).
 | 16:32 | Dan: "Please clean up those items". The 32 Chrome processes were all Dan's own browser (none from the checks), so none were closed. Deleted 320 check folders in %TEMP% (279 `cdp-` Chrome profiles of about 100 MB each, 22 `m10-files-`, 19 `m7-`): C: free 3.3 GB → 24.8 GB. Also 61 `m8-cam-`/`m9-cam-` test-video folders (about 270 MB). New `scripts/tmp-cleanup.mjs`: every check now removes its temp folders on exit, after closing its own Chrome; verified with M11 (12/12) and M9 (71/71), leaving 0 folders and 0 Chrome processes |
+
+
+---
+
+## Stage 6, M14 — 2026-10-21 — order-list search (F12)
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), same session. Dan merged PR #17 (M13) and said "Build m14". Branch `m14-order-search` from `main` (`46eb6ee`).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~16:35 | Branch created. Found that the browser-check cleanup commit (`41cd5cc`) was pushed to the M13 branch after PR #17 had been merged, so it isn't on `main`; cherry-picked as `bcf2a42`, and told Dan |
+| ~16:35–16:45 | `filterOrderList` and `orderLineText` (domain); note row and filtered file name (io); 9 unit tests, which caught a blank line after the note row (fixed); Order screen search, tiles and footer, Export shown lines only, ExportDialog |
+| ~16:45–17:00 | `scripts/m14-ui-check.mjs` (20/20 after script fixes: tile spacing; matches now worked out from IndexedDB, since notes are searched too); portrait footer and the suppliers tile fixed after the screenshots; mutants 16/16 after one test gap was closed; interface mutant caught |
+| ~17:00–16:58 | Regression M2–M13 453/453, 0 temp folders left; `docs/reviews/M14.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F12 order-list search with shown and whole-list totals; Export CSV unchanged; Export shown lines only with a note row and a filtered file name. 545 unit tests.
+
+**DELIVERABLES PRODUCED**
+`src/domain/order.ts`, `src/io/order-csv.ts`, `src/ui/screens/order/{Order,ExportDialog}.tsx`, `src/styles/app.css`, `tests/order-list.test.ts`, `scripts/m14-ui-check.mjs`, `docs/reviews/M14.md`; plus the cherry-picked `scripts/tmp-cleanup.mjs` and its changes to every check.
+
+**CONFIDENCE**
+High: totals checked to the cent in unit tests and against the screen; the exported files are read back in the browser check; mutants caught. Three small decisions for Dan are in the M14 review.
+
+**Next:** Dan merges the PR (it also brings the check cleanup to `main`) and tries the search on the Tab S8; then M15 (named order lists and the first schema upgrade, high risk; needs a full backup exported from the Tab S8 first).

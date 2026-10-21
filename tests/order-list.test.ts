@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { parsePrice } from '../src/domain/money';
-import { buildOrderList } from '../src/domain/order';
+import { buildOrderList, filterOrderList } from '../src/domain/order';
 import { daysBetween, isStale, orderAlerts, priceAge, staleLabel } from '../src/domain/stale';
 import { readCsv } from '../src/io/csv';
-import { NO_PRICE, ORDER_COLUMNS, guardCell, orderCsvFileName, orderCsvRows, serializeOrderCsv } from '../src/io/order-csv';
+import { NO_PRICE, ORDER_COLUMNS, filteredNote, guardCell, orderCsvFileName, orderCsvRows, serializeOrderCsv } from '../src/io/order-csv';
 import { shareOrDownload } from '../src/io/share';
 import { readSeed } from '../src/io/seed';
 import { item, seedBytes, vendor } from './helpers';
@@ -218,5 +218,85 @@ describe('share or download (Q1)', () => {
     expect(await shareOrDownload(file, 'x', { ...deps, canShare: () => false, share: async () => {} })).toBe('downloaded');
     expect(await shareOrDownload(file, 'x', { ...deps, canShare: () => true, share: () => Promise.reject(new DOMException('', 'NotAllowedError')) })).toBe('downloaded');
     expect(downloaded).toBe(3);
+  });
+});
+
+describe('order list search (F12, SPEC §19)', () => {
+  const items = [
+    item({ id: 'st-0001', name: 'Bolt 10-32', desired: 12, spares: 4, onHand: 5, notes: 'for the intake', vendors: [vendor({ supplier: 'WCP', partNo: 'WCP-0001', packSize: 50, packPriceCents: 999 }), null, null] }),
+    item({ id: 'st-0002', name: 'Spacer', desired: 3, vendors: [vendor({ supplier: 'WCP', partNo: 'WCP-0002', packSize: 1, packPriceCents: null, priceChecked: '' }), null, null] }),
+    item({ id: 'st-0003', name: 'NEO 2.0 Motor', desired: 2, vendors: [vendor({ supplier: 'REV', partNo: 'REV-21-1653', packSize: 1, packPriceCents: 5500 }), vendor({ supplier: 'AndyMark', partNo: 'am-9999' }), null] }),
+    item({ id: 'st-0004', name: 'Café bracket', desired: 1, vendors: [vendor({ supplier: 'REV', partNo: 'REV-2', packSize: 1, packPriceCents: 1250 }), null, null] }),
+  ];
+  const all = buildOrderList(items);
+  const names = (q: string) => filterOrderList(all, q).groups.flatMap((g) => g.lines.map((l) => l.item.name));
+
+  it('matches item name, part #, supplier and notes; capitals and accents ignored; every word must match', () => {
+    expect(names('neo')).toEqual(['NEO 2.0 Motor']);
+    expect(names('rev-21')).toEqual(['NEO 2.0 Motor']);
+    expect(names('wcp')).toEqual(['Bolt 10-32', 'Spacer']);
+    expect(names('INTAKE')).toEqual(['Bolt 10-32']);
+    expect(names('cafe')).toEqual(['Café bracket']);
+    expect(names('rev motor')).toEqual(['NEO 2.0 Motor']);
+    expect(names('zzz')).toEqual([]);
+  });
+
+  it('matches the supplier name even when the part # doesn’t contain it', () => {
+    const tb = buildOrderList([...items, item({ id: 'st-0005', name: 'Swerve module', desired: 1, vendors: [vendor({ supplier: 'Thrifty Bot', partNo: 'TTB-SWERVE', packPriceCents: 100 }), null, null] })]);
+    expect(filterOrderList(tb, 'thrifty bot').groups.flatMap((g) => g.lines.map((l) => l.item.id))).toEqual(['st-0005']);
+  });
+
+  it('searches the line as shown: the preferred vendor, not the other options', () => {
+    expect(names('andymark')).toEqual([]);
+    expect(names('am-9999')).toEqual([]);
+  });
+
+  it('a blank search gives the whole list back', () => {
+    expect(filterOrderList(all, '   ')).toBe(all);
+  });
+
+  it('"Showing n of m" and the total of the lines shown, per supplier and overall; no-price lines left out', () => {
+    const wcp = filterOrderList(all, 'wcp');
+    expect([wcp.lineCount, all.lineCount]).toEqual([2, 4]);
+    expect(wcp.groups.map((g) => [g.supplier, g.lines.length, g.subtotalCents, g.noPriceCount])).toEqual([['WCP', 2, 999, 1]]);
+    expect([wcp.grandTotalCents, wcp.pricedLineCount, wcp.noPriceCount]).toEqual([999, 1, 1]);
+    const rev = filterOrderList(all, 'rev');
+    expect([rev.grandTotalCents, rev.groups.length]).toEqual([2 * 5500 + 1250, 1]); // NEO: desired 2, so 2 packs
+    // The whole list is unchanged by a search.
+    expect(all.grandTotalCents).toBe(999 + 2 * 5500 + 1250);
+  });
+
+  it('Export CSV is every line, exactly as before the search existed', () => {
+    expect(serializeOrderCsv(all)).toBe(serializeOrderCsv(buildOrderList(items)));
+    expect(orderCsvRows(all).filter((r) => r[1] !== '').length).toBe(4);
+  });
+
+  it('Export shown lines only: exactly the filtered lines with their subtotals, after a note row', () => {
+    const shown = filterOrderList(all, 'wcp');
+    const note = filteredNote('wcp', shown, all);
+    expect(note).toBe('Filtered order list: only the 2 of 4 lines matching "wcp". Shown total 9.99; whole list 132.49.');
+    const text = serializeOrderCsv(shown, note);
+    expect(text.startsWith('﻿"Filtered order list:')).toBe(true);
+    expect(text.indexOf('﻿', 1)).toBe(-1);
+    const [first, ...rest] = text.slice(1).split('\r\n');
+    expect(first).toBe(`"${note.replace(/"/g, '""')}"`);
+    const t = readCsv(rest.join('\r\n'), 'order.csv');
+    expect(t.problems).toEqual([]);
+    expect(t.headers).toEqual([...ORDER_COLUMNS]);
+    expect(t.rows.map((r) => r.cells)).toEqual(orderCsvRows(shown));
+    expect(t.rows.map((r) => r.cells[0])).toEqual(['WCP', 'WCP', 'WCP subtotal', 'Grand total', '1 item without a price']);
+  });
+
+  it('a note that looks like a formula is shown as typed', () => {
+    expect(serializeOrderCsv(all, '=1+1').startsWith(`﻿'=1+1`)).toBe(true);
+  });
+
+  it('file name says "filtered" and the search, cleaned; the plain export keeps its name', () => {
+    const t = new Date(2026, 9, 21, 9, 5);
+    expect(orderCsvFileName(t)).toBe('order-list-2026-10-21-0905.csv');
+    expect(orderCsvFileName(t, 'NEO 2.0')).toBe('order-list-filtered-neo-2-0-2026-10-21-0905.csv');
+    expect(orderCsvFileName(t, 'Café / bolts?')).toBe('order-list-filtered-cafe-bolts-2026-10-21-0905.csv');
+    expect(orderCsvFileName(t, '!!!')).toBe('order-list-filtered-2026-10-21-0905.csv');
+    expect(orderCsvFileName(t, 'a'.repeat(50))).toBe(`order-list-filtered-${'a'.repeat(30)}-2026-10-21-0905.csv`);
   });
 });

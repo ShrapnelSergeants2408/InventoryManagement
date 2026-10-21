@@ -433,3 +433,4 @@ High for the version history (git and the spec agree) and for the conflicts list
 |---|---|
 | 13:44 | Dan: "q6 yes to all, q7 yes to all". Recorded in `docs/SPEC-next-draft.md` (§15 Q6 and Q7 marked approved; decision-log row). `docs/SPEC.md` still v0.7: waiting for "Make SPEC-next-draft.md the new docs/SPEC.md" |
 | 13:46 | Dan: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md." Draft moved to `docs/SPEC.md` (title, status line and "Changes in v0.8" no longer say draft; decision-log row added); `SPEC-next-draft.md` removed; committed on `stage6-start` |
+| 13:46 | Tagged `11baab4` as `stage5-verified` (annotated); removed the duplicate `docs/mockups/helper-screens/helper-screens/` (byte-identical to its parent); pushed `stage6-start` and the tag |

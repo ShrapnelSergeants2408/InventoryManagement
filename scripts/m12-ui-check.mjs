@@ -1,5 +1,6 @@
 // M12 real-browser check: the §11 categories from the 2026-10-21 starter catalog (SPEC v0.8 §11, §12, F22, F9).
 // Usage: npm run build && node scripts/m12-ui-check.mjs <chrome.exe> <screenshot dir>
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +13,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4332', '--strictPort'], { stdio: 'ignore' });
 const port = 9348;
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
+track(proc);
 
 let target;
 for (let i = 0; i < 50 && !target; i++) {

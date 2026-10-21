@@ -1,11 +1,13 @@
 // Usage: node cdp-check.mjs <chrome.exe> <url> <selector> [timeoutMs]
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 const [chrome, url, selector, timeout = '60000'] = process.argv.slice(2);
 const port = 9333;
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, url], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, url], { stdio: 'ignore' });
+track(proc);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let target;
 for (let i = 0; i < 50 && !target; i++) {

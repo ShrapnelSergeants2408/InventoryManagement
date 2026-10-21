@@ -1,6 +1,7 @@
 // M3 real-browser check: detail, add/edit/delete, suppliers, categories, locations, and where
 // the PIN gate is (and isn't) asked. Drives the production build in headless Chrome over CDP.
 // Usage: npm run build && node scripts/m3-ui-check.mjs <chrome.exe> <screenshot dir>
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -13,7 +14,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4320', '--strictPort'], { stdio: 'ignore' });
 const port = 9336;
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
+track(proc);
 
 let target;
 for (let i = 0; i < 50 && !target; i++) {

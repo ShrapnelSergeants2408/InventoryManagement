@@ -1,5 +1,6 @@
 // M13 real-browser check: Select and bulk move (F28, SPEC v0.8; §19 Bulk move).
 // Usage: npm run build && node scripts/m13-ui-check.mjs <chrome.exe> <screenshot dir>
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -12,7 +13,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4333', '--strictPort'], { stdio: 'ignore' });
 const port = 9349;
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
+track(proc);
 
 let target;
 for (let i = 0; i < 50 && !target; i++) {

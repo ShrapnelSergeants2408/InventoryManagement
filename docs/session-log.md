@@ -391,3 +391,45 @@ M1–M9; spec-questions Q2, D7, D8; the M9 review's open item.
 High for first launch and the data it writes (unit-tested with mutants; refused once setup is done) and for offline use (checked with the web server stopped, including a full first launch). Medium for what only the Tab S8 shows: installing, the persistent-storage answer for the installed app, and an update after a real deploy (Stage 5). Process note: the mutation runner doesn't check that a mutant compiles; one M10 mutant first showed as a false miss for that reason (a failed build can't produce a false catch).
 
 **Next:** Dan merges the M10 PR (Stage 4 complete); then Stage 5 on the Tab S8 (see `docs/reviews/Stage4-final.md`).
+
+
+---
+
+## Stage 6, Session 1 — 2026-10-21 — spec merge (no code)
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), terminal on Dan's Windows machine. Branch `stage6-start`. Step 3 of `STAGE6-START.md`: find out what the repo's v0.6/v0.7 are, merge the claude.ai proposal, stop. No code and no `docs/SPEC.md` changes.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~13:30 | Dan: two local commits wouldn't sync. Cause: PR #13 merged and GitHub deleted `fix-t01-persistent-storage`. Created `stage6-start` from `ba72d61` and pushed it (only `11baab4` and `ba72d61` ahead of `origin/main`) |
+| 13:34 | Stage 6 step 3 received. Tags: none (local or remote). Read `git log`, SPEC v0.7, the proposal, `STAGE6-START.md`, `spec-questions.md`, `stage5-review.md` |
+| 13:34–13:37 | Read `src/data/db.ts` (Dexie `version(1)`), `src/io/lists-csv.ts` (`categories.csv`), `src/domain/count.ts` and `src/data/count.ts` (count rounds), `src/io/inventory-csv.ts` (`last_counted` parsing); listed the new seed ZIP and read its `categories.csv` |
+| 13:37–13:39 | Wrote `docs/spec-merge-plan.md`; confirmed `docs/mockups/helper-screens/helper-screens/` is byte-identical to its parent (`diff -rq`) |
+| 13:39–13:40 | Wrote `docs/SPEC-next-draft.md` (v0.8 draft). `docs/SPEC.md` unchanged (`git status`: only the two new files untracked) |
+
+**WORK COMPLETED**
+- Repo v0.6 (2026-10-18, `744b4c2`): F24 count rounds. Repo v0.7 (2026-10-18, `7e6f0cc`): Category list in §3, `categories.csv` and `manifest.json` in §7, §15 Q3/Q4 closed. Both branch from v0.5, like the proposal, so the merge is **v0.8**.
+- No F-number or section clashes (the proposal adds F26–F28, §18, §19).
+- Conflicts found and resolved in the draft: the proposal's F24 drops count rounds; its §7/F15 drop `manifest.json`; its `categories.csv` layout differs from v0.7's (the current parser already reads both; the new seed loads); it reopens §15 Q3/Q4; its F22 would leave out the built restore / start-empty setup choices.
+- Dexie: `version(1)` → next version adds `orderLists`, `helpers`, `pendingItems`, `pendingPhotos`, `importUndo`; `categories` already exists; `last_counted` converted to local-midnight date-times; `counted_by` added. Recommended: a schema-version guard first (Stage 5 finding 6) and a separate database for helper mode.
+- Seven merge decisions for Dan listed as new §15 Q7.
+
+**DELIVERABLES PRODUCED**
+`docs/spec-merge-plan.md`, `docs/SPEC-next-draft.md`, this log entry. Not committed.
+
+**PREDECESSORS / CONTEXT**
+SPEC v0.7; `docs/proposals/2026-10-21-claude-proposal.md`; `STAGE6-START.md`; `docs/stage5-review.md`; `docs/spec-questions.md`.
+
+**CONFIDENCE**
+High for the version history (git and the spec agree) and for the conflicts list (proposal and v0.7 compared section by section). High that the new seed's `categories.csv` loads with the current parser (read from the code, not run; §19 adds a test). Medium for the schema plan's table layout: it's a proposal for Step 4, not a design that's been tested.
+
+**Noticed, not acted on:** no `stage5-verified` tag yet; no `docs/stage5-findings.md` (STAGE6-START step 1); the duplicate `helper-screens/helper-screens/` folder in `ba72d61`.
+
+**Next:** Dan reviews `docs/spec-merge-plan.md` and the draft (optionally in the claude.ai project), answers §15 Q6 and Q7, then: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md."
+
+| Time (CDT) | Activity (continued) |
+|---|---|
+| 13:44 | Dan: "q6 yes to all, q7 yes to all". Recorded in `docs/SPEC-next-draft.md` (§15 Q6 and Q7 marked approved; decision-log row). `docs/SPEC.md` still v0.7: waiting for "Make SPEC-next-draft.md the new docs/SPEC.md" |
+| 13:46 | Dan: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md." Draft moved to `docs/SPEC.md` (title, status line and "Changes in v0.8" no longer say draft; decision-log row added); `SPEC-next-draft.md` removed; committed on `stage6-start` |

@@ -209,12 +209,12 @@ function QuickFilters(props: {
         Category: {f.category ?? 'All'}
         <Icon name="chevDown" />
       </button>
-      <button type="button" class={tog(f.supplier !== null)} onClick={props.openPanel}>
-        Supplier: {f.supplier ?? 'All'}
-        <Icon name="chevDown" />
-      </button>
       <button type="button" class={tog(f.location !== null)} onClick={props.openPanel}>
         Location: {loc}
+        <Icon name="chevDown" />
+      </button>
+      <button type="button" class={tog(f.supplier !== null)} onClick={props.openPanel}>
+        Supplier: {f.supplier ?? 'All'}
         <Icon name="chevDown" />
       </button>
       {(props.query.trim() !== '' || activeFilterCount(f) > 0) && (

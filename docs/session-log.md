@@ -435,3 +435,30 @@ High for the version history (git and the spec agree) and for the conflicts list
 | 13:46 | Dan: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md." Draft moved to `docs/SPEC.md` (title, status line and "Changes in v0.8" no longer say draft; decision-log row added); `SPEC-next-draft.md` removed; committed on `stage6-start` |
 | 13:46 | Tagged `11baab4` as `stage5-verified` (annotated); removed the duplicate `docs/mockups/helper-screens/helper-screens/` (byte-identical to its parent); pushed `stage6-start` and the tag |
 | 13:48 | Opened PR #14 (`stage6-start` → `main`). Found the Stage 6 kit commit had renamed the 2026-10-17 seed to the 2026-10-21 one, removing the file `src/io/seed.ts`, `Setup.tsx`, the tests and the M7/M10 checks load. Restored it from `11baab4` (STAGE6-START: keep the old seed). `npx vitest run` 33 files / 510 tests pass; `npm run build` clean (16 precache entries) |
+| 13:52 | Dan merged PR #14 (`ef5a800`); "start step 4". Pulled `main`. Read `stage4-plan.md`, `db.ts`, `setup.ts`, `seed.ts`, `inventory.ts`, `FilterPanel.tsx`, `Order.tsx`, Stage 5 findings 1, 2 and 6; counted seed-file and category-name references in tests and checks. Wrote `docs/stage6-plan.md` (M11–M16c, schema v2 in M15 and v3 in M16a, upgrade testing). Uncommitted (goes in with M11, like the Stage 4 plan with M1). Waiting for Dan's OK |
+
+
+---
+
+## Stage 6, M11 — 2026-10-21 — filter order (F5)
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), same session. Dan: "ok, build m11". Branch `m11-filter-order` from `main` (`ef5a800`).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~13:58 | Branch created. Changed the quick-filter row (`Inventory.tsx`) and the Filters panel (`FilterPanel.tsx`): Location now comes before Supplier |
+| ~14:00–14:08 | Wrote `scripts/m11-ui-check.mjs`. The first runs failed in setup: the copied setup line had lost a regex escape (script bug, not the app). Fixed; moved to free ports 4331/9347. 12/12 pass. Interface mutant (the old order) caught |
+| ~14:08–14:07 | Regression: `npx vitest run` 510/510; build clean; browser checks M2–M10 400/400 and M11 12/12, all with clean consoles. Wrote `docs/reviews/M11.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F5 filter order (SPEC v0.8) in both places it shows. The Stage 6 plan (`docs/stage6-plan.md`) goes in with this milestone.
+
+**DELIVERABLES PRODUCED**
+`src/ui/screens/inventory/{Inventory,FilterPanel}.tsx`, `scripts/m11-ui-check.mjs`, `docs/reviews/M11.md`, `docs/stage6-plan.md`.
+
+**CONFIDENCE**
+High: a layout-only change, checked in both orientations, with the mutant caught and the full regression green. One open wording note for Dan (M11 review, finding 1).
+
+**Next:** Dan merges the PR and checks the filter order on the Tab S8; then M12 (categories and the new seed).

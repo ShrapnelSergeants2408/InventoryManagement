@@ -4,6 +4,7 @@
 // including a first launch — working with the web server stopped. Drives the production build
 // in headless Chrome over CDP.
 // Usage: npm run build && node scripts/m10-ui-check.mjs <chrome.exe> <screenshot dir>
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,10 +17,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 let preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4330', '--strictPort'], { stdio: 'ignore' });
 const port = 9346;
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
+track(proc);
 
 // Files offered to the restore picker: the starter catalog (a full-backup ZIP) and a file that isn't a backup.
-const files = mkdtempSync(join(tmpdir(), 'm10-files-'));
+const files = tempDir('m10-files-');
 const backupZip = join(files, 'frc2408-backup-full-2026-10-18.zip');
 copyFileSync(resolve('seed/frc2408-starter-catalog-2026-10-21.zip'), backupZip);
 const notBackup = join(files, 'shopping-notes.txt');

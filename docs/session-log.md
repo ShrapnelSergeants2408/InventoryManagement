@@ -517,3 +517,4 @@ F28 bulk move: Select mode with header and row checkboxes, Select all shown, a h
 High: unit and browser checks with mutants caught, both orientations, screenshots looked at. Open: the test machine's drive is full, and old `cdp-*` Chrome profiles from the browser checks are a likely cause (M13 review, finding 3), for Dan to decide.
 
 **Next:** Dan merges the PR and tries bulk move on the Tab S8; then M14 (order-list search).
+| 16:32 | Dan: "Please clean up those items". The 32 Chrome processes were all Dan's own browser (none from the checks), so none were closed. Deleted 320 check folders in %TEMP% (279 `cdp-` Chrome profiles of about 100 MB each, 22 `m10-files-`, 19 `m7-`): C: free 3.3 GB → 24.8 GB. Also 61 `m8-cam-`/`m9-cam-` test-video folders (about 270 MB). New `scripts/tmp-cleanup.mjs`: every check now removes its temp folders on exit, after closing its own Chrome; verified with M11 (12/12) and M9 (71/71), leaving 0 folders and 0 Chrome processes |

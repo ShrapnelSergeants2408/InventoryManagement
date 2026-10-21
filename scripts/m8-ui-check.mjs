@@ -2,6 +2,7 @@
 // test print measured in print media and as a PDF) and Scan (camera fed a QR video, typed codes,
 // found / unknown / attach / add). Drives the production build in headless Chrome over CDP.
 // Usage: npm run build && node scripts/m8-ui-check.mjs <chrome.exe> <screenshot dir>
+import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -16,7 +17,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4328', '--strictPort'], { stdio: 'ignore' });
 const port = 9344;
 // The fake camera plays a video of a printed team label: QR "2408:st-0063", black on white.
-const camVideo = join(mkdtempSync(join(tmpdir(), 'm8-cam-')), 'label.y4m');
+const camVideo = join(tempDir('m8-cam-'), 'label.y4m');
 {
   const qr = qrcode(0, 'M');
   qr.addData('2408:st-0063', 'Byte');
@@ -30,7 +31,8 @@ const camVideo = join(mkdtempSync(join(tmpdir(), 'm8-cam-')), 'label.y4m');
   const frame = Buffer.concat([Buffer.from('FRAME\n'), Y, UV, UV]);
   writeFileSync(camVideo, Buffer.concat([Buffer.from(`YUV4MPEG2 W${W} H${H} F10:1 Ip A1:1 C420jpeg\n`), ...Array(10).fill(frame)]));
 }
-const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${camVideo}`, `--remote-debugging-port=${port}`, `--user-data-dir=${mkdtempSync(join(tmpdir(), 'cdp-'))}`, 'about:blank'], { stdio: 'ignore' });
+const proc = spawn(chrome, ['--headless=new', '--disable-gpu', '--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', `--use-file-for-fake-video-capture=${camVideo}`, `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
+track(proc);
 
 let target;
 for (let i = 0; i < 50 && !target; i++) {

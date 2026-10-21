@@ -116,7 +116,7 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4321/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await js(`location.hash = '#/order';`);
   await waitFor(`document.querySelector('.tile .v')`);
   await sleep(800);

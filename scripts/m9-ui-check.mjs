@@ -136,10 +136,10 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4329/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
 
-  // Two locations, walk order Shelf Z then Bin A (not alphabetical); one Motors item filed in
-  // each (st-0064 NEO 550, st-0063 NEO 2.0), so the first category (Structure) has none.
+  // Two locations, walk order Shelf Z then Bin A (not alphabetical); the two NEO motors filed in
+  // them (st-0064 NEO 550, st-0063 NEO 2.0). Neither is among the first category's first items.
   await js(`await go('#/more/locations');`);
   for (const n of ['Shelf Z', 'Bin A']) await js(`await click('.top button', 'Add location'); await type('#en-name', '${n}'); await click('.dlg button[type=submit]', 'Add location'); await settle(400);`);
   await js(`await go('#/item/st-0063/edit'); await pick('#loc', 'Bin A'); await click('.top button', 'Save'); await settle(500);`);
@@ -234,7 +234,7 @@ try {
   check('shortcuts: next group, print labels for this group, back up now', await js(`return $$('.done-h ~ .wacts .btn').map((b) => [norm(b.textContent), b.getAttribute('href')])`), [['Next: Bin A (2)', null], ['Print labels for Shelf Z', '#/labels?ids=st-0064'], ['Back up now', '#/more/backup'], ['Done for now', null]]);
   await shot('04-count-summary');
   await js(`await click('.wacts .btn', 'Next: Bin A');`);
-  // Bin A holds st-0001 (Structure, filed there and counted above) and st-0063 (Motors).
+  // Bin A holds the first category's item 1 (filed there and counted above) and st-0063 (NEO 2.0).
   check('Next group opens at its first item not counted yet', await js(`return [pos(), wname()]`), [['Bin A', 'Item 2 of 2'], await js(`return (await idb('items', 'st-0063')).name`)]);
   await js(`await act('Skip for now');`);
   check('the walk ends after the last item even when it was skipped; summary counts the skip', await js(`return [norm($('.done-h .h1').textContent), [...$$('.sumgrid .tile')[2].children].map((c) => norm(c.textContent)).join(' '), norm($('.done-h ~ .wacts .btn').textContent)]`), ['Bin A counted', 'Skipped 1', 'Next: No location (126)']);
@@ -295,8 +295,8 @@ try {
   // ── Count rounds: "counted since <date>" (SPEC v0.6) ──
   await js(`await click('.mode', 'By category');`);
   check('no round yet: "First count" with Start a new count', await js(`return [norm($('.cround-h').textContent), $$('.cround .btn').map((b) => norm(b.textContent))]`), ['First count', ['Start a new count…']]);
-  // Backdate st-0001's count (it was counted today above) to before the round, straight in IndexedDB, then reload.
-  await js(`await new Promise((res, rej) => { const r = indexedDB.open('frc2408-inventory'); r.onsuccess = () => { const db = r.result; const t = db.transaction('items', 'readwrite'); const s = t.objectStore('items'); const g = s.get('st-0001'); g.onsuccess = () => { s.put({ ...g.result, lastCounted: '2026-01-05' }); }; t.oncomplete = () => { db.close(); res(); }; t.onerror = () => rej(t.error); }; });`);
+  // Backdate the first walk item's count (it was counted today above) to before the round, straight in IndexedDB, then reload.
+  await js(`await new Promise((res, rej) => { const r = indexedDB.open('frc2408-inventory'); r.onsuccess = () => { const db = r.result; const t = db.transaction('items', 'readwrite'); const s = t.objectStore('items'); const g = s.get(${JSON.stringify(expectFirst.ids[0])}); g.onsuccess = () => { s.put({ ...g.result, lastCounted: '2026-01-05' }); }; t.oncomplete = () => { db.close(); res(); }; t.onerror = () => rej(t.error); }; });`);
   await send('Page.reload');
   await waitFor(`document.querySelector('.cround')`, 30000);
   await js(COUNT_GATES);
@@ -308,10 +308,10 @@ try {
   const todayTxt = await js(`return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })`);
   const countedToday = await js(`return (await idb('items')).filter((i) => i.lastCounted !== '' && i.lastCounted >= today).length`);
   check('round started: the card, and overall progress counts only items counted since today', await js(`return [norm($('.cround-h').textContent), prog()[0], (await idb('settings', 'countSince')).value === today]`), [`Counting since ${todayTxt}`, `${countedToday} of 129 counted since ${todayTxt}`, true]);
-  check('the item counted before the round is no longer counted in its group (Structure one less)', await js(`return rows()[0][1]`), `${+structBefore.split(' / ')[0] - 1} / ${structBefore.split(' / ')[1]}`);
-  check('starting the round erased nothing', await js(`const i = await idb('items', 'st-0001'); return [i.lastCounted, i.onHand]`), ['2026-01-05', 3]);
+  check('the item counted before the round is no longer counted in its group (the first category one less)', await js(`return rows()[0][1]`), `${+structBefore.split(' / ')[0] - 1} / ${structBefore.split(' / ')[1]}`);
+  check('starting the round erased nothing', await js(`const i = await idb('items', ${JSON.stringify(expectFirst.ids[0])}); return [i.lastCounted, i.onHand]`), ['2026-01-05', 3]);
   await js(`await click('.cg-row .btn', 'Continue');`);
-  check('Continue opens at the item counted before the round', await js(`return [pos()[1], wname()]`), ['Item 1 of 12', expectFirst.names[0]]);
+  check('Continue opens at the item counted before the round', await js(`return [pos()[1], wname()]`), [`Item 1 of ${expectFirst.n}`, expectFirst.names[0]]);
   await js(`await key('4'); await act('Save & next'); await click('.top .btn', 'Pause');`);
   check('counting it again brings it into the round', await js(`return rows()[0][1]`), structBefore);
   await js(`await click('.cround .btn', 'Count from the beginning'); await settle(300);`);

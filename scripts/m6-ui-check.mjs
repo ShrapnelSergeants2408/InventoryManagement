@@ -166,7 +166,7 @@ try {
   await J(`await enterPin('2408'); await enterPin('2408');`);
   const code1 = await J(`return norm($('.rcode').textContent)`);
   await J(`$('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Next').click(); await finishStart();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   check('after setup: inventory opens, locked; PIN and code stored hashed only', await J(`const p = await idb('settings', 'pinHash'); const r = await idb('settings', 'recoveryHash'); const all = JSON.stringify(await idb('settings')); return [pill(), p.value.alg, p.value.iter >= 100000, r.value.alg, all.includes('2408'), all.includes(${JSON.stringify(code1.replace('-', ''))})]`), ['Locked', 'PBKDF2-SHA256', true, 'PBKDF2-SHA256', false, false]);
 
   // ── PIN pad from the lock button (0b, 9b, 9c) ──

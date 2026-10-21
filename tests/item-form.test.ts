@@ -139,6 +139,17 @@ describe('buildItem — edit (F7)', () => {
     preferredVendor: 1,
   });
 
+  it("an item stored with other capitals opens with the list's spelling and saves (Stage 5 finding 2, independent review 1)", () => {
+    const odd = { ...base, category: 'structure', subcategory: 'TUBING' };
+    const d = draftFromItem(odd, categories);
+    expect([d.category, d.subcategory]).toEqual(['Structure', 'Tubing']);
+    const r = buildItem({ ...d, notes: 'edited' }, ctx({ id: odd.id, base: odd }));
+    expect(r.ok && [r.item.category, r.item.subcategory, r.newSubcategory]).toEqual(['Structure', 'Tubing', null]);
+    // Even a draft that kept the old spelling (no list given) builds with the list's.
+    const r2 = buildItem(draftFromItem(odd), ctx({ id: odd.id, base: odd }));
+    expect(r2.ok && [r2.item.category, r2.item.subcategory, r2.newSubcategory]).toEqual(['Structure', 'Tubing', null]);
+  });
+
   it('round-trips an unchanged item exactly (apart from closing up empty vendor slots)', () => {
     const r = buildItem(draftFromItem(base), ctx({ id: base.id, base }));
     expect(r.ok).toBe(true);

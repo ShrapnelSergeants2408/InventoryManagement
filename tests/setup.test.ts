@@ -7,7 +7,7 @@ import { SETUP_DONE, STARTER_LOADED, emptyStart, ensurePersistentStorage, isSetU
 import { orderTotalCents } from '../src/domain/count';
 import { readRestoreFile } from '../src/io/restore';
 import { readSeed } from '../src/io/seed';
-import { seedBytes } from './helpers';
+import { SPEC_CATEGORIES, seedBytes } from './helpers';
 
 const dbs: InventoryDb[] = [];
 afterEach(() => {
@@ -26,7 +26,7 @@ async function seed() {
 const EMPTY = { items: [], suppliers: [], locations: [], categories: [] };
 
 describe('first launch: load the starter catalog (F22)', () => {
-  it('129 items, 168 vendor options, 128 photos stored, 9 suppliers, 12 categories; on hand 0, spares 0, never counted', async () => {
+  it('129 items, 168 vendor options, 128 photos stored, 9 suppliers, 11 categories; on hand 0, spares 0, never counted', async () => {
     const db = newDb();
     expect(await isSetUp(db)).toBe(false);
     const photos = await startInventory(db, 'starter', await seed(), 1000);
@@ -37,20 +37,7 @@ describe('first launch: load the starter catalog (F22)', () => {
     expect(await db.photos.count()).toBe(128);
     expect(snap.items.filter((i) => i.hasPhoto)).toHaveLength(128);
     expect(snap.suppliers).toHaveLength(9);
-    expect(snap.categories.map((c) => c.name)).toEqual([
-      'Structure',
-      'Fasteners',
-      'Motion',
-      'Drivetrain',
-      'Motors',
-      'Motor Controllers',
-      'Power & Electrical',
-      'Wiring & Connectors',
-      'Control System & Sensors',
-      'Pneumatics',
-      'Tools & Consumables',
-      'Pit & Safety',
-    ]);
+    expect(snap.categories.map((c) => c.name)).toEqual(SPEC_CATEGORIES);
     expect(snap.locations).toEqual([]);
     expect(snap.items.every((i) => i.onHand === 0 && i.spares === 0 && i.lastCounted === '' && i.source === 'starter')).toBe(true);
     expect(snap.items.filter((i) => i.desired > 0).length).toBeGreaterThan(100);
@@ -96,6 +83,7 @@ describe('first launch: start empty', () => {
     expect(await db.photos.count()).toBe(0);
     expect(snap.suppliers.map((s) => s.name).sort()).toEqual(data.suppliers.map((s) => s.name).sort());
     expect(snap.categories).toEqual(data.categories);
+    expect(snap.categories.map((c) => c.name)).toEqual(SPEC_CATEGORIES);
     expect(snap.categories.some((c) => c.subcategories.length > 0)).toBe(true);
     expect(await isSetUp(db)).toBe(true);
     expect(await db.settings.get(STARTER_LOADED)).toBeUndefined();

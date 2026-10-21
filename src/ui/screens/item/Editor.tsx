@@ -23,7 +23,7 @@ import {
   type VendorDraft,
 } from '../../../domain/item-form';
 import { checkName, sortSupplierNames, takenLocationNames } from '../../../domain/lists';
-import type { Item } from '../../../domain/types';
+import { nameKey, type Item } from '../../../domain/types';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { gate } from '../../../security/gate';
 import { isUnlocked } from '../../../security/lock';
@@ -94,7 +94,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const adding = props.base === null;
   // The editor works on the item as it was when opened; later list changes don't reset the form.
   const [base] = useState(props.base);
-  const [initial] = useState<ItemDraft>(() => (base ? draftFromItem(base) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName), barcode: props.startBarcode ?? '' }));
+  const [initial] = useState<ItemDraft>(() => (base ? draftFromItem(base, snap.categories) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName), barcode: props.startBarcode ?? '' }));
   const [d, setD] = useState<ItemDraft>(initial);
   const [errors, setErrors] = useState<FormError[]>([]);
   // Already unlocked (§6): vendor fields open straight away.
@@ -125,10 +125,10 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const setVendor = (i: number, field: keyof VendorDraft, value: string) =>
     setD((prev) => ({ ...prev, vendors: prev.vendors.map((v, j) => (j === i ? editVendor(v, field, value, today) : v)) }));
 
-  const cat = snap.categories.find((c) => c.name === d.category);
+  const cat = snap.categories.find((c) => nameKey(c.name) === nameKey(d.category));
   const subs = cat?.subcategories ?? [];
   // An item's own subcategory or unit is kept even if the lists don't have it (e.g. imported).
-  const subOptions = d.subcategory && !subs.includes(d.subcategory) ? [...subs, d.subcategory] : subs;
+  const subOptions = d.subcategory && !subs.some((s) => nameKey(s) === nameKey(d.subcategory)) ? [...subs, d.subcategory] : subs;
   const units = UNITS.includes(d.unit) || d.unit === '' ? UNITS : [...UNITS, d.unit];
   const suppliers = useMemo(() => sortSupplierNames(snap.suppliers.map((s) => s.name)), [snap.suppliers]);
   const locNames = snap.locations.map((l) => l.name);

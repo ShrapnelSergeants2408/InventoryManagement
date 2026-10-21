@@ -116,7 +116,7 @@ const EDIT = `
 `;
 const reload = async () => {
   await send('Page.reload');
-  await waitFor(`document.querySelector('.bkcard') || document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelector('.bkcard') || document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await sleep(600);
 };
 // Downloads land in window.__files (bytes kept, so a ZIP can be restored later).
@@ -133,7 +133,7 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4321/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 60000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
 
   // ── Boot records the setup time; no reminder on day 1 (D7) ──
   check('setup time recorded at the starter load; no banner on day 1', await js(`const s = await idb('settings', 'setupDoneAt'); return [typeof s?.value, !document.querySelector('.banner')]`), ['number', true]);

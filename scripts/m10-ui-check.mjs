@@ -21,7 +21,7 @@ const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debuggi
 // Files offered to the restore picker: the starter catalog (a full-backup ZIP) and a file that isn't a backup.
 const files = mkdtempSync(join(tmpdir(), 'm10-files-'));
 const backupZip = join(files, 'frc2408-backup-full-2026-10-18.zip');
-copyFileSync(resolve('seed/frc2408-starter-catalog-2026-10-17.zip'), backupZip);
+copyFileSync(resolve('seed/frc2408-starter-catalog-2026-10-21.zip'), backupZip);
 const notBackup = join(files, 'shopping-notes.txt');
 // The update check changes dist/sw.js while the app runs; the original is put back at the end.
 const swPath = resolve('dist/sw.js');
@@ -157,7 +157,7 @@ try {
   check('photo progress counted up along the way', seen.some((t) => /Photos(\d+) of 128/.test(t) && +/Photos(\d+) of 128/.exec(t)[1] > 0 && +/Photos(\d+) of 128/.exec(t)[1] < 128), true);
   check('ready (9j): title, what was set up, the order total to count down', await js(`return [norm($('.setup-h').textContent), sdone().slice(0, 2), norm($('.snext').textContent).includes('$8,413.66'), $$('.setup-acts .btn').map((b) => norm(b.textContent))]`), ['Ready — 129 items loaded', ['Mentor PIN set · recovery code saved', '129 starter items, 128 photos, 9 suppliers'], true, ['Start count-in', 'Go to inventory']]);
   check('persistent storage was asked for and the answer shown', await js(`const l = sdone()[2]; const p = await navigator.storage.persisted(); return p ? l === 'Persistent storage granted — works offline' : l.startsWith('Persistent storage not granted yet')`), true);
-  check('stored: 129 items, 128 photos, 9 suppliers, 12 categories; setup done', await js(`return [await idbCount('items'), await idbCount('photos'), await idbCount('suppliers'), await idbCount('categories'), typeof (await idbGet('settings', 'setupDoneAt'))?.value]`), [129, 128, 9, 12, 'number']);
+  check('stored: 129 items, 128 photos, 9 suppliers, 11 categories; setup done', await js(`return [await idbCount('items'), await idbCount('photos'), await idbCount('suppliers'), await idbCount('categories'), typeof (await idbGet('settings', 'setupDoneAt'))?.value]`), [129, 128, 9, 11, 'number']);
   check('the setup steps all show done', await js(`return $$('.setup-steps li').map((l) => l.className)`), ['done', 'done', 'done']);
   await shot('03-setup-ready');
   await js(`await click('.setup-acts .btn', 'Start count-in'); await settle(600);`);
@@ -201,8 +201,8 @@ try {
   await sleep(500);
   check('the web server is really down', await fetch('http://localhost:4330/').then(() => 'up', () => 'down'), 'down');
   await send('Page.navigate', { url: 'http://localhost:4330/#/inventory' });
-  await waitFor(`document.querySelectorAll('.cathdr').length >= 12`, 30000);
-  check('offline: the app opens with the inventory', await js(`return [document.querySelectorAll('.cathdr').length, norm($('.top .small').textContent)]`), [12, '129 items · 124 short · 0 low spares']);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 30000);
+  check('offline: the app opens with the inventory', await js(`return [document.querySelectorAll('.cathdr').length, norm($('.top .small').textContent)]`), [11, '129 items · 124 short · 0 low spares']);
   check('offline: both fonts load from the cache', await js(`await document.fonts.ready; await Promise.all([document.fonts.load('16px "Atkinson Hyperlegible"'), document.fonts.load('700 16px "Barlow Condensed"')]); return [document.fonts.check('16px "Atkinson Hyperlegible"'), document.fonts.check('700 16px "Barlow Condensed"'), [...document.fonts].filter((f) => f.status === 'loaded').length >= 2]`), [true, true, true]);
   await js(`$('.cathdr button, .cathdr')?.click(); await settle(800);`);
   check('offline: the logo shows', await js(`const i = $('.nav-logo img'); return i.complete && i.naturalWidth > 0`), true);
@@ -212,7 +212,7 @@ try {
   await js(`await pinSteps();`);
   await js(`await click('.sopt', 'Start empty'); await click('.setup-acts .btn', 'Start empty');`);
   await waitFor(`document.querySelector('.sdone')`, 60000);
-  check('offline, start empty (9h): categories and suppliers only', await js(`return [norm($('.setup-h').textContent), sdone()[1], await idbCount('items'), await idbCount('categories'), await idbCount('suppliers'), $$('.setup-acts .btn').map((b) => norm(b.textContent))]`), ['Ready — an empty inventory', '12 categories and 9 suppliers; no items yet', 0, 12, 9, ['Add the first item', 'Go to inventory']]);
+  check('offline, start empty (9h): categories and suppliers only', await js(`return [norm($('.setup-h').textContent), sdone()[1], await idbCount('items'), await idbCount('categories'), await idbCount('suppliers'), $$('.setup-acts .btn').map((b) => norm(b.textContent))]`), ['Ready — an empty inventory', '11 categories and 9 suppliers; no items yet', 0, 11, 9, ['Add the first item', 'Go to inventory']]);
   await js(`await click('.setup-acts .btn', 'Go to inventory'); await settle(600);`);
   check('empty inventory: the app opens with no items', await js(`return [!$('.setup'), document.querySelectorAll('.row').length]`), [true, 0]);
 

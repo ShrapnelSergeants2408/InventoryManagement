@@ -2,9 +2,10 @@
 import type { ReplaceAllInput } from '../data/inventory';
 import { DEFAULT_SUPPLIERS, type Supplier } from '../domain/types';
 import { readBackupZip, type BundleRead, type PhotoProgress } from './bundle';
-import { completeCategories, completeLocations, completeSuppliers } from './lists-csv';
+import { completeCategories, completeLocations, completeSuppliers, spellLikeLists } from './lists-csv';
 
-export const SEED_FILE = 'frc2408-starter-catalog-2026-10-17.zip';
+/** The §11 categories (SPEC v0.8); the file carries `categories.csv` in the seed layout (§7). */
+export const SEED_FILE = 'frc2408-starter-catalog-2026-10-21.zip';
 
 export type SeedRead =
   | { ok: true; data: ReplaceAllInput; warnings: string[] }
@@ -16,14 +17,16 @@ export async function readSeed(zip: ArrayBuffer | Uint8Array | Blob, onPhoto?: P
   if (!read.bundle) return { ok: false, problems: read.problems };
   const b = read.bundle;
   const baseSuppliers: Supplier[] = b.suppliers ?? DEFAULT_SUPPLIERS.map((name) => ({ name, website: '', notes: '' }));
+  const locations = completeLocations(b.locations ?? [], b.items).list;
+  const categories = completeCategories(b.categories ?? [], b.items).list;
   return {
     ok: true,
     data: {
-      items: b.items,
+      items: spellLikeLists(b.items, categories, locations),
       photos: b.photos,
       suppliers: completeSuppliers(baseSuppliers, b.items).list,
-      locations: completeLocations(b.locations ?? [], b.items).list,
-      categories: completeCategories(b.categories ?? [], b.items).list,
+      locations,
+      categories,
     },
     warnings: read.warnings,
   };

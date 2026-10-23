@@ -105,3 +105,52 @@ export function newListId(isTaken: (id: string) => boolean, random: () => number
   }
   throw new Error('could not find a free list id');
 }
+
+/**
+ * How quantities are worked out when many items are added at once (F27 "Add many at once"):
+ * up to desired + spares (the suggested order quantity, §4), up to desired only, or one pack.
+ */
+export type QuantityRule = 'spares' | 'desired' | 'pack';
+
+export const QUANTITY_RULES: readonly { rule: QuantityRule; label: string }[] = [
+  { rule: 'spares', label: 'Up to desired + spares' },
+  { rule: 'desired', label: 'Up to desired only' },
+  { rule: 'pack', label: 'One pack each' },
+];
+
+/** The quantity a rule gives, in whole packs of the preferred vendor; 0 when the item is already at that target. */
+export function ruleQuantity(item: Item, rule: QuantityRule): number {
+  const packSize = preferredVendorOf(item)?.packSize;
+  if (!packSize) return 0;
+  if (rule === 'pack') return packSize;
+  const need = (rule === 'spares' ? item.desired + item.spares : item.desired) - item.onHand;
+  return need > 0 ? packsFor(need, packSize).orderQty : 0;
+}
+
+export interface AddManyPlan {
+  /** Items not on the list yet, with their quantities. */
+  add: OrderListLine[];
+  /** Items already on the list: their quantity there, and what the rule gives. */
+  onList: { itemId: string; was: number; quantity: number }[];
+  /** Items already at the rule's target (nothing to order). */
+  skipped: Item[];
+}
+
+/** What adding `chosen` to `list` (null: a new list) with `rule` would do, before anything is saved. */
+export function planAddMany(chosen: readonly Item[], rule: QuantityRule, list: NamedOrderList | null): AddManyPlan {
+  const current = new Map((list?.lines ?? []).map((l) => [l.itemId, l.quantity]));
+  const plan: AddManyPlan = { add: [], onList: [], skipped: [] };
+  for (const item of chosen) {
+    const quantity = ruleQuantity(item, rule);
+    if (quantity === 0) plan.skipped.push(item);
+    else if (current.has(item.id)) plan.onList.push({ itemId: item.id, was: current.get(item.id)!, quantity });
+    else plan.add.push({ itemId: item.id, quantity });
+  }
+  return plan;
+}
+
+/** The list's lines after the plan: new lines at the end; lines already there replaced, or kept. */
+export function applyAddMany(list: NamedOrderList, plan: AddManyPlan, replace: boolean): OrderListLine[] {
+  const replaced = new Map(replace ? plan.onList.map((o) => [o.itemId, o.quantity]) : []);
+  return [...list.lines.map((l) => (replaced.has(l.itemId) ? { itemId: l.itemId, quantity: replaced.get(l.itemId)! } : l)), ...plan.add];
+}

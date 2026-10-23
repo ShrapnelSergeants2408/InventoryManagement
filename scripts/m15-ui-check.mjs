@@ -82,7 +82,7 @@ const PAGE = `
   const rowMenu = async (name) => { const row = $$('.row').find((r) => norm(r.querySelector('.rname').textContent).startsWith(name)); if (!row) throw new Error('no row ' + name); row.querySelector('.rmenu').click(); await settle(); };
   const lineNames = () => $$('.ogrid.line .lt').map((e) => e.textContent);
   const tiles = () => $$('.sum .tile').map((t) => norm([...t.children].map((c) => c.textContent).join(' ')));
-  const tabs = () => $$('.ltabs .ltab').map((t) => norm([...t.childNodes].map((c) => c.textContent).join(' ')));
+  const tabs = () => $$('.ltabs .ltab:not(.sel)').map((t) => norm([...t.childNodes].map((c) => c.textContent).join(' ')));
   ${PIN_H}
 `;
 const P = (expr) => js(`${PAGE} ${expr}`);

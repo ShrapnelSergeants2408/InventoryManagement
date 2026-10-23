@@ -577,3 +577,4 @@ New: `src/domain/{order-lists,storage-error}.ts`, `src/data/order-lists.ts`, `sr
 High for the upgrade: byte-equal rows in unit tests and in a real browser, the blocked case and a rollback tried. High for list math (to the cent, mutants caught). Still to do: the real Tab S8 backup through `tests/tablet-backup.test.ts`, before merging.
 
 **Next:** Dan exports a full backup from the Tab S8 and runs (or gives the path for) the real-data test; then merges with a merge commit and does the tablet check in the M15 review; then M15b.
+| 13:27 | Dan: the backup is at `D:\backups\inventory-backup.zip`; the file there is `inventory-backup-2026-10-23-1323.zip` (the only one in the folder). `tests/tablet-backup.test.ts` with it: passes, 129 items, 127 photos, order total $6,949.47, the same after the upgrade and after export → restore. Review and PR updated |

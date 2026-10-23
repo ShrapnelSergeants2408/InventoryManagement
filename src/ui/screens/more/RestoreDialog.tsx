@@ -1,8 +1,9 @@
 // Restore confirmation (F17, S6, mockup 8c): "on this tablet now" vs "in the backup", an
 // optional backup first, and Replace everything only after the "I understand" tick.
 import { useState } from 'preact/hooks';
-import { replaceAll } from '../../../data/inventory';
+import { applyRestore } from '../../../data/backup';
 import { formatBytes, formatDateTime, formatIsoDate, localIsoDate } from '../../../domain/dates';
+import type { NamedOrderList } from '../../../domain/order-lists';
 import type { RestorePlan } from '../../../io/restore';
 import { gate } from '../../../security/gate';
 import { Dialog, DialogActions } from '../../components/Dialog';
@@ -17,6 +18,7 @@ export interface TabletNow {
   photos: number;
   photoIds: ReadonlySet<string>;
   suppliers: number;
+  orderLists: readonly NamedOrderList[];
   lastChangeAt: number | null;
 }
 
@@ -53,7 +55,7 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
     if (!(await gate('Restoring replaces all inventory on this tablet.'))) return;
     setBusy('Replacing everything…');
     try {
-      const withPhotos = await replaceAll(db, plan, Date.now(), { keepPhotos: plan.kind === 'csv' });
+      const withPhotos = await applyRestore(db, plan);
       forgetAllThumbnails();
       showToast(`Restored ${plural(plan.items.length, 'item')} and ${plural(withPhotos, 'photo')} from ${plan.fileName}.`);
       onClose();
@@ -63,10 +65,17 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
     }
   };
 
+  const restoredIds = new Set(plan.items.map((i) => i.id));
+  const droppedLines = tablet.orderLists.reduce((n, l) => n + l.lines.filter((x) => !restoredIds.has(x.itemId)).length, 0);
+  const listsAfter =
+    plan.orderLists !== null
+      ? String(plan.orderLists.length)
+      : `${tablet.orderLists.length} kept${droppedLines > 0 ? `, ${plural(droppedLines, 'line')} for items not in the backup removed` : ''}`;
   const rows: [string, string, string][] = [
     ['Items', String(tablet.items), String(plan.items.length)],
     ['Photos', String(tablet.photos), backupPhotos],
     ['Suppliers', String(tablet.suppliers), plan.kind === 'zip' ? String(plan.suppliers.length) : `${plan.suppliers.length} (this tablet’s list${plan.addedSuppliers.length ? ' + new names' : ''})`],
+    ['Order lists', String(tablet.orderLists.length), listsAfter],
     ['Saved', changed, saved],
   ];
 
@@ -104,7 +113,7 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
         </ul>
       )}
       <p class="dlg-p">
-        Everything on the tablet is replaced{plan.kind === 'csv' ? ' (photos are kept for matching item ids)' : ''}. Counts and items added{since} will be lost unless you back up first.
+        Everything on the tablet is replaced{plan.kind === 'csv' ? ' (photos are kept for matching item ids, and order lists are kept)' : ', order lists included'}. Counts and items added{since} will be lost unless you back up first.
       </p>
       <label class="tick">
         <input type="checkbox" checked={understood} disabled={!!busy} onChange={(e) => setUnderstood((e.currentTarget as HTMLInputElement).checked)} />

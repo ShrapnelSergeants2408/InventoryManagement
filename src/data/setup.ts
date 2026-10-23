@@ -22,7 +22,7 @@ export async function isSetUp(db: InventoryDb): Promise<boolean> {
  * replace a team's data (restoring later is F17, behind the PIN). Returns how many items have a photo.
  */
 export async function startInventory(db: InventoryDb, choice: StartChoice, data: ReplaceAllInput, now = Date.now()): Promise<number> {
-  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.settings], async () => {
+  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings], async () => {
     if (await isSetUp(db)) throw new Error('this tablet is already set up; use Restore in More › Backup instead');
     const photos = await replaceAll(db, data, now);
     await db.settings.put({ key: SETUP_DONE, value: now });

@@ -20,6 +20,7 @@ import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
+import { AddToListDialog } from '../order/ListDialogs';
 import { DeleteItemButton } from './DeleteItem';
 
 const crumb = (i: Item) => (i.subcategory ? `${i.category} › ${i.subcategory}` : i.category);
@@ -75,6 +76,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const photo = usePhoto(item.id, item.hasPhoto);
   const [enlarged, setEnlarged] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [adding, setAdding] = useState(false);
   const camera = useRef<HTMLInputElement>(null);
   const status = stockStatus(item.onHand, item.desired, item.spares);
   const stock = stockLines(item);
@@ -139,6 +141,10 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
               <Icon name="pencil" />
               Edit item
             </a>
+            <button type="button" class="btn" onClick={() => setAdding(true)}>
+              <Icon name="listAdd" />
+              Add to order list
+            </button>
             <a class="btn" href={href.labels([item.id])}>
               <Icon name="print" />
               Print QR label
@@ -276,6 +282,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
           </DialogActions>
         </Dialog>
       )}
+      {adding && <AddToListDialog item={item} onClose={() => setAdding(false)} />}
     </>
   );
 }

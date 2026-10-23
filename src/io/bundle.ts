@@ -12,6 +12,8 @@ import {
   parseLocationsCsv,
   parseSuppliersCsv,
 } from './lists-csv';
+import { ORDER_LISTS_FILE, parseOrderListsCsv } from './order-lists-csv';
+import type { NamedOrderList } from '../domain/order-lists';
 
 export const MANIFEST_FILE = 'manifest.json';
 
@@ -33,6 +35,8 @@ export interface Bundle {
   suppliers: Supplier[] | null;
   locations: Location[] | null;
   categories: Category[] | null;
+  /** Named order lists (F27): null for a CSV; a ZIP without order-lists.csv has none ([]). */
+  orderLists: NamedOrderList[] | null;
   manifest: Manifest | null;
   /** Latest modification date among the ZIP entries, as a fallback "saved" date. */
   zipDate: Date | null;
@@ -67,6 +71,7 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
       suppliers: null,
       locations: null,
       categories: null,
+      orderLists: null,
       manifest: null,
       zipDate: null,
     },
@@ -111,10 +116,12 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   const suppliersText = await text(SUPPLIERS_FILE);
   const locationsText = await text(LOCATIONS_FILE);
   const categoriesText = await text(CATEGORIES_FILE);
+  const orderListsText = await text(ORDER_LISTS_FILE);
   const suppliers = suppliersText === null ? null : parseSuppliersCsv(suppliersText);
   const locations = locationsText === null ? null : parseLocationsCsv(locationsText);
   const categories = categoriesText === null ? null : parseCategoriesCsv(categoriesText);
-  for (const p of [suppliers, locations, categories]) if (p) problems.push(...p.problems);
+  const orderLists = orderListsText === null ? null : parseOrderListsCsv(orderListsText);
+  for (const p of [suppliers, locations, categories, orderLists]) if (p) problems.push(...p.problems);
 
   let manifest: Manifest | null = null;
   const manifestText = await text(MANIFEST_FILE);
@@ -164,6 +171,7 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
       suppliers: suppliers?.list ?? null,
       locations: locations?.list ?? null,
       categories: categories?.list ?? null,
+      orderLists: orderLists?.lists ?? [],
       manifest,
       zipDate: dates.length ? new Date(Math.max(...dates)) : null,
     },

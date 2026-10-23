@@ -1,10 +1,11 @@
 // Export order list (F13, mockup 4c): file name, a preview of the first supplier group and the
 // totals, then the share sheet — or a download when the browser can't share the file (Q1).
 // With a search (Export shown lines only, F12): just those lines, a note row first and
-// "filtered" in the file name.
+// "filtered" in the file name. A named list (F27): its name in the file name and the first row.
 import { useState } from 'preact/hooks';
 import type { OrderList } from '../../../domain/order';
-import { ORDER_COLUMNS, filteredNote, orderCsvFileName, orderCsvRows, serializeOrderCsv } from '../../../io/order-csv';
+import type { NamedOrderList } from '../../../domain/order-lists';
+import { ORDER_COLUMNS, filteredNote, listNote, orderCsvFileName, orderCsvRows, serializeOrderCsv } from '../../../io/order-csv';
 import { shareOrDownload } from '../../../io/share';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { plural } from '../../components/common';
@@ -15,12 +16,14 @@ const PREVIEW_COLUMNS = ['Supplier', 'Part #', 'Item', 'Order qty', 'Line total'
 const RIGHT = new Set<string>(['Order qty', 'Line total']);
 const PREVIEW_LINES = 6;
 
-export function ExportDialog({ list, whole, query, onClose }: { list: OrderList; whole?: OrderList; query?: string; onClose: () => void }) {
+export function ExportDialog(props: { list: OrderList; whole?: OrderList; query?: string; named?: NamedOrderList; onClose: () => void }) {
+  const { list, whole, query, named, onClose } = props;
   const [now] = useState(() => new Date());
   const [busy, setBusy] = useState(false);
   const filtered = whole !== undefined && query !== undefined;
-  const note = filtered ? filteredNote(query, list, whole) : undefined;
-  const name = orderCsvFileName(now, filtered ? query : undefined);
+  const notes = [named ? listNote(named.name, named.notes) : null, filtered ? filteredNote(query, list, whole) : null].filter((n): n is string => n !== null);
+  const note = notes.length > 0 ? notes.join(' · ') : undefined;
+  const name = orderCsvFileName(now, filtered ? query : undefined, named?.name);
   const rows = orderCsvRows(list);
   const idx = PREVIEW_COLUMNS.map((c) => ORDER_COLUMNS.indexOf(c));
   const first = list.groups[0];
@@ -49,7 +52,7 @@ export function ExportDialog({ list, whole, query, onClose }: { list: OrderList;
   return (
     <Dialog label="Export order list" onClose={() => !busy && onClose()}>
       <div class="dlg-head">
-        <h2 class="h2 grow">{filtered ? 'Export shown lines only (CSV)' : 'Export order list (CSV)'}</h2>
+        <h2 class="h2 grow">{filtered ? 'Export shown lines only (CSV)' : named ? 'Export this list (CSV)' : 'Export order list (CSV)'}</h2>
         <button type="button" class="ib" aria-label="Close" onClick={onClose}>
           <Icon name="close" />
         </button>

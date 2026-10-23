@@ -92,18 +92,30 @@ export function filteredNote(query: string, shown: OrderList, all: OrderList): s
   return `Filtered order list: only the ${shown.lineCount} of ${all.lineCount} lines matching "${query.trim()}". Shown total ${centsToPlain(shown.grandTotalCents)}; whole list ${centsToPlain(all.grandTotalCents)}.`;
 }
 
-/**
- * order-list-2026-10-17-1235.csv (local time). With a search (Export shown lines only, F12):
- * order-list-filtered-neo-2-0-2026-10-17-1235.csv — the search text reduced to letters,
- * digits and dashes, at most 30 characters.
- */
-export function orderCsvFileName(now: Date, query?: string): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}`;
-  if (query === undefined) return `order-list-${stamp}.csv`;
-  const slug = normalize(query)
+/** Text reduced to letters, digits and dashes, at most 30 characters, for a file name. */
+function slug(text: string): string {
+  return normalize(text)
     .replace(/[^a-z0-9]+/g, '-')
     .slice(0, 30)
     .replace(/^-+|-+$/g, '');
-  return `order-list-filtered${slug ? `-${slug}` : ''}-${stamp}.csv`;
+}
+
+/**
+ * order-list-2026-10-17-1235.csv (local time). With a search (Export shown lines only, F12):
+ * order-list-filtered-neo-2-0-2026-10-17-1235.csv. A named list (F27) puts its name first:
+ * order-list-wcp-order-nov-2026-10-17-1235.csv, or …-wcp-order-nov-filtered-neo-….
+ */
+export function orderCsvFileName(now: Date, query?: string, listName?: string): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}-${p(now.getHours())}${p(now.getMinutes())}`;
+  const named = listName === undefined ? '' : slug(listName);
+  const parts = ['order-list', named];
+  if (query !== undefined) parts.push('filtered', slug(query));
+  return `${parts.filter(Boolean).join('-')}-${stamp}.csv`;
+}
+
+/** First-row note for a named list's export (F27). */
+export function listNote(name: string, notes: string): string {
+  const n = notes.trim().replace(/\s+/g, ' ');
+  return `Order list: ${name.trim()}${n ? ` (${n})` : ''}`;
 }

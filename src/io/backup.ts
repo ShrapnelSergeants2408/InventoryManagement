@@ -2,7 +2,9 @@
 // The PIN and settings are never included.
 import JSZip from 'jszip';
 import type { InventorySnapshot } from '../data/inventory';
+import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
 import { MANIFEST_FILE, type Manifest } from './bundle';
+import { ORDER_LISTS_FILE, serializeOrderListsCsv } from './order-lists-csv';
 import { INVENTORY_FILE, photoPathFor, serializeInventoryCsv } from './inventory-csv';
 import {
   CATEGORIES_FILE,
@@ -14,7 +16,7 @@ import {
 } from './lists-csv';
 
 export const APP_NAME = 'FRC 2408 Inventory Management';
-export const APP_VERSION = '0.1.0';
+export const APP_VERSION = '0.2.0';
 
 export type BackupKind = 'full' | 'data';
 
@@ -45,9 +47,15 @@ export function buildDataCsv(snapshot: InventorySnapshot): string {
 
 /**
  * Full backup: inventory.csv + suppliers.csv + locations.csv + categories.csv (Q3) +
- * manifest.json (Q8) + photos/<id>.jpg. Photos are stored as they are (already compressed).
+ * order-lists.csv (F27) + manifest.json (Q8) + photos/<id>.jpg. Photos are stored as they
+ * are (already compressed).
  */
-export async function buildFullBackup(snapshot: InventorySnapshot, photos: ReadonlyMap<string, Blob>, now: Date): Promise<Blob> {
+export async function buildFullBackup(
+  snapshot: InventorySnapshot,
+  photos: ReadonlyMap<string, Blob>,
+  now: Date,
+  orderLists: readonly NamedOrderList[] = [],
+): Promise<Blob> {
   const zip = new JSZip();
   const date = now;
   const ids = new Set(snapshot.items.map((i) => i.id));
@@ -60,6 +68,7 @@ export async function buildFullBackup(snapshot: InventorySnapshot, photos: Reado
   zip.file(SUPPLIERS_FILE, serializeSuppliersCsv(snapshot.suppliers), { date });
   zip.file(LOCATIONS_FILE, serializeLocationsCsv(snapshot.locations), { date });
   zip.file(CATEGORIES_FILE, serializeCategoriesCsv(snapshot.categories), { date });
+  zip.file(ORDER_LISTS_FILE, serializeOrderListsCsv(orderLists.map((l) => withoutMissingItems(l, ids))), { date });
   const manifest: Manifest = {
     app: APP_NAME,
     appVersion: APP_VERSION,

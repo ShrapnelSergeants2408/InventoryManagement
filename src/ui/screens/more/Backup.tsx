@@ -13,7 +13,7 @@ import { planPriceImport, type PricePlan, type PriceProblem } from '../../../io/
 import { readRestoreFile, type RestorePlan } from '../../../io/restore';
 import { gate } from '../../../security/gate';
 import { BackButton, TopBar, plural } from '../../components/common';
-import { useDb, useNow, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
+import { useDb, useNow, useOrderLists, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
@@ -73,6 +73,7 @@ type Dlg =
 export function BackupScreen() {
   const db = useDb();
   const live = useSnapshot();
+  const lists = useOrderLists();
   const settings = useSettings();
   const now = useNow();
   const photos = usePhotoStats(db);
@@ -172,7 +173,9 @@ export function BackupScreen() {
   const lastBackup = settings.lastBackupAt === null ? 'Never' : days === 0 ? formatDateTime(new Date(settings.lastBackupAt), new Date(now)) : `${plural(days!, 'day')} ago`;
   const fullSize = csvBytes !== null && photos ? formatBytes(csvBytes + photos.bytes) : '…';
   const tablet: TabletNow | null =
-    snap && photos ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, suppliers: snap.suppliers.length, lastChangeAt: settings.lastChangeAt } : null;
+    snap && photos && lists.state === 'ready'
+      ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, suppliers: snap.suppliers.length, orderLists: lists.value, lastChangeAt: settings.lastChangeAt }
+      : null;
 
   return (
     <>

@@ -1,10 +1,12 @@
 // Delete item (F8): mentor PIN, then a confirmation that shows the item's name and on-hand
-// count (mockup 2c). No undo: the confirmation is the only safeguard.
+// count (mockup 2c), and how many named order lists it's on (F27). No undo: the confirmation is
+// the only safeguard.
 import { useState } from 'preact/hooks';
 import { deleteItem } from '../../../data/items';
+import { listsWithItem } from '../../../data/order-lists';
 import type { Item } from '../../../domain/types';
 import { gate } from '../../../security/gate';
-import { PinMark } from '../../components/common';
+import { PinMark, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
@@ -16,21 +18,24 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
   const db = useDb();
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [onLists, setOnLists] = useState<string[]>([]);
   const thumb = useThumbnail(item.id, item.hasPhoto);
 
   useCloseOnRelock(confirming && !busy, () => setConfirming(false));
 
   const reason = 'Deleting an item needs the mentor PIN.';
   const ask = async () => {
-    if (await gate(reason)) setConfirming(true);
+    if (!(await gate(reason))) return;
+    setOnLists(await listsWithItem(db, item.id).catch(() => []));
+    setConfirming(true);
   };
   const doDelete = async () => {
     // Checked again here: the tablet may have relocked while the confirmation was open.
     if (busy || !(await gate(reason))) return;
     setBusy(true);
     try {
-      await deleteItem(db, item.id);
-      showToast(`Deleted “${item.name}”.`);
+      const lists = await deleteItem(db, item.id);
+      showToast(`Deleted “${item.name}”${lists > 0 ? ` and took it off ${plural(lists, 'order list')}` : ''}.`);
       replaceRoute(href.tab('inventory'));
     } catch (e) {
       showToast(`Couldn't delete: ${e instanceof Error ? e.message : String(e)}`);
@@ -67,6 +72,11 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
             </div>
           </div>
           <p class="dlg-p">It disappears from the list, the order list and QR label scans. The only way back is restoring a backup made before now.</p>
+          {onLists.length > 0 && (
+            <p class="dlg-p">
+              It’s also on {plural(onLists.length, 'named order list')} ({onLists.join(', ')}) and will be taken off {onLists.length === 1 ? 'it' : 'them'}.
+            </p>
+          )}
           <DialogActions>
             <button type="button" class="btn lg" data-autofocus disabled={busy} onClick={() => setConfirming(false)}>
               Keep item

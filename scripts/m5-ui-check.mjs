@@ -115,6 +115,8 @@ const EDIT = `
   const b64 = (u8) => { let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
   const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
   const cmpRows = () => [...document.querySelectorAll('.cmp tbody tr')].map((r) => [...r.cells].map((c) => norm(c.textContent)));
+  // The Saved row, found by its label (M15 added an Order lists row before it).
+  const saved = () => cmpRows().find((r) => r[0] === 'Saved');
 `;
 const reload = async () => {
   await send('Page.reload');
@@ -190,8 +192,8 @@ try {
   await reload();
   await js(`await choose(0, 'inventory-backup-2026-10-10-1535.zip', unb64(${JSON.stringify(full.b64)}), 'application/zip'); await waitDlg('Replace all inventory with this backup?');`);
   await sleep(300);
-  check('restore dialog compares tablet and backup (backup column)', await js(`const r = cmpRows(); return [r[0][2], r[1][2], r[2][2], r[3][2].startsWith('today ')]`), ['129', '128', '9', true]);
-  check('tablet column: 128 items now, changed today', await js(`return [cmpRows()[0][1], cmpRows()[3][1].startsWith('changed today')]`), ['128', true]);
+  check('restore dialog compares tablet and backup (backup column)', await js(`const r = cmpRows(); return [r[0][2], r[1][2], r[2][2], saved()[2].startsWith('today ')]`), ['129', '128', '9', true]);
+  check('tablet column: 128 items now, changed today', await js(`return [cmpRows()[0][1], saved()[1].startsWith('changed today')]`), ['128', true]);
   check('Replace everything is disabled until the tick', await js(`const b = byText('.dlg button', 'Replace everything'); const before = b.disabled; document.querySelector('.tick input').click(); await settle(200); return [before, b.disabled, b.classList.contains('danger')]`), [true, false, true]);
   await shot('03-restore-dialog');
   await js(`await click('.dlg button', 'Replace everything'); await answerGate(false);`);
@@ -207,7 +209,7 @@ try {
 
   // ── CSV-only restore keeps photos for matching ids ──
   await js(`await choose(0, 'inventory-backup-2026-10-11-0900.csv', new TextEncoder().encode(${JSON.stringify(csvFile.text)}), 'text/csv'); await waitDlg('Replace all inventory with this backup?');`);
-  check('CSV restore: photos kept from this tablet; saved date from the file name', await js(`return [cmpRows()[1][2], cmpRows()[3][2]]`), ['128 kept from this tablet', 'Oct 11, 2026 9:00 AM (from the file name)']);
+  check('CSV restore: photos kept from this tablet; saved date from the file name', await js(`return [cmpRows()[1][2], saved()[2]]`), ['128 kept from this tablet', 'Oct 11, 2026 9:00 AM (from the file name)']);
   await js(`document.querySelector('.tick input').click(); await settle(150); await click('.dlg button', 'Replace everything'); await answerGate(true); await waitGone('.dlg'); await settle(600);`);
   check('CSV restore applied: 129 items, 128 photos kept', await js(`return [await idbCount('items'), await idbCount('photos'), (await idb('items', 'st-0001')).onHand]`), [129, 128, 5]);
 

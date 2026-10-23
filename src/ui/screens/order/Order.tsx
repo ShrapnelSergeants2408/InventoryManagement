@@ -1,37 +1,75 @@
 // Order list (F12): every item to order, grouped by preferred supplier with subtotals and a
 // grand total; stale-price flags and banner (F14); count-in banner; CSV export (F13); search,
-// with "Export shown lines only" (F12, SPEC v0.8).
+// with "Export shown lines only" (F12, SPEC v0.8). Named order lists (F27) sit beside the
+// automatic one: the same layout, plus +/− and remove per line, and rename, duplicate, delete.
 import { useMemo, useState } from 'preact/hooks';
+import { duplicateOrderList, removeLine, setLineQuantity } from '../../../data/order-lists';
 import { formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { formatCents } from '../../../domain/money';
 import { buildOrderList, filterOrderList, type OrderLine, type OrderList } from '../../../domain/order';
+import { buildNamedOrder, stepQuantity, type NamedOrderList } from '../../../domain/order-lists';
 import { orderAlerts, priceAge, staleLabel } from '../../../domain/stale';
 import { nameKey, type Supplier } from '../../../domain/types';
 import { safeHref } from '../../../domain/url';
+import { Dialog, DialogActions } from '../../components/Dialog';
 import { StateMessage, TopBar, plural } from '../../components/common';
-import { useSettings, useSnapshot, useThumbnail } from '../../data-hooks';
+import { useDb, useOrderLists, useSettings, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { ExportDialog } from './ExportDialog';
+import { DeleteListDialog, ListInfoDialog } from './ListDialogs';
 import { PriceRefreshDialog } from './PriceRefreshDialog';
 
-export function OrderScreen() {
+/** +/− and remove on a named list's lines (F27). */
+interface LineEdit {
+  onStep: (l: OrderLine, deltaPacks: number) => void;
+  onRemove: (l: OrderLine) => void;
+}
+
+/** `listId`: a named list (F27), or null for the automatic list (F12). */
+export function OrderScreen({ listId }: { listId: string | null }) {
+  const db = useDb();
   const live = useSnapshot();
+  const liveLists = useOrderLists();
   const settings = useSettings();
   const [exporting, setExporting] = useState<'all' | 'shown' | null>(null);
   const [query, setQuery] = useState('');
   const [refreshHelp, setRefreshHelp] = useState(false);
+  const [listDlg, setListDlg] = useState<'new' | 'edit' | 'delete' | null>(null);
+  const [removing, setRemoving] = useState<OrderLine | null>(null);
   const today = localIsoDate();
   const snap = live.state === 'ready' ? live.value : null;
-  const list = useMemo(() => (snap ? buildOrderList(snap.items) : null), [snap]);
+  const lists = liveLists.state === 'ready' ? liveLists.value : null;
+  const named: NamedOrderList | null = (listId !== null && lists?.find((l) => l.id === listId)) || null;
+  const missing = listId !== null && lists !== null && !named;
+  const list = useMemo(() => (snap ? (named ? buildNamedOrder(named, snap.items) : listId === null ? buildOrderList(snap.items) : null) : null), [snap, named, listId]);
   const shown = useMemo(() => (list ? filterOrderList(list, query) : null), [list, query]);
   const searching = !!list && !!shown && shown !== list;
   const alerts = useMemo(() => (snap && list ? orderAlerts(list, snap.items, today, settings.staleDays) : null), [snap, list, today, settings.staleDays]);
 
+  const fail = (e: unknown) => showToast(`Couldn't change the list: ${e instanceof Error ? e.message : String(e)}`);
+  const edit: LineEdit | null = named
+    ? {
+        onStep: (l, d) => void setLineQuantity(db, named.id, l.item.id, stepQuantity(l.need, l.vendor.packSize, d)).catch(fail),
+        onRemove: (l) => setRemoving(l),
+      }
+    : null;
+  const duplicate = async () => {
+    if (!named) return;
+    try {
+      const copy = await duplicateOrderList(db, named.id);
+      showToast(`Made a copy: “${copy.name}”.`);
+      location.hash = href.orderList(copy.id);
+    } catch (e) {
+      fail(e);
+    }
+  };
+
   const empty = !!list && list.lineCount === 0;
   const top = (
-    <TopBar title="Order list" subtitle={`Grouped by preferred supplier · ${formatIsoDate(today)}`}>
+    <TopBar title={named ? named.name : 'Order list'} subtitle={`${named ? 'Named list · grouped' : 'Grouped'} by preferred supplier · ${formatIsoDate(today)}`}>
       <div class="searchwrap">
         <Icon name="search" />
         <input
@@ -63,16 +101,44 @@ export function OrderScreen() {
       </button>
     </TopBar>
   );
+  const tabs = <ListTabs lists={lists ?? []} current={listId} onNew={() => setListDlg('new')} />;
+  const dialogs = (
+    <>
+      {listDlg === 'new' && lists && <ListInfoDialog lists={lists} onClose={() => setListDlg(null)} />}
+      {listDlg === 'edit' && named && lists && <ListInfoDialog list={named} lists={lists} onClose={() => setListDlg(null)} />}
+      {listDlg === 'delete' && named && <DeleteListDialog list={named} onClose={() => setListDlg(null)} />}
+    </>
+  );
 
-  if (live.state === 'error') {
+  if (live.state === 'error' || liveLists.state === 'error') {
     return (
       <>
         {top}
-        <StorageError error={live.error} />
+        <StorageError error={live.state === 'error' ? live.error : liveLists.state === 'error' ? liveLists.error : null} />
       </>
     );
   }
-  if (!snap || !list || !shown || !alerts) {
+  if (missing) {
+    return (
+      <>
+        {top}
+        {tabs}
+        <StateMessage
+          icon="order"
+          title="This order list isn’t here"
+          actions={
+            <a class="btn pri" href={href.tab('order')}>
+              Open the automatic list
+            </a>
+          }
+        >
+          <p class="state-text">It was deleted, or this tablet was restored from a backup without it.</p>
+        </StateMessage>
+        {dialogs}
+      </>
+    );
+  }
+  if (!snap || !list || !shown || !alerts || !lists) {
     return (
       <>
         {top}
@@ -87,7 +153,30 @@ export function OrderScreen() {
   return (
     <>
       {top}
-      {alerts.countBanner && (
+      {tabs}
+      {named && (
+        <div class="lhead">
+          <div class="grow lhead-t">
+            {named.notes ? <span class="lnotes">{named.notes}</span> : <span class="small muted">No notes</span>}
+            <span class="small muted">
+              {plural(named.lines.length, 'item')} · a plan only: it never changes counts or the automatic list
+            </span>
+          </div>
+          <button type="button" class="btn" onClick={() => setListDlg('edit')}>
+            <Icon name="pencil" />
+            Rename / notes
+          </button>
+          <button type="button" class="btn" onClick={() => void duplicate()}>
+            <Icon name="copy" />
+            Duplicate
+          </button>
+          <button type="button" class="btn danger" onClick={() => setListDlg('delete')}>
+            <Icon name="trash" />
+            Delete list
+          </button>
+        </div>
+      )}
+      {!named && alerts.countBanner && (
         <div class="banner" role="status">
           <Icon name="count" />
           <span class="grow">
@@ -111,7 +200,21 @@ export function OrderScreen() {
           </button>
         </div>
       )}
-      {empty ? (
+      {empty && named ? (
+        <StateMessage
+          icon="listAdd"
+          title="No items on this list yet"
+          actions={
+            <a class="btn" href={href.tab('inventory')}>
+              Go to inventory
+            </a>
+          }
+        >
+          <p class="state-text">
+            Add items with <strong>Add to order list</strong>: from an item’s ⋮ menu in the inventory list, its detail card, or after scanning its label.
+          </p>
+        </StateMessage>
+      ) : empty ? (
         <StateMessage
           icon="check"
           title="Nothing to order"
@@ -141,14 +244,74 @@ export function OrderScreen() {
               <p class="state-text">The search looks at item names, part numbers, suppliers and notes. Try fewer letters.</p>
             </StateMessage>
           ) : (
-            <Lines list={shown} whole={searching ? list : null} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} />
+            <Lines list={shown} whole={searching ? list : null} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} edit={edit} />
           )}
         </>
       )}
-      {exporting === 'all' && <ExportDialog list={list} onClose={() => setExporting(null)} />}
-      {exporting === 'shown' && <ExportDialog list={shown} whole={list} query={query} onClose={() => setExporting(null)} />}
+      {exporting === 'all' && <ExportDialog list={list} named={named ?? undefined} onClose={() => setExporting(null)} />}
+      {exporting === 'shown' && <ExportDialog list={shown} whole={list} query={query} named={named ?? undefined} onClose={() => setExporting(null)} />}
       {refreshHelp && <PriceRefreshDialog onClose={() => setRefreshHelp(false)} />}
+      {removing && named && (
+        <RemoveLineDialog
+          line={removing}
+          listName={named.name}
+          onClose={() => setRemoving(null)}
+          onRemove={() => removeLine(db, named.id, removing.item.id).then(() => setRemoving(null), fail)}
+        />
+      )}
+      {dialogs}
     </>
+  );
+}
+
+/** Automatic, then each named list A–Z, then "+ New list" (F27). */
+function ListTabs({ lists, current, onNew }: { lists: readonly NamedOrderList[]; current: string | null; onNew: () => void }) {
+  return (
+    <nav class="ltabs" aria-label="Order lists">
+      <a class={current === null ? 'ltab on' : 'ltab'} href={href.tab('order')} aria-current={current === null ? 'page' : undefined}>
+        <Icon name="order" />
+        Automatic
+      </a>
+      {lists.map((l) => (
+        <a key={l.id} class={current === l.id ? 'ltab on' : 'ltab'} href={href.orderList(l.id)} aria-current={current === l.id ? 'page' : undefined}>
+          {l.name}
+          <span class="ltab-n">{l.lines.length}</span>
+        </a>
+      ))}
+      <button type="button" class="ltab new" onClick={onNew}>
+        <Icon name="plus" />
+        New list
+      </button>
+    </nav>
+  );
+}
+
+function RemoveLineDialog(props: { line: OrderLine; listName: string; onClose: () => void; onRemove: () => Promise<unknown> }) {
+  const [busy, setBusy] = useState(false);
+  return (
+    <Dialog label="Remove from list" role="alertdialog" onClose={() => !busy && props.onClose()}>
+      <h2 class="h2">
+        Remove “{props.line.item.name}” from {props.listName}?
+      </h2>
+      <p class="dlg-p">Only the line is removed. The item and its counts stay as they are.</p>
+      <DialogActions>
+        <button type="button" class="btn lg" data-autofocus disabled={busy} onClick={props.onClose}>
+          Keep it
+        </button>
+        <button
+          type="button"
+          class="btn danger lg"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void props.onRemove();
+          }}
+        >
+          <Icon name="trash" />
+          Remove
+        </button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -194,19 +357,21 @@ function Summary({ list, shown, staleLines, staleDays }: { list: OrderList; show
   );
 }
 
-function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Supplier[]; today: string; staleDays: number }) {
+function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Supplier[]; today: string; staleDays: number; edit: LineEdit | null }) {
   const sites = new Map(props.suppliers.map((s) => [nameKey(s.name), safeHref(s.website)]));
+  const grid = props.edit ? 'ogrid ed' : 'ogrid';
   return (
     <div class="olist">
-      <div class="ogrid colh" aria-hidden="true">
+      <div class={`${grid} colh`} aria-hidden="true">
         <span>Item</span>
         <span>Part #</span>
-        <span class="r">Need</span>
+        <span class="r">{props.edit ? 'Wanted' : 'Need'}</span>
         <span class="r">Pack</span>
         <span class="r">Packs</span>
         <span class="r">Order qty</span>
         <span class="r">Pack price</span>
         <span class="r">Line total</span>
+        {props.edit && <span class="r">Packs ±</span>}
       </div>
       {props.list.groups.map((g) => {
         const site = sites.get(nameKey(g.supplier));
@@ -226,7 +391,7 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
               <span class="subtotal">{formatCents(g.subtotalCents)}</span>
             </div>
             {g.lines.map((l) => (
-              <Line key={l.item.id} l={l} today={props.today} staleDays={props.staleDays} />
+              <Line key={l.item.id} l={l} today={props.today} staleDays={props.staleDays} grid={grid} edit={props.edit} />
             ))}
           </section>
         );
@@ -244,7 +409,7 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
   );
 }
 
-function Line({ l, today, staleDays }: { l: OrderLine; today: string; staleDays: number }) {
+function Line({ l, today, staleDays, grid, edit }: { l: OrderLine; today: string; staleDays: number; grid: string; edit: LineEdit | null }) {
   const thumb = useThumbnail(l.item.id, l.item.hasPhoto);
   const v = l.vendor;
   const stale = staleLabel(priceAge(v, today, staleDays));
@@ -252,7 +417,7 @@ function Line({ l, today, staleDays }: { l: OrderLine; today: string; staleDays:
   const total = l.lineTotalCents === null ? '—' : formatCents(l.lineTotalCents);
   const packsText = v.packSize > 1 ? `${l.packs} × pack of ${v.packSize}` : `${l.packs} × 1`;
   return (
-    <div class="ogrid line">
+    <div class={`${grid} line`}>
       <a class="lname" href={href.item(l.item.id)} aria-label={`Open details for ${l.item.name}`}>
         {thumb ? <img src={thumb} alt="" /> : <span class="nophoto" />}
         <span class="lname-t">
@@ -281,8 +446,22 @@ function Line({ l, today, staleDays }: { l: OrderLine; today: string; staleDays:
       <span class="n wide">{price}</span>
       <span class="n l wide">{total}</span>
       <span class="pmeta">
-        {v.partNo ? `${v.partNo} · ` : ''}need {l.need} · {packsText} · {price} → {total}
+        {v.partNo ? `${v.partNo} · ` : ''}
+        {edit ? 'wanted' : 'need'} {l.need} · {packsText} · {price} → {total}
       </span>
+      {edit && (
+        <span class="lctl">
+          <button type="button" class="step sm" aria-label={`One pack fewer of ${l.item.name}`} disabled={l.packs <= 1} onClick={() => edit.onStep(l, -1)}>
+            <Icon name="minus" />
+          </button>
+          <button type="button" class="step sm" aria-label={`One pack more of ${l.item.name}`} onClick={() => edit.onStep(l, +1)}>
+            <Icon name="plus" />
+          </button>
+          <button type="button" class="ib" aria-label={`Remove ${l.item.name} from the list`} onClick={() => edit.onRemove(l)}>
+            <Icon name="trash" />
+          </button>
+        </span>
+      )}
     </div>
   );
 }

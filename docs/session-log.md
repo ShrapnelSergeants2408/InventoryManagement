@@ -545,3 +545,36 @@ F12 order-list search with shown and whole-list totals; Export CSV unchanged; Ex
 High: totals checked to the cent in unit tests and against the screen; the exported files are read back in the browser check; mutants caught. Three small decisions for Dan are in the M14 review.
 
 **Next:** Dan merges the PR (it also brings the check cleanup to `main`) and tries the search on the Tab S8; then M15 (named order lists and the first schema upgrade, high risk; needs a full backup exported from the Tab S8 first).
+
+
+---
+
+## Stage 6 — 2026-10-23 — M14 on the tablet, the M15b decision, M15 named order lists and the first schema upgrade
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session. Dan merged PR #18 (M14) on 2026-10-21. Branch `m15-order-lists` from `main` (`92d80ae`).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~11:30 | Dan asked what's next. M14 was merged; next was the Tab S8 check, then M15 |
+| ~11:40 | Dan: the tablet had none of the M11–M14 changes. The live site served the M14 build (checked the bundle). Cause: the service worker keeps the old copy until Reload is tapped on the banner. Gave steps: back up first, close and reopen, check the address, unregister in `chrome://serviceworker-internals` (never Clear site data) |
+| ~11:50 | Dan: M14 works on the tablet. Asked for checkboxes to build a custom order (e.g. only AndyMark, up to desired rather than desired + spares). Dan chose: checkboxes on the Automatic list and in Inventory Select mode; the quantity rule chosen each time; Automatic unchanged; built as **M15b** after M15. Written into SPEC F27, §19 and the decision log, and the Stage 6 plan |
+| ~12:00 | Dan: "ready to continue to build m15" |
+| ~12:00–12:40 | Domain and I/O: `order-lists.ts` (quantities, names, pricing via the shared `groupOrderLines`), `order-lists-csv.ts`; schema v2 with `checkSchema`; `data/order-lists.ts`; item delete, `replaceAll`, backup, bundle, restore. One shell command hung reading stdin (`python -`); stopped it |
+| ~12:40–13:00 | Boot: guard, blocked and replaced states; finding 1 (`storage-error.ts`, DELETE typed). Unit tests: 40 new, 585 in all. Screens: Order tabs and list view, Add / New / Edit / Delete dialogs, row ⋮ menu, Detail, Scan, Delete confirmation, restore comparison; CSS |
+| ~13:00–13:15 | `scripts/m15-ui-check.mjs` 40/40 after script fixes (finding 5); one real fix (apostrophe). Regression M2–M14: M4, M5, M8, M10 needed updates for intended changes (M4 by restoring the old subtitle; the rest in the checks). Mutants 38/38 after one test was tightened. Interface mutant caught |
+| ~13:15 | `scripts/m15-upgrade-check.mjs`: `main` at `92d80ae` built in a scratch worktree (node_modules by junction, removed before the worktree), then this build at the same address. 19/19: blocked screen, byte-equal rows, rollback harmless. The plan's rollback step corrected (M15 review, finding 1) |
+| ~13:20 | `docs/reviews/M15.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F27 named order lists (create, rename, duplicate, delete; add from row, detail and scan; +/− and remove; search and exports; backup and both restores; item delete). Schema v2 with the guard (Stage 5 finding 6), the blocked-upgrade screen, and the Set up again fix (finding 1). `APP_VERSION` 0.2.0. Spec and plan updated for M15b.
+
+**DELIVERABLES PRODUCED**
+New: `src/domain/{order-lists,storage-error}.ts`, `src/data/order-lists.ts`, `src/io/order-lists-csv.ts`, `src/ui/screens/order/ListDialogs.tsx`, `tests/{order-lists,order-lists-db,schema-upgrade,tablet-backup}.test.ts`, `scripts/m15-ui-check.mjs`, `scripts/m15-upgrade-check.mjs`, `docs/reviews/M15.md`. Changed: `src/data/{db,inventory,items,setup,backup}.ts`, `src/domain/order.ts`, `src/io/{backup,bundle,order-csv,restore}.ts`, `src/ui/App.tsx`, `src/ui/data-hooks.ts`, `src/ui/icons.tsx`, `src/ui/shell/{router.ts,UpdateBanner.tsx}`, `src/ui/screens/{StorageError.tsx,order/Order.tsx,order/ExportDialog.tsx,inventory/ItemRow.tsx,item/Detail.tsx,item/DeleteItem.tsx,scan/Scan.tsx,more/Backup.tsx,more/RestoreDialog.tsx}`, `src/styles/app.css`, `tests/backup-restore.test.ts`, `scripts/m{5,8,10}-ui-check.mjs`, `docs/SPEC.md`, `docs/stage6-plan.md`.
+
+**CONFIDENCE**
+High for the upgrade: byte-equal rows in unit tests and in a real browser, the blocked case and a rollback tried. High for list math (to the cent, mutants caught). Still to do: the real Tab S8 backup through `tests/tablet-backup.test.ts`, before merging.
+
+**Next:** Dan exports a full backup from the Tab S8 and runs (or gives the path for) the real-data test; then merges with a merge commit and does the tablet check in the M15 review; then M15b.
+| 13:27 | Dan: the backup is at `D:\backups\inventory-backup.zip`; the file there is `inventory-backup-2026-10-23-1323.zip` (the only one in the folder). `tests/tablet-backup.test.ts` with it: passes, 129 items, 127 photos, order total $6,949.47, the same after the upgrade and after export → restore. Review and PR updated |

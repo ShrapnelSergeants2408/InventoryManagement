@@ -29,6 +29,7 @@ Numbering continues from Stage 4 (M1–M10), so `docs/reviews/` stays unambiguou
 | **M13** | Bulk move | F28, F9 | Medium |
 | **M14** | Order-list search and Export shown lines only | F12, F13 | Medium (money) |
 | **M15** | Named order lists, first schema upgrade | F27, F8, F10, F21, F15, F17, §3, §7 | **High** (schema) |
+| **M15b** | Add many items to an order list: checkboxes, quantity rule | F27 (add many), F28, F12 | Medium (money) |
 | **M16a** | Helpers on the main tablet: records, count kits, second schema upgrade | §18.1, §18.2 (kit), §3, F24 | **High** (schema) |
 | **M16b** | Helper mode on the device: join, count, add items, send | §18.2 (join), §18.3, §18.4, F22, §2, §17 | Medium |
 | **M16c** | Import counts, undo, pending items | §18.5, F26, F24, F15, F17 | **High** (real counts) |
@@ -134,6 +135,19 @@ Numbering continues from Stage 4 (M1–M10), so `docs/reviews/` stays unambiguou
   The manifest app version is bumped (`APP_VERSION` is still `0.1.0`).
 - **Screens:** Order (tabs or a picker for Automatic / named lists), item row menu (new), Detail, Scan result, Delete confirmation, Restore dialog (the comparison mentions order lists), StorageError.
 - **Regression:** `m4`, `m5` (backup, restore, price import), `m6` (PIN gates: none added), `m8` (scan), `m3` (delete). The F15/F17 Stage 5 checks.
+
+### M15b — Add many items to an order list (F27, Dan 2026-10-23)
+
+- **Acceptance:**
+  - The Automatic list gets Select mode: checkboxes on lines and supplier headers, and "Select all shown" (so a search narrows the selection first).
+  - Inventory Select mode (F28) gets **Add to order list…** beside Move to….
+  - The Add dialog picks a list (or "+ New list…") and a quantity rule: up to desired + spares, up to desired only, or one pack each, rounded up to whole packs.
+  - Items already at the target are skipped, and the dialog says how many. Items already on the list: asked once, replace or keep.
+  - Saved in one transaction. The Automatic list and inventory don't change.
+- **Tests:** each quantity rule with pack rounding, against hand-worked numbers; skipped count; replace vs keep; a hidden-selection warning as in F28; the list's totals to the cent.
+- **No schema change** (uses M15's `orderLists`).
+- **Screens:** Order (Automatic, Select mode), Inventory (Select bar), the Add dialog.
+- **Regression:** `m4`, `m13`, `m14`, M15's check.
 
 ### M16a — Helpers on the main tablet, and the second schema upgrade
 
@@ -243,6 +257,8 @@ This covers an old cached copy, and a rollback of the Pages deploy. Dexie 4 does
    - build `stage5-verified` into a temp folder; serve it; run setup and restore the tablet backup;
    - stop it and serve the new build **at the same origin**; reload; check the data on screen and in IndexedDB;
    - then serve the old build again: the guard screen appears and nothing is written.
+
+   **Corrected in M15:** the old build can't show the guard screen, because the guard is new in M15. So step 3 serves the old build again to show what a rollback actually does: Dexie 4 opens the v2 database without an error and leaves the v2 data alone (`scripts/m15-upgrade-check.mjs`). The guard itself is tested from M15 onward: a v2 build opening a database marked v3 (unit tests and `scripts/m15-ui-check.mjs`). The old build in step 3 is `main` before M15, which the tablet runs today, not `stage5-verified`.
 4. **On the tablet:**
    - export a full backup first; that backup is the way back (§18.7);
    - after the deploy, reload and check the item count, the order total and the About screen;

@@ -95,6 +95,7 @@ const H = `
   const norm = (s) => s.replace(/\\s+/g, ' ').trim();
   const byText = (sel, t) => $$(sel).find((b) => norm(b.textContent).includes(t));
   const click = async (sel, t) => { const b = byText(sel, t); if (!b) throw new Error('nothing like ' + sel + ' with text ' + t); b.click(); await settle(); return b; };
+  const type = async (sel, v) => { const el = $(sel); el.focus(); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); await settle(150); };
 ${PIN_H}
   const idbCount = (store) => new Promise((res, rej) => {
     const r = indexedDB.open('frc2408-inventory');
@@ -240,13 +241,18 @@ try {
   });
   await send('Page.reload');
   await waitFor(`document.querySelector('[role=alert] .h2')`, 30000);
-  check('storage error: Try again and Set up again', await js(`return $$('[role=alert] .btn').map((b) => norm(b.textContent))`), ['Try again', 'Set up again…']);
+  // Stage 5 finding 1 (M15): the first failure offers only Try again.
+  check('storage error, first failure: only Try again', await js(`return $$('[role=alert] .btn').map((b) => norm(b.textContent))`), ['Try again']);
+  await js(`await click('[role=alert] .btn', 'Try again'); await settle(800);`);
+  await waitFor(`document.querySelector('[role=alert] .h2')`, 30000);
+  check('storage error, Try again failed too: Try again and Set up again', await js(`return $$('[role=alert] .btn').map((b) => norm(b.textContent))`), ['Try again', 'Set up again…']);
   await shot('04-storage-error');
   await js(`await click('[role=alert] .btn', 'Set up again');`);
-  check('Set up again asks first, naming what is deleted', await js(`const d = $('[role=alertdialog][aria-label="Set up again"]'); return [!!d, norm(d.querySelector('.dlg-p').textContent).includes('the inventory, photos, PIN and settings'), $$('[role=alertdialog] .btn').map((b) => norm(b.textContent))]`), [true, true, ['Cancel', 'Delete and set up again']]);
+  check('Set up again asks first, naming what is deleted, and that the PIN can’t protect it', await js(`const d = $('[role=alertdialog][aria-label="Set up again"]'); const p = $$('[role=alertdialog] .dlg-p').map((e) => norm(e.textContent)); return [!!d, p[0].includes('the inventory, photos, order lists, PIN and settings'), p[1].startsWith('The mentor PIN can’t protect this step'), $$('[role=alertdialog] .btn').map((b) => norm(b.textContent))]`), [true, true, true, ['Cancel', 'Delete and set up again']]);
+  check('Delete stays off until DELETE is typed', await js(`const b = () => byText('[role=alertdialog] .btn', 'Delete and set up again'); const off = b().disabled; await type('#rsword', 'delet'); const still = b().disabled; await type('#rsword', 'delete'); return [off, still, b().disabled]`), [true, true, false]);
   await js(`await click('[role=alertdialog] .btn', 'Cancel');`);
   check('Cancel keeps everything', await js(`return !$('[role=alertdialog]')`), true);
-  await js(`await click('[role=alert] .btn', 'Set up again'); byText('[role=alertdialog] .btn', 'Delete and set up again').click();`);
+  await js(`await click('[role=alert] .btn', 'Set up again'); await type('#rsword', 'DELETE'); byText('[role=alertdialog] .btn', 'Delete and set up again').click();`);
   await sleep(1500);
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: blocker.result.identifier });
   await send('Page.reload');

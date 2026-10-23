@@ -1,7 +1,7 @@
 // Named order lists (F27): create, rename, duplicate, delete, and their lines. No PIN (§6).
 // Lists never change an item; each write runs in one transaction with the change marker.
-import { copyName, listNameProblem, newListId, sortLists, type NamedOrderList } from '../domain/order-lists';
-import { fromOrderListRow, toOrderListRow, type InventoryDb } from './db';
+import { applyAddMany, copyName, listNameProblem, newListId, planAddMany, sortLists, type NamedOrderList, type QuantityRule } from '../domain/order-lists';
+import { fromItemRow, fromOrderListRow, toOrderListRow, type InventoryDb } from './db';
 
 export async function loadOrderLists(db: InventoryDb): Promise<NamedOrderList[]> {
   return sortLists((await db.orderLists.toArray()).map(fromOrderListRow));
@@ -115,4 +115,48 @@ export async function removeLine(db: InventoryDb, listId: string, itemId: string
 
 function checkQuantity(quantity: number): void {
   if (!Number.isSafeInteger(quantity) || quantity < 1) throw new RangeError('quantity must be a whole number ≥ 1');
+}
+
+export interface AddManyResult {
+  list: NamedOrderList;
+  added: number;
+  /** Already on the list: replaced, or kept as they were. */
+  replaced: number;
+  kept: number;
+  skipped: number;
+}
+
+/**
+ * Adds many items at once (F27 "Add many at once") to a list, or to a new list when `to` has
+ * a name, in one transaction. The plan is worked out from the items as stored now.
+ */
+export async function addManyToOrderList(
+  db: InventoryDb,
+  to: { listId: string } | { newName: string },
+  itemIds: readonly string[],
+  rule: QuantityRule,
+  replace: boolean,
+  now = Date.now(),
+): Promise<AddManyResult> {
+  return db.transaction('rw', db.orderLists, db.items, db.settings, async () => {
+    const items = (await db.items.bulkGet([...itemIds])).flatMap((r) => (r ? [fromItemRow(r)] : []));
+    if (items.length === 0) throw new Error('none of those items are here any more');
+    let list: NamedOrderList;
+    if ('newName' in to) {
+      const lists = await current(db);
+      const problem = listNameProblem(to.newName, lists);
+      if (problem) throw new Error(problem);
+      const ids = new Set(lists.map((l) => l.id));
+      list = { id: newListId((id) => ids.has(id)), name: to.newName.trim(), notes: '', created: now, updated: now, lines: [] };
+    } else list = await getList(db, to.listId);
+    const plan = planAddMany(items, rule, list);
+    const saved = await save(db, { ...list, lines: applyAddMany(list, plan, replace) }, now);
+    return {
+      list: saved,
+      added: plan.add.length,
+      replaced: replace ? plan.onList.length : 0,
+      kept: replace ? 0 : plan.onList.length,
+      skipped: plan.skipped.length,
+    };
+  });
 }

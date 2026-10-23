@@ -2,30 +2,51 @@
 // grand total; stale-price flags and banner (F14); count-in banner; CSV export (F13); search,
 // with "Export shown lines only" (F12, SPEC v0.8). Named order lists (F27) sit beside the
 // automatic one: the same layout, plus +/− and remove per line, and rename, duplicate, delete.
+// Select on the automatic list puts checkboxes on lines and supplier headers, to add many at once.
+import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { duplicateOrderList, removeLine, setLineQuantity } from '../../../data/order-lists';
 import { formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { formatCents } from '../../../domain/money';
 import { buildOrderList, filterOrderList, type OrderLine, type OrderList } from '../../../domain/order';
 import { buildNamedOrder, stepQuantity, type NamedOrderList } from '../../../domain/order-lists';
+import { selectState, withIds } from '../../../domain/selection';
 import { orderAlerts, priceAge, staleLabel } from '../../../domain/stale';
 import { nameKey, type Supplier } from '../../../domain/types';
 import { safeHref } from '../../../domain/url';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { StateMessage, TopBar, plural } from '../../components/common';
+import { CheckBox, StateMessage, TopBar, plural } from '../../components/common';
+import { SelectBar } from '../../components/SelectBar';
 import { useDb, useOrderLists, useSettings, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { ExportDialog } from './ExportDialog';
-import { DeleteListDialog, ListInfoDialog } from './ListDialogs';
+import { AddManyDialog, DeleteListDialog, ListInfoDialog } from './ListDialogs';
 import { PriceRefreshDialog } from './PriceRefreshDialog';
 
 /** +/− and remove on a named list's lines (F27). */
 interface LineEdit {
   onStep: (l: OrderLine, deltaPacks: number) => void;
   onRemove: (l: OrderLine) => void;
+}
+
+/** Checkboxes on the automatic list's lines (F27 "Add many at once"). */
+interface LineSelect {
+  selected: ReadonlySet<string>;
+  set: (ids: readonly string[], on: boolean) => void;
+}
+
+/** A supplier header's checkbox: every line of that supplier shown, some, or none. */
+function SupplierCheck({ ids, select, children }: { ids: string[]; select: LineSelect; children: ComponentChildren }) {
+  const state = selectState(ids, select.selected);
+  return (
+    <button type="button" class="cb" role="checkbox" aria-checked={state === 'on' ? 'true' : state === 'some' ? 'mixed' : 'false'} onClick={() => select.set(ids, state !== 'on')}>
+      <CheckBox state={state} />
+      {children}
+    </button>
+  );
 }
 
 /** `listId`: a named list (F27), or null for the automatic list (F12). */
@@ -39,6 +60,10 @@ export function OrderScreen({ listId }: { listId: string | null }) {
   const [refreshHelp, setRefreshHelp] = useState(false);
   const [listDlg, setListDlg] = useState<'new' | 'edit' | 'delete' | null>(null);
   const [removing, setRemoving] = useState<OrderLine | null>(null);
+  // Select mode on the automatic list (F27 "Add many at once"): checkboxes on lines and supplier headers.
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [adding, setAdding] = useState(false);
   const today = localIsoDate();
   const snap = live.state === 'ready' ? live.value : null;
   const lists = liveLists.state === 'ready' ? liveLists.value : null;
@@ -48,6 +73,15 @@ export function OrderScreen({ listId }: { listId: string | null }) {
   const shown = useMemo(() => (list ? filterOrderList(list, query) : null), [list, query]);
   const searching = !!list && !!shown && shown !== list;
   const alerts = useMemo(() => (snap && list ? orderAlerts(list, snap.items, today, settings.staleDays) : null), [snap, list, today, settings.staleDays]);
+  // Only lines still on the automatic list stay selected (a count can change while selecting).
+  const lineIds = useMemo(() => (list ? list.groups.flatMap((g) => g.lines.map((l) => l.item.id)) : []), [list]);
+  const shownIds = useMemo(() => (shown ? shown.groups.flatMap((g) => g.lines.map((l) => l.item.id)) : []), [shown]);
+  const selected = useMemo(() => new Set(lineIds.filter((id) => picked.has(id))), [lineIds, picked]);
+  const select: LineSelect | null = selecting ? { selected, set: (ids, on) => setPicked(withIds(selected, ids, on)) } : null;
+  const endSelect = () => {
+    setSelecting(false);
+    setPicked(new Set());
+  };
 
   const fail = (e: unknown) => showToast(`Couldn't change the list: ${e instanceof Error ? e.message : String(e)}`);
   const edit: LineEdit | null = named
@@ -101,7 +135,21 @@ export function OrderScreen({ listId }: { listId: string | null }) {
       </button>
     </TopBar>
   );
-  const tabs = <ListTabs lists={lists ?? []} current={listId} onNew={() => setListDlg('new')} />;
+  const tabs = (
+    <ListTabs lists={lists ?? []} current={listId} onNew={() => setListDlg('new')}>
+      {listId === null &&
+        (selecting ? (
+          <button type="button" class="ltab sel on" onClick={endSelect}>
+            Done
+          </button>
+        ) : (
+          <button type="button" class="ltab sel" disabled={!list || empty} onClick={() => setSelecting(true)}>
+            <Icon name="check" />
+            Select
+          </button>
+        ))}
+    </ListTabs>
+  );
   const dialogs = (
     <>
       {listDlg === 'new' && lists && <ListInfoDialog lists={lists} onClose={() => setListDlg(null)} />}
@@ -154,6 +202,22 @@ export function OrderScreen({ listId }: { listId: string | null }) {
     <>
       {top}
       {tabs}
+      {select && (
+        <SelectBar
+          count={selected.size}
+          noun="line"
+          hidden={[...selected].filter((id) => !shownIds.includes(id)).length}
+          shown={shownIds.length}
+          allShown={shownIds.length > 0 && shownIds.every((id) => selected.has(id))}
+          onAll={() => setPicked(withIds(selected, shownIds, true))}
+          onClear={() => setPicked(new Set())}
+        >
+          <button type="button" class="btn pri" disabled={selected.size === 0} onClick={() => setAdding(true)}>
+            <Icon name="listAdd" />
+            Add to order list…
+          </button>
+        </SelectBar>
+      )}
       {named && (
         <div class="lhead">
           <div class="grow lhead-t">
@@ -244,7 +308,7 @@ export function OrderScreen({ listId }: { listId: string | null }) {
               <p class="state-text">The search looks at item names, part numbers, suppliers and notes. Try fewer letters.</p>
             </StateMessage>
           ) : (
-            <Lines list={shown} whole={searching ? list : null} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} edit={edit} />
+            <Lines list={shown} whole={searching ? list : null} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} edit={edit} select={select} />
           )}
         </>
       )}
@@ -259,13 +323,23 @@ export function OrderScreen({ listId }: { listId: string | null }) {
           onRemove={() => removeLine(db, named.id, removing.item.id).then(() => setRemoving(null), fail)}
         />
       )}
+      {adding && selected.size > 0 && (
+        <AddManyDialog
+          chosen={snap.items.filter((i) => selected.has(i.id))}
+          onClose={() => setAdding(false)}
+          onDone={() => {
+            setAdding(false);
+            endSelect();
+          }}
+        />
+      )}
       {dialogs}
     </>
   );
 }
 
-/** Automatic, then each named list A–Z, then "+ New list" (F27). */
-function ListTabs({ lists, current, onNew }: { lists: readonly NamedOrderList[]; current: string | null; onNew: () => void }) {
+/** Automatic, then each named list A–Z, then "+ New list" (F27); `children` at the end (Select). */
+function ListTabs({ lists, current, onNew, children }: { lists: readonly NamedOrderList[]; current: string | null; onNew: () => void; children?: ComponentChildren }) {
   return (
     <nav class="ltabs" aria-label="Order lists">
       <a class={current === null ? 'ltab on' : 'ltab'} href={href.tab('order')} aria-current={current === null ? 'page' : undefined}>
@@ -282,6 +356,7 @@ function ListTabs({ lists, current, onNew }: { lists: readonly NamedOrderList[];
         <Icon name="plus" />
         New list
       </button>
+      {children}
     </nav>
   );
 }
@@ -357,7 +432,8 @@ function Summary({ list, shown, staleLines, staleDays }: { list: OrderList; show
   );
 }
 
-function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Supplier[]; today: string; staleDays: number; edit: LineEdit | null }) {
+function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Supplier[]; today: string; staleDays: number; edit: LineEdit | null; select: LineSelect | null }) {
+  const select = props.select;
   const sites = new Map(props.suppliers.map((s) => [nameKey(s.name), safeHref(s.website)]));
   const grid = props.edit ? 'ogrid ed' : 'ogrid';
   return (
@@ -378,7 +454,13 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
         return (
           <section key={g.supplier} aria-label={`${g.supplier}: ${plural(g.lines.length, 'line')}, subtotal ${formatCents(g.subtotalCents)}`}>
             <div class="shdr">
-              <h2 class="oname">{g.supplier}</h2>
+              {select ? (
+                <SupplierCheck ids={g.lines.map((l) => l.item.id)} select={select}>
+                  <h2 class="oname">{g.supplier}</h2>
+                </SupplierCheck>
+              ) : (
+                <h2 class="oname">{g.supplier}</h2>
+              )}
               {site && (
                 <a class="ib" href={site} target="_blank" rel="noopener noreferrer" aria-label={`Open the ${g.supplier} website`}>
                   <Icon name="external" />
@@ -391,7 +473,7 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
               <span class="subtotal">{formatCents(g.subtotalCents)}</span>
             </div>
             {g.lines.map((l) => (
-              <Line key={l.item.id} l={l} today={props.today} staleDays={props.staleDays} grid={grid} edit={props.edit} />
+              <Line key={l.item.id} l={l} today={props.today} staleDays={props.staleDays} grid={grid} edit={props.edit} select={select} />
             ))}
           </section>
         );
@@ -409,32 +491,46 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
   );
 }
 
-function Line({ l, today, staleDays, grid, edit }: { l: OrderLine; today: string; staleDays: number; grid: string; edit: LineEdit | null }) {
+function Line({ l, today, staleDays, grid, edit, select }: { l: OrderLine; today: string; staleDays: number; grid: string; edit: LineEdit | null; select: LineSelect | null }) {
   const thumb = useThumbnail(l.item.id, l.item.hasPhoto);
   const v = l.vendor;
   const stale = staleLabel(priceAge(v, today, staleDays));
   const price = v.packPriceCents === null ? 'No price' : formatCents(v.packPriceCents);
   const total = l.lineTotalCents === null ? '—' : formatCents(l.lineTotalCents);
   const packsText = v.packSize > 1 ? `${l.packs} × pack of ${v.packSize}` : `${l.packs} × 1`;
+  const on = select?.selected.has(l.item.id) ?? false;
+  const name = (
+    <>
+      {select && <CheckBox state={on ? 'on' : 'off'} />}
+      {thumb ? <img src={thumb} alt="" /> : <span class="nophoto" />}
+      <span class="lname-t">
+        <span class="lt">{l.item.name}</span>
+        {(stale || v.packPriceCents === null) && (
+          <span class="lchips">
+            {stale && (
+              <span class="chip stale">
+                <Icon name="clock" />
+                {stale}
+              </span>
+            )}
+            {v.packPriceCents === null && <span class="chip np">NO PRICE — not in total</span>}
+          </span>
+        )}
+      </span>
+    </>
+  );
   return (
-    <div class={`${grid} line`}>
-      <a class="lname" href={href.item(l.item.id)} aria-label={`Open details for ${l.item.name}`}>
-        {thumb ? <img src={thumb} alt="" /> : <span class="nophoto" />}
-        <span class="lname-t">
-          <span class="lt">{l.item.name}</span>
-          {(stale || v.packPriceCents === null) && (
-            <span class="lchips">
-              {stale && (
-                <span class="chip stale">
-                  <Icon name="clock" />
-                  {stale}
-                </span>
-              )}
-              {v.packPriceCents === null && <span class="chip np">NO PRICE — not in total</span>}
-            </span>
-          )}
-        </span>
-      </a>
+    <div class={select && on ? `${grid} line picked` : `${grid} line`}>
+      {select ? (
+        // Select mode: the item's name toggles its checkbox instead of opening the detail card.
+        <button type="button" class="lname lsel" role="checkbox" aria-checked={on} onClick={() => select.set([l.item.id], !on)}>
+          {name}
+        </button>
+      ) : (
+        <a class="lname" href={href.item(l.item.id)} aria-label={`Open details for ${l.item.name}`}>
+          {name}
+        </a>
+      )}
       <span class="mono wide">{v.partNo}</span>
       <span class="n wide">{l.need}</span>
       <span class="n wide">{v.packSize}</span>

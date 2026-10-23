@@ -174,7 +174,7 @@ try {
   check('settings unchanged apart from schemaVersion (PIN, recovery code, countSince, setup time)', after.settings.filter((s) => s.key !== 'schemaVersion'), before.settings);
   check('the hand-edited item is as it was', after.items.find((i) => i.id === 'st-0001') && [after.items.find((i) => i.id === 'st-0001').onHand, after.items.find((i) => i.id === 'st-0001').lastCounted], [7, '2026-03-08']);
   check('order total after the upgrade', await A.js(`${PAGE} ${orderTotal}`), totalBefore);
-  check('the new Order screen: Automatic tab and New list', await A.js(`${PAGE} return $$('.ltabs .ltab').map((t) => norm(t.textContent))`), ['Automatic', 'New list']);
+  check('the new Order screen: Automatic tab and New list', await A.js(`${PAGE} return $$('.ltabs .ltab:not(.sel)').map((t) => norm(t.textContent))`), ['Automatic', 'New list']);
   await shot('02-upgraded');
 
   // Make a named list on v2, so the rollback below has v2 data to ignore.
@@ -197,7 +197,7 @@ try {
   await A.send('Page.reload', { ignoreCache: true });
   await waitFor(A, `document.querySelectorAll('.cathdr').length >= 11`, 30000);
   await A.js(`${PAGE} location.hash = '#/order'; await settle(900);`);
-  check('forward again: the list is there', await A.js(`${PAGE} return $$('.ltabs .ltab').map((t) => norm([...t.childNodes].map((c) => c.textContent).join(' ')))`), ['Automatic', 'Rollback test 0', 'New list']);
+  check('forward again: the list is there', await A.js(`${PAGE} return $$('.ltabs .ltab:not(.sel)').map((t) => norm([...t.childNodes].map((c) => c.textContent).join(' ')))`), ['Automatic', 'Rollback test 0', 'New list']);
   B.ws.close();
 } catch (e) {
   results.push('ERROR ' + e.message);

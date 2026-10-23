@@ -8,6 +8,7 @@ import { InventoryDb } from '../src/data/db';
 import { loadSnapshot, replaceAll } from '../src/data/inventory';
 import { deleteItem } from '../src/data/items';
 import {
+  addManyToOrderList,
   addToOrderList,
   createOrderList,
   deleteOrderList,
@@ -232,5 +233,39 @@ describe('backup and restore (F15, F17, §15 Q7d)', () => {
     const r = await readRestoreFile({ name: 'bad.zip', bytes: bad }, await loadSnapshot(src));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.problems[0]).toMatchObject({ file: 'order-lists.csv', row: 2 });
+  });
+});
+
+describe('add many at once (F27, one transaction)', () => {
+  it('adds to a new list, skipping items at the target', async () => {
+    const db = await seeded();
+    // a: desired 4 + spares 1, on hand 1 → desired only: 3. b: desired 2, packs of 5 → 5. c: desired 0 → skipped.
+    const r = await addManyToOrderList(db, { newName: 'AndyMark' }, ['a', 'b', 'c'], 'desired', false, 50);
+    expect([r.added, r.replaced, r.kept, r.skipped]).toEqual([2, 0, 0, 1]);
+    expect(r.list).toMatchObject({ name: 'AndyMark', created: 50, lines: [{ itemId: 'a', quantity: 3 }, { itemId: 'b', quantity: 5 }] });
+    expect((await loadOrderLists(db)).map((l) => l.name)).toEqual(['AndyMark']);
+  });
+
+  it('asks once for items already on the list: replace or keep', async () => {
+    const db = await seeded();
+    const l = await createOrderList(db, 'L', '');
+    await addToOrderList(db, l.id, 'a', 9);
+    const kept = await addManyToOrderList(db, { listId: l.id }, ['a', 'b'], 'spares', false);
+    expect([kept.added, kept.kept, kept.replaced]).toEqual([1, 1, 0]);
+    expect((await loadOrderLists(db))[0]!.lines).toEqual([{ itemId: 'a', quantity: 9 }, { itemId: 'b', quantity: 5 }]);
+    const rep = await addManyToOrderList(db, { listId: l.id }, ['a', 'b'], 'spares', true);
+    expect([rep.added, rep.kept, rep.replaced]).toEqual([0, 0, 2]);
+    expect((await loadOrderLists(db))[0]!.lines).toEqual([{ itemId: 'a', quantity: 4 }, { itemId: 'b', quantity: 5 }]);
+  });
+
+  it('a clashing new name, or no items left, changes nothing; inventory never changes', async () => {
+    const db = await seeded();
+    const before = await loadSnapshot(db);
+    await createOrderList(db, 'AndyMark', '');
+    await expect(addManyToOrderList(db, { newName: 'andymark' }, ['a'], 'pack', false)).rejects.toThrow('There’s already a list called “AndyMark”.');
+    await expect(addManyToOrderList(db, { newName: 'Other' }, ['gone'], 'pack', false)).rejects.toThrow(/none of those items/);
+    expect((await loadOrderLists(db)).map((l) => [l.name, l.lines.length])).toEqual([['AndyMark', 0]]);
+    await addManyToOrderList(db, { newName: 'Other' }, ['a', 'b', 'c'], 'pack', false);
+    expect((await loadSnapshot(db)).items).toEqual(before.items);
   });
 });

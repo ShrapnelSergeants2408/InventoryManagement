@@ -1,5 +1,5 @@
 // Inventory (home): grouped list (F1), rows (F2), quick adjust (F3), search (F4), filters (F5),
-// Select and bulk move (F28).
+// Select and bulk move (F28), and add the selection to an order list (F27).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { adjustOnHand, setOnHand } from '../../../data/inventory';
 import { moveItemsTo } from '../../../data/lists';
@@ -18,6 +18,8 @@ import { showToast } from '../../shell/toast';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { FilterPanel, NO_LOCATION_LABEL } from './FilterPanel';
 import { ItemRow, Thumb } from './ItemRow';
+import { SelectBar } from '../../components/SelectBar';
+import { AddManyDialog } from '../order/ListDialogs';
 import { MoveDialog } from './MoveDialog';
 import { StorageError } from '../StorageError';
 
@@ -53,10 +55,11 @@ export function InventoryScreen() {
   const [filters, setFilters] = useState<Filters>(() => loadFilters());
   const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded());
   const [panelOpen, setPanelOpen] = useState(false);
-  // Select mode (F28): checkboxes on rows and group headers, then Move to…
+  // Select mode (F28): checkboxes on rows and group headers, then Move to… or Add to order list… (F27).
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [moveOpen, setMoveOpen] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => saveFilters(filters), [filters]);
   useEffect(() => saveExpanded(expanded), [expanded]);
@@ -159,13 +162,22 @@ export function InventoryScreen() {
       {selecting && view && (
         <SelectBar
           count={selected.size}
+          noun="item"
           hidden={[...selected].filter((id) => !view.shownIds.includes(id)).length}
           shown={view.shownIds.length}
           allShown={view.shownIds.length > 0 && view.shownIds.every((id) => selected.has(id))}
           onAll={() => setPicked(withIds(selected, view.shownIds, true))}
           onClear={() => setPicked(new Set())}
-          onMove={() => setMoveOpen(true)}
-        />
+        >
+          <button type="button" class="btn" disabled={selected.size === 0} onClick={() => setAddOpen(true)}>
+            <Icon name="listAdd" />
+            Add to order list…
+          </button>
+          <button type="button" class="btn pri" disabled={selected.size === 0} onClick={() => setMoveOpen(true)}>
+            <Icon name="folder" />
+            Move to…
+          </button>
+        </SelectBar>
       )}
 
       {!view || !snap ? (
@@ -217,6 +229,17 @@ export function InventoryScreen() {
             setMoveOpen(false);
             endSelect();
             showToast(`Moved ${plural(n, 'item')} to ${placeLabel(to)}`);
+          }}
+        />
+      )}
+
+      {addOpen && chosen.length > 0 && (
+        <AddManyDialog
+          chosen={chosen}
+          onClose={() => setAddOpen(false)}
+          onDone={() => {
+            setAddOpen(false);
+            endSelect();
           }}
         />
       )}
@@ -386,27 +409,6 @@ function SelectRow({ item, info, select }: { item: Item; info: ItemInfo; select:
       <span class="rchip">
         <StatusChip status={info.status} />
       </span>
-    </div>
-  );
-}
-
-function SelectBar(props: { count: number; hidden: number; shown: number; allShown: boolean; onAll: () => void; onClear: () => void; onMove: () => void }) {
-  return (
-    <div class="selbar" role="toolbar" aria-label="Selected items">
-      <span class="selcount">
-        <strong>{plural(props.count, 'item')} selected</strong>
-        {props.hidden > 0 && <span class="small muted"> · {props.hidden} not shown by this search or filter</span>}
-      </span>
-      <button type="button" class="btn" disabled={props.allShown} onClick={props.onAll}>
-        Select all shown ({props.shown})
-      </button>
-      <button type="button" class="btn" disabled={props.count === 0} onClick={props.onClear}>
-        Clear
-      </button>
-      <button type="button" class="btn pri" disabled={props.count === 0} onClick={props.onMove}>
-        <Icon name="folder" />
-        Move to…
-      </button>
     </div>
   );
 }

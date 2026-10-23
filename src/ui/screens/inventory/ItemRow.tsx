@@ -1,12 +1,16 @@
 // One item row (F2): thumbnail, name, note icon, part # · supplier · pack price · location,
-// desired / spares / order, status chip, On-hand stepper (F3).
+// desired / spares / order, status chip, On-hand stepper (F3), and the row menu (⋮): Add to
+// order list (F27), details, QR label.
+import { useState } from 'preact/hooks';
 import type { ItemInfo } from '../../../domain/inventory-view';
 import { formatCents } from '../../../domain/money';
+import { Dialog, DialogActions } from '../../components/Dialog';
 import { StatusChip } from '../../components/common';
 import { OnHandStepper } from '../../components/OnHandStepper';
 import { useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { AddToListDialog } from '../order/ListDialogs';
 
 export function Thumb({ itemId, hasPhoto }: { itemId: string; hasPhoto: boolean }) {
   const url = useThumbnail(itemId, hasPhoto);
@@ -30,6 +34,7 @@ export function ItemRow(props: {
   onSet: (id: string, value: number) => Promise<unknown>;
 }) {
   const { item, status, vendor, order } = props.info;
+  const [menu, setMenu] = useState<'menu' | 'add' | null>(null);
   const tint = status.kind === 'short' ? 'row red' : status.kind === 'low' ? 'row yel' : 'row';
   return (
     <div class={tint}>
@@ -75,6 +80,34 @@ export function ItemRow(props: {
         onStep={(d) => props.onStep(item.id, d)}
         onSet={(n) => props.onSet(item.id, n)}
       />
+      <button type="button" class="ib rmenu" aria-label={`More for ${item.name}`} onClick={() => setMenu('menu')}>
+        <Icon name="dots" />
+      </button>
+      {menu === 'menu' && (
+        <Dialog label={item.name} onClose={() => setMenu(null)}>
+          <h2 class="h2">{item.name}</h2>
+          <div class="menu-acts">
+            <button type="button" class="btn lg" data-autofocus onClick={() => setMenu('add')}>
+              <Icon name="listAdd" />
+              Add to order list…
+            </button>
+            <a class="btn lg" href={href.item(item.id)}>
+              <Icon name="info" />
+              Open details
+            </a>
+            <a class="btn lg" href={href.labels([item.id])}>
+              <Icon name="print" />
+              Print QR label
+            </a>
+          </div>
+          <DialogActions>
+            <button type="button" class="btn lg" onClick={() => setMenu(null)}>
+              Close
+            </button>
+          </DialogActions>
+        </Dialog>
+      )}
+      {menu === 'add' && <AddToListDialog item={item} onClose={() => setMenu(null)} />}
     </div>
   );
 }

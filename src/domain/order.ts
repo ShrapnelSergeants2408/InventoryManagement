@@ -71,11 +71,17 @@ export function compareSupplierNames(a: string, b: string): number {
  * order (by id: starter items, then team items), the same order as the Inventory list.
  */
 export function buildOrderList(items: readonly Item[]): OrderList {
+  return groupOrderLines(items.flatMap((item) => orderLineFor(item) ?? []));
+}
+
+/**
+ * Lines grouped by preferred supplier (A–Z, `other` last; names compared ignoring capitals),
+ * each group in catalog order (by item id), with subtotals and the grand total (F12, F27).
+ */
+export function groupOrderLines(lines: readonly OrderLine[]): OrderList {
   const bySupplier = new Map<string, SupplierGroup>();
-  const sorted = [...items].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  for (const item of sorted) {
-    const line = orderLineFor(item);
-    if (!line) continue;
+  const sorted = [...lines].sort((a, b) => (a.item.id < b.item.id ? -1 : a.item.id > b.item.id ? 1 : 0));
+  for (const line of sorted) {
     const key = nameKey(line.vendor.supplier);
     let g = bySupplier.get(key);
     if (!g) {

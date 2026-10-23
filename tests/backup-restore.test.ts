@@ -1,7 +1,7 @@
 import 'fake-indexeddb/auto';
 import JSZip from 'jszip';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildBackup, recordBackup } from '../src/data/backup';
+import { applyRestore, buildBackup, recordBackup } from '../src/data/backup';
 import { InventoryDb } from '../src/data/db';
 import { loadSnapshot, replaceAll, setOnHand, type ReplaceAllInput } from '../src/data/inventory';
 import { getSettings } from '../src/data/settings';
@@ -84,7 +84,7 @@ async function planFor(db: InventoryDb, file: { name: string; bytes: Uint8Array 
 }
 
 async function applyPlan(db: InventoryDb, plan: RestorePlan, now = 1_000) {
-  return replaceAll(db, plan, now, { keepPhotos: plan.kind === 'csv' });
+  return applyRestore(db, plan, now);
 }
 
 describe('backup file names (§7)', () => {
@@ -112,7 +112,7 @@ describe('full backup ZIP (F15, §7)', () => {
     expect(blob.type).toBe('application/zip');
     const zip = await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));
     expect(Object.keys(zip.files).sort()).toEqual(
-      ['categories.csv', 'inventory.csv', 'locations.csv', 'manifest.json', 'photos/', 'photos/st-0001.jpg', 'photos/tm-ABCDE.png', 'suppliers.csv'].sort(),
+      ['categories.csv', 'inventory.csv', 'locations.csv', 'manifest.json', 'order-lists.csv', 'photos/', 'photos/st-0001.jpg', 'photos/tm-ABCDE.png', 'suppliers.csv'].sort(),
     );
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string'));
     expect(manifest).toMatchObject({ itemCount: 3, photoCount: 2, savedAt: new Date(2026, 9, 18, 9, 30).toISOString() });

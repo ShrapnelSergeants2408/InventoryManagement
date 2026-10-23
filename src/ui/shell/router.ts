@@ -11,6 +11,7 @@ export type Route =
   | { tab: 'inventory'; screen: 'edit'; id: string }
   | { tab: 'inventory'; screen: 'add'; name: string; barcode: string }
   | { tab: 'labels'; screen: 'labels'; ids: string[] }
+  | { tab: 'order'; screen: 'orderList'; id: string }
   | { tab: 'more'; screen: ManagedList }
   | { tab: 'more'; screen: 'backup' }
   | { tab: 'more'; screen: 'settings' };
@@ -30,6 +31,7 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'item' && parts[1]) {
     return parts[2] === 'edit' ? { tab: 'inventory', screen: 'edit', id: parts[1] } : { tab: 'inventory', screen: 'item', id: parts[1] };
   }
+  if (parts[0] === 'order' && parts[1]) return { tab: 'order', screen: 'orderList', id: parts[1] };
   if (parts[0] === 'add') {
     const q = new URLSearchParams(query);
     return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '' };
@@ -58,6 +60,8 @@ export const href = {
     if (barcode) q.set('barcode', barcode);
     return q.size ? `#/add?${q}` : '#/add';
   },
+  /** A named order list (F27). */
+  orderList: (id: string) => `#/order/${encodeURIComponent(id)}`,
   labels: (ids: string[]) => `#/labels?${new URLSearchParams({ ids: ids.join(',') })}`,
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',

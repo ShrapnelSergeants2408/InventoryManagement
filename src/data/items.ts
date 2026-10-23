@@ -5,7 +5,7 @@ import { pushRecent } from '../domain/lists';
 import { QR_PREFIX, barcodeKey, cleanCode } from '../domain/scan';
 import { nameKey, type Item } from '../domain/types';
 import { validateItem } from '../domain/validate';
-import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
+import { fromItemRow, fromOrderListRow, toItemRow, toLocationRow, toOrderListRow, type InventoryDb } from './db';
 import { applyPhotoChange, type PhotoChange } from './photos';
 
 export const RECENT_LOCATIONS = 'recentLocations';
@@ -84,13 +84,22 @@ export async function updateItem(db: InventoryDb, base: Item, edited: Item, now 
   });
 }
 
-/** Deletes an item and its photo (F8). No undo: recovery is by restoring a backup. */
-export async function deleteItem(db: InventoryDb, id: string, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.items, db.photos, db.settings, async () => {
+/**
+ * Deletes an item and its photo (F8), and takes it off every named order list (F27). No undo:
+ * recovery is by restoring a backup. Returns how many lists it was on.
+ */
+export async function deleteItem(db: InventoryDb, id: string, now = Date.now()): Promise<number> {
+  return db.transaction('rw', [db.items, db.photos, db.orderLists, db.settings], async () => {
     if (!(await db.items.get(id))) throw new Error(`no item with id ${id}`);
     await db.items.delete(id);
     await db.photos.delete(id);
+    const lists = await db.orderLists.where('itemIds').equals(id).toArray();
+    for (const row of lists) {
+      const list = fromOrderListRow(row);
+      await db.orderLists.put(toOrderListRow({ ...list, lines: list.lines.filter((l) => l.itemId !== id) }));
+    }
     await db.settings.put({ key: 'lastChangeAt', value: now });
+    return lists.length;
   });
 }
 

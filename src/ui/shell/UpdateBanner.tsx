@@ -19,6 +19,24 @@ export function startServiceWorker(): void {
   });
 }
 
+/**
+ * Gets the newest copy of the app now (the out-of-date screen, Stage 5 finding 6): checks for
+ * a new version, lets a waiting one take over, then reloads. Falls back to a plain reload.
+ */
+export async function updateAndReload(): Promise<void> {
+  const reg = await navigator.serviceWorker?.getRegistration().catch(() => undefined);
+  await reg?.update().catch(() => undefined);
+  const next = reg?.waiting ?? reg?.installing;
+  if (!next) {
+    location.reload();
+    return;
+  }
+  const done = () => location.reload();
+  navigator.serviceWorker.addEventListener('controllerchange', done, { once: true });
+  setTimeout(done, 5000);
+  next.postMessage({ type: 'SKIP_WAITING' });
+}
+
 export function UpdateBanner() {
   const [ready, setReady] = useState(waiting);
   const [later, setLater] = useState(false);

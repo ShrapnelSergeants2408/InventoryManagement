@@ -1,6 +1,7 @@
 // Restore (F17, SPEC §7, spec-questions Q5/Q8): read a backup file, then plan what replaces
 // what. Nothing here touches the database; data/restore.ts applies a plan in one transaction.
 import type { InventorySnapshot } from '../data/inventory';
+import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
 import type { Category, Item, Location, Supplier } from '../domain/types';
 import { dateFromFileName } from './backup';
 import { readBackupZip, readInventoryCsvBundle, type Bundle } from './bundle';
@@ -17,6 +18,11 @@ export interface RestorePlan {
   suppliers: Supplier[];
   locations: Location[];
   categories: Category[];
+  /**
+   * Named order lists (F27). ZIP: the backup's lists, which replace the tablet's. CSV: null,
+   * the tablet keeps its lists and drops lines for items that aren't in the backup (§15 Q7d).
+   */
+  orderLists: NamedOrderList[] | null;
   /** Names that weren't in the lists and were added from the item data. */
   addedSuppliers: string[];
   addedLocations: string[];
@@ -60,6 +66,10 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
   const suppliers = completeSuppliers(bundle.suppliers ?? current.suppliers, bundle.items);
   const locations = completeLocations(bundle.locations ?? current.locations, bundle.items);
   const categories = completeCategories(bundle.categories ?? current.categories, bundle.items);
+  const ids = new Set(bundle.items.map((i) => i.id));
+  const orderLists = bundle.orderLists?.map((l) => withoutMissingItems(l, ids)) ?? null;
+  const dropped = (bundle.orderLists ?? []).reduce((n, l) => n + l.lines.length, 0) - (orderLists ?? []).reduce((n, l) => n + l.lines.length, 0);
+  if (dropped > 0) warnings = [...warnings, `${dropped} order-list line(s) name items that aren't in the backup and were left out`];
 
   return {
     ok: true,
@@ -72,6 +82,7 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
       suppliers: suppliers.list,
       locations: locations.list,
       categories: categories.list,
+      orderLists,
       addedSuppliers: suppliers.added,
       addedLocations: locations.added,
       ...savedDate(bundle, file.name),

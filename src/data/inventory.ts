@@ -1,8 +1,9 @@
 // Inventory reads and writes. Multi-table writes run in one transaction so a
 // failure leaves the tablet unchanged (stage4-plan §3).
 import type { Category, Item, Location, Supplier } from '../domain/types';
+import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
 import { validateItem } from '../domain/validate';
-import { fromItemRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb, type ItemRow } from './db';
+import { fromItemRow, fromOrderListRow, toItemRow, toLocationRow, toOrderListRow, toSupplierRow, type InventoryDb, type ItemRow } from './db';
 
 export interface InventorySnapshot {
   items: Item[];
@@ -37,18 +38,28 @@ export interface ReplaceAllInput extends InventorySnapshot {
  * Replaces every item, photo and list in one transaction (starter catalog load, F22;
  * restore, F17). With `keepPhotos` (a CSV-only restore), `photos` is ignored: the tablet's
  * photos are kept for item ids that are still there and the rest are deleted (Q5).
+ * Named order lists (F27): `orderLists` replaces them (a full backup); without it they're
+ * kept, minus lines for items that are gone (a CSV-only restore, §15 Q7d).
  * Settings — including the PIN — are not touched. Returns how many items have a photo.
  */
-export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = Date.now(), opts: { keepPhotos?: boolean } = {}): Promise<number> {
+export async function replaceAll(
+  db: InventoryDb,
+  input: ReplaceAllInput,
+  now = Date.now(),
+  opts: { keepPhotos?: boolean; orderLists?: readonly NamedOrderList[] } = {},
+): Promise<number> {
   const supplierNames = input.suppliers.map((s) => s.name);
   for (const item of input.items) {
     const errors = validateItem(item, supplierNames);
     if (errors.length > 0) throw new Error(`item ${item.id}: ${errors.map((e) => e.message).join('; ')}`);
   }
-  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.settings], async () => {
+  const ids = new Set(input.items.map((i) => i.id));
+  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings], async () => {
+    const lists = opts.orderLists ?? (await db.orderLists.toArray()).map(fromOrderListRow);
+    await db.orderLists.clear();
+    await db.orderLists.bulkAdd(lists.map((l) => toOrderListRow(withoutMissingItems(l, ids))));
     let withPhoto: Set<string>;
     if (opts.keepPhotos) {
-      const ids = new Set(input.items.map((i) => i.id));
       const existing = await db.photos.toCollection().primaryKeys();
       await db.photos.bulkDelete(existing.filter((id) => !ids.has(id)));
       withPhoto = new Set(existing.filter((id) => ids.has(id)));

@@ -18,6 +18,7 @@ import { Icon } from '../../icons';
 import { LockPill } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
+import { AddToListDialog } from '../order/ListDialogs';
 import { StorageError } from '../StorageError';
 
 type Panel =
@@ -310,6 +311,7 @@ function MissingPanel({ id, onDone }: { id: string; onDone: () => void }) {
 
 function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () => void }) {
   const db = useDb();
+  const [adding, setAdding] = useState(false);
   const photo = usePhoto(item.id, item.hasPhoto);
   const vendor = item.vendors[item.preferredVendor - 1];
   const meta = [item.location || 'No location', vendor ? `${vendor.supplier} ${vendor.partNo}`.trim() : ''].filter(Boolean).join(' · ');
@@ -325,6 +327,10 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
           <a class="btn" href={href.item(item.id)}>
             Open full details
           </a>
+          <button type="button" class="btn" onClick={() => setAdding(true)}>
+            <Icon name="listAdd" />
+            Add to order list
+          </button>
         </>
       }
     >
@@ -367,6 +373,7 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
           }
         />
       </div>
+      {adding && <AddToListDialog item={item} onClose={() => setAdding(false)} />}
     </Panel>
   );
 }

@@ -79,7 +79,7 @@
 .selcount { flex: 1 1 auto; min-width: 0; font-size: 18px; }
 .mv-from { font-size: 18px; }
 
-.row { display: grid; grid-template-columns: minmax(0, 1fr) 276px 156px 236px; align-items: center; gap: 16px; padding: 12px 24px; min-height: 92px; border-bottom: 1px solid #e6dfd6; background: #fff; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) 276px 156px 236px 56px; align-items: center; gap: 16px; padding: 12px 24px; min-height: 92px; border-bottom: 1px solid #e6dfd6; background: #fff; }
 .row.red { background: #fdeef1; }
 .row.yel { background: #fff7db; }
 .rlink { display: flex; align-items: center; gap: 14px; min-width: 0; color: inherit; text-decoration: none; min-height: 64px; border-radius: 10px; }
@@ -156,22 +156,24 @@
   .irow.selrow { padding: 0 16px 0 28px; }
   .selbar { padding: 10px 16px; }
   .selcount { flex-basis: 100%; }
-  .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "link chip" "nums step"; padding: 12px 16px; row-gap: 10px; }
+  .row { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "link chip menu" "nums step step"; padding: 12px 16px; row-gap: 10px; }
   .rlink { grid-area: link; }
   .nums { grid-area: nums; }
   .rchip { grid-area: chip; }
   .stepper { grid-area: step; }
+  .rmenu { grid-area: menu; }
   .fpanel { top: auto; left: 0; width: auto; height: 74%; border-radius: 20px 20px 0 0; }
   .toast-host { bottom: 104px; }
 }
 
 /* Narrow landscape windows (desktop testing): let the row wrap instead of overflowing. */
 @media (orientation: landscape) and (max-width: 1100px) {
-  .row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "link chip" "nums step"; row-gap: 10px; }
+  .row { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "link chip menu" "nums step step"; row-gap: 10px; }
   .rlink { grid-area: link; }
   .nums { grid-area: nums; }
   .rchip { grid-area: chip; }
   .stepper { grid-area: step; }
+  .rmenu { grid-area: menu; }
 }
 
 /* ── M3: detail, editor, dialogs, More and the managed lists (mockups 2a–2e, 3a–3e, 7a–7k, 9a) ── */
@@ -394,6 +396,21 @@ input[type="date"].field { padding: 0 12px; }
 .csv th { background: #fbf9f6; position: sticky; top: 0; }
 .csv tr.tot td { font-weight: 700; background: #fbf9f6; }
 .csv tr.more td { color: var(--ink-2); font-style: italic; }
+/* Named order lists (F27): list tabs, the list header, +/− and remove on each line. */
+.ltabs { flex: none; display: flex; gap: 8px; padding: 10px 24px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid var(--line); background: var(--card); }
+.ltab { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 12px; border: 2px solid var(--line-2); background: #fff; color: var(--ink); font: inherit; font-weight: 700; font-size: 17px; text-decoration: none; white-space: nowrap; flex: none; cursor: pointer; }
+.ltab .ic { width: 20px; height: 20px; }
+.ltab.on { background: var(--navy); border-color: var(--navy); color: #fff; }
+.ltab.new { border-style: dashed; color: var(--ink-2); }
+.ltab-n { min-width: 26px; height: 26px; padding: 0 7px; border-radius: 999px; background: #ece7e1; color: var(--ink); font-size: 14px; display: inline-flex; align-items: center; justify-content: center; }
+.ltab.on .ltab-n { background: #fff; color: var(--navy); }
+.lhead { flex: none; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 24px; border-bottom: 1px solid var(--line); background: #fbf9f6; }
+.lhead-t { display: flex; flex-direction: column; gap: 2px; min-width: 200px; }
+.lnotes { white-space: pre-line; }
+.ogrid.ed { grid-template-columns: minmax(0, 1fr) 130px 64px 60px 56px 96px 96px 104px 168px; gap: 8px; }
+.lctl { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
+.step.sm { width: 48px; height: 48px; border-radius: 12px; }
+.lctl .ib { width: 48px; height: 48px; }
 .steps { margin: 0; padding-left: 24px; display: flex; flex-direction: column; gap: 10px; }
 
 @media (orientation: portrait) {
@@ -404,9 +421,14 @@ input[type="date"].field { padding: 0 12px; }
   .shdr, .line { padding-left: 16px; padding-right: 16px; }
   .pmeta { display: block; font-size: 15px; color: var(--ink-2); grid-column: 1 / -1; }
   .gt { padding: 16px 16px 32px; }
+  .ogrid.ed { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .ogrid.ed .lctl { grid-row: 1; grid-column: 3; }
+  .ltabs, .lhead { padding-left: 16px; padding-right: 16px; }
 }
 @media (orientation: landscape) and (max-width: 1100px) {
   .ogrid { grid-template-columns: minmax(0, 1fr) auto; }
+  .ogrid.ed { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .ogrid.ed .lctl { grid-row: 1; grid-column: 3; }
   .colh, .ogrid .wide { display: none; }
   .pmeta { display: block; font-size: 15px; color: var(--ink-2); grid-column: 1 / -1; }
 }
@@ -531,3 +553,7 @@ button.mrow { width: 100%; border: 0; border-top: 1px solid #eee7de; font: inher
 .snext > strong:first-child { font-size: 19px; }
 .sfile { padding: 16px 20px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
 .swarn { margin: 4px 0 0; padding-left: 22px; }
+
+/* Item row menu (⋮): Add to order list (F27), details, QR label. */
+.menu-acts { display: flex; flex-direction: column; gap: 10px; }
+.menu-acts .btn { justify-content: flex-start; }

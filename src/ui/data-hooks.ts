@@ -4,7 +4,9 @@ import { createContext } from 'preact';
 import { useContext, useEffect, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
+import { loadOrderLists } from '../data/order-lists';
 import { getThumbnail } from '../data/photos';
+import type { NamedOrderList } from '../domain/order-lists';
 import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
 import { makeThumbnail } from '../io/image';
 
@@ -23,6 +25,20 @@ export function useSnapshot(): Live<InventorySnapshot> {
   const [live, setLive] = useState<Live<InventorySnapshot>>({ state: 'loading' });
   useEffect(() => {
     const sub = liveQuery(() => loadSnapshot(db)).subscribe({
+      next: (value) => setLive({ state: 'ready', value }),
+      error: (error: unknown) => setLive({ state: 'error', error }),
+    });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return live;
+}
+
+/** Named order lists (F27), A–Z, live. */
+export function useOrderLists(): Live<NamedOrderList[]> {
+  const db = useDb();
+  const [live, setLive] = useState<Live<NamedOrderList[]>>({ state: 'loading' });
+  useEffect(() => {
+    const sub = liveQuery(() => loadOrderLists(db)).subscribe({
       next: (value) => setLive({ state: 'ready', value }),
       error: (error: unknown) => setLive({ state: 'error', error }),
     });

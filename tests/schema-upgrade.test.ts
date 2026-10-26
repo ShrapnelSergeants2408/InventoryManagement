@@ -187,6 +187,12 @@ describe('the v3 item change itself', () => {
     const c: { lastCounted: string; countedBy?: string } = { lastCounted: '2026-07-04' };
     upgradeItemToV3(c);
     expect(c).toEqual({ lastCounted: '2026-07-04T00:00:00-05:00', countedBy: '' });
+    // Text the app never writes is left as it is rather than shifted to another day (independent review, finding 3).
+    for (const odd of ['2026-02-30', '0050-13-01']) {
+      const r: { lastCounted: string; countedBy?: string } = { lastCounted: odd };
+      upgradeItemToV3(r);
+      expect(r).toEqual({ lastCounted: odd, countedBy: '' });
+    }
   });
 });
 

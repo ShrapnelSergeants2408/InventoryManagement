@@ -8,6 +8,7 @@ import { InventoryDb, toItemRow, toLocationRow, toSupplierRow } from '../src/dat
 import { addHelper, buildKit, editHelper, loadHelpers, recordKit, removeHelper } from '../src/data/helpers';
 import { applyRestore } from '../src/data/backup';
 import { loadSnapshot } from '../src/data/inventory';
+import { startInventory } from '../src/data/setup';
 import { renameCategory, updateLocation } from '../src/data/lists';
 import {
   assignedHelpers,
@@ -27,7 +28,7 @@ import {
 import { NO_LOCATION } from '../src/domain/lists';
 import { APP_VERSION } from '../src/io/backup';
 import { KIT_FILE, KIT_FORMAT, KIT_FORMAT_VERSION, buildCountKit, kitFileName, withoutPrices } from '../src/io/count-kit';
-import { parseInventoryCsv } from '../src/io/inventory-csv';
+import { parseInventoryCsv, serializeInventoryCsv } from '../src/io/inventory-csv';
 import { parseCategoriesCsv, parseLocationsCsv, parseSuppliersCsv } from '../src/io/lists-csv';
 import { readRestoreFile } from '../src/io/restore';
 import { item, vendor } from './helpers';
@@ -197,6 +198,14 @@ describe('helpers on the tablet (data)', () => {
     db.close();
   });
 
+  it('setting up a shop tablet starts with no helpers (independent review, finding 6)', async () => {
+    const db = await tablet();
+    await addHelper(db, draft({ name: 'Left over' }));
+    await startInventory(db, 'empty', { items: [], photos: new Map(), suppliers: [{ name: 'other', website: '', notes: '' }], locations: [], categories });
+    expect(await loadHelpers(db)).toEqual([]);
+    db.close();
+  });
+
   it('helper changes don’t count as inventory changes, and a restore keeps helpers', async () => {
     const db = await tablet();
     await db.settings.put({ key: 'lastChangeAt', value: 5 });
@@ -313,6 +322,20 @@ describe('count kit contents (§18.2)', () => {
     expect(!r.ok && r.problems[0]!.message).toMatch(/count kit for a helper device, not a backup/);
   });
 
+  it('its inventory.csv on its own is refused too, when the tablet has prices (independent review, finding 1)', async () => {
+    const kit = await readKit(await buildCountKit(input(true)));
+    const bytes = new TextEncoder().encode(await kit.text('inventory.csv'));
+    const priced = snapshot();
+    const r = await readRestoreFile({ name: 'inventory.csv', bytes }, priced);
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.problems[0]!.message).toMatch(/no prices at all, but this tablet has prices.*count kit/);
+    // A tablet with no prices yet (e.g. Start empty) can still take it; so can a priced backup.
+    const unpriced = { ...priced, items: priced.items.map(withoutPrices) };
+    expect((await readRestoreFile({ name: 'inventory.csv', bytes }, unpriced)).ok).toBe(true);
+    const backup = new TextEncoder().encode(serializeInventoryCsv(priced.items));
+    expect((await readRestoreFile({ name: 'inventory-backup.csv', bytes: backup }, priced)).ok).toBe(true);
+  });
+
   it('file name: count-kit-<helper name>-<yyyy-mm-dd-hhmm>.zip, safe for any device', () => {
     expect(kitFileName('Tablet 2 · Alex & Jordan', new Date(2026, 9, 24, 18, 5))).toBe('count-kit-tablet-2-alex-jordan-2026-10-24-1805.zip');
     expect(kitFileName('Maya’s phone / ../x', new Date(2026, 0, 2, 3, 4))).toBe('count-kit-maya-s-phone-x-2026-01-02-0304.zip');
@@ -348,6 +371,15 @@ describe('building a kit from the tablet', () => {
     expect(k).toMatchObject({ kit_id: one.kitId, helper_id: h.id, helper_name: 'Maya', created_at: '2026-10-24T18:50:00-05:00', groups: { kind: 'category', names: ['Tools'] } });
     await recordKit(db, h.id, one);
     expect((await loadHelpers(db))[0]!.kits).toEqual([{ id: one.kitId, createdAt: one.createdAt }]);
+    db.close();
+  });
+
+  it('created_at is the time it was asked for (independent review, finding 6)', async () => {
+    const db = await filled();
+    const h = await addHelper(db, draft({ name: 'Maya', groups: ['Tools'] }));
+    const k = await buildKit(db, h.id, false, new Date(2026, 0, 5, 7, 3, 9));
+    expect(k.createdAt).toBe('2026-01-05T07:03:09-06:00');
+    expect(JSON.parse(await (await readKit(k.blob)).text(KIT_FILE)).created_at).toBe('2026-01-05T07:03:09-06:00');
     db.close();
   });
 

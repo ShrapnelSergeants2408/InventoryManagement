@@ -42,20 +42,48 @@ export function isCountStamp(s: string): boolean {
   return realDate(Number(m[1]), Number(m[2]), Number(m[3])) && h < 24 && mi < 60 && sec < 60 && oh <= 14 && om < 60;
 }
 
+/** ISO-like date-times as spreadsheets re-save them: a space for the T, fractions of a second, an offset without its colon, or no offset. */
+const LOOSE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(Z|([+-])(\d{2}):?(\d{2}))?$/i;
+/** A US spreadsheet date-time: 10/24/2026 18:42, 10/24/2026 6:42 PM. */
+const US_TIME = /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/i;
+
+/** A local wall-clock time on this device, as a stamp; null when a part is out of range. */
+function localStamp(y: number, mo: number, d: number, h: number, mi: number, sec: number): string | null {
+  if (!realDate(y, mo, d) || h > 23 || mi > 59 || sec > 59) return null;
+  return localIsoDateTime(new Date(y, mo - 1, d, h, mi, sec));
+}
+
 /**
  * last_counted as read from a file (§7): '' stays blank; a date-time with an offset is kept as
- * written (it's the counting device's own local time); a date only becomes local midnight; a
- * UTC "Z" time (hand-edited files) becomes this device's local time. null when it's none of these.
+ * written (it's the counting device's own local time), tidied to the stored form when a
+ * spreadsheet re-saved it; a date only becomes local midnight; a UTC "Z" time becomes this
+ * device's local time; a date-time without an offset (a spreadsheet's) is read as this
+ * device's local time. null when it's none of these.
  */
 export function readCountStamp(raw: string): string | null {
   const s = raw.trim();
   if (s === '') return '';
   if (DATE_ONLY.test(s)) return isCountStamp(s) ? midnightLocalIso(s) : null;
-  if (s.endsWith('Z')) {
-    const asOffset = `${s.slice(0, -1)}+00:00`;
-    return isCountStamp(asOffset) ? localIsoDateTime(new Date(s)) : null;
+  if (isCountStamp(s)) return s;
+  const m = LOOSE.exec(s);
+  if (m) {
+    const [y, mo, d, h, mi, sec] = [m[1], m[2], m[3], m[4], m[5], m[6] ?? '0'].map(Number) as [number, number, number, number, number, number];
+    if (!realDate(y, mo, d) || h > 23 || mi > 59 || sec > 59) return null;
+    if (m[7] === undefined) return localStamp(y, mo, d, h, mi, sec);
+    if (m[7].toUpperCase() === 'Z') return localIsoDateTime(new Date(Date.UTC(y, mo - 1, d, h, mi, sec)));
+    const tidy = `${m[1]}-${m[2]}-${m[3]}T${p2(h)}:${m[5]}:${p2(sec)}${m[8]}${m[9]}:${m[10]}`;
+    return isCountStamp(tidy) ? tidy : null;
   }
-  return isCountStamp(s) ? s : null;
+  const u = US_TIME.exec(s);
+  if (u) {
+    let h = Number(u[4]);
+    if (u[7]) {
+      if (h < 1 || h > 12) return null;
+      h = (h % 12) + (u[7].toUpperCase() === 'PM' ? 12 : 0);
+    }
+    return localStamp(Number(u[3]), Number(u[1]), Number(u[2]), h, Number(u[5]), Number(u[6] ?? '0'));
+  }
+  return null;
 }
 
 /**

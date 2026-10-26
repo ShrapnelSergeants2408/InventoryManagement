@@ -40,6 +40,8 @@ export interface Bundle {
   manifest: Manifest | null;
   /** Latest modification date among the ZIP entries, as a fallback "saved" date. */
   zipDate: Date | null;
+  /** inventory.csv has price columns (whether or not any price is filled in). */
+  priceColumns: boolean;
 }
 
 export interface BundleRead {
@@ -74,6 +76,7 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
       orderLists: null,
       manifest: null,
       zipDate: null,
+      priceColumns: parsed.priceColumns,
     },
     problems: [],
     warnings,

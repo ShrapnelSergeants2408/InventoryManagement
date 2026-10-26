@@ -206,6 +206,22 @@ try {
   check('count-in by location names the location helper', await P(`return $$('.cg-row').filter((r) => r.querySelector('.cg-help')).map((r) => [norm(r.querySelector('strong').textContent), norm(r.querySelector('.cg-help').textContent)])`), [['No location', 'Helper: Shelf crew']]);
   await P(`await click('.modes .mode', 'By category'); await go('#/count/helpers');`);
 
+  // ── A group removed from the list (independent review, finding 2) ──
+  await P(`await click('.top .btn', 'Add helper'); await type('#hname', 'Gone test'); await group('Assemblies'); await group('Misc'); await click('.dlg .btn', 'Add helper'); await settle(500);`);
+  // Assemblies is empty in the seed; take it out of the list behind the app's back, then reload.
+  await P(`
+    const db = await new Promise((res) => { const r = indexedDB.open('frc2408-inventory'); r.onsuccess = () => res(r.result); });
+    await new Promise((res) => { const t = db.transaction('categories', 'readwrite'); t.objectStore('categories').delete('Assemblies'); t.oncomplete = res; });
+    db.close();`);
+  await send('Page.reload');
+  await waitFor(`document.querySelectorAll('.hcard').length >= 3`, 30000);
+  check('a removed group: the card says so', await P(`return norm(card('Gone test').querySelector('.hnote').textContent)`), 'No longer in the list: Assemblies. Edit this helper before sending a kit.');
+  await P(`card('Gone test').querySelector('.acts .btn.sm').click(); await settle();`);
+  check('edit: the removed group is taken off and named; the rest stay ticked', await P(`return [norm($('.dlg [role=status]').textContent), $$('.hgroup[aria-checked=true] strong').map((s) => norm(s.textContent))]`), ['No longer in the list, so taken off this helper: Assemblies.', ['Misc']]);
+  await P(`await click('.dlg .btn', 'Save'); await settle(500);`);
+  check('…and Save works straight away; the card is clear', [(await P(`return await idbAll('helpers')`)).find((h) => h.name === 'Gone test')?.groups, await P(`return !card('Gone test').querySelector('.hnote')`)], [['Misc'], true]);
+  await P(`card('Gone test').querySelector('.btn.danger').click(); await settle(); await click('.dlg .btn', 'Remove helper'); await settle(400);`);
+
   // ── Remove ──
   await P(`card('Maya P').querySelector('.btn.danger').click(); await settle();`);
   check('remove: a confirmation in destructive style that says imported counts stay', await P(`return [dlg().getAttribute('role'), norm($('.dlg .dlg-big').textContent), !!$('.dlg .btn.danger')]`), ['alertdialog', 'Counts already imported from it stay as they are. A counts file it sends later can still be imported, after a warning.', true]);

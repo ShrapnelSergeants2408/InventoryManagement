@@ -1,6 +1,6 @@
 // IndexedDB schema (SPEC §2, §3; stage4-plan §3).
 import Dexie, { type Table } from 'dexie';
-import { midnightLocalIso } from '../domain/dates';
+import { isCountStamp, midnightLocalIso } from '../domain/dates';
 import type { Helper } from '../domain/helpers';
 import type { NamedOrderList } from '../domain/order-lists';
 import { nameKey, type Category, type Item, type Location, type Supplier } from '../domain/types';
@@ -79,7 +79,8 @@ export const SCHEMA_KEY = 'schemaVersion';
  * with that date's UTC offset, and counted_by is added blank. Nothing else changes.
  */
 export function upgradeItemToV3(row: { lastCounted?: unknown; countedBy?: unknown }): void {
-  if (typeof row.lastCounted === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(row.lastCounted)) row.lastCounted = midnightLocalIso(row.lastCounted);
+  // Only a real date only: anything else (never written by the app) is left as it is rather than shifted.
+  if (typeof row.lastCounted === 'string' && row.lastCounted.length === 10 && isCountStamp(row.lastCounted)) row.lastCounted = midnightLocalIso(row.lastCounted);
   if (row.countedBy === undefined) row.countedBy = '';
 }
 

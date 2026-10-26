@@ -633,3 +633,5 @@ Claude Code (Opus 5.5), new session. Dan merged PR #20 (M15b, `197ff26`). Dan as
 High for the upgrade (field-by-field unit tests on both DST sides, real-browser upgrade and rollback) and the kit contents (read back in Node). Not yet done: the plan's independent fresh-session review for M16, and the Tab S8 share sheet with a 6 MB kit.
 
 **Next:** the independent review of the M16a PR (if Dan wants it run as a separate agent, as for M12); Dan merges with a merge commit, backs up the tablet first, and does the tablet check in the M16a review; then M16b.
+| later | Dan: "yes, run the independent review". A separate review agent wrote `docs/reviews/M16a-independent.md`: **merge after fixes** (2 minor, 4 notes; the upgrade itself sound) |
+| later | Dan: "fix all of them and commit". Restore refuses a kit's `inventory.csv` when the tablet has prices; the helper dialog drops removed groups; the upgrade converts only real dates; `buildKit` uses `now`; spreadsheet date-times read; setup clears helpers. Unit 669; mutants 11/11 on the fixes; M2–M15b 541, M16a 42, upgrade 24; Tab S8 backup again. One more `python -` heredoc hang, stopped |

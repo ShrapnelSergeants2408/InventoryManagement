@@ -1,7 +1,7 @@
 // Helper devices on the main tablet (§18.1): add, edit and remove helpers, and build and record
 // count kits. No PIN (§6). Helpers are working records, not inventory: they aren't in backups,
 // and changing them doesn't touch the "last change" time the restore comparison shows.
-import { nowLocalIso } from '../domain/dates';
+import { localIsoDateTime } from '../domain/dates';
 import { checkHelper, groupChoices, newHelperId, newKitId, sortHelpers, type Helper, type HelperDraft } from '../domain/helpers';
 import { buildCountKit } from '../io/count-kit';
 import { fromHelperRow, toHelperRow, type InventoryDb } from './db';
@@ -79,7 +79,7 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
   const check = checkHelper(helper, [], choices, helper);
   if (!check.ok) throw new Error(`Edit this helper first: ${Object.values(check.errors).join(' ')}`);
   const kitId = newKitId((x) => kitIds.has(x));
-  const createdAt = nowLocalIso();
+  const createdAt = localIsoDateTime(now);
   const ids = new Set(snapshot.items.map((i) => i.id));
   const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups }, kitId, createdAt, includePhotos, now });
   return { blob, kitId, createdAt, itemCount: snapshot.items.length, photoCount: [...photos.keys()].filter((id) => ids.has(id)).length };

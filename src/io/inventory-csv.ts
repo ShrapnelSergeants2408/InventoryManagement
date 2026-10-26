@@ -39,6 +39,8 @@ export interface ParsedInventory {
   problems: FileProblem[];
   /** Headers present in the file that this app doesn't use (ignored). */
   ignoredColumns: string[];
+  /** The file has a v1_pack_price column (a kit's inventory.csv has it, with every price blank). */
+  priceColumns: boolean;
 }
 
 const EXCEL_SCIENTIFIC = /^\d(\.\d+)?e\+\d+$/i;
@@ -51,7 +53,7 @@ export function parseInventoryCsv(text: string): ParsedInventory {
   const missing = REQUIRED_INVENTORY_COLUMNS.filter((c) => !table.columns.has(c));
   if (missing.length > 0) {
     problems.push({ file: INVENTORY_FILE, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
-    return { items: [], photoFiles: new Map(), problems, ignoredColumns };
+    return { items: [], photoFiles: new Map(), problems, ignoredColumns, priceColumns: false };
   }
 
   const items: Item[] = [];
@@ -171,7 +173,7 @@ export function parseInventoryCsv(text: string): ParsedInventory {
     if (photoFile !== '') photoFiles.set(id, photoFile);
     items.push(item);
   }
-  return { items, photoFiles, problems, ignoredColumns };
+  return { items, photoFiles, problems, ignoredColumns, priceColumns: table.columns.has('v1_pack_price') };
 }
 
 /** Photo path inside a full backup ZIP (§7); the extension follows the photo's type. */

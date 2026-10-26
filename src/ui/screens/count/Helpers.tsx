@@ -186,7 +186,12 @@ function Coverage(props: { helpers: Helper[]; snap: InventorySnapshot }) {
 function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: InventorySnapshot; onClose: () => void }) {
   const db = useDb();
   const e = props.editing;
-  const [d, setD] = useState<HelperDraft>(() => (e ? { name: e.name, kind: e.kind, groups: [...e.groups], allowNewItems: e.allowNewItems } : { name: '', kind: 'category', groups: [], allowNewItems: true }));
+  // Groups removed from the list since this helper was set up can't be ticked, so they're
+  // dropped when the dialog opens and named under the checkboxes (independent review, finding 2).
+  const [gone] = useState(() => (e ? missingGroups(e, groupChoices(e.kind, props.snap.categories, props.snap.locations)) : []));
+  const [d, setD] = useState<HelperDraft>(() =>
+    e ? { name: e.name, kind: e.kind, groups: e.groups.filter((g) => !gone.includes(g)), allowNewItems: e.allowNewItems } : { name: '', kind: 'category', groups: [], allowNewItems: true },
+  );
   const [errors, setErrors] = useState<Partial<Record<'name' | 'groups', string>>>({});
   const [confirmShared, setConfirmShared] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -301,6 +306,11 @@ function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: 
               );
             })}
           </div>
+          {gone.length > 0 && d.kind === e?.kind && (
+            <div class="small muted" role="status">
+              No longer in the list, so taken off this helper: {gone.join(', ')}.
+            </div>
+          )}
           {errors.groups && (
             <div class="err" role="alert">
               {errors.groups}

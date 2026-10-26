@@ -557,3 +557,18 @@ button.mrow { width: 100%; border: 0; border-top: 1px solid #eee7de; font: inher
 /* Item row menu (⋮): Add to order list (F27), details, QR label. */
 .menu-acts { display: flex; flex-direction: column; gap: 10px; }
 .menu-acts .btn { justify-content: flex-start; }
+
+/* Choices in a dialog (Add many at once, F27): big rows that work with gloves. */
+.choices { display: flex; flex-direction: column; gap: 8px; }
+.choice { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 0 16px; border-radius: 12px; border: 2px solid var(--line-2); background: #fff; color: var(--ink); font: inherit; font-size: 18px; font-weight: 700; text-align: left; cursor: pointer; }
+.choice .dot { width: 24px; height: 24px; border-radius: 50%; border: 3px solid var(--ink-2); flex: none; }
+.choice.on { border-color: var(--navy); background: #e3eaf3; }
+.choice.on .dot { border-color: var(--navy); background: radial-gradient(circle, var(--navy) 0 45%, #fff 50%); }
+.mplan { font-weight: 700; }
+
+/* Select mode on the automatic order list (F27 "Add many at once"). */
+.ltab.sel { margin-left: auto; }
+.ltab:disabled { opacity: .55; cursor: default; }
+.lsel { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; width: 100%; }
+.line.picked { background: #e3eaf3; }
+.shdr .cb { flex: 0 1 auto; min-height: 48px; }

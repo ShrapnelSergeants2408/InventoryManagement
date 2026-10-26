@@ -578,3 +578,31 @@ High for the upgrade: byte-equal rows in unit tests and in a real browser, the b
 
 **Next:** Dan exports a full backup from the Tab S8 and runs (or gives the path for) the real-data test; then merges with a merge commit and does the tablet check in the M15 review; then M15b.
 | 13:27 | Dan: the backup is at `D:\backups\inventory-backup.zip`; the file there is `inventory-backup-2026-10-23-1323.zip` (the only one in the folder). `tests/tablet-backup.test.ts` with it: passes, 129 items, 127 photos, order total $6,949.47, the same after the upgrade and after export → restore. Review and PR updated |
+
+
+---
+
+## Stage 6, M15b — 2026-10-23 — add many items to an order list
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), same session. Dan merged PR #19 (M15, `4234b06`) and said "build m15b". Branch `m15b-add-many` from `main`.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~13:35 | Branch created. Read the M13 Select mode and selection helpers |
+| ~13:35–13:45 | `ruleQuantity`, `planAddMany`, `applyAddMany` (domain), `addManyToOrderList` (data); 12 unit tests with hand-worked quantities and totals |
+| ~13:45–13:50 | Shared `SelectBar`; Inventory Add to order list…; `AddManyDialog`; Select mode on the Automatic list (line and supplier checkboxes). One shell command with heredoc quoting failed to parse and ran nothing; redone with the Edit tool |
+| ~13:50–13:57 | `scripts/m15b-ui-check.mjs` 26/26 (one check tightened); screenshots led to the "Choose replace or keep" label. Regression M2–M15: M15 needed its tab reading narrowed (Select button). Mutants 14/14; interface mutant caught; upgrade check 19/19 and the Tab S8 backup test again |
+| ~14:00 | `docs/reviews/M15b.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F27 "Add many at once": Select on the Automatic list and Add to order list… in Inventory Select mode; the three quantity rules; skipped items counted; replace or keep asked once; one transaction.
+
+**DELIVERABLES PRODUCED**
+New: `src/ui/components/SelectBar.tsx`, `scripts/m15b-ui-check.mjs`, `docs/reviews/M15b.md`. Changed: `src/domain/order-lists.ts`, `src/data/order-lists.ts`, `src/ui/screens/order/{Order,ListDialogs}.tsx`, `src/ui/screens/inventory/Inventory.tsx`, `src/styles/app.css`, `tests/order-lists{,-db}.test.ts`, `scripts/m15-ui-check.mjs`, `scripts/m15-upgrade-check.mjs`.
+
+**CONFIDENCE**
+High: quantities and totals checked to the cent against hand-worked numbers and an independent calculation in the browser; mutants caught; regression green.
+
+**Next:** Dan merges the PR and does the tablet check in the M15b review; then M16a (helpers on the main tablet, the second schema upgrade).

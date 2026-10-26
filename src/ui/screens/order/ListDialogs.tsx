@@ -1,9 +1,19 @@
 // Named order list dialogs (F27): Add to order list (from an item row, the detail card or a
-// scan result), New list / Edit list (name and notes), and the delete confirmations. No PIN.
+// scan result), Add many at once (from Select mode), New list / Edit list (name and notes), and
+// the delete confirmations. No PIN.
 import { useState } from 'preact/hooks';
-import { addToOrderList, createOrderList, deleteOrderList, editOrderList } from '../../../data/order-lists';
+import { addManyToOrderList, addToOrderList, createOrderList, deleteOrderList, editOrderList } from '../../../data/order-lists';
 import { formatCents } from '../../../domain/money';
-import { MAX_LIST_NAME, defaultQuantity, listNameProblem, packsFor, type NamedOrderList } from '../../../domain/order-lists';
+import {
+  MAX_LIST_NAME,
+  QUANTITY_RULES,
+  defaultQuantity,
+  listNameProblem,
+  packsFor,
+  planAddMany,
+  type NamedOrderList,
+  type QuantityRule,
+} from '../../../domain/order-lists';
 import { preferredVendorOf, type Item } from '../../../domain/types';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { plural } from '../../components/common';
@@ -266,6 +276,150 @@ export function DeleteListDialog({ list, onClose }: { list: NamedOrderList; onCl
         <button type="button" class="btn danger lg" disabled={busy} onClick={() => void go()}>
           <Icon name="trash" />
           Delete list
+        </button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** The rule picked last time (F27 "Add many at once"). */
+let lastRule: QuantityRule = 'spares';
+
+/**
+ * Add many at once (F27): the items selected on the automatic list or in Inventory Select mode go
+ * on a list, with quantities from the rule picked here. Items already at the rule's target are
+ * skipped; for items already on the list it asks once: replace or keep. Opens the list after.
+ */
+export function AddManyDialog({ chosen, onClose, onDone }: { chosen: readonly Item[]; onClose: () => void; onDone: () => void }) {
+  const db = useDb();
+  const live = useOrderLists();
+  const lists = live.state === 'ready' ? live.value : [];
+  const [listId, setListId] = useState<string>(() => lastListId ?? NEW);
+  const [newName, setNewName] = useState('');
+  const [rule, setRule] = useState<QuantityRule>(lastRule);
+  const [replace, setReplace] = useState<boolean | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // A remembered list that was deleted since falls back to the first list, or a new one.
+  const remembered = listId === NEW ? null : (lists.find((l) => l.id === listId) ?? null);
+  const pick = remembered ? remembered.id : live.state === 'ready' && listId !== NEW ? (lists[0]?.id ?? NEW) : listId;
+  const target = pick === NEW ? null : (lists.find((l) => l.id === pick) ?? null);
+  const typing = pick === NEW;
+  const plan = planAddMany(chosen, rule, target);
+  const nameProblem = typing && newName.trim() !== '' ? listNameProblem(newName, lists) : null;
+  const asking = plan.onList.length > 0;
+  const changes = plan.add.length + (replace ? plan.onList.length : 0);
+  const ready = live.state === 'ready' && (!typing || (newName.trim() !== '' && !nameProblem)) && (!asking || replace !== null) && changes > 0;
+
+  const save = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const to = typing ? { newName } : { listId: pick };
+      const r = await addManyToOrderList(db, to, chosen.map((i) => i.id), rule, replace === true);
+      lastListId = r.list.id;
+      lastRule = rule;
+      const parts = [
+        `Added ${plural(r.added, 'item')} to ${r.list.name}`,
+        r.replaced > 0 ? `changed ${r.replaced}` : '',
+        r.kept > 0 ? `kept ${r.kept} as they were` : '',
+        r.skipped > 0 ? `skipped ${r.skipped} already at the target` : '',
+      ].filter(Boolean);
+      showToast(`${parts.join('; ')}.`);
+      onDone();
+      location.hash = href.orderList(r.list.id);
+    } catch (e) {
+      setError(message(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog label="Add to order list" onClose={() => !busy && onClose()}>
+      <h2 class="h2">Add {plural(chosen.length, 'item')} to an order list</h2>
+      <div>
+        <label class="lbl" for="mlist">
+          List
+        </label>
+        <select
+          id="mlist"
+          class="field"
+          value={pick}
+          onChange={(e) => {
+            setListId((e.currentTarget as HTMLSelectElement).value);
+            setReplace(null);
+          }}
+        >
+          {lists.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.name}
+            </option>
+          ))}
+          <option value={NEW}>+ New list…</option>
+        </select>
+      </div>
+      {typing && (
+        <div>
+          <label class="lbl" for="mname">
+            Name of the new list
+          </label>
+          <input
+            id="mname"
+            class="field"
+            value={newName}
+            maxLength={MAX_LIST_NAME}
+            placeholder="e.g. AndyMark — Nov"
+            autoComplete="off"
+            onInput={(e) => setNewName((e.currentTarget as HTMLInputElement).value)}
+          />
+          {nameProblem && <div class="err small">{nameProblem}</div>}
+        </div>
+      )}
+      <div role="radiogroup" aria-labelledby="mrule" class="choices">
+        <span class="lbl" id="mrule">
+          Quantities
+        </span>
+        {QUANTITY_RULES.map((r) => (
+          <button key={r.rule} type="button" role="radio" aria-checked={rule === r.rule} class={rule === r.rule ? 'choice on' : 'choice'} onClick={() => setRule(r.rule)}>
+            <span class="dot" />
+            {r.label}
+          </button>
+        ))}
+        <span class="small muted">Rounded up to whole packs. Each line can be changed afterwards with − and +.</span>
+      </div>
+      <p class="dlg-p mplan" role="status">
+        {plural(plan.add.length, 'item')} to add
+        {plan.onList.length > 0 && ` · ${plan.onList.length} already on this list`}
+        {plan.skipped.length > 0 && ` · ${plural(plan.skipped.length, 'item')} already at the target, skipped`}
+      </p>
+      {asking && (
+        <div role="radiogroup" aria-labelledby="mexist" class="choices">
+          <span class="lbl" id="mexist">
+            {plural(plan.onList.length, 'item is', 'items are')} already on {target?.name}
+          </span>
+          <button type="button" role="radio" aria-checked={replace === true} class={replace === true ? 'choice on' : 'choice'} onClick={() => setReplace(true)}>
+            <span class="dot" />
+            Replace their quantities
+          </button>
+          <button type="button" role="radio" aria-checked={replace === false} class={replace === false ? 'choice on' : 'choice'} onClick={() => setReplace(false)}>
+            <span class="dot" />
+            Keep them as they are
+          </button>
+        </div>
+      )}
+      {error && (
+        <div class="err" role="alert">
+          {error}
+        </div>
+      )}
+      <DialogActions>
+        <button type="button" class="btn lg" disabled={busy} onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" class="btn pri lg" disabled={busy || !ready} onClick={() => void save()}>
+          <Icon name="listAdd" />
+          {asking && replace === null ? 'Choose replace or keep' : changes === 0 ? 'Nothing to add' : `Add to list (${changes})`}
         </button>
       </DialogActions>
     </Dialog>

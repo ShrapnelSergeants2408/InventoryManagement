@@ -3,12 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { centsToPlain } from '../src/domain/money';
 import { buildOrderList } from '../src/domain/order';
 import {
+  QUANTITY_RULES,
+  applyAddMany,
   buildNamedOrder,
   copyName,
   defaultQuantity,
   listNameProblem,
   newListId,
   packsFor,
+  planAddMany,
+  ruleQuantity,
   stepQuantity,
   withoutMissingItems,
   type NamedOrderList,
@@ -158,5 +162,70 @@ describe('a named list’s CSV (F27: the list name in the file name and the firs
     const text = serializeOrderCsv(o, listNote('Spares', ''));
     expect(text.split('\r\n')[0]).toBe('﻿Order list: Spares');
     expect(text.split('\r\n')[1]).toMatch(/^Supplier,Part #/);
+  });
+});
+
+describe('add many at once: quantity rules (F27, Dan 2026-10-23)', () => {
+  // desired 10, spares 3, on hand 4, packs of 5.
+  const bolt = item({ id: 'a', desired: 10, spares: 3, onHand: 4, vendors: [vendor({ packSize: 5 }), null, null] });
+  it('up to desired + spares: need 9 → 2 packs → 10 (the suggested order quantity)', () => {
+    expect(ruleQuantity(bolt, 'spares')).toBe(10);
+    expect(ruleQuantity(bolt, 'spares')).toBe(defaultQuantity(bolt));
+  });
+  it('up to desired only: need 6 → 2 packs → 10; need 1 → 1 pack → 5', () => {
+    expect(ruleQuantity(bolt, 'desired')).toBe(10);
+    expect(ruleQuantity({ ...bolt, onHand: 9 }, 'desired')).toBe(5);
+  });
+  it('one pack each, whatever the counts', () => {
+    expect(ruleQuantity(bolt, 'pack')).toBe(5);
+    expect(ruleQuantity({ ...bolt, onHand: 100 }, 'pack')).toBe(5);
+  });
+  it('at the target: 0 (skipped); desired only can skip what desired + spares orders', () => {
+    const atDesired = { ...bolt, onHand: 10 };
+    expect(ruleQuantity(atDesired, 'desired')).toBe(0);
+    expect(ruleQuantity(atDesired, 'spares')).toBe(5);
+    expect(ruleQuantity({ ...bolt, onHand: 13 }, 'spares')).toBe(0);
+  });
+  it('the rules are listed in the order the dialog shows them', () => {
+    expect(QUANTITY_RULES.map((r) => r.rule)).toEqual(['spares', 'desired', 'pack']);
+  });
+});
+
+describe('add many at once: the plan (F27)', () => {
+  const items = [
+    item({ id: 'a', desired: 4, onHand: 0 }),
+    item({ id: 'b', desired: 2, onHand: 5 }),
+    item({ id: 'c', desired: 3, onHand: 1 }),
+    item({ id: 'd', desired: 6, onHand: 0, vendors: [vendor({ packSize: 4 }), null, null] }),
+  ];
+  const onList = list({ lines: [{ itemId: 'c', quantity: 9 }, { itemId: 'x', quantity: 1 }] });
+
+  it('splits into new lines, lines already on the list, and items at the target', () => {
+    const p = planAddMany(items, 'desired', onList);
+    expect(p.add).toEqual([{ itemId: 'a', quantity: 4 }, { itemId: 'd', quantity: 8 }]);
+    expect(p.onList).toEqual([{ itemId: 'c', was: 9, quantity: 2 }]);
+    expect(p.skipped.map((i) => i.id)).toEqual(['b']);
+  });
+  it('a new list has nothing on it yet', () => {
+    const p = planAddMany(items, 'pack', null);
+    expect(p.add.map((l) => l.itemId)).toEqual(['a', 'b', 'c', 'd']);
+    expect([p.onList, p.skipped]).toEqual([[], []]);
+  });
+  it('replace changes the lines already there; keep leaves them; new lines go at the end', () => {
+    const p = planAddMany(items, 'desired', onList);
+    expect(applyAddMany(onList, p, true)).toEqual([{ itemId: 'c', quantity: 2 }, { itemId: 'x', quantity: 1 }, { itemId: 'a', quantity: 4 }, { itemId: 'd', quantity: 8 }]);
+    expect(applyAddMany(onList, p, false)).toEqual([{ itemId: 'c', quantity: 9 }, { itemId: 'x', quantity: 1 }, { itemId: 'a', quantity: 4 }, { itemId: 'd', quantity: 8 }]);
+  });
+  it('the list’s total, to the cent, from the rule’s quantities', () => {
+    const priced = [
+      item({ id: 'p', desired: 7, spares: 2, onHand: 1, vendors: [vendor({ supplier: 'AndyMark', packSize: 4, packPriceCents: 1299 }), null, null] }),
+      item({ id: 'q', desired: 3, spares: 1, onHand: 0, vendors: [vendor({ supplier: 'AndyMark', packSize: 1, packPriceCents: 4250 }), null, null] }),
+    ];
+    // desired only: p need 6 → 2 packs × $12.99; q need 3 → 3 × $42.50. Total $153.48.
+    const l = list({ lines: applyAddMany(list(), planAddMany(priced, 'desired', null), false) });
+    expect(centsToPlain(buildNamedOrder(l, priced).grandTotalCents)).toBe('153.48');
+    // desired + spares: p need 8 → 2 packs; q need 4 → 4. Total $195.98.
+    const s = list({ lines: applyAddMany(list(), planAddMany(priced, 'spares', null), false) });
+    expect(centsToPlain(buildNamedOrder(s, priced).grandTotalCents)).toBe('195.98');
   });
 });

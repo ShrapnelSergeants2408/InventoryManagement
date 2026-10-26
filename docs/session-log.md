@@ -606,3 +606,30 @@ New: `src/ui/components/SelectBar.tsx`, `scripts/m15b-ui-check.mjs`, `docs/revie
 High: quantities and totals checked to the cent against hand-worked numbers and an independent calculation in the browser; mutants caught; regression green.
 
 **Next:** Dan merges the PR and does the tablet check in the M15b review; then M16a (helpers on the main tablet, the second schema upgrade).
+
+---
+
+## Stage 6, M16a — 2026-10-26 — helpers on the main tablet, count kits, the second schema upgrade
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session. Dan merged PR #20 (M15b, `197ff26`). Dan asked for next steps, then: "1 worked perfectly. build m16a" (the M15b tablet check). Branch `m16a-helpers` from `main`.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| start | Next steps given (M15b tablet check, then M16a). Dan: step 1 worked; build M16a. Recorded in the M15b review |
+| — | Read the plan, SPEC §3, §7, §18, §19, the count, CSV, backup and database code |
+| — | Count times as local date-times with offset (`dates.ts`), `counted_by`, CSV both forms, `isCounted` by local date; schema v3 with its data step; helper rules, data and the kit writer; Restore refuses kits; renames carry helpers. One shell command waited on stdin (`python -` heredoc) and was stopped; nothing changed |
+| — | Unit tests: `count-times`, `helper-devices`, `schema-upgrade` rewritten for v1/v2 → v3; tests pinned to America/Chicago. 652 pass. Tab S8 backup v1 → v3 passes (it has no counted items) |
+| — | Helper devices screen, dialogs, count-in card and per-group helpers. `m16a-ui-check` 39/39 after script fixes and one app fix (the shared-group warning repeated on every edit) |
+| — | `main` built in a scratch worktree (node_modules by junction, removed first). `m16a-upgrade-check` 24/24 twice: blocked, upgrade, rollback to `main` shows the guard and writes nothing |
+| — | Regression M2–M15b 541/541 after updating M3, M5, M9, M15 for intended changes. Mutants 27/28 compiling caught (one equivalent) after one test added |
+| — | `docs/reviews/M16a.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+§18.1 helpers (add, edit, remove, coverage, shared warning, name lock), §18.2 count kit with Include photos, F24 helpers on the start screen, §3 `last_counted` date-time and `counted_by`, schema v3. `APP_VERSION` 0.3.0.
+
+**CONFIDENCE**
+High for the upgrade (field-by-field unit tests on both DST sides, real-browser upgrade and rollback) and the kit contents (read back in Node). Not yet done: the plan's independent fresh-session review for M16, and the Tab S8 share sheet with a 6 MB kit.
+
+**Next:** the independent review of the M16a PR (if Dan wants it run as a separate agent, as for M12); Dan merges with a merge commit, backs up the tablet first, and does the tablet check in the M16a review; then M16b.

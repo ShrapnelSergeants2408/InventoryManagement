@@ -1,12 +1,14 @@
-// The first schema upgrade, v1 → v2 (stage6-plan §3; Stage 5 findings 1 and 6). A v1
-// database with real-shaped rows is opened by today's code: every row comes through
-// byte-equal, the new table is empty, and the guard keeps an older copy away from a newer
-// database without writing anything.
+// The schema upgrades: v1 → v2 (M15) and v2 → v3 (M16a), stage6-plan §3; Stage 5 findings 1
+// and 6. A v1 or v2 database with real-shaped rows is opened by today's code: only the planned
+// fields change (last_counted to a local date-time, counted_by added), everything else comes
+// through byte-equal, the new tables are empty, and the guard keeps an older copy away from a
+// newer database without writing anything. Tests run in America/Chicago (vite.config.ts).
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { InventoryDb, SCHEMA_KEY, SCHEMA_VERSION, checkSchema, toItemRow } from '../src/data/db';
+import { InventoryDb, SCHEMA_KEY, SCHEMA_VERSION, checkSchema, fromItemRow, toItemRow, upgradeItemToV3 } from '../src/data/db';
 import { loadOrderLists } from '../src/data/order-lists';
+import { countGroups, overallProgress } from '../src/domain/count';
 import { canOfferReset, resetConfirmed, storageErrorName } from '../src/domain/storage-error';
 import { item, vendor } from './helpers';
 
@@ -25,19 +27,35 @@ const V1 = {
   categories: 'name, order',
   settings: 'key',
 };
+/** What M15 and M15b added. */
+const V2 = { orderLists: 'id, &key, *itemIds' };
+/** What M16a adds (for the guard tests' "newer" databases). */
+const V3 = { helpers: 'id, &key', pendingItems: 'id, helperId, barcode', pendingPhotos: 'pendingId', importUndo: 'id' };
+const NEW_TABLES = Object.keys(V3);
 
 const bytes = (...b: number[]) => new Blob([new Uint8Array(b)], { type: 'image/jpeg' });
 
-/** Rows as a v1 tablet holds them: counted on each side of the DST changes, never counted, photos, lists, settings. */
+/** A date-only item row as v1 and v2 stored it: no counted_by field at all. */
+function oldRow(over: Parameters<typeof item>[0]) {
+  const { countedBy: _c, ...row } = toItemRow(item(over), 1_700_000_000_000);
+  return row;
+}
+
+/**
+ * Rows as a v1 tablet holds them: counted on each side of both 2026 DST changes (Mar 8 and
+ * Nov 1, at 2 a.m.), never counted, photos, lists, settings.
+ */
 function v1Rows() {
-  const items = [
-    item({ id: 'st-0001', name: 'NEO 2.0', category: 'Electrical', lastCounted: '2026-03-07', onHand: 2, desired: 4, hasPhoto: true }),
-    item({ id: 'st-0002', name: 'Bolt ¼-20 × ¾"', category: 'Fasteners', lastCounted: '2026-03-08', notes: 'line one\nline, "two"' }),
-    item({ id: 'st-0003', name: 'Belt', category: 'Power Transfer', lastCounted: '2026-11-01', vendors: [vendor({ supplier: 'WCP', packPriceCents: null }), vendor(), null] }),
-    item({ id: 'tm-ABCDE', name: 'Never counted', lastCounted: '', location: 'Bin F3' }),
-  ].map((i) => toItemRow(i, 1_700_000_000_000));
   return {
-    items,
+    items: [
+      oldRow({ id: 'st-0001', name: 'NEO 2.0', category: 'Electrical', lastCounted: '2026-03-07', onHand: 2, desired: 4, hasPhoto: true }),
+      oldRow({ id: 'st-0002', name: 'Bolt ¼-20 × ¾"', category: 'Fasteners', lastCounted: '2026-03-08', notes: 'line one\nline, "two"' }),
+      oldRow({ id: 'st-0003', name: 'Hex shaft', category: 'Fasteners', lastCounted: '2026-03-09' }),
+      oldRow({ id: 'st-0004', name: 'Belt', category: 'Power Transfer', lastCounted: '2026-10-31', vendors: [vendor({ supplier: 'WCP', packPriceCents: null }), vendor(), null] }),
+      oldRow({ id: 'st-0005', name: 'Pulley', category: 'Power Transfer', lastCounted: '2026-11-01' }),
+      oldRow({ id: 'st-0006', name: 'Chain', category: 'Power Transfer', lastCounted: '2026-11-02' }),
+      oldRow({ id: 'tm-ABCDE', name: 'Never counted', lastCounted: '', location: 'Bin F3' }),
+    ],
     photos: [
       { itemId: 'st-0001', full: bytes(0xff, 0xd8, 1, 2, 3), thumb: bytes(9), updatedAt: 5, taken: 6 },
       { itemId: 'tm-ABCDE', full: bytes(0xff, 0xd8, 4), thumb: null, updatedAt: 7 },
@@ -51,6 +69,8 @@ function v1Rows() {
     categories: [
       { name: 'Electrical', order: 0, subcategories: ['Motors'] },
       { name: 'Fasteners', order: 1, subcategories: [] },
+      { name: 'Power Transfer', order: 2, subcategories: [] },
+      { name: 'Motors', order: 3, subcategories: [] },
     ],
     settings: [
       { key: 'pinHash', value: { salt: 'abc', hash: 'def', iterations: 100000 } },
@@ -62,15 +82,29 @@ function v1Rows() {
   };
 }
 
-async function makeV1(name: string) {
+/** Local midnight with that day's offset, worked out by hand for Chicago (CST -06:00, CDT -05:00). */
+const EXPECTED: Record<string, string> = {
+  '2026-03-07': '2026-03-07T00:00:00-06:00',
+  '2026-03-08': '2026-03-08T00:00:00-06:00', // DST starts at 2 a.m.: midnight is still CST
+  '2026-03-09': '2026-03-09T00:00:00-05:00',
+  '2026-10-31': '2026-10-31T00:00:00-05:00',
+  '2026-11-01': '2026-11-01T00:00:00-05:00', // DST ends at 2 a.m.: midnight is still CDT
+  '2026-11-02': '2026-11-02T00:00:00-06:00',
+  '': '',
+};
+
+const ORDER_LIST = { id: 'ol-1', key: 'wcp order', name: 'WCP order', notes: 'n, "q"', created: 1, updated: 2, lines: [{ itemId: 'st-0004', quantity: 3 }], itemIds: ['st-0004'] };
+
+async function makeOld(name: string, version: 1 | 2) {
   const old = new Dexie(name);
   old.version(1).stores(V1);
-  const rows = v1Rows();
+  if (version === 2) old.version(2).stores(V2);
+  const rows: Record<string, object[]> = v1Rows();
+  if (version === 2) rows.orderLists = [ORDER_LIST];
   await old.transaction('rw', old.tables, async () => {
-    for (const [t, list] of Object.entries(rows)) await old.table(t).bulkAdd(list as object[]);
+    for (const [t, list] of Object.entries(rows)) await old.table(t).bulkAdd(list);
   });
   old.close();
-  return rows;
 }
 
 async function dump(db: Dexie, table: string): Promise<unknown[]> {
@@ -84,41 +118,87 @@ async function dump(db: Dexie, table: string): Promise<unknown[]> {
   );
 }
 
-describe('upgrade v1 → v2 (M15)', () => {
-  it('keeps every v1 row byte-equal, photos included, and adds an empty orderLists table', async () => {
-    const name = `up-${Math.random()}`;
-    await makeV1(name);
-    const before = track(new Dexie(name));
-    await before.open();
-    const snapshot: Record<string, unknown[]> = {};
-    for (const t of Object.keys(V1)) snapshot[t] = await dump(before, t);
-    before.close();
+/** Opens the old database as it is (no upgrade) and dumps every table. */
+async function dumpAll(name: string, tables: string[]): Promise<Record<string, unknown[]>> {
+  const before = track(new Dexie(name));
+  await before.open();
+  const out: Record<string, unknown[]> = {};
+  for (const t of tables) out[t] = await dump(before, t);
+  before.close();
+  return out;
+}
+
+describe.each([1, 2] as const)('upgrade v%i → v3 (M16a)', (from) => {
+  const tables = [...Object.keys(V1), ...(from === 2 ? Object.keys(V2) : [])];
+
+  it('converts last_counted to local midnight on both sides of each DST change, adds counted_by, and changes nothing else', async () => {
+    const name = `up${from}-${Math.random()}`;
+    await makeOld(name, from);
+    const before = await dumpAll(name, tables);
 
     const db = track(new InventoryDb(name));
     await db.open();
-    expect(db.verno).toBe(2);
-    for (const t of Object.keys(V1)) {
-      if (t === 'settings') continue;
-      expect(await dump(db, t), t).toEqual(snapshot[t]);
-    }
-    // Dates stay date-only in v2: the date-time conversion is v3 (M16a).
-    expect((await db.items.get('st-0002'))!.lastCounted).toBe('2026-03-08');
-    expect(await db.orderLists.count()).toBe(0);
-    expect(await loadOrderLists(db)).toEqual([]);
+    expect(db.verno).toBe(3);
+
+    // Items: exactly the two planned fields differ; the date-only value is gone.
+    const after = (await dump(db, 'items')) as Array<Record<string, unknown>>;
+    expect(after).toEqual(
+      (before.items as Array<Record<string, unknown>>).map((r) => ({ ...r, lastCounted: EXPECTED[r.lastCounted as string], countedBy: '' })),
+    );
+    expect(after.map((r) => r.lastCounted)).toEqual(['2026-03-07T00:00:00-06:00', '2026-03-08T00:00:00-06:00', '2026-03-09T00:00:00-05:00', '2026-10-31T00:00:00-05:00', '2026-11-01T00:00:00-05:00', '2026-11-02T00:00:00-06:00', '']);
+
+    // Every other table byte-equal, photos and order lists included.
+    for (const t of tables) if (t !== 'items' && t !== 'settings') expect(await dump(db, t), t).toEqual(before[t]);
+    for (const t of NEW_TABLES) expect(await db.table(t).count(), t).toBe(0);
+    if (from === 2) expect((await loadOrderLists(db)).map((l) => l.name)).toEqual(['WCP order']);
+    else expect(await loadOrderLists(db)).toEqual([]);
 
     // Settings: unchanged, plus the schema version once the app has checked it.
     expect(await checkSchema(db)).toBe('ok');
     const settings = (await dump(db, 'settings')) as { key: string }[];
-    expect(settings.filter((s) => s.key !== SCHEMA_KEY)).toEqual(snapshot.settings);
-    expect(await db.settings.get(SCHEMA_KEY)).toEqual({ key: SCHEMA_KEY, value: SCHEMA_VERSION });
+    expect(settings.filter((s) => s.key !== SCHEMA_KEY)).toEqual(before.settings);
+    expect(await db.settings.get(SCHEMA_KEY)).toEqual({ key: SCHEMA_KEY, value: 3 });
   });
 
-  it('a new tablet starts at v2 with the schema version recorded', async () => {
+  it('count rounds give the same progress after the upgrade as before (§19)', async () => {
+    const name = `prog${from}-${Math.random()}`;
+    await makeOld(name, from);
+    const old = v1Rows();
+    const beforeItems = old.items.map((r) => fromItemRow({ ...r, countedBy: '' }));
+    const db = track(new InventoryDb(name));
+    const afterItems = (await db.items.toArray()).map(fromItemRow);
+    for (const since of ['', '2026-03-07', '2026-03-08', '2026-03-09', '2026-11-01', '2026-11-02', '2026-11-03']) {
+      expect(overallProgress(afterItems, since), since).toEqual(overallProgress(beforeItems, since));
+      expect(countGroups(afterItems, old.categories, [], 'category', false, since), since).toEqual(
+        countGroups(beforeItems, old.categories, [], 'category', false, since).map((g) => ({ ...g, items: g.items.map((i) => afterItems.find((a) => a.id === i.id)) })),
+      );
+    }
+  });
+});
+
+describe('the v3 item change itself', () => {
+  it('leaves a date-time and an existing counted_by as they are, and keeps blank blank', () => {
+    const a = { lastCounted: '2026-10-24T18:42:07-05:00', countedBy: 'Maya' };
+    upgradeItemToV3(a);
+    expect(a).toEqual({ lastCounted: '2026-10-24T18:42:07-05:00', countedBy: 'Maya' });
+    const b: { lastCounted: string; countedBy?: string } = { lastCounted: '' };
+    upgradeItemToV3(b);
+    expect(b).toEqual({ lastCounted: '', countedBy: '' });
+    const c: { lastCounted: string; countedBy?: string } = { lastCounted: '2026-07-04' };
+    upgradeItemToV3(c);
+    expect(c).toEqual({ lastCounted: '2026-07-04T00:00:00-05:00', countedBy: '' });
+  });
+});
+
+describe('a new tablet', () => {
+  it('starts at v3 with the schema version recorded', async () => {
     const db = track(new InventoryDb(`new-${Math.random()}`));
     await db.open();
+    expect(db.verno).toBe(3);
     expect(await db.settings.get(SCHEMA_KEY)).toBeUndefined();
     expect(await checkSchema(db)).toBe('ok');
-    expect((await db.settings.get(SCHEMA_KEY))!.value).toBe(2);
+    expect((await db.settings.get(SCHEMA_KEY))!.value).toBe(3);
+    expect(SCHEMA_VERSION).toBe(3);
   });
 
   it('the multi-entry index finds the lists an item is on', async () => {
@@ -129,20 +209,31 @@ describe('upgrade v1 → v2 (M15)', () => {
     // Names are unique ignoring capitals (§3), enforced by the index too.
     await expect(db.orderLists.add({ id: 'ol-3', key: 'a', name: 'a', notes: '', created: 1, updated: 1, lines: [], itemIds: [] })).rejects.toThrow();
   });
+
+  it('helper names are unique ignoring capitals, enforced by the index too', async () => {
+    const db = track(new InventoryDb(`hx-${Math.random()}`));
+    const h = { id: 'hp-AAAAA', key: 'maya', name: 'Maya', kind: 'category' as const, groups: ['Fasteners'], allowNewItems: true, kits: [], lastImportAt: null, created: 1 };
+    await db.helpers.add(h);
+    await expect(db.helpers.add({ ...h, id: 'hp-BBBBB', name: 'MAYA' })).rejects.toThrow();
+  });
 });
 
 describe('schema guard (Stage 5 finding 6)', () => {
-  it('a database at a newer version is “outdated”, and nothing is written', async () => {
-    const name = `new3-${Math.random()}`;
-    const newer = new Dexie(name);
-    newer.version(1).stores(V1);
-    newer.version(2).stores({ orderLists: 'id, &key, *itemIds' });
-    newer.version(3).stores({ helpers: 'id, key' });
-    await newer.open();
-    await newer.table('settings').put({ key: SCHEMA_KEY, value: 3 });
-    await newer.table('items').put(toItemRow(item({ id: 'kept' }), 1));
-    newer.close();
+  async function newer(name: string, stored: number | null) {
+    const d = new Dexie(name);
+    d.version(1).stores(V1);
+    d.version(2).stores(V2);
+    d.version(3).stores(V3);
+    d.version(4).stores({ somethingNew: 'id' });
+    await d.open();
+    if (stored !== null) await d.table('settings').put({ key: SCHEMA_KEY, value: stored });
+    await d.table('items').put(toItemRow(item({ id: 'kept' }), 1));
+    d.close();
+  }
 
+  it('a database at a newer version is “outdated”, and nothing is written', async () => {
+    const name = `new4-${Math.random()}`;
+    await newer(name, 4);
     const db = track(new InventoryDb(name));
     await db.open();
     const before = await dump(db, 'settings');
@@ -160,12 +251,7 @@ describe('schema guard (Stage 5 finding 6)', () => {
 
   it('a newer browser version number alone is enough (no stored setting)', async () => {
     const name = `nv-${Math.random()}`;
-    const newer = new Dexie(name);
-    newer.version(1).stores(V1);
-    newer.version(2).stores({ orderLists: 'id, &key, *itemIds' });
-    newer.version(3).stores({ helpers: 'id, key' });
-    await newer.open();
-    newer.close();
+    await newer(name, null);
     const db = track(new InventoryDb(name));
     await db.open();
     expect(await checkSchema(db)).toBe('outdated');
@@ -174,12 +260,12 @@ describe('schema guard (Stage 5 finding 6)', () => {
 });
 
 describe('blocked upgrade (§3: never the "Set up again" path)', () => {
-  it('raises "blocked" while an old connection holds v1, then opens once it closes', async () => {
+  it('raises "blocked" while an old connection holds v2, then opens once it closes', async () => {
     const name = `bl-${Math.random()}`;
-    await makeV1(name);
+    await makeOld(name, 2);
     // An old tab: a plain connection that ignores versionchange.
     const old: IDBDatabase = await new Promise((resolve, reject) => {
-      const r = indexedDB.open(name, 10);
+      const r = indexedDB.open(name, 20);
       r.onsuccess = () => resolve(r.result);
       r.onerror = () => reject(r.error);
     });
@@ -190,8 +276,9 @@ describe('blocked upgrade (§3: never the "Set up again" path)', () => {
     await vi.waitFor(() => expect(blocked).toHaveBeenCalled());
     old.close();
     await opening;
-    expect(db.verno).toBe(2);
-    expect(await db.items.count()).toBe(4);
+    expect(db.verno).toBe(3);
+    expect(await db.items.count()).toBe(7);
+    expect((await db.items.get('st-0002'))!.lastCounted).toBe('2026-03-08T00:00:00-06:00');
   });
 });
 

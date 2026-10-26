@@ -112,3 +112,15 @@ export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n ==
 export function CheckBox({ state }: { state: 'on' | 'some' | 'off' }) {
   return <span class={state === 'off' ? 'cbox' : `cbox ${state}`}>{state === 'on' ? <Icon name="check" /> : state === 'some' ? <Icon name="minus" /> : null}</span>;
 }
+
+/** An on/off switch with its label (count-in options, F24; helper settings, §18.1). */
+export function Toggle(props: { on: boolean; onClick: () => void; disabled?: boolean; children: ComponentChildren }) {
+  return (
+    <button type="button" class="tog" role="switch" aria-checked={props.on} disabled={props.disabled} onClick={props.onClick}>
+      <span class={props.on ? 'sw on' : 'sw'} aria-hidden="true">
+        <span />
+      </span>
+      <span>{props.children}</span>
+    </button>
+  );
+}

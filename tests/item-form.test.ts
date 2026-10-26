@@ -19,7 +19,7 @@ const categories: Category[] = [
   { name: 'Motors', order: 1, subcategories: [] },
 ];
 const supplierNames = ['AndyMark', 'REV', 'WCP', 'other'];
-const ctx = (over: Partial<BuildContext> = {}): BuildContext => ({ id: 'tm-ABCDE', base: null, today: '2026-10-18', supplierNames, categories, ...over });
+const ctx = (over: Partial<BuildContext> = {}): BuildContext => ({ id: 'tm-ABCDE', base: null, today: '2026-10-18', countedAt: '2026-10-18T15:30:00-05:00', supplierNames, categories, ...over });
 
 const filledNew = (over: Partial<ItemDraft> = {}): ItemDraft => ({
   ...newDraft('Structure', 'Standoff 1/2 in.'),
@@ -45,7 +45,8 @@ describe('buildItem — add (F6)', () => {
       onHand: 3,
       desired: 8,
       spares: 2,
-      lastCounted: '2026-10-18',
+      lastCounted: '2026-10-18T15:30:00-05:00',
+      countedBy: '',
       preferredVendor: 1,
       hasPhoto: false,
     });

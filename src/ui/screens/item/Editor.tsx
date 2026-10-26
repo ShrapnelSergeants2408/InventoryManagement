@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addItem, getRecentLocations, updateItem } from '../../../data/items';
 import { addLocation } from '../../../data/lists';
 import type { PhotoChange } from '../../../data/photos';
-import { localIsoDate } from '../../../domain/dates';
+import { localIsoDate, nowLocalIso } from '../../../domain/dates';
 import { newTeamId } from '../../../domain/ids';
 import {
   MAX_VENDORS,
@@ -169,7 +169,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     if (busy) return;
     const taken = new Set(snap.items.map((i) => i.id));
     const id = base ? base.id : newTeamId((x) => taken.has(x));
-    const r = buildItem(d, { id, base, today, supplierNames: snap.suppliers.map((s) => s.name), categories: snap.categories, vendorsLocked: vLocked });
+    const r = buildItem(d, { id, base, today, countedAt: nowLocalIso(), supplierNames: snap.suppliers.map((s) => s.name), categories: snap.categories, vendorsLocked: vLocked });
     if (!r.ok) {
       setErrors(r.errors);
       document.querySelector('.fbody')?.scrollTo({ top: 0 });

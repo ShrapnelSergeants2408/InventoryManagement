@@ -92,6 +92,15 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     return { bundle: null, problems: [{ file: 'backup', row: null, message: "this file isn't a readable ZIP backup" }], warnings: [] };
   }
 
+  // A count kit (§18.2) has an inventory.csv too, but with prices left out: it is never a backup (§7).
+  if (Object.values(zip.files).some((f) => !f.dir && /(^|\/)kit\.json$/i.test(f.name))) {
+    return {
+      bundle: null,
+      problems: [{ file: 'backup', row: null, message: 'this is a count kit for a helper device, not a backup. Open it on the helper with “Join as a helper”' }],
+      warnings: [],
+    };
+  }
+
   // Accept files at the root or inside one top-level folder (a re-zipped backup folder).
   const csvEntry = Object.values(zip.files)
     .filter((f) => !f.dir && /(^|\/)inventory\.csv$/i.test(f.name) && !f.name.startsWith('__MACOSX/'))

@@ -166,7 +166,7 @@ try {
   check('a reload brings it back (Q10)', await js(`return !!document.querySelector('.banner')`), true);
 
   // ── Data to round-trip: a count, tricky notes, a location ──
-  await js(`await idbEdit('items', (r) => r.id === 'st-0001' ? { ...r, onHand: 5, lastCounted: '2026-10-18', location: 'Bin "A", top', notes: 'Line 1, with comma\\nLine 2 "quoted" — ünï 🤖' } : null);
+  await js(`await idbEdit('items', (r) => r.id === 'st-0001' ? { ...r, onHand: 5, lastCounted: '2026-10-18T15:30:00-05:00', countedBy: 'Tablet 2 · Alex & Jordan', location: 'Bin "A", top', notes: 'Line 1, with comma\\nLine 2 "quoted" — ünï 🤖' } : null);
             await idbPut('locations', { key: 'bin "a", top', name: 'Bin "A", top', notes: '', order: 0 });`);
   await reload();
   const original = await js(`return (await idb('items')).map(({ updatedAt, ...r }) => r)`);

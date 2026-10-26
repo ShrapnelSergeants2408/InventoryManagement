@@ -12,6 +12,7 @@ export type Route =
   | { tab: 'inventory'; screen: 'add'; name: string; barcode: string }
   | { tab: 'labels'; screen: 'labels'; ids: string[] }
   | { tab: 'order'; screen: 'orderList'; id: string }
+  | { tab: 'count'; screen: 'helpers' }
   | { tab: 'more'; screen: ManagedList }
   | { tab: 'more'; screen: 'backup' }
   | { tab: 'more'; screen: 'settings' };
@@ -32,6 +33,7 @@ export function parseHash(hash: string): Route {
     return parts[2] === 'edit' ? { tab: 'inventory', screen: 'edit', id: parts[1] } : { tab: 'inventory', screen: 'item', id: parts[1] };
   }
   if (parts[0] === 'order' && parts[1]) return { tab: 'order', screen: 'orderList', id: parts[1] };
+  if (parts[0] === 'count' && parts[1] === 'helpers') return { tab: 'count', screen: 'helpers' };
   if (parts[0] === 'add') {
     const q = new URLSearchParams(query);
     return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '' };
@@ -62,6 +64,8 @@ export const href = {
   },
   /** A named order list (F27). */
   orderList: (id: string) => `#/order/${encodeURIComponent(id)}`,
+  /** Helper devices (§18.1), from the count-in start screen. */
+  helpers: '#/count/helpers',
   labels: (ids: string[]) => `#/labels?${new URLSearchParams({ ids: ids.join(',') })}`,
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',

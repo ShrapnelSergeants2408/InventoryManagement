@@ -31,8 +31,13 @@ export interface Item {
   barcode: string;
   notes: string;
   source: ItemSource;
-  /** ISO date YYYY-MM-DD, or '' when never counted (F24). */
+  /**
+   * When on_hand was last confirmed by a count (F24): a local date-time with its UTC offset,
+   * 2026-10-24T18:42:07-05:00 (§3), or '' when never counted. Older data held a date only.
+   */
   lastCounted: string;
+  /** Where that count came from: '' = this tablet, otherwise the helper's name (§3, §18.5). */
+  countedBy: string;
   preferredVendor: VendorSlot;
   /** Fixed slots: index 0 is v1, 1 is v2, 2 is v3. */
   vendors: [Vendor | null, Vendor | null, Vendor | null];

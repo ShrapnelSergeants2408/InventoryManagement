@@ -1,7 +1,7 @@
 // Count-in save (F24): on_hand and last_counted together, and the location when one was
 // picked, in one transaction. No PIN (§6).
 import { cleanSince } from '../domain/count';
-import { localIsoDate } from '../domain/dates';
+import { nowLocalIso } from '../domain/dates';
 import { pushRecent } from '../domain/lists';
 import { nameKey, type Item } from '../domain/types';
 import { fromItemRow, type InventoryDb } from './db';
@@ -9,9 +9,10 @@ import { RECENT_LOCATIONS, getRecentLocations } from './items';
 
 /**
  * Saves one counted item. `location` is a name from the Location list or '' for "No
- * location"; undefined leaves the item's location as it is. Returns the item as saved.
+ * location"; undefined leaves the item's location as it is. `countedAt` is the local
+ * date-time with offset (§3); counted_by becomes '' (this tablet). Returns the item as saved.
  */
-export async function saveCount(db: InventoryDb, id: string, onHand: number, location?: string, today = localIsoDate(), now = Date.now()): Promise<Item> {
+export async function saveCount(db: InventoryDb, id: string, onHand: number, location?: string, countedAt = nowLocalIso(), now = Date.now()): Promise<Item> {
   if (!Number.isSafeInteger(onHand) || onHand < 0) throw new RangeError('the count must be a whole number ≥ 0');
   return db.transaction('rw', db.items, db.locations, db.settings, async () => {
     const row = await db.items.get(id);
@@ -25,7 +26,8 @@ export async function saveCount(db: InventoryDb, id: string, onHand: number, loc
     const saved = {
       ...row,
       onHand,
-      lastCounted: today,
+      lastCounted: countedAt,
+      countedBy: '',
       location: loc,
       updatedAt: now,
     };

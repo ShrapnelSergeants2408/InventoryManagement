@@ -48,6 +48,7 @@ export const ICONS = {
   dots: 'M11 5a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M11 12a1 1 0 1 0 2 0a1 1 0 1 0 -2 0 M11 19a1 1 0 1 0 2 0a1 1 0 1 0 -2 0',
   listAdd: 'M4 6h11 M4 12h11 M4 18h7 M17 15v6 M14 18h6',
   copy: 'M8 8h12v12H8z M4 16V4h12',
+  phone: 'M7 2.5h10v19H7z M11 18.5h2',
   backspace: 'M9 5h11v14H9l-6-7z M12 9l6 6 M18 9l-6 6',
 } as const;
 

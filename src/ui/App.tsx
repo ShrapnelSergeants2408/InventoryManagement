@@ -7,6 +7,7 @@ import { SETUP_DONE, STARTER_LOADED, ensurePersistentStorage, isSetUp } from '..
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
 import { CountScreen } from './screens/count/Count';
+import { HelpersScreen } from './screens/count/Helpers';
 import { InventoryScreen } from './screens/inventory/Inventory';
 import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
@@ -79,6 +80,8 @@ function Screen({ route }: { route: Route }) {
       return <LabelsScreen key={route.ids.join(',')} ids={route.ids} />;
     case 'orderList':
       return <OrderScreen key={route.id} listId={route.id} />;
+    case 'helpers':
+      return <HelpersScreen />;
     case 'suppliers':
       return <SuppliersScreen />;
     case 'categories':

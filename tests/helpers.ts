@@ -33,6 +33,7 @@ export function item(over: Partial<Item> = {}): Item {
     notes: '',
     source: 'team',
     lastCounted: '',
+    countedBy: '',
     preferredVendor: 1,
     vendors: [vendor(), null, null],
     hasPhoto: false,

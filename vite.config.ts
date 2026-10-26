@@ -42,5 +42,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    // The team's time zone, so local-time tests (count times, DST changes) give the same results on any machine.
+    env: { TZ: 'America/Chicago' },
   },
 });

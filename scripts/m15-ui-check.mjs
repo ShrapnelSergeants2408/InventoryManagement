@@ -109,8 +109,8 @@ try {
   await P(`await doSetup();`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
 
-  // ── The v2 database (stage6-plan §3) ──
-  check('a new tablet opens at schema v2: IndexedDB version 20, orderLists store, schemaVersion 2', await P(`const r = indexedDB.open('frc2408-inventory'); const db = await new Promise((res) => (r.onsuccess = () => res(r.result))); const out = [db.version, [...db.objectStoreNames].includes('orderLists')]; db.close(); return [...out, (await idbAll('settings')).find((s) => s.key === 'schemaVersion')?.value]`), [20, true, 2]);
+  // ── The database at this build's schema (v2 in M15, v3 since M16a; stage6-plan §3) ──
+  check('a new tablet opens at the current schema (v3 since M16a): IndexedDB version 30, orderLists store, schemaVersion 3', await P(`const r = indexedDB.open('frc2408-inventory'); const db = await new Promise((res) => (r.onsuccess = () => res(r.result))); const out = [db.version, [...db.objectStoreNames].includes('orderLists')]; db.close(); return [...out, (await idbAll('settings')).find((s) => s.key === 'schemaVersion')?.value]`), [30, true, 3]);
 
   const items = await P(`return await idbAll('items')`);
   const byName = (n) => items.find((i) => i.name.startsWith(n));
@@ -253,17 +253,17 @@ try {
 
   // ── Schema guard: a database from a newer version isn't touched (finding 6) ──
   const settingsBefore = await P(`return await idbAll('settings')`);
-  await P(`await idbPut('settings', { key: 'schemaVersion', value: 3 });`);
+  await P(`await idbPut('settings', { key: 'schemaVersion', value: 4 });`);
   await send('Page.reload');
   await waitFor(`document.querySelector('.state h2')`, 30000);
   await sleep(800);
   check('newer database: "out of date" screen with Reload, no inventory shown', await P(`return [norm($('.state .h2').textContent), !!byText('.state .btn', 'Reload'), $$('.row').length]`), ['This app is out of date — reload to update', true, 0]);
   check('…and nothing was written', (await P(`return await idbAll('settings')`)).filter((s) => s.key !== 'schemaVersion'), settingsBefore.filter((s) => s.key !== 'schemaVersion'));
   await shot('10-outdated');
-  await P(`await idbPut('settings', { key: 'schemaVersion', value: 2 });`);
+  await P(`await idbPut('settings', { key: 'schemaVersion', value: 3 });`);
   await send('Page.reload');
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 30000);
-  check('back to v2: the inventory opens again', await P(`return $$('.cathdr').length >= 11`), true);
+  check('back to the current version: the inventory opens again', await P(`return $$('.cathdr').length >= 11`), true);
 } catch (e) {
   results.push('ERROR ' + e.message);
   await shot('error').catch(() => {});

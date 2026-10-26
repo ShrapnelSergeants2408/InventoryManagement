@@ -4,8 +4,10 @@ import { createContext } from 'preact';
 import { useContext, useEffect, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
+import { loadHelpers } from '../data/helpers';
 import { loadOrderLists } from '../data/order-lists';
 import { getThumbnail } from '../data/photos';
+import type { Helper } from '../domain/helpers';
 import type { NamedOrderList } from '../domain/order-lists';
 import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
 import { makeThumbnail } from '../io/image';
@@ -176,4 +178,18 @@ export function useThumbnail(itemId: string, hasPhoto: boolean): string | null {
     };
   }, [db, itemId, hasPhoto, version]);
   return url;
+}
+
+/** Helper devices (§18.1), A–Z, live. */
+export function useHelpers(): Live<Helper[]> {
+  const db = useDb();
+  const [live, setLive] = useState<Live<Helper[]>>({ state: 'loading' });
+  useEffect(() => {
+    const sub = liveQuery(() => loadHelpers(db)).subscribe({
+      next: (value) => setLive({ state: 'ready', value }),
+      error: (error: unknown) => setLive({ state: 'error', error }),
+    });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return live;
 }

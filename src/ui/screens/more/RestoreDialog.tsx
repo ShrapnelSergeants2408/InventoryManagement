@@ -21,6 +21,8 @@ export interface TabletNow {
   orderLists: readonly NamedOrderList[];
   /** Pending items from helpers (§18.5). */
   pending: number;
+  /** Placed orders (§21.6). */
+  orders: number;
   lastChangeAt: number | null;
 }
 
@@ -88,6 +90,7 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
     ['Suppliers', String(tablet.suppliers), plan.kind === 'zip' ? String(plan.suppliers.length) : `${plan.suppliers.length} (this tablet’s list${plan.addedSuppliers.length ? ' + new names' : ''})`],
     ['Order lists', String(tablet.orderLists.length), listsAfter],
     ['Pending from helpers', String(tablet.pending), plan.pending === null ? `${tablet.pending} kept` : String(plan.pending.length)],
+    ['Placed orders', String(tablet.orders), plan.orders === null ? `${tablet.orders} kept` : String(plan.orders.length)],
     ['Saved', changed, saved],
   ];
 

@@ -8,6 +8,7 @@ import './styles/app.css';
 import './styles/labels.css';
 import './styles/scan.css';
 import './styles/count.css';
+import './styles/orders.css';
 import './styles/helper.css';
 import './styles/import.css';
 import { render } from 'preact';

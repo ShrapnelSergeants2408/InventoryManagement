@@ -11,6 +11,8 @@ export function Dialog(props: {
   label: string;
   /** alertdialog for confirmations of destructive actions. */
   role?: 'dialog' | 'alertdialog';
+  /** A wide form (the order form, F30). */
+  wide?: boolean;
   onClose: () => void;
   children: ComponentChildren;
 }) {
@@ -41,7 +43,7 @@ export function Dialog(props: {
 
   return (
     <div class="scrim center" onClick={(e) => e.target === e.currentTarget && props.onClose()}>
-      <div ref={box} class="dlg" role={props.role ?? 'dialog'} aria-modal="true" aria-label={props.label}>
+      <div ref={box} class={props.wide ? "dlg wide" : "dlg"} role={props.role ?? 'dialog'} aria-modal="true" aria-label={props.label}>
         {props.children}
       </div>
     </div>

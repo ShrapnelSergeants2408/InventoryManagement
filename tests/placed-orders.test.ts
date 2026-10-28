@@ -298,6 +298,13 @@ describe('copying prices into the catalog (§21.3)', () => {
     expect(after.get('a')).toEqual(items.get('a'));
   });
 
+  it('an item on the order twice is offered once, by its first line', async () => {
+    const items = new Map(tablet().items.map((i) => [i.id, i]));
+    const pc = priceChanges(order({ lines: [itemLine(items.get('a')!, 1, 1, 1100, ''), itemLine(items.get('a')!, 1, 1, 1200, '')] }), [...items.values()]);
+    expect(pc.changed.map((c) => [c.itemId, c.toPriceCents])).toEqual([['a', 1100]]);
+    expect(pc.unchanged).toEqual([]);
+  });
+
   it('a pack-size change is a change; nothing is written when skipped or when the item changed supplier since', async () => {
     const db = await setUp();
     const items = await itemsOf(db);
@@ -518,6 +525,14 @@ describe('backups (§21.6)', () => {
     await applyRestore(other, read.plan);
     expect(await loadOrders(other)).toEqual(before);
     expect(await receiptBytes(other)).toEqual(beforeReceipts);
+  });
+
+  it('a receipt whose file is missing on the tablet isn’t named in the backup', async () => {
+    const { db, id } = await withOrders();
+    await db.receipts.delete(`${id}-2`);
+    const z = await JSZip.loadAsync(await zipBytes(await buildBackup(db, 'full', new Date())));
+    expect(await z.file('orders.csv')!.async('string')).toContain(`receipts/${id}-1.jpg,`);
+    expect(await z.file('orders.csv')!.async('string')).not.toContain(`${id}-2`);
   });
 
   it('a backup with no orders still has both files, and restoring it clears the tablet’s orders', async () => {

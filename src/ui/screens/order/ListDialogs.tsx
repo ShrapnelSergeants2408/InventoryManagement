@@ -17,7 +17,7 @@ import {
 import { preferredVendorOf, type Item } from '../../../domain/types';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { plural } from '../../components/common';
-import { useDb, useOrderLists } from '../../data-hooks';
+import { useDb, useOnOrder, useOrderLists } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href, replaceRoute } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -37,12 +37,13 @@ export function packText(quantity: number, packSize: number, unit: string): stri
 export function AddToListDialog({ item, onClose }: { item: Item; onClose: () => void }) {
   const db = useDb();
   const live = useOrderLists();
+  const onOrder = useOnOrder();
   const lists = live.state === 'ready' ? live.value : [];
   const vendor = preferredVendorOf(item);
   const packSize = vendor?.packSize ?? 1;
   const [listId, setListId] = useState<string>(() => lastListId ?? NEW);
   const [newName, setNewName] = useState('');
-  const [packs, setPacks] = useState(() => packsFor(defaultQuantity(item), packSize).packs);
+  const [packs, setPacks] = useState(() => packsFor(defaultQuantity(item, onOrder.get(item.id) ?? 0), packSize).packs);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exists, setExists] = useState<{ list: NamedOrderList; quantity: number } | null>(null);
@@ -293,6 +294,7 @@ let lastRule: QuantityRule = 'spares';
 export function AddManyDialog({ chosen, onClose, onDone }: { chosen: readonly Item[]; onClose: () => void; onDone: () => void }) {
   const db = useDb();
   const live = useOrderLists();
+  const onOrder = useOnOrder();
   const lists = live.state === 'ready' ? live.value : [];
   const [listId, setListId] = useState<string>(() => lastListId ?? NEW);
   const [newName, setNewName] = useState('');
@@ -306,7 +308,7 @@ export function AddManyDialog({ chosen, onClose, onDone }: { chosen: readonly It
   const pick = remembered ? remembered.id : live.state === 'ready' && listId !== NEW ? (lists[0]?.id ?? NEW) : listId;
   const target = pick === NEW ? null : (lists.find((l) => l.id === pick) ?? null);
   const typing = pick === NEW;
-  const plan = planAddMany(chosen, rule, target);
+  const plan = planAddMany(chosen, rule, target, onOrder);
   const nameProblem = typing && newName.trim() !== '' ? listNameProblem(newName, lists) : null;
   const asking = plan.onList.length > 0;
   const changes = plan.add.length + (replace ? plan.onList.length : 0);

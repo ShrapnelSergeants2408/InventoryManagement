@@ -12,6 +12,8 @@ export type Route =
   | { tab: 'inventory'; screen: 'add'; name: string; barcode: string; pending: string }
   | { tab: 'labels'; screen: 'labels'; ids: string[] }
   | { tab: 'order'; screen: 'orderList'; id: string }
+  | { tab: 'order'; screen: 'placed' }
+  | { tab: 'order'; screen: 'placedOrder'; id: string }
   | { tab: 'count'; screen: 'helpers' }
   | { tab: 'count'; screen: 'import' }
   | { tab: 'count'; screen: 'pending' }
@@ -35,6 +37,7 @@ export function parseHash(hash: string): Route {
     return parts[2] === 'edit' ? { tab: 'inventory', screen: 'edit', id: parts[1] } : { tab: 'inventory', screen: 'item', id: parts[1] };
   }
   if (parts[0] === 'order' && parts[1]) return { tab: 'order', screen: 'orderList', id: parts[1] };
+  if (parts[0] === 'placed') return parts[1] ? { tab: 'order', screen: 'placedOrder', id: parts[1] } : { tab: 'order', screen: 'placed' };
   if (parts[0] === 'count' && parts[1] === 'helpers') return { tab: 'count', screen: 'helpers' };
   if (parts[0] === 'count' && parts[1] === 'import') return { tab: 'count', screen: 'import' };
   if (parts[0] === 'count' && parts[1] === 'pending') return { tab: 'count', screen: 'pending' };
@@ -68,6 +71,9 @@ export const href = {
   },
   /** A named order list (F27). */
   orderList: (id: string) => `#/order/${encodeURIComponent(id)}`,
+  /** Placed orders (F30, §21.5). */
+  placed: '#/placed',
+  placedOrder: (id: string) => `#/placed/${encodeURIComponent(id)}`,
   /** Helper devices (§18.1), from the count-in start screen. */
   helpers: '#/count/helpers',
   /** Import counts (§18.5), from count-in and the Backup screen. */

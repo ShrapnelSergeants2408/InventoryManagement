@@ -15,7 +15,7 @@ import { BackButton, StateMessage, StatusChip, TopBar, plural } from '../../comp
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { CountStepper, type StepperLabel } from '../../components/OnHandStepper';
 import { PhotoButtons } from '../../components/PhotoButtons';
-import { forgetThumbnail, useDb, usePhoto, useSnapshot, type PhotoView } from '../../data-hooks';
+import { forgetThumbnail, useDb, useOnOrder, usePhoto, useSnapshot, type PhotoView } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -80,7 +80,8 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const camera = useRef<HTMLInputElement>(null);
   const status = stockStatus(item.onHand, item.desired, item.spares);
   const stock = stockLines(item);
-  const order = orderLines(item);
+  const onOrder = useOnOrder().get(item.id) ?? 0;
+  const order = orderLines(item, onOrder);
   const vendors = item.vendors.flatMap((v, i) => (v ? [{ v, slot: i + 1 }] : []));
 
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
@@ -190,6 +191,12 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
             <div>
               <div class="qty-title">{order.title}</div>
               <div class="small muted">{order.sub}</div>
+              {onOrder > 0 && (
+                <a class="chip onord" href={href.placed}>
+                  <Icon name="truck" />
+                  On order {onOrder} {item.unit}
+                </a>
+              )}
             </div>
           </div>
 

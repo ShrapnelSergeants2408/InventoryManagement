@@ -234,6 +234,29 @@ describe('upgrade v3 → v4 (M19)', () => {
   });
 });
 
+describe('a helper device’s database (version 100) after M19', () => {
+  it('an existing helper database without the order tables still opens, with its data', async () => {
+    const name = `helper-${Math.random()}`;
+    // The helper database as M16b–M18 created it: inventory v1–v3 plus the helper's own v100.
+    const old = new Dexie(name);
+    old.version(1).stores(V1);
+    old.version(2).stores(V2);
+    old.version(3).stores(V3);
+    old.version(100).stores({ changes: 'key, changedAt' });
+    await old.open();
+    await old.table('items').add(toItemRow(item({ id: 'h1' }), 1));
+    await old.table('changes').add({ key: 'item:h1', changedAt: 5 });
+    old.close();
+
+    const { HelperDb } = await import('../src/data/helper-db');
+    const db = track(new HelperDb(name));
+    await db.open();
+    expect((await db.items.get('h1'))!.id).toBe('h1');
+    expect(await db.changes.count()).toBe(1);
+    expect(await db.orders.count()).toBe(0);
+  });
+});
+
 describe('the v3 item change itself', () => {
   it('leaves a date-time and an existing counted_by as they are, and keeps blank blank', () => {
     const a = { lastCounted: '2026-10-24T18:42:07-05:00', countedBy: 'Maya' };

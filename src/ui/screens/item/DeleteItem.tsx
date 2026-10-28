@@ -4,6 +4,7 @@
 import { useState } from 'preact/hooks';
 import { deleteItem } from '../../../data/items';
 import { listsWithItem } from '../../../data/order-lists';
+import { openOrdersWithItem } from '../../../data/placed-orders';
 import type { Item } from '../../../domain/types';
 import { gate } from '../../../security/gate';
 import { PinMark, plural } from '../../components/common';
@@ -19,6 +20,7 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [onLists, setOnLists] = useState<string[]>([]);
+  const [ordered, setOrdered] = useState<{ orders: number; units: number }>({ orders: 0, units: 0 });
   const thumb = useThumbnail(item.id, item.hasPhoto);
 
   useCloseOnRelock(confirming && !busy, () => setConfirming(false));
@@ -27,6 +29,7 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
   const ask = async () => {
     if (!(await gate(reason))) return;
     setOnLists(await listsWithItem(db, item.id).catch(() => []));
+    setOrdered(await openOrdersWithItem(db, item.id).catch(() => ({ orders: 0, units: 0 })));
     setConfirming(true);
   };
   const doDelete = async () => {
@@ -75,6 +78,12 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
           {onLists.length > 0 && (
             <p class="dlg-p">
               It’s also on {plural(onLists.length, 'named order list')} ({onLists.join(', ')}) and will be taken off {onLists.length === 1 ? 'it' : 'them'}.
+            </p>
+          )}
+          {ordered.units > 0 && (
+            <p class="dlg-p">
+              {ordered.units} {item.unit} {ordered.units === 1 ? 'is' : 'are'} on order ({plural(ordered.orders, 'open order')}). The orders keep their record; when the parts
+              arrive, receiving marks them received without adding them anywhere.
             </p>
           )}
           <DialogActions>

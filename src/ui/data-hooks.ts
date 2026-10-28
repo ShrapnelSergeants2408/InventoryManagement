@@ -1,7 +1,7 @@
 // Live data for screens: Dexie liveQuery re-runs the query whenever a table it read changes.
 import { liveQuery } from 'dexie';
 import { createContext } from 'preact';
-import { useContext, useEffect, useState } from 'preact/hooks';
+import { useContext, useEffect, useMemo, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
 import { loadHelpers } from '../data/helpers';
@@ -9,6 +9,8 @@ import { getImportUndo, type ImportUndo } from '../data/import-counts';
 import { loadPending } from '../data/pending';
 import type { PendingRecord } from '../domain/helper-mode';
 import { loadOrderLists } from '../data/order-lists';
+import { loadOrders } from '../data/placed-orders';
+import { onOrderMap, type OnOrder, type PlacedOrder } from '../domain/placed-orders';
 import { getThumbnail } from '../data/photos';
 import { STORAGE_PERSISTED_EVENT } from '../data/setup';
 import type { Helper } from '../domain/helpers';
@@ -51,6 +53,31 @@ export function useOrderLists(): Live<NamedOrderList[]> {
     return () => sub.unsubscribe();
   }, [db]);
   return live;
+}
+
+/** Placed orders (F30), newest first, live. */
+export function useOrders(): Live<PlacedOrder[]> {
+  const db = useDb();
+  const [live, setLive] = useState<Live<PlacedOrder[]>>({ state: 'loading' });
+  useEffect(() => {
+    const sub = liveQuery(() => loadOrders(db)).subscribe({
+      next: (value) => setLive({ state: 'ready', value }),
+      error: (error: unknown) => setLive({ state: 'error', error }),
+    });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return live;
+}
+
+const NONE_ON_ORDER: OnOrder = new Map();
+
+/**
+ * Units on open placed orders per item (§4), live. Empty until loaded or if the read fails,
+ * which only means order quantities show as they did before placed orders existed.
+ */
+export function useOnOrder(): OnOrder {
+  const live = useOrders();
+  return useMemo(() => (live.state === 'ready' ? onOrderMap(live.value) : NONE_ON_ORDER), [live]);
 }
 
 /** Device settings (stale-price age etc.), live; defaults until loaded or if the read fails. */

@@ -11,7 +11,7 @@ import { keepExisting, selectState, withIds } from '../../../domain/selection';
 import type { Item } from '../../../domain/types';
 import type { ItemInfo } from '../../../domain/inventory-view';
 import { CheckBox, GroupChips, StateMessage, StatusChip, TopBar, plural } from '../../components/common';
-import { useDb, useSnapshot } from '../../data-hooks';
+import { useDb, useOnOrder, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -51,6 +51,7 @@ function Skeleton() {
 export function InventoryScreen() {
   const db = useDb();
   const live = useSnapshot();
+  const onOrder = useOnOrder();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Filters>(() => loadFilters());
   const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded());
@@ -66,8 +67,8 @@ export function InventoryScreen() {
 
   const snap = live.state === 'ready' ? live.value : null;
   const view = useMemo(
-    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded }) : null),
-    [snap, query, filters, expanded],
+    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded, onOrder }) : null),
+    [snap, query, filters, expanded, onOrder],
   );
   const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap.locations) : null), [snap]);
   // Items deleted while selecting drop out of the selection.

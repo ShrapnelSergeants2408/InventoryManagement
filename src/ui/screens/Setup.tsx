@@ -74,6 +74,12 @@ export function SetupScreen({ pinSet, onDone }: { pinSet: boolean; onDone: () =>
               </p>
               <p>Pick 4–6 digits. Once entered, it stays unlocked for 5 minutes.</p>
               <p class="small muted">This stops accidents, not a determined hacker. Don’t reuse a PIN that protects anything important.</p>
+              <p class="setup-cleared small">
+                <Icon name="info" />
+                <span>
+                  If this tablet had inventory before, its storage was cleared. Set a PIN, then choose <strong>Restore a backup file</strong>.
+                </span>
+              </p>
             </div>
             <div class="setup-card">
               <NewPinPad

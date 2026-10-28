@@ -1,7 +1,23 @@
-# FRC 2408 Inventory Management — Specification v0.12
+# FRC 2408 Inventory Management — Specification v0.13 (draft)
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-21 13:46 CDT · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT
+**Status:** v0.12 approved by Dan 2026-10-28; v0.13 is a draft awaiting approval (§15 Q8) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT (draft)
+
+**Changes in v0.13 (draft):**
+- **Stage 5 leftovers** (`docs/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
+  - (a) First-launch setup says that a tablet which had inventory before has had its storage cleared, and points to Restore (§2, F22; finding 3).
+  - (b) A full backup with no items but with list files can be restored, with a warning that the inventory will be empty (F17; finding 4).
+  - (c) Photos named in a backup but missing from its ZIP: the restore confirmation shows the count in the attention style, and the tablet keeps its own photo for those items (F17; finding 5).
+  - (d) A backup saved to the tablet's own Downloads still resets the reminder, but the message says the file is only on the tablet until it's sent somewhere else (F16; finding 7).
+  - (e) F16 "Later" written as built: 12 hours or the next launch, whichever comes first. §9 written as built: adding a label layout is a code change (finding 8).
+  - (f) The Backup screen and About update as soon as Chrome grants persistent storage (§2; finding 9).
+- **Placed orders, receiving and spending history** (F30–F32, new §21; Dan's answers 2026-10-28), built as M19 and M20:
+  - **Mark ordered** turns one supplier's group on an order list into a placed-order record: actual quantities and prices, order or invoice number, payment or PO, tax, shipping, a discount ($ or %) and other fees, plus receipt photos or PDFs. Typed lines that aren't inventory items are allowed. PIN required.
+  - Ordered lines leave a named list. Open orders show **On order** on items, and the order quantity (§4) subtracts what is on order.
+  - **Receive** adds arrived parts to on hand (no PIN), whole or partial.
+  - After recording, changed prices can be copied into the catalog (PIN).
+  - **Order history** with date ranges and a spending summary by supplier, by category and in total; CSV export and a printable summary.
+  - Full backups add `orders.csv`, `order-lines.csv` and `receipts/`. Schema v4.
 
 **Changes in v0.12:** Ten Import counts details (§18.5), filled in while building M16c and confirmed by Dan on 2026-10-28 (`docs/reviews/M16c.md`, "Details I filled in"):
 - (a) Within one import, a row exactly the same as one in an earlier file (same helper, item, time and values) counts as already applied: cumulative files repeat their rows.
@@ -103,7 +119,7 @@ A shop inventory tool for the robotics team. Students use one shared tablet (the
 | Tests | Vitest | Order math, label layout math, and backup round-trip must be tested |
 
 Additional requirements:
-- Show persistent-storage status (granted or not, space used) on the Backup screen and in About. If the database can't be opened (storage cleared or blocked), show a storage-error screen that explains what happened and leads a mentor to Restore (F17).
+- Show persistent-storage status (granted or not, space used) on the Backup screen and in About; when Chrome grants it during a launch, both update without reopening the screen. If the database can't be opened (blocked or broken storage), show a storage-error screen that explains what happened and leads a mentor to Restore (F17). Storage that Chrome cleared opens as a new, empty database, which the app can't tell apart from a first install, so the first setup step says: "If this tablet had inventory before, its storage was cleared. Set a PIN, then choose Restore a backup file" (v0.13).
 - Fully usable offline after first install.
 - Request persistent storage (`navigator.storage.persist()`) to reduce the chance of the browser clearing data.
 - Layout designed for an 11-inch tablet in landscape; usable in portrait. Touch targets at least 48 px. See §17 for UI conventions.
@@ -178,7 +194,26 @@ Categories and subcategories can be empty (added before any item uses them, or e
 | created / updated | yes | Date-time |
 | lines | 0+ | Each line: item id and quantity wanted (in the item's unit). Pack rounding, prices and totals are worked out from the item's preferred vendor as in §4 |
 
-Order lists are plans, not inventory: they never change on_hand, desired, spares or the automatic order list (F12).
+Order lists are plans, not inventory: they never change on_hand, desired, spares or the automatic order list (F12). Marking lines ordered (F30) removes them from a named list.
+
+### Placed order (F30, §21)
+| Field | Required | Notes |
+|---|---|---|
+| id | yes | Generated |
+| supplier | yes | One name from the Supplier list (renamed with it, F23) |
+| placed_on | yes | Date the order was placed (local date; default today) |
+| order_no | no | Supplier's order, confirmation or invoice number |
+| payment | no | Free text: school PO number, team card, reimbursement to …, etc. |
+| status | yes | `placed`, `partly received`, `received` or `cancelled`. Placed, partly received and received follow from the lines; cancelled is set by a mentor (§21.4) |
+| tax, shipping, fees | yes | Dollar amounts as charged (default 0) |
+| discount | yes | Either a dollar amount or a percent of the parts total (default 0) |
+| notes | no | Free text |
+| receipts | 0–5 | Photos (JPEG) or PDFs of the receipt or invoice (§21.2) |
+| from_list | no | The order list it was recorded from ("Automatic" or a list name), informational |
+| created / updated | yes | Date-time |
+| lines | 1+ | See below |
+
+**Order line:** item id (blank for a typed line); description, part #, unit and category copied from the item when the order is recorded (so the record stays the same if the item is later edited or deleted); packs, pack size and pack price as charged; received (units so far, default 0). Line total = packs × pack price. A typed line has packs = quantity and pack size 1, and never changes inventory.
 
 ### Helper (main tablet only, §18)
 | Field | Required | Notes |
@@ -198,7 +233,7 @@ A new item a helper added, waiting for a mentor or student to accept, match or d
 
 ### Order quantity
 ```
-need       = desired + spares − on_hand
+need       = desired + spares − on_hand − on_order
 if need ≤ 0: order nothing
 packs      = ceil(need ÷ pack_size)          (preferred vendor's pack size)
 order_qty  = packs × pack_size
@@ -212,6 +247,8 @@ Worked examples:
 | 12 | 4 | 5 | 50 | 11 | 1 | 50 |
 | 10 | 2 | 12 | 25 | 0 | 0 | 0 (no order) |
 | 10 | 2 | 11 | 25 | 1 | 1 | 25 |
+
+`on_order` (v0.13) is the units ordered but not yet received for that item, over all orders that are placed or partly received (F30): Σ (packs × pack size − received), never below 0 per line. It is 0 when there are no open orders, so the table above is unchanged. "Up to desired only" (F27) subtracts it too. Stock highlighting (below) does not: an item on order is still short until it arrives.
 
 Validation and edge cases:
 - pack_size must be a whole number ≥ 1; quantities cannot be negative.
@@ -230,7 +267,7 @@ Highlighting never relies on color alone: each state also has its own icon and w
 | # | Feature | Acceptance criteria |
 |---|---|---|
 | F1 | Collapsible list by category → subcategory | Categories and subcategories expand/collapse; state remembered; each header shows count of red/yellow items inside |
-| F2 | Item row shows | Thumbnail (if photo), name, on hand, desired, spares, order qty, preferred supplier, pack price, location; note icon when notes exist; red/yellow highlight |
+| F2 | Item row shows | Thumbnail (if photo), name, on hand, desired, spares, order qty, preferred supplier, pack price, location; note icon when notes exist; red/yellow highlight; "On order n" when units are on order (§4, F30) |
 | F3 | Quick adjust | Large +/− buttons and direct number entry for on_hand, without opening a full edit form. The control is labeled "On hand" wherever it appears |
 | F4 | Search | Matches name, part number, supplier, location, notes; results update as you type |
 | F5 | Filters | In this order: Needs order · Short only (red) · Low spares only (yellow) · by category · by location · by supplier. Supplier is last (Dan, 2026-10-21) |
@@ -240,12 +277,12 @@ Highlighting never relies on color alone: each state also has its own icon and w
 | F9 | Manage categories | Add, rename, and reorder categories and subcategories (Reorder mode with large ▲/▼ buttons, so it works with gloves; drag is optional); removing one requires it to be empty or its items moved first (PIN required for remove/rename). Items can be moved in bulk (F28). The category list, including empty categories and subcategories, is saved in backups (`categories.csv`, §7) |
 | F10 | Item detail card | Full notes, photo (tap to enlarge), all vendor options with links, +/− buttons, **Add to order list** (F27) |
 | F11 | One-tap supplier link | Opens the vendor product page in the browser |
-| F12 | Order list | Lists every item with order_qty > 0, grouped by preferred supplier, with a subtotal per supplier and a grand total; view on screen and export CSV. While any item has never been counted (blank last_counted), a banner shows count-in progress and warns that uncounted items are treated as 0 on hand. **Search:** a search box filters the lines shown by item name, part #, supplier or notes as you type, with "Showing n of m lines" and the total of the lines shown; the grand total of the whole list stays visible. **Export:** **Export CSV** always exports every line (F13). **Export shown lines only** exports just the filtered lines, with "filtered" and the search text in the filename and a note in the file's first row |
+| F12 | Order list | Lists every item with order_qty > 0, grouped by preferred supplier, with a subtotal per supplier and a grand total; view on screen and export CSV. While any item has never been counted (blank last_counted), a banner shows count-in progress and warns that uncounted items are treated as 0 on hand. **Search:** a search box filters the lines shown by item name, part #, supplier or notes as you type, with "Showing n of m lines" and the total of the lines shown; the grand total of the whole list stays visible. **Export:** **Export CSV** always exports every line (F13). **Export shown lines only** exports just the filtered lines, with "filtered" and the search text in the filename and a note in the file's first row. **On order** (v0.13): order quantities subtract units already on order (§4); a line for an item with units on order says "On order n". Each supplier group has **Mark ordered…** (F30) |
 | F13 | Order list CSV | Columns: Supplier, Part #, Item, Unit, Need, Pack size, Packs, Order qty, Pack price, Line total, Price checked, URL, Notes; a subtotal row after each supplier; grand total at the end |
 | F14 | Stale price flag | Prices with price_checked older than the stale-price age (setting, default 90 days) are marked on each order-list line ("Price n days old"). When more than half of the priced lines are stale, a summary banner also appears at the top of the order list with the price-refresh steps (§10) |
-| F15 | Backup export | Two choices: **Full backup** (ZIP: CSV + suppliers + locations + categories + order lists + pending items + manifest + photos, §7) or **Data only** (CSV). Opens Android's share sheet (Bluetooth, Quick Share, email, Drive) |
-| F16 | Backup reminder | Banner appears on the Inventory (home) and Backup screens if no backup of either kind has been exported within the reminder period (setting, default 7 days). "Later" hides it until the next app launch. Exporting either kind of backup resets the clock |
-| F17 | Restore | Accepts a full-backup ZIP or a CSV; replaces all inventory (PIN required; confirmation step). The confirmation compares "on this tablet now" with "in the backup" (item and photo counts, last change / saved date), offers **Back up this tablet first**, and enables **Replace everything** only after an "I understand this replaces everything" box is ticked. A CSV-only restore keeps existing photos for matching item ids. Supplier and location names in the restored data that aren't in their lists are added automatically. A full-backup restore also replaces the order lists and pending items with the backup's; a CSV-only restore keeps them and drops order-list lines whose items no longer exist. Either kind clears **Undo this import** (§18.5). Count kits and counts files are rejected (§7) |
+| F15 | Backup export | Two choices: **Full backup** (ZIP: CSV + suppliers + locations + categories + order lists + pending items + placed orders + manifest + photos + receipts, §7) or **Data only** (CSV). Opens Android's share sheet (Bluetooth, Quick Share, email, Drive) |
+| F16 | Backup reminder | Banner appears on the Inventory (home) and Backup screens if no backup of either kind has been exported within the reminder period (setting, default 7 days). "Later" hides it for 12 hours or until the next app launch, whichever comes first (spec-questions, approved 2026-10-17; written in v0.13). Exporting either kind of backup resets the clock. When the file was only saved to the tablet's Downloads (no share sheet), the message says so: "Saved … to Downloads on this tablet only. Send it to Drive or another device: a backup on the tablet is lost with the tablet" (v0.13, Stage 5 finding 7) |
+| F17 | Restore | Accepts a full-backup ZIP or a CSV; replaces all inventory (PIN required; confirmation step). The confirmation compares "on this tablet now" with "in the backup" (item and photo counts, last change / saved date), offers **Back up this tablet first**, and enables **Replace everything** only after an "I understand this replaces everything" box is ticked. A CSV-only restore keeps existing photos for matching item ids. Supplier and location names in the restored data that aren't in their lists are added automatically. A full-backup restore also replaces the order lists and pending items with the backup's; a CSV-only restore keeps them and drops order-list lines whose items no longer exist. Either kind clears **Undo this import** (§18.5). Count kits and counts files are rejected (§7). **v0.13:** a full backup holds placed orders and receipts, which it replaces; a CSV-only restore keeps the tablet's orders (§21.6). A file with no items is refused, except a full backup that has list files (e.g. a tablet set up with Start empty); its confirmation warns in the attention style that the inventory will be empty. Photos named in `inventory.csv` but missing from the ZIP are shown in the attention style on the Photos row ("127, 1 missing"), and the tablet keeps its own photo for those items if it has one |
 | F18 | Price-update import | Imports a CSV that updates only vendor fields (price, pack size, URL, price_checked) for matching item ids; never touches counts. The whole file is validated before anything is saved: if any row fails (e.g. pack size not a whole number ≥ 1, unknown column), nothing changes and the errors are listed by row number; shows a summary of rows updated and ids not found (PIN required). Unknown supplier names are added to the Supplier list and listed in the summary |
 | F19 | Part photos | Optional; see §8 |
 | F20 | QR labels | See §9 |
@@ -255,15 +292,18 @@ Highlighting never relies on color alone: each state also has its own icon and w
 | F24 | Count-in mode | A guided walk-through for counting stock, built for the first inventory count and reusable for later recounts. **Modes:** by category (default; follows list order), by location (Location list order, then "No location"), or scan as you go (scanning a label or barcode opens the keypad for that item). **Start screen:** current order-list total, overall progress (counted of total), progress and Start/Continue/Recount per category or location, and two options: ask for a location while counting (on by default) and skip items with desired 0. **One item per screen:** photo, name, category, supplier and part #, desired and spares; large keypad with None (0), "= desired" and ±1; live preview of the resulting status (short / low spares / OK); optional location from the Location list, with "New location…" (F25); Back, Skip for now, and Save & next. **Saving** sets on_hand and last_counted immediately, so a count can stop and resume across meetings. **Group summary:** counted, short and skipped counts, order-list total before → after, and shortcuts to the next group, printing labels for that group, and backing up. **Count rounds:** progress, Start/Continue/Recount and the summary count an item as counted when the local date of its last_counted is on or after the "counting since" date. Blank (the default, for the first count) means counted at any time. **Start a new count** sets the date to today; it can be changed or cleared. Starting a round erases nothing: on_hand and last_counted stay as they are. The F12 banner still uses blank last_counted. **Helpers (main tablet):** the start screen also has **Helper devices** (§18.1), **Import counts** (§18.5) and, when any exist, **Pending from helpers (n)**. Counts imported from helpers count toward progress like counts made here (their last_counted is the helper's counted_at, so they follow the same round rule), and each group shows which helper it's assigned to. No PIN required |
 | F25 | Manage locations | Add a location (name, optional notes) — anyone, from the Locations screen, the item editor, or count-in. Reorder (sets the walk order; same ▲/▼ Reorder mode as F9) — anyone. Rename (updates every item that uses it) and remove — PIN required. Removing a location that items use shows how many and requires choosing a replacement location or "No location" first. Duplicate names are rejected (case-insensitive). Location pickers list locations in walk order, with recently used locations as quick picks. A location can also be picked or added by scanning its QR code (F29) |
 | F26 | Helper devices and count import | Several devices count at once without a server. The main tablet assigns groups to named helpers and sends each a count kit. Helpers (tablets or phones) run a count-only mode and send back a cumulative counts file. The main tablet imports it with a preview, conflict choices, review of new items and an undo. Full rules in §18. No PIN required |
-| F27 | Named order lists | On the Order screen, **Automatic** (F12, every item that needs ordering) sits beside any number of **named lists**. **Create** a list (name, optional notes). **Add items** with "Add to order list" from an item row (row menu), the detail card (F10) or a scan result (F21): pick a list (or "+ New list…") and a quantity, defaulting to the item's suggested order quantity (§4) when it needs ordering, otherwise one pack. Adding an item already on the list updates its quantity, after asking. **Add many at once** (Dan, 2026-10-23): checkboxes on the Automatic list's lines (with "Select all shown", so a search such as "andymark" then Select all picks one supplier's lines), and **Add to order list…** in the Inventory Select mode (F28) beside Move to…. The dialog picks a list (or "+ New list…") and how quantities are worked out: **up to desired + spares** (the suggested order quantity), **up to desired only**, or **one pack each**, rounded up to whole packs as in §4. Items already at that target are skipped, and the dialog says how many. If some are already on the list, it asks once whether to replace their quantities or keep them. Quantities can then be changed per line. **A list** shows lines grouped by preferred supplier, with packs, order qty, pack price, line totals, supplier subtotals and a grand total worked out as in §4. It has the same "no price" and stale-price flags as F12, quantity +/− and remove per line, search (as F12), and Export CSV / Export shown lines only (F13 columns; the list name in the filename and the first row). **Rename, duplicate, delete** a list (delete asks to confirm). **Inventory is never changed by a list:** there's no "on order" status; when parts arrive, students add them to on-hand by hand (F3/F7). A deleted item is removed from every list (the delete confirmation says how many lists it was on). No PIN required. Order lists are kept in full backups (`order-lists.csv`, §7) |
+| F27 | Named order lists | On the Order screen, **Automatic** (F12, every item that needs ordering) sits beside any number of **named lists**. **Create** a list (name, optional notes). **Add items** with "Add to order list" from an item row (row menu), the detail card (F10) or a scan result (F21): pick a list (or "+ New list…") and a quantity, defaulting to the item's suggested order quantity (§4) when it needs ordering, otherwise one pack. Adding an item already on the list updates its quantity, after asking. **Add many at once** (Dan, 2026-10-23): checkboxes on the Automatic list's lines (with "Select all shown", so a search such as "andymark" then Select all picks one supplier's lines), and **Add to order list…** in the Inventory Select mode (F28) beside Move to…. The dialog picks a list (or "+ New list…") and how quantities are worked out: **up to desired + spares** (the suggested order quantity), **up to desired only**, or **one pack each**, rounded up to whole packs as in §4. Items already at that target are skipped, and the dialog says how many. If some are already on the list, it asks once whether to replace their quantities or keep them. Quantities can then be changed per line. **A list** shows lines grouped by preferred supplier, with packs, order qty, pack price, line totals, supplier subtotals and a grand total worked out as in §4. It has the same "no price" and stale-price flags as F12, quantity +/− and remove per line, search (as F12), and Export CSV / Export shown lines only (F13 columns; the list name in the filename and the first row). **Rename, duplicate, delete** a list (delete asks to confirm). **Inventory is never changed by a list.** When an order is placed, **Mark ordered…** on a supplier group records it (F30) and removes the ordered lines from the list; a list left empty offers to delete itself. Arrived parts are added with **Receive** (F31). A deleted item is removed from every list (the delete confirmation says how many lists it was on). No PIN required. Order lists are kept in full backups (`order-lists.csv`, §7) |
 | F28 | Bulk move | In the inventory list (and in search or filter results), **Select** turns on checkboxes on item rows and group headers, plus "Select all shown". **Move to…** picks a category and subcategory (or "+ New subcategory…", "+ New category…"). The confirmation shows how many items move and from where ("Move 12 items to Fasteners › Bolts?"). One step, saved together. No PIN required (students can already change an item's category, F7) |
 | F29 | Location QR codes | The shop's bins and shelves already carry QR codes whose text is the location name, the area and a number (e.g. "Electrical 15", "Tools 7"; Dan, 2026-10-28). **Matching:** the scanned (or typed) text is trimmed and runs of spaces become one; it matches a location name ignoring capitals. If no name matches exactly, a name that matches with spaces ignored is used, but only when there is exactly one. **Where:** (1) **Item editor**: Scan beside the Location field picks the location. (2) **Count-in**: Scan in the location picker; in "by location" mode, **Scan a location** on the start screen opens that location's walk. (3) **Scan tab**: a code that isn't a team label, item id or known barcode but names a location shows "Location: Tools 7 · n items" with the items (tap one for the usual found-item panel) and **Show in Inventory**, which opens the inventory filtered to that location with other filters and the search cleared. (4) **More › Locations**: **Add by scan**. (5) **Filters panel** (F5): Scan in the Location section sets the location filter. **Not found:** an unknown code that could be a location name (a QR code or typed text, with a letter, not a web address, up to 60 characters) shows **Location not found** with the text. In (1), (2)'s picker, (3) and (4) it offers **Add “Tools 7” as a location** (anyone, F25; added at the end of the walk order) and **Rename a location to “Tools 7”…** (PIN, as F25 rename; items using the old name follow). On the Scan tab the item options (attach to an item, add a new item) stay available below. On the count-in start screen and in Filters, it is only reported. A code already in the list, scanned in (4), says so. Team item labels (`2408:`) are never taken as locations. No data-model or backup change |
+| F30 | Placed orders | **Mark ordered…** on a supplier group of the Automatic list or a named list (F27) records what was actually ordered from that supplier, as a placed order (§3, §21). Lines come in ticked, with the list's packs and the stored pack price; untick lines not ordered, change packs and prices to what was charged, and **+ Add line** for an inventory item (search) or a typed line. Then order or invoice number, payment / PO, placed date, tax, shipping, discount ($ or %), other fees, notes and receipts. The total updates as you type. Saving removes the ordered lines from a named list and adds their units to on order (§4), then offers to copy changed prices into the catalog (§21.3). Orders can be edited, cancelled or deleted (§21.4). PIN required for recording, editing, cancelling and deleting |
+| F31 | Receiving | An open order has **Receive…**: each line shows ordered, already received and a stepper for "received now", defaulting to what's still due; **Receive all** fills every line. Confirming adds the received units to each item's on hand in one step ("Add 50 to on hand for 3 items?"); typed lines and lines for deleted items are marked received without changing inventory. Status follows: partly received, then received. Receiving doesn't set last_counted. No PIN required (it adds stock, like F3) |
+| F32 | Order history and spending | **Order › History**: orders newest first, filtered by date range (This month, Last 30 days, This season, This school year, Last school year, Custom From–To; by placed date), supplier and status. Each order shows date, supplier, order #, status and total; tap opens it. **Spending summary** for the range: by supplier (orders, parts, discount, tax, shipping, fees, total) with a grand total, and by category (parts cost of item lines by the category copied onto the line, typed lines under "Other", then discount, tax, shipping and fees as their own rows, adding up to the same total). Cancelled orders are listed but excluded from totals. **Export CSV** (orders and summary) and **Export lines CSV** (one row per line); **Print summary** (one printable page, saved as a PDF like labels, §9). Viewing and exporting need no PIN. Details in §21.5 |
 
 ## 6. Mentor PIN
 
 - 4–6 digit PIN set by a mentor on first launch; stored hashed on the device.
-- Required for: removing items (F8), removing/renaming categories (F9), editing vendor/price fields including changing the preferred vendor (except vendor option 1 while adding a new item, F6), managing suppliers (F23), renaming/removing locations (F25), restoring from backup, price-update import, changing settings (backup reminder period, default 7 days; stale-price age, default 90 days; unlock length, default 5 minutes) and changing the PIN.
-- Not required for: adding items (including the first vendor option of a new item), adjusting counts, count-in (F24), editing desired/spares/location/notes/photos/barcode (including attaching a barcode from Scan), adding or reordering categories and locations, bulk moving items (F28), creating, editing and exporting order lists (F27), and everything in §18: setting up helpers, sending count kits, Import counts and Undo this import (Dan, 2026-10-19 13:53), and accepting, matching or discarding pending items.
+- Required for: removing items (F8), removing/renaming categories (F9), editing vendor/price fields including changing the preferred vendor (except vendor option 1 while adding a new item, F6), managing suppliers (F23), renaming/removing locations (F25), restoring from backup, price-update import, changing settings (backup reminder period, default 7 days; stale-price age, default 90 days; unlock length, default 5 minutes; season start and school-year start, §21.5) and changing the PIN, and recording, editing, cancelling or deleting a placed order and copying its prices into the catalog (F30, §21; v0.13).
+- Not required for: adding items (including the first vendor option of a new item), adjusting counts, count-in (F24), editing desired/spares/location/notes/photos/barcode (including attaching a barcode from Scan), adding or reordering categories and locations, bulk moving items (F28), creating, editing and exporting order lists (F27), receiving an order (F31), viewing, exporting and printing the order history (F32), and everything in §18: setting up helpers, sending count kits, Import counts and Undo this import (Dan, 2026-10-19 13:53), and accepting, matching or discarding pending items.
 - Helper devices have no PIN and can't unlock any PIN action. They can only do what §18.3 allows.
 - Once entered, stays unlocked for the unlock length (default 5 minutes), then relocks. A lock button on every screen shows the remaining time and locks immediately when tapped.
 - A one-time recovery code is shown at setup for a forgotten PIN.
@@ -282,7 +322,7 @@ One row per item. Vendor options flattened into column groups so the file opens 
 - Notes with commas or line breaks are quoted correctly (tested).
 
 ### Full backup (ZIP)
-`inventory.csv` + `suppliers.csv` (name, website, notes) + `locations.csv` (name, notes, order) + `categories.csv` (category, subcategory, order) + `order-lists.csv` (list_id, list_name, list_notes, item_id, quantity) + `pending-items.csv` (only if pending items exist) + `manifest.json` + `photos/<item id>.jpg` and `photos/<pending id>.jpg`.
+`inventory.csv` + `suppliers.csv` (name, website, notes) + `locations.csv` (name, notes, order) + `categories.csv` (category, subcategory, order) + `order-lists.csv` (list_id, list_name, list_notes, item_id, quantity) + `pending-items.csv` (only if pending items exist) + `orders.csv` and `order-lines.csv` (only if placed orders exist, §21.6) + `manifest.json` + `photos/<item id>.jpg` and `photos/<pending id>.jpg` + `receipts/<order id>-<n>.jpg|.pdf`.
 
 - **`categories.csv`** has one row per category and subcategory, in list order; a category with no subcategories gets one row with a blank subcategory. `order` is the category's position. It keeps empty categories, empty subcategories and the custom order through a backup and restore. When it's missing (a data-only CSV, older ZIPs), categories are rebuilt from `inventory.csv` in first-appearance order. **Reading** also accepts the starter catalog's layout (`frc2408-starter-catalog-2026-10-21.zip`): a blank-subcategory row for every category, carrying the category's position, followed by its subcategory rows, whose `order` is the subcategory's position. In both layouts the category's position is taken from its first row, and subcategories keep the order of their rows.
 - **`order-lists.csv`** has one row per line, and a row with a blank item_id for an empty list. When it's missing, the backup has no named lists.
@@ -294,7 +334,7 @@ Helper-device file formats are defined in §18.2 and §18.4. They aren't backups
 
 ### Both
 - Filenames include a timestamp, e.g. `inventory-backup-2026-10-17-1035.zip`.
-- The PIN, settings and helper records (§3) are not included. The Supplier, Location and Category lists, order lists and pending items are data, not settings: they travel in `suppliers.csv`, `locations.csv`, `categories.csv`, `order-lists.csv` and `pending-items.csv`. A CSV-only restore rebuilds missing supplier names from the vendor columns and missing location names from the location column (appended to the end of the walk order) (F17).
+- The PIN, settings and helper records (§3) are not included. The Supplier, Location and Category lists, order lists, pending items and placed orders are data, not settings: they travel in `suppliers.csv`, `locations.csv`, `categories.csv`, `order-lists.csv`, `pending-items.csv`, `orders.csv` and `order-lines.csv`. A data-only backup is the one `inventory.csv` file, so it holds none of these. A CSV-only restore rebuilds missing supplier names from the vendor columns and missing location names from the location column (appended to the end of the walk order) (F17).
 - Export → restore must round-trip with no data loss (tested).
 - Full backups with many photos are larger; Bluetooth transfer will be slower than Quick Share or Drive. The starter catalog's photos are about 6 MB.
 
@@ -327,7 +367,7 @@ Printing aids:
 - **Test print:** prints label outlines on plain paper to hold against a label sheet before using real labels.
 - On-screen reminder to print at 100% / "actual size," since "fit to page" scaling misaligns labels.
 - Label sizes must be checked against the actual package before building the layouts (Stage 4).
-- Additional layouts can be added later as data, without code changes.
+- Additional layouts can be added later. Each layout is one entry in the app's layout table, so adding one is a small code change and a new release, not a setting (v0.13, Stage 5 finding 8).
 
 ## 10. Price updates
 
@@ -379,7 +419,7 @@ v1 approach:
 
 ## 13. Out of scope for v1 (parked)
 
-Usage log (who took what), competition pit-kit checklist, live multi-device sync (a server-backed shared database; file-based helper devices for counting are in v1, §18), helpers editing anything other than counts, locations, barcodes and new items, an "on order" status or automatic receiving for order lists (received parts are added to on-hand by hand, F27), automatic price scraping, inventory value on hand, budget limits, multiple photos per item, undo for deletions.
+Usage log (who took what), competition pit-kit checklist, live multi-device sync (a server-backed shared database; file-based helper devices for counting are in v1, §18), helpers editing anything other than counts, locations, barcodes and new items, sending orders to suppliers from the app (F30 only records an order placed on the supplier's site), automatic price scraping, inventory value on hand, budget limits and budget tracking (F32 reports spending, not a budget), multiple photos per item, undo for deletions.
 
 ## 14. Development stages and platforms
 
@@ -390,7 +430,7 @@ Usage log (who took what), competition pit-kit checklist, live multi-device sync
 | 3 | UI mockups at tablet size | Claude desktop chat | Interactive mockup canvas (67 artboards), `stage3-design-notes.md`, `stage3-verification.md` | Done 2026-10-17; helper-device screens (row 11) added 2026-10-19 (`docs/mockups/helper-screens/`) |
 | 4 | Build | Claude Code in VS Code | Git repo, app, tests, GitHub Pages deployment | Done 2026-10-18 (milestones 1–10, built to v0.7) |
 | 5 | Verification | Fresh Claude Code session + hands-on testing on the Tab S8 (including a real label print) | Review report checked against §5 acceptance criteria; fixes | Done 2026-10-21 (`docs/stage5-review.md`), except the real label-sheet print, which waits for labels to be bought |
-| 6 | Changes and new features | Claude Code in VS Code | Updates; spec revised | v0.8 (§18.7) |
+| 6 | Changes and new features | Claude Code in VS Code | Updates; spec revised | v0.8 (§18.7) to v0.12 built (M11–M17b). v0.13: M18 Stage 5 leftovers, M19 placed orders and receiving, M20 order history (§21) |
 
 Recommended build order within Stage 4: data model and storage → item list, search, filters → add/edit/remove items, categories, suppliers, and locations → order math and order list → CSV/ZIP backup, restore, share → PIN → photos → QR labels and scanning → count-in → starter catalog load → offline/PWA install. (v0.7 was built in this order. The v0.8 changes are added afterwards as Stage 6 milestones; see §18.7.)
 
@@ -415,6 +455,14 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
    - (e) Helper mode keeps its data in its own database on the device, separate from a main tablet's (§18.7).
    - (f) A schema-version check ships before the first database upgrade (§18.7; Stage 5 review finding 6).
    - (g) Imported helper counts join the current count round by their counted_at date (F24).
+8. **Approve v0.13 (draft, 2026-10-28).** Dan decided the design of F30–F32 (start from an order list, split by supplier; order #, payment / PO and receipts; receiving adds to on hand; offer to update prices with the PIN; PIN to record, edit and delete; order-level discount in $ or %; typed lines allowed; date presets, custom range, CSV, printable summary, by-category breakdown; subtract what's on order; ordered lines leave a named list; tax and shipping as dollar amounts) and the Stage 5 finding 7 option. Details Claude filled in, for Dan to confirm:
+   - (a) Season start (a date) and school-year start (month and day, default August 1) are settings, so the date presets work.
+   - (b) Spending falls on the placed date. Cancelled orders stay in the history but don't count.
+   - (c) By category: item lines by the category copied onto the line when the order was recorded; typed lines under "Other"; discount, tax, shipping and fees as their own rows rather than spread over categories.
+   - (d) Orders and receipts are in full backups only (a data-only backup is one CSV file); a CSV-only restore keeps the tablet's orders.
+   - (e) Receipt photos are shrunk to about 1600 px on the long side (larger than part photos, so the text stays readable); a PDF is limited to 5 MB; up to 5 receipts per order.
+   - (f) An "Other fees" amount besides tax and shipping (handling, rush, card fees), default 0.
+   - (g) Receiving can't be undone by a button. The confirmation shows exactly what will be added; a mistake is fixed with on hand (F3), and a mentor can correct an order's received amounts without changing inventory (§21.4).
 
 ## 16. Decision log
 
@@ -464,6 +512,8 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | v0.10: aim and hold (F21, F29) |
 | 2026-10-28 | Dan merged M16b (PR #24) and confirmed the seven helper-mode details (a)–(g) in `docs/reviews/M16b.md`. v0.11: written into §18.3 and §18.4 |
 | 2026-10-28 | Dan merged M16c (PR #26), accepted the ten import details (a)–(j) in `docs/reviews/M16c.md`, and reported the M16c tablet check working and helper mode working in iPhone Safari (after clearing its cache). v0.12: the details written into §18.5 |
+| 2026-10-28 | Dan: take care of the Stage 5 leftovers, and add a record of orders actually placed (tax, discounts, shipping, etc.) and an order history over a date range with a spending summary by vendor and in total. Answers to Claude Code's questions: start from an order list, split by supplier; order #, payment / PO, receipt photo or PDF; receiving adds to on hand; offer to update prices (PIN); PIN to record, edit and delete; order-level discount in $ or %; typed lines allowed; presets + custom range, CSV, printable summary, by category; subtract what's on order; ordered lines leave a named list; tax and shipping in dollars; finding 7: reset but warn |
+| 2026-10-28 | v0.13 draft: Stage 5 leftovers (findings 3, 4, 5, 7, 8, 9), F30 placed orders, F31 receiving, F32 order history and spending, §21, §22. Awaiting approval (§15 Q8) |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -646,3 +696,63 @@ v0.7 is built (milestones 1–10) and verified in Stage 5. v0.8 is added to that
   - only a code whose center is inside the square counts; with several inside, the nearest to its center; codes in the cropped-off part never count;
   - a code without a position counts only when it is the only one;
   - the same code must stay 0.6 s before it is used; a different code starts over; a gap of up to 0.4 s keeps the hold and a longer one loses it.
+
+## 21. Placed orders, receiving and spending (F30–F32, v0.13 draft)
+
+**Purpose:** keep an accurate record of what the team actually bought and paid, separate from the plans in order lists (F12, F27). An order list says what to buy; a placed order says what was bought, from whom, when and for how much, including tax, shipping and discounts. The app doesn't send orders: the mentor orders on the supplier's site, then records it here.
+
+### 21.1 Mark ordered (F30)
+- **Where:** each supplier group on the Automatic list (F12) and on a named list (F27) has **Mark ordered…**. It opens the order form for that supplier, after the PIN.
+- **Lines:** every line of the group, ticked, with its packs (as the list works them out, §4), the vendor option's pack size and pack price. A line with no stored price must have one entered. Untick lines that weren't ordered; change packs, pack size or pack price to what was charged. **+ Add line** adds an inventory item (search by name, part # or barcode; it uses the item's vendor option for this supplier if it has one, otherwise its preferred vendor's pack size, with the price left blank) or a **typed line** (description, quantity, unit price; for things that aren't inventory, e.g. team shirts).
+- **Order fields:** placed date (default today), order or invoice number, payment / PO, tax, shipping, other fees (dollar amounts as charged, default 0), discount (a dollar amount or a percent of the parts total), notes, receipts (§21.2).
+- **Totals, shown as you type:** parts = Σ line totals; discount = the dollar amount, or parts × percent ÷ 100 rounded to the cent; **total = parts − discount + tax + shipping + fees**. All money is kept in whole cents.
+- **Checks before saving:** at least one ticked line; packs and pack size whole numbers ≥ 1; prices ≥ 0 in cents; tax, shipping and fees ≥ 0; a percent from 0 to 100; a dollar discount not more than the parts total. Errors are shown beside the field; nothing is saved until all pass.
+- **Saving** stores the order with status placed, copies each item line's description, part #, unit and category from the item, and, for a named list, removes the ordered lines from that list (lines that were unticked stay). A named list left empty offers **Delete this list**. The Automatic list changes by itself, because the order quantity subtracts what is on order (§4).
+
+### 21.2 Receipts
+- Up to 5 per order: **Take photo**, **Choose photo** or **Choose PDF**.
+- Photos are shrunk on the device to about 1600 px on the long side (JPEG), larger than part photos (§8) so the printing stays readable. A PDF is kept as it is, up to 5 MB; a larger one is refused with that limit in the message.
+- Tap a receipt to view it (a photo full screen; a PDF opens in the browser's viewer). Remove asks to confirm. Adding and removing receipts is part of editing the order (PIN).
+
+### 21.3 Copying prices into the catalog
+After an order is saved, the app lists every item line whose item has a vendor option for this supplier and whose pack price or pack size differs from it ("REV · NEO 2.0: $45.00 → $47.50"), each ticked, plus "Also mark the n unchanged prices as checked on <placed date>" (ticked). **Update prices** sets the vendor option's pack price and pack size, and price_checked to the placed date, for the ticked lines; **Skip** changes nothing. It runs under the same unlock as the order. Items without a vendor option for this supplier aren't offered (adding a vendor option stays in the item editor). It is offered only when an order is first recorded.
+
+### 21.4 Editing, cancelling and deleting (PIN)
+- **Edit:** every field and line can be changed. A line's packs can't go below what was already received. Editing doesn't remove anything more from order lists and doesn't change inventory.
+- **Correct received amounts:** in Edit, a mentor can change a line's received amount (0 to the ordered units) without changing on hand, to match a mistake fixed by hand (F3).
+- **Cancel:** only while nothing has been received. The order stays in the history marked cancelled, doesn't count toward on order or spending, and can be un-cancelled. A partly received order whose remaining parts won't come is edited down to what arrived.
+- **Delete:** removes the order and its receipts after a confirmation naming the supplier, date and total (black button with red outline, §17). Received parts stay in on hand.
+- **Item deleted (F8):** its order lines keep their copied description and still count in spending; they no longer count as on order, and receiving marks them received without changing inventory. The delete confirmation says when the item has units on order.
+- **Supplier renamed (F23):** orders follow the new name. **Supplier removed:** orders keep the name they were recorded with. **Category renamed (F9):** order lines with the old name follow it. Removing a category leaves order lines as they are.
+
+### 21.5 Order history and spending summary (F32)
+- **Order › History** sits beside Automatic and the named lists.
+- **Ranges** by placed date, inclusive: This month; Last 30 days; This season (from the **Season starts** date to today; hidden until that setting is set); This school year (from the latest **School year starts** month and day, default August 1, to today); Last school year (the 12 months before that); Custom (From and To dates). The chosen range is remembered on the device.
+- **Filters:** supplier (any) and status (all, open, received, cancelled). The summary follows the range and supplier filter and always leaves cancelled orders out.
+- **Summary by supplier:** one row per supplier with orders, parts, discount, tax, shipping, fees and total, then a **Total** row.
+- **Summary by category:** parts cost of item lines by the category on the line, in §11 list order, then categories no longer in the list, then "Other" (typed lines); then rows for discount (negative), tax, shipping and fees; the last row is the same total as the supplier summary.
+- **Export CSV** (`order-history-<from>-to-<to>.csv`): a first row naming the range and filters; one row per order (Placed, Supplier, Order #, Payment, Status, Parts, Discount, Tax, Shipping, Fees, Total, Receipts, From list, Notes); then the supplier summary and the category summary, each under a heading row. **Export lines CSV**: one row per line (Placed, Supplier, Order #, Status, Item id, Item, Part #, Category, Unit, Packs, Pack size, Qty, Pack price, Line total, Received). Both use the F13 spreadsheet guards (formula-looking cells start with an apostrophe) and the F15 share sheet.
+- **Print summary:** a printable page (title, range, filters, printed date, both summaries, then the orders in the range); print it or save it as a PDF from the Android print dialog, as for labels (§9).
+
+### 21.6 Storage, backups and the upgrade
+- **Schema v4:** adds the order and receipt stores and the two settings (season start, school-year start). Existing data isn't changed. The schema-version check (§18.7) is raised to 4, so an older cached app refuses to write.
+- **Full backup:** v0.13 always writes `orders.csv` (one row per order: order_id, supplier, placed_on, order_no, payment, cancelled, tax, shipping, fees, discount_kind (`$` or `%`), discount, notes, from_list, receipts, created, updated; money in dollars with two decimals; `receipts` lists the files separated by `;`) and `order-lines.csv` (order_id, line, item_id, description, part_no, unit, category, packs, pack_size, pack_price, received), even when empty, plus the receipt files under `receipts/`.
+- **Restore:** a full backup that has `orders.csv` replaces the tablet's orders and receipts with its own. An older full backup without it, and any CSV-only restore, keep the tablet's orders; the restore confirmation has an Orders row saying which. Order lines naming items that aren't in the restored inventory are kept (they hold their own description) and count as items deleted (§21.4). A receipt named in `orders.csv` but missing from the ZIP is reported like a missing photo.
+- **Round trip:** export → restore keeps every order, line, amount, status and receipt.
+- **Helpers:** count kits never include orders.
+
+## 22. Must-have tests for v0.13 (Vitest)
+- **Stage 5 leftovers:**
+  - a full backup with no items but with list files restores (and its plan warns); a CSV or ZIP with no items and no list files is still refused;
+  - a ZIP missing a named photo: the plan reports the count; after the restore the tablet still has its own photo for that item, and items whose photo is in the ZIP get the backup's;
+  - the Downloads message says the file is only on the tablet; a share and a download both reset the reminder, a cancelled share doesn't;
+  - the boot request for persistent storage runs on launch and on `appinstalled`, and a grant reaches the storage status without reopening the screen.
+- **On order (§4):** need subtracts open units; cancelled and received orders and deleted items don't count; a partly received line counts only what's due; "up to desired only" subtracts it; stock highlighting doesn't.
+- **Order totals:** parts, a dollar and a percent discount (rounded to the cent, half up), tax, shipping and fees, to the cent; the checks in §21.1 refuse each bad value.
+- **Mark ordered:** lines come from one supplier group with the list's packs and prices; unticked lines stay on a named list and ticked ones leave it; typed lines; copied description, part #, unit and category.
+- **Prices (§21.3):** only changed lines are offered; updating sets pack price, pack size and price_checked to the placed date; "mark unchanged as checked" sets only price_checked.
+- **Receiving:** adds exactly the received units to on hand in one transaction; partial then full receipt gives partly received then received; typed lines and deleted items change no inventory; last_counted is unchanged; packs can't be edited below received.
+- **Edit, cancel, delete:** cancel only with nothing received; cancelled orders leave on order and the totals; delete leaves on hand alone; supplier and category renames follow into orders.
+- **History (§21.5):** each preset range on boundary dates (first and last day included, the school year rolling over on its start date, season preset hidden when unset); the supplier and category summaries add up to the same total; cancelled orders excluded; both CSV layouts, with the formula guard.
+- **Backups:** `orders.csv` and `order-lines.csv` round-trip with receipts; an empty order history still writes both files; an older backup without them keeps the tablet's orders; a CSV-only restore keeps them; lines for items not in the backup survive as deleted-item lines.
+- **Upgrade:** a v3 database with real rows opens as v4 with nothing else changed; a v3 app refuses to write to a v4 database.

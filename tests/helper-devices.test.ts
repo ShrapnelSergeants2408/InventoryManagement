@@ -213,7 +213,7 @@ describe('helpers on the tablet (data)', () => {
     await editHelper(db, a.id, draft({ name: 'Maya', groups: ['Tools'] }));
     expect((await db.settings.get('lastChangeAt'))!.value).toBe(5);
     const snap = await loadSnapshot(db);
-    await applyRestore(db, { kind: 'zip', fileName: 'x.zip', fileSize: 1, items: [item({ category: 'Tools' })], photos: new Map(), suppliers: [{ name: 'REV', website: '', notes: '' }], locations: [], categories: snap.categories, orderLists: [], pending: [], pendingPhotos: new Map(), addedSuppliers: [], addedLocations: [], savedAt: null, savedAtSource: null, warnings: [] });
+    await applyRestore(db, { kind: 'zip', fileName: 'x.zip', fileSize: 1, items: [item({ category: 'Tools' })], photos: new Map(), missingPhotos: [], suppliers: [{ name: 'REV', website: '', notes: '' }], locations: [], categories: snap.categories, orderLists: [], pending: [], pendingPhotos: new Map(), addedSuppliers: [], addedLocations: [], savedAt: null, savedAtSource: null, warnings: [] });
     expect((await loadHelpers(db)).map((h) => h.name)).toEqual(['Maya']);
     db.close();
   });

@@ -220,6 +220,18 @@ Numbering continues from Stage 4 (M1–M10), so `docs/reviews/` stays unambiguou
 - **Screens:** Import counts (from Count and Backup), Pending review, Backup screen (Undo button), Restore dialog. Use the `docs/mockups/helper-screens/` mockups (11a–11f), with the §11 category names.
 - **Regression:** `m5`, `m9`, the F15/F17/F24 Stage 5 checks, and a full kit → helper → counts → import round trip in two browser contexts (main and helper) in one check script.
 
+### v0.13 milestones (added 2026-10-28)
+
+| # | Milestone | Spec | Risk |
+|---|---|---|---|
+| **M18** | Stage 5 leftovers: findings 3, 4, 5, 7, 8, 9 | §2, F16, F17, §9, §22 | Low–medium (restore) |
+| **M19** | Placed orders, receiving, on order, price copy; schema v4 | F30, F31, §4, §21.1–§21.4, §21.6, F2, F12, F27, F8, F23, F9, §6 | **High** (schema, counts, money) |
+| **M20** | Order history, spending summary, CSV exports, printable summary | F32, §21.5 | Medium (money) |
+
+- **M18:** done as `docs/reviews/M18.md`.
+- **M19:** after Dan approves v0.13 (§15 Q8). Acceptance and tests are §21.1–§21.4, §21.6 and the matching §22 items. Regression: `m5` (backup and restore with the new files and the Orders row), `m15`/`m15b` (named lists losing ordered lines; quantity rules subtracting on order), `m3` (delete with units on order), the upgrade check pattern from `m16a-upgrade-check.mjs` (v3 → v4 against a copy of the tablet backup). Independent fresh-session review recommended (receiving changes real counts; a schema upgrade).
+- **M20:** after M19. Acceptance and tests are §21.5 and the matching §22 items, with ranges tested on boundary dates. Regression: `m14` (order exports), `m8` (print route).
+
 ## 3. The Dexie schema upgrade
 
 **Today:** `version(1)` only (`src/data/db.ts:49-56`): `items, photos, suppliers, locations, categories, settings`. Categories already have their own table, so §11 needs no schema change.

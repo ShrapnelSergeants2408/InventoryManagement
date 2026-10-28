@@ -32,12 +32,16 @@ export async function itemCount(db: InventoryDb): Promise<number> {
 
 export interface ReplaceAllInput extends InventorySnapshot {
   photos: Map<string, Blob>;
+  /** Item ids whose photo the ZIP named but didn't have: the tablet's own is kept (Stage 5 finding 5). */
+  missingPhotos?: readonly string[];
 }
 
 /**
  * Replaces every item, photo and list in one transaction (starter catalog load, F22;
  * restore, F17). With `keepPhotos` (a CSV-only restore), `photos` is ignored: the tablet's
  * photos are kept for item ids that are still there and the rest are deleted (Q5).
+ * Otherwise `photos` replaces them, except that the tablet keeps its photo for an id in
+ * `missingPhotos`.
  * Named order lists (F27): `orderLists` replaces them (a full backup); without it they're
  * kept, minus lines for items that are gone (a CSV-only restore, §15 Q7d).
  * Settings — including the PIN — are not touched. Returns how many items have a photo.
@@ -64,9 +68,11 @@ export async function replaceAll(
       await db.photos.bulkDelete(existing.filter((id) => !ids.has(id)));
       withPhoto = new Set(existing.filter((id) => ids.has(id)));
     } else {
-      await db.photos.clear();
+      const keep = new Set((input.missingPhotos ?? []).filter((id) => ids.has(id) && !input.photos.has(id)));
+      const existing = await db.photos.toCollection().primaryKeys();
+      await db.photos.bulkDelete(existing.filter((id) => !keep.has(id)));
       await db.photos.bulkAdd([...input.photos].map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now })));
-      withPhoto = new Set(input.photos.keys());
+      withPhoto = new Set([...input.photos.keys(), ...existing.filter((id) => keep.has(id))]);
     }
     await Promise.all([db.items.clear(), db.suppliers.clear(), db.locations.clear(), db.categories.clear()]);
     await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: withPhoto.has(i.id) }, now)));

@@ -32,7 +32,16 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
   const now = new Date();
 
   const keptPhotos = plan.kind === 'csv' ? plan.items.filter((i) => tablet.photoIds.has(i.id)).length : 0;
-  const backupPhotos = plan.kind === 'zip' ? String(plan.photos.size) : `${keptPhotos} kept from this tablet`;
+  // Photos the ZIP names but doesn't have: the tablet keeps its own (Stage 5 finding 5).
+  const missing = plan.missingPhotos.length;
+  const keptMissing = plan.missingPhotos.filter((id) => tablet.photoIds.has(id)).length;
+  const backupPhotos =
+    plan.kind === 'csv'
+      ? `${keptPhotos} kept from this tablet`
+      : missing === 0
+        ? String(plan.photos.size)
+        : `${plan.photos.size}, ${missing} missing${keptMissing > 0 ? ` (${keptMissing} kept from this tablet)` : ''}`;
+  const empty = plan.items.length === 0;
   const saved = plan.savedAt ? formatDateTime(plan.savedAt, now) + (plan.savedAtSource === 'file name' ? ' (from the file name)' : '') : 'unknown';
   const changed = tablet.lastChangeAt === null ? 'unknown' : `changed ${formatDateTime(new Date(tablet.lastChangeAt), now)}`;
   const since = plan.savedAt ? ` since ${formatIsoDate(localIsoDate(plan.savedAt))}` : ' since the backup was made';
@@ -101,11 +110,25 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
             <tr key={k}>
               <th scope="row">{k}</th>
               <td>{a}</td>
-              <td>{b}</td>
+              <td class={(k === 'Photos' && missing > 0) || (k === 'Items' && empty) ? 'attn' : undefined}>{b}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      {(empty || missing > 0) && (
+        <div class="bk-store warn" role="status">
+          <Icon name="low" />
+          <div>
+            {empty && <p>This backup has no items. Restoring it leaves the inventory empty; only its lists come back.</p>}
+            {missing > 0 && (
+              <p>
+                {plural(missing, 'photo')} named in the backup {missing === 1 ? 'is' : 'are'} missing from the ZIP.
+                {keptMissing === 0 ? '' : missing === 1 ? ' This tablet keeps its own photo for that item.' : ` This tablet keeps its own photo for ${keptMissing} of them.`}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
       {(plan.addedSuppliers.length > 0 || plan.addedLocations.length > 0 || plan.warnings.length > 0) && (
         <ul class="small notes-list">
           {plan.addedSuppliers.length > 0 && <li>Suppliers added to the list: {plan.addedSuppliers.join(', ')}</li>}

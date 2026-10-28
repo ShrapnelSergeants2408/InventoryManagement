@@ -745,3 +745,31 @@ High for the import rules (one unit test per preview row, mutants, a real two-de
 **Next:** Dan merges PR #25, decides on the independent review, merges M16c with a merge commit, backs up the tablet, and runs the tablet check in `docs/reviews/M16c.md`.
 
 **Later (16:39):** PRs #25 and #26 merged (`a434e4e`). Dan: "a-j accepted; tablet check worked; iphone safari works (cache needed to be cleared)". SPEC v0.12 (§18.5 import details, decision log); results recorded in `docs/reviews/M16c.md` and `docs/reviews/M16b.md` (Safari item closed), on branch `m16c-details-confirmed`. With M16c, every Stage 6 milestone in `docs/stage6-plan.md` is merged.
+
+## 2026-10-28 (evening) — SPEC v0.13 draft (placed orders, spending history) and M18 (Stage 5 leftovers)
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session after `/clear`. Dan: "take care of the stage 5 leftovers", plus a new feature to consider: confirming an order once it's placed (tax, discounts, shipping, etc.) and an order history over a date range with spending by vendor and in total. "Ask me questions about these new features." PR #27 (SPEC v0.12) still open, so `m18-stage5-fixes` is stacked on `m16c-details-confirmed`.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| ~16:30 | Checked which Stage 5 findings were still open on `main`: 3, 4, 5, 7, parts of 8 and 9 (1, 2, 6 and T-01 done in M12/M15). Three rounds of questions on the new feature; Dan answered all (decision log, 2026-10-28) |
+| ~16:50 | Dan: "go ahead with the spec draft and M18". SPEC v0.13 draft: F30–F32, §3 Placed order, §4 on order, §21, §22, the Stage 5 decisions; §15 Q8 lists the details Claude filled in. One correction to what Claude had told Dan: a data-only backup is one CSV, so orders travel in full backups only |
+| ~17:00–17:20 | M18 code: findings 3, 4, 5, 7, 8, 9. `tests/stage5-leftovers.test.ts`. Mutants 10/12 → 12/12 (one redundant condition removed, two tests added) |
+| ~17:20–17:30 | `scripts/m18-ui-check.mjs` 14/14 (one script fix: the ZIP's `photos/` folder entry). Screenshots showed the setup line's bold text in its own column: fixed. Wording fix in the missing-photo note |
+| ~17:30–18:10 | Regression `m2`–`m16c` in the background; `docs/reviews/M18.md`; v0.13 milestones added to `docs/stage6-plan.md`. `APP_VERSION` 0.5.1 (`m16a`, `m17` checks updated and re-run) |
+
+**WORK COMPLETED**
+SPEC v0.13 draft. M18: cleared-storage line on setup; empty full backups with lists restore (warned); missing ZIP photos shown in the attention style and the tablet's own kept; Downloads-only toast; F16 and §9 text as built; storage status refreshes on a grant.
+
+**DELIVERABLES PRODUCED**
+New: `tests/stage5-leftovers.test.ts`, `scripts/m18-ui-check.mjs`, `docs/reviews/M18.md`. Changed: `docs/SPEC.md`, `docs/stage6-plan.md`, `src/io/{bundle,restore,backup}.ts`, `src/data/{inventory,setup}.ts`, `src/domain/labels.ts`, `src/ui/{App.tsx,data-hooks.ts}`, `src/ui/screens/Setup.tsx`, `src/ui/screens/more/{RestoreDialog.tsx,export-backup.ts}`, `src/styles/app.css`, `tests/helper-devices.test.ts`, `scripts/m16a-ui-check.mjs`, `scripts/m17-ui-check.mjs`.
+
+**EVIDENCE**
+Unit 813 pass (1 skipped). Type check and build clean. Mutants 12/12. Browser: M2 28, M3 50, M4 25, M5 39, M6 54, M7 32, M8 61, M9 71, M10 42, M11 12, M12 16, M13 25, M14 20, M15 40, M15b 26, M16a 42, M17 34, M17b 7, M16b 36, M16c 25, M18 14: **699, all pass, clean consoles.**
+
+**CONFIDENCE**
+High for the restore changes (byte-level unit tests, mutants, real IndexedDB in the browser). Medium for the toast and setup line on the Tab S8 until the tablet check.
+
+**Next:** Dan reviews and approves SPEC v0.13 (§15 Q8 (a)–(g)), merges PR #27 then the M18 PR, and runs the tablet check in `docs/reviews/M18.md`. Then M19 (placed orders and receiving).

@@ -1,10 +1,14 @@
 // Count-in (F24; mockups 10a–10e): choose how to walk the shop, count one item per screen
 // with a keypad, then a summary per group. Each Save sets on_hand and last_counted straight
 // away, so a count can stop and resume across meetings. No PIN anywhere here (§6).
+// On a helper device (§18.3) the same screens count the helper's own copy: only its assigned
+// groups are walked, any item can still be scanned or typed, the shop-tablet parts (order
+// total, count rounds, helper devices, labels, backups) are left out, and a count outside the
+// assignment is allowed and marked.
 import { liveQuery } from 'dexie';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { getCountSince, saveCount, setCountSince } from '../../../data/count';
-import { getRecentLocations } from '../../../data/items';
+import { getRecentLocations, setBarcode } from '../../../data/items';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { addLocation } from '../../../data/lists';
 import { loadCountOptions, loadCountPause, saveCountOptions, saveCountPause, type CountOptions } from '../../../data/prefs';
@@ -23,6 +27,7 @@ import {
 } from '../../../domain/count';
 import { countedDate, formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { assignedHelpers } from '../../../domain/helpers';
+import { inAssignment } from '../../../domain/helper-mode';
 import { NO_LOCATION, checkName, takenLocationNames } from '../../../domain/lists';
 import { formatCents } from '../../../domain/money';
 import { resolveScan } from '../../../domain/scan';
@@ -36,6 +41,7 @@ import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Scanner, type CameraState } from '../../components/Scanner';
 import { useDb, useHelpers, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
+import { useHelper } from '../../helper/session';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
@@ -63,7 +69,8 @@ type View =
       saved: ReadonlySet<string>;
     };
 
-export function CountScreen() {
+/** `scanOnly`: the helper's Scan tab, which is scan as you go and nothing else (§18.3). */
+export function CountScreen({ scanOnly = false }: { scanOnly?: boolean }) {
   const live = useSnapshot();
   if (live.state === 'error') return <StorageError error={live.error} />;
   if (live.state === 'loading') {
@@ -76,13 +83,14 @@ export function CountScreen() {
       </>
     );
   }
-  return <Count snap={live.value} />;
+  return <Count snap={live.value} scanOnly={scanOnly} />;
 }
 
-function Count({ snap }: { snap: InventorySnapshot }) {
+function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean }) {
   const db = useDb();
+  const helper = useHelper();
   const [options, setOptionsRaw] = useState<CountOptions>(loadCountOptions);
-  const [view, setView] = useState<View>({ kind: 'start' });
+  const [view, setView] = useState<View>(scanOnly ? { kind: 'scan', current: null, history: [], saved: new Set() } : { kind: 'start' });
   const [recent, setRecent] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   useEffect(() => void getRecentLocations(db).then(setRecent), [db]);
@@ -103,7 +111,10 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     saveCountOptions(next);
   };
   const byId = useMemo(() => new Map(snap.items.map((i) => [i.id, i])), [snap.items]);
-  const groupsFor = (mode: CountMode) => countGroups(snap.items, snap.categories, snap.locations, mode, options.skipZero, since);
+  // What this device walks and counts progress over: everything, or a helper's assigned groups.
+  const kit = helper?.kit ?? null;
+  const mine = useMemo(() => (kit ? snap.items.filter((i) => inAssignment(i, kit)) : snap.items), [snap.items, kit]);
+  const groupsFor = (mode: CountMode) => countGroups(mine, snap.categories, snap.locations, mode, options.skipZero, since);
 
   const openWalk = (mode: 'category' | 'location', g: CountGroup, index = firstToCount(g.items, since)) => {
     const walk: Walk = {
@@ -149,18 +160,19 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     }
   };
 
-  const progress = overallProgress(snap.items, since);
-  const everCounted = overallProgress(snap.items).counted;
+  const progress = overallProgress(mine, since);
+  const everCounted = overallProgress(mine).counted;
   const pct = progress.total ? Math.round((100 * progress.counted) / progress.total) : 0;
   const walking = view.kind === 'walk' || view.kind === 'scan';
   const top = (
     <TopBar
       title="Count-in"
       subtitle={
-        view.kind === 'scan' ? 'Scan as you go' : view.kind === 'walk' ? 'One item at a time · progress saves after each item' : 'A walk-through for counting what’s in the shop'
+        view.kind === 'scan' ? (helper ? 'Scan as you go · any item, in your groups or not' : 'Scan as you go') : view.kind === 'walk' ? 'One item at a time · progress saves after each item' : 'A walk-through for counting what’s in the shop'
       }
       back={
-        walking && (
+        walking &&
+        !scanOnly && (
           <button
             type="button"
             class="btn"
@@ -180,7 +192,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
       <div class="cprog" role="group" aria-label="Overall progress">
         <div class="cprog-t small">
           <span>
-            {progress.counted} of {progress.total} counted{since && ` since ${formatIsoDate(since)}`}
+            {progress.counted} of {progress.total}{helper ? ' in your groups counted' : ' counted'}{since && ` since ${formatIsoDate(since)}`}
           </span>
           <span>{pct}%</span>
         </div>
@@ -243,7 +255,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     return (
       <>
         {top}
-        <Summary walk={view.walk} snap={snap} since={since} next={nextGroup(groups, view.walk.group)} onNext={(g) => openWalk(view.walk.mode, g)} onStart={() => setView({ kind: 'start' })} />
+        <Summary walk={view.walk} snap={snap} since={since} helper={helper !== null} next={nextGroup(groups, view.walk.group)} onNext={(g) => openWalk(view.walk.mode, g)} onStart={() => setView({ kind: 'start' })} />
       </>
     );
   }
@@ -311,9 +323,9 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     const at = g ? g.items.findIndex((i) => i.id === pause.itemId) : -1;
     return g && at >= 0 ? { mode: pause.mode, group: g, at } : null;
   })();
-  const located = snap.items.filter((i) => i.location !== '').length;
-  const coded = snap.items.filter((i) => i.barcode !== '').length;
-  const zero = snap.items.filter((i) => i.desired === 0).length;
+  const located = mine.filter((i) => i.location !== '').length;
+  const coded = mine.filter((i) => i.barcode !== '').length;
+  const zero = mine.filter((i) => i.desired === 0).length;
   const modes: Array<{
     k: CountMode;
     icon: IconName;
@@ -345,6 +357,10 @@ function Count({ snap }: { snap: InventorySnapshot }) {
     <>
       {top}
       <div class="cbody">
+        {helper ? (
+          <HelperStart groups={helper.kit.groups} kind={helper.kit.kind} items={mine.length} unsent={helper.unsent} allowNew={helper.kit.allowNewItems} />
+        ) : (
+          <>
         <div class="card ctotal">
           <Icon name="order" class="ic xl" />
           <div class="grow">
@@ -400,6 +416,8 @@ function Count({ snap }: { snap: InventorySnapshot }) {
             Helper devices
           </a>
         </div>
+          </>
+        )}
         {paused && (
           <div class="banner cpause" role="status">
             <Icon name="count" />
@@ -499,7 +517,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
               <div key={g.name} class="cg-row">
                 <div class="cg-n">
                   <strong>{g.name}</strong> <span class="small muted">{plural(g.items.length, 'item')}</span>
-                  {who && <span class="small cg-help">Helper: {who.join(', ')}</span>}
+                  {who && !helper && <span class="small cg-help">Helper: {who.join(', ')}</span>}
                 </div>
                 <strong class="tnum">
                   {g.counted} / {g.items.length}
@@ -516,6 +534,40 @@ function Count({ snap }: { snap: InventorySnapshot }) {
             );
           })}
         </div>
+      </div>
+    </>
+  );
+}
+
+/** The helper's start card (§18.3, §18.4): its groups, Add item not on the list, the send reminder. */
+function HelperStart(props: { groups: readonly string[]; kind: 'category' | 'location'; items: number; unsent: number; allowNew: boolean }) {
+  const many = props.groups.length !== 1;
+  const what = props.kind === 'location' ? (many ? 'locations' : 'location') : many ? 'categories' : 'category';
+  return (
+    <>
+      {props.unsent > 0 && (
+        <div class="banner hremind" role="status">
+          <Icon name="upload" />
+          <span class="grow">{plural(props.unsent, 'change')} not sent yet. Send your counts to the shop tablet before you leave.</span>
+          <a class="btn onb" href="#/send">
+            Send
+          </a>
+        </div>
+      )}
+      <div class="card chelp hmine">
+        <Icon name={props.kind === 'location' ? 'pin' : 'folder'} class="ic xl" />
+        <div class="grow">
+          <div class="chelp-h">
+            Your {what}: {props.groups.join(', ')}
+          </div>
+          <div class="small muted">{plural(props.items, 'item')} to count. Anything else you find can still be counted with Scan; the shop tablet sees it was outside your groups.</div>
+        </div>
+        {props.allowNew && (
+          <a class="btn" href="#/add">
+            <Icon name="plus" />
+            Add item not on the list
+          </a>
+        )}
       </div>
     </>
   );
@@ -600,6 +652,8 @@ interface ItemCountProps {
 }
 
 function ItemCount(p: ItemCountProps) {
+  const helper = useHelper();
+  const outside = helper !== null && !inAssignment(p.item, helper.kit);
   const [entry, setEntry] = useState(p.initial);
   // undefined: the location stays as it is.
   const [loc, setLoc] = useState<string | undefined>(undefined);
@@ -630,6 +684,12 @@ function ItemCount(p: ItemCountProps) {
           ))}
         <div class="wl-t">
           <h2 class="h2 wname">{p.item.name}</h2>
+          {outside && (
+            <div class="small hout" role="note">
+              <Icon name="info" />
+              Not in your groups. Count it anyway if it’s here; the shop tablet will see it was outside your groups.
+            </div>
+          )}
           <div class="small muted">{meta}</div>
           <div>
             <span class="small muted">Desired</span> <strong>{p.item.desired}</strong> · <span class="small muted">spares</span> <strong>{p.item.spares}</strong> ·{' '}
@@ -690,6 +750,8 @@ const ALL_LOC = '\u0000all';
 /** Location quick picks (F25: recently used first), every location in walk order, and "New location…". */
 function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: string | undefined) => void; snap: InventorySnapshot; recent: string[] }) {
   const db = useDb();
+  // A helper can't clear a location: a blank location in the counts file means "unchanged" (§18.4).
+  const helper = useHelper();
   const [adding, setAdding] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const names = props.snap.locations.map((l) => l.name);
@@ -743,7 +805,7 @@ function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: s
                 {n}
               </option>
             ))}
-            {props.item.location !== '' && <option value="">{NO_LOCATION}</option>}
+            {props.item.location !== '' && !helper && <option value="">{NO_LOCATION}</option>}
           </select>
         )}
         {adding === null && (
@@ -801,7 +863,7 @@ function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: s
 }
 // ── Group summary (10d) ──
 
-function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; next: CountGroup | null; onNext: (g: CountGroup) => void; onStart: () => void }) {
+function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; helper: boolean; next: CountGroup | null; onNext: (g: CountGroup) => void; onStart: () => void }) {
   const w = props.walk;
   const s = summarize(w.ids, props.snap.items, w.saved, w.skipped, props.since);
   return (
@@ -817,7 +879,7 @@ function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; ne
           </div>
         </div>
       </div>
-      <div class="sumgrid">
+      <div class={props.helper ? 'sumgrid three' : 'sumgrid'}>
         <div class="tile">
           <span class="k">Counted</span>
           <span class="v">
@@ -835,12 +897,14 @@ function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; ne
           <span class="k">Skipped</span>
           <span class="v">{s.skipped}</span>
         </div>
-        <div class="tile">
-          <span class="k">Order list</span>
-          <span class="v sum-tot">
-            {formatCents(w.beforeCents)} → {formatCents(orderTotalCents(props.snap.items))}
-          </span>
-        </div>
+        {!props.helper && (
+          <div class="tile">
+            <span class="k">Order list</span>
+            <span class="v sum-tot">
+              {formatCents(w.beforeCents)} → {formatCents(orderTotalCents(props.snap.items))}
+            </span>
+          </div>
+        )}
       </div>
       <div class="card cgroups">
         <div class="cg-h">
@@ -861,13 +925,22 @@ function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; ne
             Back to all groups
           </button>
         )}
-        <a class="btn lg" href={href.labels(w.ids)}>
-          <Icon name="labels" />
-          Print labels for {w.group}
-        </a>
-        <a class="btn lg" href={href.backup}>
-          Back up now
-        </a>
+        {props.helper ? (
+          <a class="btn lg" href="#/send">
+            <Icon name="upload" />
+            Send my counts
+          </a>
+        ) : (
+          <>
+            <a class="btn lg" href={href.labels(w.ids)}>
+              <Icon name="labels" />
+              Print labels for {w.group}
+            </a>
+            <a class="btn lg" href={href.backup}>
+              Back up now
+            </a>
+          </>
+        )}
         {props.next && (
           <button type="button" class="btn lg" onClick={props.onStart}>
             Done for now
@@ -893,6 +966,52 @@ function SummaryRow({ item }: { item: Item }) {
   );
 }
 
+/** A helper attaches an unknown barcode to an item (§18.3; F21 without the PIN). */
+function AttachDialog(props: { code: string; items: readonly Item[]; onClose: () => void; onAttached: (item: Item) => void }) {
+  const db = useDb();
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState(false);
+  const matches = useMemo(() => (q.trim() ? props.items.filter((i) => matchesQuery(i, q)).slice(0, 12) : []), [q, props.items]);
+  const attach = async (item: Item) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const saved = await setBarcode(db, item.id, props.code);
+      showToast(`Barcode attached to “${saved.name}”.`);
+      props.onAttached(saved);
+    } catch (e) {
+      setBusy(false);
+      showToast(`Couldn't attach: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  };
+  return (
+    <Dialog label="Attach barcode" onClose={() => !busy && props.onClose()}>
+      <div class="dlg-form">
+        <h2 class="h2">Attach {props.code} to…</h2>
+        <input class="field" type="search" aria-label="Find the item" autoComplete="off" placeholder="Name, part # or supplier" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
+        <div class="picks">
+          {matches.map((i) => (
+            <button key={i.id} type="button" class="pick" disabled={busy} onClick={() => void attach(i)}>
+              <span class="pick-t">
+                <strong>{i.name}</strong>
+                <span class="small muted">
+                  {i.category} · {i.barcode ? `replaces barcode ${i.barcode}` : 'no barcode yet'}
+                </span>
+              </span>
+            </button>
+          ))}
+          {q.trim() !== '' && matches.length === 0 && <p class="muted m0">No items match. Try another word.</p>}
+        </div>
+        <DialogActions>
+          <button type="button" class="btn lg" disabled={busy} onClick={props.onClose}>
+            Cancel
+          </button>
+        </DialogActions>
+      </div>
+    </Dialog>
+  );
+}
+
 // ── Scan as you go (10c) ──
 
 function ScanCount(props: {
@@ -912,6 +1031,10 @@ function ScanCount(props: {
   const [note, setNote] = useState<string | null>(null);
   const [picks, setPicks] = useState<Item[] | null>(null);
   const [typed, setTyped] = useState('');
+  const helper = useHelper();
+  // A helper's unknown code, waiting for Attach or Add (§18.3).
+  const [unknown, setUnknown] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState<string | null>(null);
   const dirty = useRef(false);
   // The item just saved or skipped: its label is usually still in front of the camera, so the
   // camera ignores it until another item is saved or skipped. Typing its code still opens it.
@@ -926,6 +1049,7 @@ function ScanCount(props: {
     }
     setNote(null);
     setPicks(null);
+    setUnknown(null);
     setTyped('');
     props.onOpen(item.id);
   };
@@ -948,8 +1072,15 @@ function ScanCount(props: {
       }
     }
     setPicks(null);
+    if (helper && r.kind !== 'missing-label') {
+      setNote(null);
+      setUnknown(r.code);
+      return;
+    }
     setNote(
-      r.kind === 'missing-label' ? `The label ${r.id} is for an item that isn’t on this tablet.` : `No item has the code ${r.code}. To attach it to an item, use the Scan tab.`,
+      r.kind === 'missing-label'
+        ? `The label ${r.id} is for an item that isn’t on this ${helper ? 'device' : 'tablet'}.`
+        : `No item has the code ${r.code}. To attach it to an item, use the Scan tab.`,
     );
   };
 
@@ -999,6 +1130,34 @@ function ScanCount(props: {
         <div class="small wnote" role="alert">
           {note}
         </div>
+      )}
+      {unknown !== null && (
+        <div class="card hunk" role="alert">
+          <strong>No item has the code <span class="mono">{unknown}</span></strong>
+          <div class="hunk-acts">
+            <button type="button" class="btn" onClick={() => setAttaching(unknown)}>
+              Attach to an item…
+            </button>
+            {helper?.kit.allowNewItems && (
+              <a class="btn" href={`#/add?${new URLSearchParams({ barcode: unknown })}`}>
+                <Icon name="plus" />
+                Add item not on the list
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+      {attaching !== null && (
+        <AttachDialog
+          code={attaching}
+          items={props.snap.items}
+          onClose={() => setAttaching(null)}
+          onAttached={(item) => {
+            setAttaching(null);
+            setUnknown(null);
+            open(item);
+          }}
+        />
       )}
       {picks && (
         <div class="picks">

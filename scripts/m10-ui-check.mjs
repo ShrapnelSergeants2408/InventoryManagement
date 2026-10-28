@@ -112,11 +112,18 @@ ${PIN_H}
   const sdone = () => $$('.sdone li').map((l) => norm(l.textContent));
 `;
 
+// A fresh device first asks what it is (F22, M16b): answer Set up the shop tablet, then the PIN pad.
+const toPin = async () => {
+  await waitFor(`document.querySelector('.setup .pinpad, .role-opt')`, 60000);
+  await js(`await pickShopTablet();`);
+  await waitFor(`document.querySelector('.setup .pinpad')`, 30000);
+};
+
 // Deletes the app's database (the "storage cleared" case) and reloads into first launch.
 const wipe = async () => {
   await js(`await new Promise((res, rej) => { const r = indexedDB.deleteDatabase('frc2408-inventory'); r.onsuccess = res; r.onerror = () => rej(r.error); r.onblocked = res; });`);
   await send('Page.reload');
-  await waitFor(`document.querySelector('.setup .pinpad')`, 60000);
+  await toPin();
 };
 
 try {
@@ -126,7 +133,7 @@ try {
   await send('Page.setInterceptFileChooserDialog', { enabled: true });
   await size(1280, 800);
   await send('Page.navigate', { url: 'http://localhost:4330/' });
-  await waitFor(`document.querySelector('.setup .pinpad')`, 60000);
+  await toPin();
 
   // ── First launch: steps 1–2, then step 3 (9h) ──
   check('a new tablet: three setup steps, starting at the PIN', await js(`return [$$('.setup-steps li').map((l) => norm(l.textContent)), now()]`), [['1Set mentor PIN', '2Save recovery code', '3Load starter catalog'], '1Set mentor PIN']);
@@ -256,7 +263,7 @@ try {
   await sleep(1500);
   await send('Page.removeScriptToEvaluateOnNewDocument', { identifier: blocker.result.identifier });
   await send('Page.reload');
-  await waitFor(`document.querySelector('.setup .pinpad')`, 60000);
+  await toPin();
   check('after Set up again: first-launch setup, the old data gone', await js(`return [now(), await idbCount('items'), (await idbGet('settings', 'pinHash')) ?? null]`), ['1Set mentor PIN', 0, null]);
 
   // ── Layout ──

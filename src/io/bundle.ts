@@ -87,16 +87,20 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
 /** Reports photos read so far, of the photos the CSV names, once the items are read (first-launch progress, 9i). */
 export type PhotoProgress = (done: number, total: number, items: number) => void;
 
-export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPhoto?: PhotoProgress): Promise<BundleRead> {
+/**
+ * Reads a full backup. With `kit`, reads a count kit's files instead (§18.2: the same §7 layout
+ * plus kit.json), which the helper's Join uses; otherwise a kit is refused.
+ */
+export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPhoto?: PhotoProgress, opts: { kit?: boolean } = {}): Promise<BundleRead> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(data);
   } catch {
-    return { bundle: null, problems: [{ file: 'backup', row: null, message: "this file isn't a readable ZIP backup" }], warnings: [] };
+    return { bundle: null, problems: [{ file: opts.kit ? 'kit' : 'backup', row: null, message: opts.kit ? "this file isn't a readable count kit" : "this file isn't a readable ZIP backup" }], warnings: [] };
   }
 
   // A count kit (§18.2) has an inventory.csv too, but with prices left out: it is never a backup (§7).
-  if (Object.values(zip.files).some((f) => !f.dir && /(^|\/)kit\.json$/i.test(f.name))) {
+  if (!opts.kit && Object.values(zip.files).some((f) => !f.dir && /(^|\/)kit\.json$/i.test(f.name))) {
     return {
       bundle: null,
       problems: [{ file: 'backup', row: null, message: 'this is a count kit for a helper device, not a backup. Open it on the helper with “Join as a helper”' }],

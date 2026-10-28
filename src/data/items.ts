@@ -6,6 +6,7 @@ import { QR_PREFIX, barcodeKey, cleanCode } from '../domain/scan';
 import { nameKey, type Item } from '../domain/types';
 import { validateItem } from '../domain/validate';
 import { fromItemRow, fromOrderListRow, toItemRow, toLocationRow, toOrderListRow, type InventoryDb } from './db';
+import { isHelperDb, noteItemChange } from './helper-db';
 import { applyPhotoChange, type PhotoChange } from './photos';
 
 export const RECENT_LOCATIONS = 'recentLocations';
@@ -105,13 +106,15 @@ export async function deleteItem(db: InventoryDb, id: string, now = Date.now()):
 
 /**
  * Attaches a scanned manufacturer barcode to an item (F21; no PIN, §6). Refused when another
- * item already has the same code, so a scan never becomes ambiguous by accident.
+ * item already has the same code, so a scan never becomes ambiguous by accident. On a helper
+ * device it is recorded for the next counts file (§18.3, §18.4).
  */
 export async function setBarcode(db: InventoryDb, id: string, code: string, now = Date.now()): Promise<Item> {
   const clean = cleanCode(code);
   if (clean === '') throw new Error('the barcode is empty');
   if (clean.toLowerCase().startsWith(QR_PREFIX)) throw new Error('that is a team QR label, not a manufacturer barcode');
-  return db.transaction('rw', db.items, db.settings, async () => {
+  const tables = isHelperDb(db) ? [db.items, db.settings, db.changes] : [db.items, db.settings];
+  return db.transaction('rw', tables, async () => {
     const row = await db.items.get(id);
     if (!row) throw new Error(`no item with id ${id}`);
     const key = barcodeKey(clean);
@@ -119,6 +122,7 @@ export async function setBarcode(db: InventoryDb, id: string, code: string, now 
     if (other) throw new Error(`barcode ${clean} is already on “${other.name}”`);
     await db.items.put({ ...row, barcode: clean, updatedAt: now });
     await db.settings.put({ key: 'lastChangeAt', value: now });
+    if (isHelperDb(db)) await noteItemChange(db, row, { barcode: true }, now);
     return fromItemRow({ ...row, barcode: clean });
   });
 }

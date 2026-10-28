@@ -79,7 +79,7 @@ try {
   // ── First launch, Load the starter catalog (F22, §12) ──
   await send('Page.navigate', { url: ORIGIN + '/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
-  check('setup step 3 still says 129 parts', await js(`${PAGE} for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100); await enterPin('2408'); await enterPin('2408'); $('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Next').click(); for (let i = 0; i < 100 && !$('.sopts'); i++) await settle(100); return norm($('.sopts .sopt').textContent).includes('129 FRC parts')`), true);
+  check('setup step 3 still says 129 parts', await js(`${PAGE} for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100); await pickShopTablet(); await enterPin('2408'); await enterPin('2408'); $('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Next').click(); for (let i = 0; i < 100 && !$('.sopts'); i++) await settle(100); return norm($('.sopts .sopt').textContent).includes('129 FRC parts')`), true);
   await js(`${PAGE} byText('.setup-acts .btn', 'Load starter catalog').click(); for (let i = 0; i < 600 && !$('.sdone'); i++) await settle(100); byText('.setup-acts .btn', 'Go to inventory').click(); await settle(800);`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await sleep(400);
@@ -131,7 +131,7 @@ try {
   await send('Storage.clearDataForOrigin', { origin: ORIGIN, storageTypes: 'all' });
   await send('Page.navigate', { url: ORIGIN + '/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
-  await js(`${PAGE} for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100); await enterPin('2408'); await enterPin('2408'); $('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Next').click(); for (let i = 0; i < 100 && !$('.sopts'); i++) await settle(100); byText('.sopts .sopt', 'Start empty').click(); await settle(200); byText('.setup-acts .btn', 'Start empty').click(); for (let i = 0; i < 300 && !$('.sdone'); i++) await settle(100); byText('.setup-acts .btn', 'Go to inventory').click(); await settle(800);`);
+  await js(`${PAGE} for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100); await pickShopTablet(); await enterPin('2408'); await enterPin('2408'); $('.recovery input[type=checkbox]').click(); await settle(150); byText('.recovery button', 'Next').click(); for (let i = 0; i < 100 && !$('.sopts'); i++) await settle(100); byText('.sopts .sopt', 'Start empty').click(); await settle(200); byText('.setup-acts .btn', 'Start empty').click(); for (let i = 0; i < 300 && !$('.sdone'); i++) await settle(100); byText('.setup-acts .btn', 'Go to inventory').click(); await settle(800);`);
   const emptyCats = (await js(idbAll('categories'))).sort((a, b) => a.order - b.order);
   check('Start empty: no items; the §11 categories with their subcategories', [(await js(idbAll('items'))).length, emptyCats.map((c) => c.name), emptyCats.reduce((n, c) => n + c.subcategories.length, 0)], [0, CATS, 58]);
   await send('Page.navigate', { url: ORIGIN + '/#/more/categories' });

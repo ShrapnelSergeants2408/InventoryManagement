@@ -8,6 +8,7 @@ import './styles/app.css';
 import './styles/labels.css';
 import './styles/scan.css';
 import './styles/count.css';
+import './styles/helper.css';
 import { render } from 'preact';
 import { App } from './ui/App';
 import { startServiceWorker } from './ui/shell/UpdateBanner';

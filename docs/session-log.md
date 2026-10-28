@@ -660,3 +660,23 @@ F29 location QR codes in five places, "Location not found" with Add / Rename (PI
 High for matching and placement (unit tests, mutants, a real QR read by the camera in headless Chrome). Not yet done: the Tab S8 check with real bin labels, including poor light and distance.
 
 **Next:** Dan merges the M17 PR, updates the tablet and checks More › About shows 0.4.0, then runs the tablet check in `docs/reviews/M17.md`; then M16b.
+
+---
+
+## 2026-10-28 (later) — M17b: aim and hold for camera scans
+
+**SESSION IDENTITY**
+Same session. Dan merged PR #22 (M17, `e615f6e`). Branch `m17b-scan-aim` from `main`.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| — | Dan: M17 tablet check successful; "the qr code reads so quickly that if several codes are close to each other it is not possible to focus on the correct one before the pop-up occurs". Cause: the camera used the first code anywhere in the picture (including the cropped-off part) on the first frame. Dan chose aim + hold, about 0.6 s, every scanner |
+| — | `src/domain/scan-aim.ts` (`toView`, `pickAimed`, `stepHold`), the camera loop in `Scanner.tsx`, amber corners and a fill bar, hints. Spec v0.10 |
+| — | Unit 695 pass (13 new). `m17b-ui-check` (three codes side by side) 7/7 after one app fix (the hold showed one frame late) and two script fixes. Mutants 14/14. All browser checks M2–M17 617/617 |
+| — | `docs/reviews/M17b.md`; committed, pushed, opened the PR |
+
+**CONFIDENCE**
+High that the right code is chosen and held (unit tests on the mapping, a three-code camera picture in four screens). Not yet done: the Tab S8 with real shelves, and whether 0.6 s feels right.
+
+**Next:** Dan merges, checks More › About shows the new build time, runs the M17b tablet check; then M16b.

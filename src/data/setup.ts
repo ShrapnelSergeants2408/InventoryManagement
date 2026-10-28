@@ -7,6 +7,7 @@ import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
 import { replaceAll, type ReplaceAllInput } from './inventory';
 import { replacePending } from './pending';
+import { replaceOrders } from './placed-orders';
 
 export const SETUP_DONE = 'setupDoneAt';
 /** When the starter catalog was loaded (kept from the pre-M10 boot load). */
@@ -24,16 +25,18 @@ export async function isSetUp(db: InventoryDb): Promise<boolean> {
  * replace a team's data (restoring later is F17, behind the PIN). Returns how many items have a photo.
  */
 export async function startInventory(db: InventoryDb, choice: StartChoice, data: ReplaceAllInput, now = Date.now()): Promise<number> {
-  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.helpers, db.pendingItems, db.pendingPhotos, db.importUndo], async () => {
+  const tables = [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.helpers, db.pendingItems, db.pendingPhotos, db.importUndo, db.orders, db.receipts];
+  return db.transaction('rw', tables, async () => {
     if (await isSetUp(db)) throw new Error('this tablet is already set up; use Restore in More › Backup instead');
-    const photos = await replaceAll(db, data, now);
+    // A backup restored at setup brings its order lists, pending items and placed orders (§7, F22, §21.6).
+    const p = data as Partial<Pick<RestorePlan, 'orderLists' | 'pending' | 'pendingPhotos' | 'orders' | 'receipts'>>;
+    const photos = await replaceAll(db, data, now, { orderLists: p.orderLists ?? [] });
     // A fresh shop tablet starts with no helpers (§18.1), whatever an earlier install left.
     await db.helpers.clear();
     // …and nothing pending from helpers, nothing to undo (§18.5).
     await Promise.all([db.pendingItems.clear(), db.pendingPhotos.clear(), db.importUndo.clear()]);
-    // A backup restored at setup brings its pending items (§7, F22).
-    const p = data as Partial<Pick<RestorePlan, 'pending' | 'pendingPhotos'>>;
     if (p.pending) await replacePending(db, p.pending, p.pendingPhotos ?? new Map());
+    await replaceOrders(db, p.orders ?? [], p.receipts ?? new Map());
     await db.settings.put({ key: SETUP_DONE, value: now });
     if (choice === 'starter') await db.settings.put({ key: STARTER_LOADED, value: now });
     return photos;

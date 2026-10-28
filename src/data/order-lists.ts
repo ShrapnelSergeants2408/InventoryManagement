@@ -1,7 +1,8 @@
 // Named order lists (F27): create, rename, duplicate, delete, and their lines. No PIN (§6).
 // Lists never change an item; each write runs in one transaction with the change marker.
 import { applyAddMany, copyName, listNameProblem, newListId, planAddMany, sortLists, type NamedOrderList, type QuantityRule } from '../domain/order-lists';
-import { fromItemRow, fromOrderListRow, toOrderListRow, type InventoryDb } from './db';
+import { onOrderMap } from '../domain/placed-orders';
+import { fromItemRow, fromOrderListRow, fromOrderRow, toOrderListRow, type InventoryDb } from './db';
 
 export async function loadOrderLists(db: InventoryDb): Promise<NamedOrderList[]> {
   return sortLists((await db.orderLists.toArray()).map(fromOrderListRow));
@@ -138,7 +139,7 @@ export async function addManyToOrderList(
   replace: boolean,
   now = Date.now(),
 ): Promise<AddManyResult> {
-  return db.transaction('rw', db.orderLists, db.items, db.settings, async () => {
+  return db.transaction('rw', db.orderLists, db.items, db.settings, db.orders, async () => {
     const items = (await db.items.bulkGet([...itemIds])).flatMap((r) => (r ? [fromItemRow(r)] : []));
     if (items.length === 0) throw new Error('none of those items are here any more');
     let list: NamedOrderList;
@@ -149,7 +150,7 @@ export async function addManyToOrderList(
       const ids = new Set(lists.map((l) => l.id));
       list = { id: newListId((id) => ids.has(id)), name: to.newName.trim(), notes: '', created: now, updated: now, lines: [] };
     } else list = await getList(db, to.listId);
-    const plan = planAddMany(items, rule, list);
+    const plan = planAddMany(items, rule, list, onOrderMap((await db.orders.toArray()).map(fromOrderRow)));
     const saved = await save(db, { ...list, lines: applyAddMany(list, plan, replace) }, now);
     return {
       list: saved,

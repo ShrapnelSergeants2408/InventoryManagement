@@ -1,6 +1,7 @@
 // The Inventory screen's grouped list (SPEC F1, F2, F4, F5): pure, so it is unit-tested.
 import { passesFilters, activeFilterCount, type Filters } from './filters';
 import { compareSupplierNames, orderLineFor, type OrderLine } from './order';
+import { onOrderOf, type OnOrder } from './placed-orders';
 import { matchesTerms, queryTerms, searchText } from './search';
 import { stockStatus, type StockStatus } from './status';
 import { nameKey, preferredVendorOf, type Category, type Item, type Location, type Vendor } from './types';
@@ -12,14 +13,17 @@ export interface ItemInfo {
   vendor: Vendor | null;
   /** Order line when order_qty > 0, else null. */
   order: OrderLine | null;
+  /** Units on open placed orders (§4, F2). */
+  onOrder: number;
 }
 
-export function itemInfo(item: Item): ItemInfo {
+export function itemInfo(item: Item, onOrder = 0): ItemInfo {
   return {
     item,
     status: stockStatus(item.onHand, item.desired, item.spares),
     vendor: preferredVendorOf(item),
-    order: orderLineFor(item),
+    order: orderLineFor(item, onOrder),
+    onOrder,
   };
 }
 
@@ -141,13 +145,15 @@ export interface ViewInput {
   filters: Filters;
   /** Keys (categoryKey / subcategoryKey) of expanded groups. */
   expanded: ReadonlySet<string>;
+  /** Units on open placed orders, by item id (§4). */
+  onOrder?: OnOrder;
 }
 
 export function buildInventoryView(input: ViewInput): InventoryView {
   const terms = queryTerms(input.query);
   const filtering = terms.length > 0 || activeFilterCount(input.filters) > 0;
-  const infos = input.items.map(itemInfo);
-  const passes = (i: ItemInfo) => passesFilters(i.item, input.filters) && matchesTerms(searchText(i.item), terms);
+  const infos = input.items.map((item) => itemInfo(item, onOrderOf(input.onOrder, item.id)));
+  const passes = (i: ItemInfo) => passesFilters(i.item, input.filters, i.onOrder) && matchesTerms(searchText(i.item), terms);
 
   const lines: ListLine[] = [];
   let shown = 0;

@@ -7,6 +7,7 @@
 // conflicts between files come out the same way as conflicts with this tablet, and the same
 // files give the same result in any order.
 import { orderTotalCents } from './count';
+import type { OnOrder } from './placed-orders';
 import type { Helper } from './helpers';
 import type { PendingRecord } from './helper-mode';
 import { barcodeKey } from './scan';
@@ -127,6 +128,8 @@ export interface PlanInput {
   helpers: readonly Helper[];
   /** Pending ids already on this tablet, or accepted, matched, combined or discarded before. */
   knownPending: ReadonlySet<string>;
+  /** Units on open placed orders, for the order-list totals before and after (§4). */
+  onOrder?: OnOrder;
 }
 
 /** ms since epoch of a stored count time; NaN for blank. */
@@ -309,8 +312,8 @@ export function planImport(input: PlanInput, choices: ImportChoices = noChoices(
     changes,
     previous,
     createdLocations,
-    totalBefore: orderTotalCents(input.items),
-    totalAfter: orderTotalCents(after),
+    totalBefore: orderTotalCents(input.items, input.onOrder),
+    totalAfter: orderTotalCents(after, input.onOrder),
   };
 }
 

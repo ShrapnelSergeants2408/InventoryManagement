@@ -4,6 +4,7 @@ import { countedDate } from './dates';
 import { listOrder } from './inventory-view';
 import { NO_LOCATION } from './lists';
 import { buildOrderList } from './order';
+import type { OnOrder } from './placed-orders';
 import { stockStatus, type StockStatus } from './status';
 import { nameKey, type Category, type Item, type Location } from './types';
 
@@ -126,7 +127,8 @@ export const previewStatus = (item: Item, entry: string): StockStatus | null => 
 
 // ── Group summary ──
 
-export const orderTotalCents = (items: readonly Item[]) => buildOrderList(items).grandTotalCents;
+/** The automatic order list's total (F12), units on order subtracted (§4). */
+export const orderTotalCents = (items: readonly Item[], onOrder?: OnOrder) => buildOrderList(items, onOrder).grandTotalCents;
 
 export interface CountSummary {
   /** Items in the group counted (in this round), of the group size. */

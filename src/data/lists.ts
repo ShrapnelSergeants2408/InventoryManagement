@@ -17,7 +17,7 @@ import {
 import { nameKey, type Item, type Location, type Supplier } from '../domain/types';
 import { normalizeUrl } from '../domain/url';
 import { renameGroup, type GroupKind } from '../domain/helpers';
-import { fromHelperRow, fromItemRow, toHelperRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb } from './db';
+import { fromHelperRow, fromItemRow, fromOrderRow, toHelperRow, toItemRow, toLocationRow, toOrderRow, toSupplierRow, type InventoryDb } from './db';
 import { isHelperDb, noteLocationAdded } from './helper-db';
 import { RECENT_LOCATIONS, getRecentLocations } from './items';
 
@@ -36,6 +36,21 @@ async function saveItems(db: InventoryDb, items: readonly Item[], now: number): 
 const touch = (db: InventoryDb, now: number) => db.settings.put({ key: 'lastChangeAt', value: now });
 
 // ── Suppliers (F23; PIN required for add, rename and remove — the UI asks first) ──
+
+/** A renamed supplier: orders follow the new name (§21.4). A removed one isn't followed. */
+async function renameOrderSupplier(db: InventoryDb, oldKey: string, name: string): Promise<void> {
+  const rows = await db.orders.where('supplierKey').equals(oldKey).toArray();
+  for (const r of rows) await db.orders.put(toOrderRow({ ...fromOrderRow(r), supplier: name }));
+}
+
+/** A renamed category: order lines that carry the old name follow it (§21.4). */
+async function renameOrderCategory(db: InventoryDb, from: string, to: string): Promise<void> {
+  for (const r of await db.orders.toArray()) {
+    if (!r.lines.some((l) => l.category === from)) continue;
+    const o = fromOrderRow(r);
+    await db.orders.put(toOrderRow({ ...o, lines: o.lines.map((l) => (l.category === from ? { ...l, category: to } : l)) }));
+  }
+}
 
 function cleanSupplier(s: Supplier, existing: readonly string[], self?: string): Supplier {
   const name = checkName(s.name, existing, 'Supplier', self);
@@ -56,13 +71,14 @@ export async function addSupplier(db: InventoryDb, s: Supplier, now = Date.now()
 
 /** Changes a supplier's name, website and notes. A new name is written into every vendor option that used the old one. */
 export async function updateSupplier(db: InventoryDb, oldName: string, next: Supplier, now = Date.now()): Promise<Supplier> {
-  return db.transaction('rw', db.suppliers, db.items, db.settings, async () => {
+  return db.transaction('rw', db.suppliers, db.items, db.settings, db.orders, async () => {
     const row = (await db.suppliers.get(nameKey(oldName))) ?? fail(`supplier "${oldName}" isn't in the list`);
     const clean = cleanSupplier(next, (await db.suppliers.toArray()).map((x) => x.name), row.name);
     if (isOtherSupplier(row.name) && clean.name !== row.name) fail('“other” is the fallback supplier and keeps its name.');
     await db.suppliers.delete(row.key);
     await db.suppliers.add(toSupplierRow(clean));
     await saveItems(db, reassignSupplier(await allItems(db), row.name, clean.name), now);
+    if (clean.name !== row.name) await renameOrderSupplier(db, row.key, clean.name);
     await touch(db, now);
     return clean;
   });
@@ -187,7 +203,7 @@ export async function addCategory(db: InventoryDb, name: string, now = Date.now(
 }
 
 export async function renameCategory(db: InventoryDb, oldName: string, name: string, now = Date.now()): Promise<string> {
-  return db.transaction('rw', db.categories, db.items, db.settings, db.helpers, async () => {
+  return db.transaction('rw', db.categories, db.items, db.settings, db.helpers, db.orders, async () => {
     const list = await orderedCategories(db);
     const at = list.findIndex((c) => c.name === oldName);
     if (at < 0) fail(`category "${oldName}" isn't in the list`);
@@ -197,6 +213,7 @@ export async function renameCategory(db: InventoryDb, oldName: string, name: str
     await writeCategories(db, list);
     await saveItems(db, renameCategoryItems(await allItems(db), oldName, checked.name), now);
     await followRename(db, 'category', oldName, checked.name);
+    await renameOrderCategory(db, oldName, checked.name);
     await touch(db, now);
     return checked.name;
   });

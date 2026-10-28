@@ -5,6 +5,8 @@ import type { InventorySnapshot } from '../data/inventory';
 import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
 import { MANIFEST_FILE, type Manifest } from './bundle';
 import { ORDER_LISTS_FILE, serializeOrderListsCsv } from './order-lists-csv';
+import { ORDERS_FILE, ORDER_LINES_FILE, receiptPath, serializeOrderLinesCsv, serializeOrdersCsv } from './orders-csv';
+import type { PlacedOrder } from '../domain/placed-orders';
 import type { PendingRecord } from '../domain/helper-mode';
 import { PENDING_ITEMS_FILE, serializePendingCsv } from './pending-csv';
 import { INVENTORY_FILE, photoPathFor, serializeInventoryCsv } from './inventory-csv';
@@ -50,6 +52,7 @@ export function buildDataCsv(snapshot: InventorySnapshot): string {
 /**
  * Full backup: inventory.csv + suppliers.csv + locations.csv + categories.csv (Q3) +
  * order-lists.csv (F27) + pending-items.csv (only if there are any, §7) + manifest.json (Q8) +
+ * orders.csv + order-lines.csv (§21.6, always) + receipts/<id>.jpg|.pdf +
  * photos/<id>.jpg and photos/<pending id>.jpg. Photos are stored as they are (already compressed).
  */
 export async function buildFullBackup(
@@ -59,6 +62,8 @@ export async function buildFullBackup(
   orderLists: readonly NamedOrderList[] = [],
   pending: readonly PendingRecord[] = [],
   pendingPhotos: ReadonlyMap<string, Blob> = new Map(),
+  orders: readonly PlacedOrder[] = [],
+  receipts: ReadonlyMap<string, Blob> = new Map(),
 ): Promise<Blob> {
   const zip = new JSZip();
   const date = now;
@@ -79,6 +84,11 @@ export async function buildFullBackup(
     if (blob) pendingPaths.set(p.id, photoPathFor(p.id, blob.type));
   }
   if (pending.length > 0) zip.file(PENDING_ITEMS_FILE, serializePendingCsv(pending, (p) => pendingPaths.get(p.id) ?? ''), { date });
+  // Placed orders (§21.6): both files always, so a restore can tell "no orders" from an older
+  // backup without them. A receipt is named only when its file is written.
+  const savedOrders = orders.map((o) => ({ ...o, receipts: o.receipts.filter((r) => receipts.has(r.id)) }));
+  zip.file(ORDERS_FILE, serializeOrdersCsv(savedOrders), { date });
+  zip.file(ORDER_LINES_FILE, serializeOrderLinesCsv(savedOrders), { date });
   const manifest: Manifest = {
     app: APP_NAME,
     appVersion: APP_VERSION,
@@ -90,6 +100,7 @@ export async function buildFullBackup(
   // Bytes rather than Blobs: JSZip reads a Blob through FileReader, which Node (tests) lacks.
   for (const [id, path] of paths) zip.file(path, new Uint8Array(await photos.get(id)!.arrayBuffer()), { date, compression: 'STORE' });
   for (const [id, path] of pendingPaths) zip.file(path, new Uint8Array(await pendingPhotos.get(id)!.arrayBuffer()), { date, compression: 'STORE' });
+  for (const o of savedOrders) for (const r of o.receipts) zip.file(receiptPath(r), new Uint8Array(await receipts.get(r.id)!.arrayBuffer()), { date, compression: 'STORE' });
   const bytes = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   return new Blob([bytes], { type: 'application/zip' });
 }

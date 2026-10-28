@@ -1,4 +1,4 @@
-// The schema upgrades: v1 → v2 (M15) and v2 → v3 (M16a), stage6-plan §3; Stage 5 findings 1
+// The schema upgrades: v1 → v2 (M15), v2 → v3 (M16a) and v3 → v4 (M19), stage6-plan §3; Stage 5 findings 1
 // and 6. A v1 or v2 database with real-shaped rows is opened by today's code: only the planned
 // fields change (last_counted to a local date-time, counted_by added), everything else comes
 // through byte-equal, the new tables are empty, and the guard keeps an older copy away from a
@@ -31,7 +31,9 @@ const V1 = {
 const V2 = { orderLists: 'id, &key, *itemIds' };
 /** What M16a adds (for the guard tests' "newer" databases). */
 const V3 = { helpers: 'id, &key', pendingItems: 'id, helperId, barcode', pendingPhotos: 'pendingId', importUndo: 'id' };
-const NEW_TABLES = Object.keys(V3);
+/** What M19 adds: placed orders and receipts (§21.6). */
+const V4 = { orders: 'id, supplierKey, placedOn, *itemIds', receipts: 'id, orderId' };
+const NEW_TABLES = [...Object.keys(V3), ...Object.keys(V4)];
 
 const bytes = (...b: number[]) => new Blob([new Uint8Array(b)], { type: 'image/jpeg' });
 
@@ -128,7 +130,7 @@ async function dumpAll(name: string, tables: string[]): Promise<Record<string, u
   return out;
 }
 
-describe.each([1, 2] as const)('upgrade v%i → v3 (M16a)', (from) => {
+describe.each([1, 2] as const)('upgrade v%i → v4 (M16a, then M19)', (from) => {
   const tables = [...Object.keys(V1), ...(from === 2 ? Object.keys(V2) : [])];
 
   it('converts last_counted to local midnight on both sides of each DST change, adds counted_by, and changes nothing else', async () => {
@@ -138,7 +140,7 @@ describe.each([1, 2] as const)('upgrade v%i → v3 (M16a)', (from) => {
 
     const db = track(new InventoryDb(name));
     await db.open();
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
 
     // Items: exactly the two planned fields differ; the date-only value is gone.
     const after = (await dump(db, 'items')) as Array<Record<string, unknown>>;
@@ -157,7 +159,7 @@ describe.each([1, 2] as const)('upgrade v%i → v3 (M16a)', (from) => {
     expect(await checkSchema(db)).toBe('ok');
     const settings = (await dump(db, 'settings')) as { key: string }[];
     expect(settings.filter((s) => s.key !== SCHEMA_KEY)).toEqual(before.settings);
-    expect(await db.settings.get(SCHEMA_KEY)).toEqual({ key: SCHEMA_KEY, value: 3 });
+    expect(await db.settings.get(SCHEMA_KEY)).toEqual({ key: SCHEMA_KEY, value: 4 });
   });
 
   it('count rounds give the same progress after the upgrade as before (§19)', async () => {
@@ -173,6 +175,62 @@ describe.each([1, 2] as const)('upgrade v%i → v3 (M16a)', (from) => {
         countGroups(beforeItems, old.categories, [], 'category', false, since).map((g) => ({ ...g, items: g.items.map((i) => afterItems.find((a) => a.id === i.id)) })),
       );
     }
+  });
+});
+
+describe('upgrade v3 → v4 (M19)', () => {
+  it('adds the empty orders and receipts tables and changes nothing else, byte for byte', async () => {
+    const name = `up3-${Math.random()}`;
+    await makeOld(name, 2);
+    // Bring it to v3 the way M16a did, with helper-era rows in the v3 tables.
+    const v3 = new Dexie(name);
+    v3.version(1).stores(V1);
+    v3.version(2).stores(V2);
+    v3.version(3).stores(V3).upgrade((tx) => tx.table('items').toCollection().modify(upgradeItemToV3));
+    await v3.open();
+    await v3.table('helpers').add({ id: 'hp-AAAAA', key: 'maya', name: 'Maya', kind: 'category', groups: ['Fasteners'], allowNewItems: true, kits: [], lastImportAt: null, created: 1 });
+    await v3.table('pendingItems').add({ id: 'pd-1', helperId: 'hp-AAAAA', barcode: '', name: 'Spacer' });
+    await v3.table('pendingPhotos').add({ pendingId: 'pd-1', full: bytes(0xff, 0xd8, 7) });
+    await v3.table('importUndo').add({ id: 'last', at: 5 });
+    await v3.table('settings').put({ key: SCHEMA_KEY, value: 3 });
+    v3.close();
+    const tables = [...Object.keys(V1), ...Object.keys(V2), ...Object.keys(V3)];
+    const before = await dumpAll(name, tables);
+
+    const db = track(new InventoryDb(name));
+    await db.open();
+    expect(db.verno).toBe(4);
+    for (const t of tables) if (t !== 'settings') expect(await dump(db, t), t).toEqual(before[t]);
+    expect(await db.orders.count()).toBe(0);
+    expect(await db.receipts.count()).toBe(0);
+    expect(await checkSchema(db)).toBe('ok');
+    const settings = (await dump(db, 'settings')) as { key: string }[];
+    expect(settings.filter((s) => s.key !== SCHEMA_KEY)).toEqual((before.settings as { key: string }[]).filter((s) => s.key !== SCHEMA_KEY));
+    expect((await db.settings.get(SCHEMA_KEY))!.value).toBe(4);
+  });
+
+  it('a v3 app finds a v4 database “outdated” and writes nothing', async () => {
+    const name = `old3-${Math.random()}`;
+    const db = track(new InventoryDb(name));
+    await db.open();
+    expect(await checkSchema(db)).toBe('ok');
+    db.close();
+    // The v3 app's own guard, as shipped in M16a–M18: schema 3, browser version up to 30.
+    const v3app = track(new Dexie(name));
+    await v3app.open();
+    const stored = (await v3app.table('settings').get(SCHEMA_KEY))?.value as number;
+    const native = v3app.backendDB().version;
+    expect(stored > 3 || native / 10 > 3).toBe(true);
+  });
+
+  it('the multi-entry index finds every order an item is on, and the supplier key every order from a supplier', async () => {
+    const db = track(new InventoryDb(`oix-${Math.random()}`));
+    const o = { supplier: 'REV', placedOn: '2026-10-28', orderNo: '', payment: '', cancelled: false, taxCents: 0, shippingCents: 0, feesCents: 0, discount: { kind: '$' as const, value: 0 }, notes: '', fromList: '', receipts: [], created: 1, updated: 1 };
+    const line = (itemId: string) => ({ itemId, description: itemId, partNo: '', unit: 'each', category: '', packs: 1, packSize: 1, packPriceCents: 100, received: 0 });
+    await db.orders.add({ ...o, id: 'po-1', supplierKey: 'rev', itemIds: ['x', 'y'], lines: [line('x'), line('y'), line('')] });
+    await db.orders.add({ ...o, id: 'po-2', supplier: 'WCP', supplierKey: 'wcp', itemIds: ['y'], lines: [line('y')] });
+    expect((await db.orders.where('itemIds').equals('y').primaryKeys()).sort()).toEqual(['po-1', 'po-2']);
+    expect(await db.orders.where('supplierKey').equals('rev').primaryKeys()).toEqual(['po-1']);
   });
 });
 
@@ -197,14 +255,14 @@ describe('the v3 item change itself', () => {
 });
 
 describe('a new tablet', () => {
-  it('starts at v3 with the schema version recorded', async () => {
+  it('starts at v4 with the schema version recorded', async () => {
     const db = track(new InventoryDb(`new-${Math.random()}`));
     await db.open();
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
     expect(await db.settings.get(SCHEMA_KEY)).toBeUndefined();
     expect(await checkSchema(db)).toBe('ok');
-    expect((await db.settings.get(SCHEMA_KEY))!.value).toBe(3);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect((await db.settings.get(SCHEMA_KEY))!.value).toBe(4);
+    expect(SCHEMA_VERSION).toBe(4);
   });
 
   it('the multi-entry index finds the lists an item is on', async () => {
@@ -230,7 +288,8 @@ describe('schema guard (Stage 5 finding 6)', () => {
     d.version(1).stores(V1);
     d.version(2).stores(V2);
     d.version(3).stores(V3);
-    d.version(4).stores({ somethingNew: 'id' });
+    d.version(4).stores(V4);
+    d.version(5).stores({ somethingNew: 'id' });
     await d.open();
     if (stored !== null) await d.table('settings').put({ key: SCHEMA_KEY, value: stored });
     await d.table('items').put(toItemRow(item({ id: 'kept' }), 1));
@@ -239,7 +298,7 @@ describe('schema guard (Stage 5 finding 6)', () => {
 
   it('a database at a newer version is “outdated”, and nothing is written', async () => {
     const name = `new4-${Math.random()}`;
-    await newer(name, 4);
+    await newer(name, 5);
     const db = track(new InventoryDb(name));
     await db.open();
     const before = await dump(db, 'settings');
@@ -282,7 +341,7 @@ describe('blocked upgrade (§3: never the "Set up again" path)', () => {
     await vi.waitFor(() => expect(blocked).toHaveBeenCalled());
     old.close();
     await opening;
-    expect(db.verno).toBe(3);
+    expect(db.verno).toBe(4);
     expect(await db.items.count()).toBe(7);
     expect((await db.items.get('st-0002'))!.lastCounted).toBe('2026-03-08T00:00:00-06:00');
   });

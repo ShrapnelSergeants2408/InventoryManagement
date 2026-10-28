@@ -711,3 +711,4 @@ High for the counts file and change records (unit tests, mutants, a real kit →
 
 **Next:** Dan decides on the independent review; merges with a merge commit; runs the tablet and phone check in `docs/reviews/M16b.md`; then M16c.
 **Later:** Dan: "confirm the seven details. merged." PR #24 merged (`419323a`). Details (a)–(g) written into SPEC v0.11 (§18.3, §18.4, decision log) and marked confirmed in `docs/reviews/M16b.md`, on branch `m16b-details-confirmed`
+**Later (14:46):** Dan: "tablet check works." Recorded in `docs/reviews/M16b.md` (Tablet check result). Next: M16c.

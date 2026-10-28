@@ -1,7 +1,16 @@
-# FRC 2408 Inventory Management — Specification v0.10
+# FRC 2408 Inventory Management — Specification v0.11
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-21 13:46 CDT · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT
+**Status:** Approved by Dan 2026-10-21 13:46 CDT · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT
+
+**Changes in v0.11:** Seven helper-mode details, filled in while building M16b and confirmed by Dan on 2026-10-28 (`docs/reviews/M16b.md`, "Details I filled in"):
+- (a) In `counts.csv`, a blank `on_hand` (and `counted_at`) means the item wasn't counted: only its location or barcode changed (§18.4).
+- (b) A helper can't set an item back to "No location", because a blank location in the file means "unchanged" (§18.3).
+- (c) On a helper, every item starts "not counted yet": progress counts what was counted on that device. The shop tablet's own counts are unaffected (§18.3).
+- (d) "Outside the assignment" is decided by the item as the kit gave it. Moving an item into an assigned location doesn't make it inside (§18.3, §18.4).
+- (e) A helper can't give a new item a barcode that an existing item already has; it's told to count that item instead (§18.3).
+- (f) "n changes not sent yet" counts each changed item, new location and new item once, however many times it changed (§18.4).
+- (g) The helper's Add item form is its own, smaller form (no spares, no second or third vendor, no PIN), not the shop tablet's editor (§18.3).
 
 **Changes in v0.10:** Aim and hold for every camera scan (F21, F29), after the M17 tablet check. Dan found that bin codes close together read so fast that the wrong one popped up before he could aim:
 - Only a code whose center is **inside the on-screen square** counts. If several are inside, the one nearest the square's center wins. Codes outside the square, or in the part of the camera picture cropped off the screen, are ignored.
@@ -441,6 +450,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | v0.9: F29 location QR codes; app version in More › About |
 | 2026-10-28 | Dan (M17 tablet check): "the qr code reads so quickly that if several codes are close to each other it is not possible to focus on the correct one before the pop-up occurs". Chose aim (only the code in the on-screen square) and hold (0.6 s), on every scanner |
 | 2026-10-28 | v0.10: aim and hold (F21, F29) |
+| 2026-10-28 | Dan merged M16b (PR #24) and confirmed the seven helper-mode details (a)–(g) in `docs/reviews/M16b.md`. v0.11: written into §18.3 and §18.4 |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -487,12 +497,14 @@ Count-in start screen → **Helper devices**.
 
 ### 18.3 Counting on a helper
 - **Count** uses the F24 screens (by category / by location / scan as you go), showing only the assigned groups. Any item can still be found by search or scan. Counts outside the assignment are allowed and are flagged on import.
-- **A helper may change:** on_hand (the count), location (including "New location…", F25) and barcode (attach from Scan, F21).
+- **A helper may change:** on_hand (the count), location (including "New location…", F25) and barcode (attach from Scan, F21). It can't clear a location back to "No location" (a blank location in the counts file means unchanged).
+- **Progress on a helper** starts at 0: the kit's items are "not counted yet" on the helper, so progress shows what was counted on that device. An item is **outside the assignment** if it wasn't in the helper's groups as the kit gave it.
 - **A helper may not change:** desired, spares, notes, photos of existing items, category, vendor fields. It also can't delete items or manage suppliers, categories or locations. The order list isn't shown.
 - **Add item not on the list** (only if the kit allows new items; from the count screen and from an unknown scan):
   - Required: name, category, unit, on hand.
   - Optional: subcategory (existing or new), location, photo, barcode, notes, desired (default 0) and vendor option 1 (supplier from the list, part #, link, pack size, price).
   - The item is saved as **Pending** with a temporary id (`pending-<helper id>-<n>`). Pending items can't get QR labels until they're accepted on the main tablet.
+- A new item can't have a barcode that an existing item already has (the helper is told to count that item instead). The helper's Add item form is its own, smaller form: the fields above, no spares, one vendor option, no PIN.
 - Every saved count records `counted_at` (date-time with offset).
 
 ### 18.4 Sending counts (helper)
@@ -503,7 +515,9 @@ Send tab → **Send my counts** builds `counts-<helper name>-<yyyy-mm-dd-hhmm>.z
 - `locations-new.csv`: `name` for locations created on the helper.
 - `photos/<pending id>.jpg` for new items with photos.
 
-Each file is **cumulative**: it always carries everything since the kit, so a lost file is covered by the next one and sending again is always safe. The Send screen shows "Last sent <time> · n changes not sent yet". A navy banner on the Count screen reminds the student to send when unsent changes exist. Phones, iPhones in particular, may clear website data after several days without use, so helpers should send at the end of every session.
+In `counts.csv`, a blank `on_hand` and `counted_at` mean the item wasn't counted (only its location or barcode changed). `outside_assignment` is `yes` or blank.
+
+Each file is **cumulative**: it always carries everything since the kit, so a lost file is covered by the next one and sending again is always safe. The Send screen shows "Last sent <time> · n changes not sent yet", where each changed item, new location and new item counts once, however many times it changed. A navy banner on the Count screen reminds the student to send when unsent changes exist. Phones, iPhones in particular, may clear website data after several days without use, so helpers should send at the end of every session.
 
 ### 18.5 Import counts (main tablet)
 From the Count-in start screen or the Backup screen → **Import counts** → choose one or more counts files. No PIN.

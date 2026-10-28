@@ -710,3 +710,4 @@ M16a (helpers and count kits on the shop tablet). Next is M16c (Import counts on
 High for the counts file and change records (unit tests, mutants, a real kit → helper → counts file read back in the browser check) and for the tablet layout (pixel comparison). Not yet done: real Android and iPhone phones (share sheets, zxing on Safari, 360 px by hand), and the plan's independent fresh-session review for M16.
 
 **Next:** Dan decides on the independent review; merges with a merge commit; runs the tablet and phone check in `docs/reviews/M16b.md`; then M16c.
+**Later:** Dan: "confirm the seven details. merged." PR #24 merged (`419323a`). Details (a)–(g) written into SPEC v0.11 (§18.3, §18.4, decision log) and marked confirmed in `docs/reviews/M16b.md`, on branch `m16b-details-confirmed`

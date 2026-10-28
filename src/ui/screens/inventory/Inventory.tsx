@@ -248,6 +248,7 @@ export function InventoryScreen() {
         <FilterPanel
           filters={filters}
           options={options}
+          locations={snap?.locations ?? []}
           totals={view.totals}
           shown={view.shown}
           onChange={setFilters}

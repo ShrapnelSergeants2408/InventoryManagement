@@ -32,6 +32,7 @@ import { nameKey, preferredVendorOf, type Item } from '../../../domain/types';
 import { StatusChip, Toggle, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { Keypad } from '../../components/Keypad';
+import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Scanner, type CameraState } from '../../components/Scanner';
 import { useDb, useHelpers, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
@@ -88,6 +89,7 @@ function Count({ snap }: { snap: InventorySnapshot }) {
   // The count round (F24): items count as done when counted on or after this date; '' = ever.
   const [since, setSince] = useState('');
   const [newRound, setNewRound] = useState(false);
+  const [scanningLoc, setScanningLoc] = useState(false);
   const liveHelpers = useHelpers();
   const helpers = liveHelpers.state === 'ready' ? liveHelpers.value : [];
   useEffect(() => {
@@ -458,6 +460,29 @@ function Count({ snap }: { snap: InventorySnapshot }) {
             </button>
           </div>
         )}
+        {options.mode === 'location' && (
+          <div>
+            {/* F29: scan the bin in front of you to count it. */}
+            <button type="button" class="btn lg" onClick={() => setScanningLoc(true)}>
+              <Icon name="scan" />
+              Scan a location
+            </button>
+          </div>
+        )}
+        {scanningLoc && (
+          <LocationScanDialog
+            locations={snap.locations}
+            notFound="report"
+            title="Scan a location to count"
+            onClose={() => setScanningLoc(false)}
+            onPicked={(l) => {
+              setScanningLoc(false);
+              const g = groups.find((x) => nameKey(x.name) === nameKey(l.name));
+              if (g) openWalk('location', g);
+              else showToast(`${l.name} has no items to count.`);
+            }}
+          />
+        )}
         <div class="card cgroups">
           <div class="cg-h">
             <h2 class="h2 grow">{options.mode === 'location' ? 'Locations' : 'Categories'}</h2>
@@ -666,6 +691,7 @@ const ALL_LOC = '\u0000all';
 function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: string | undefined) => void; snap: InventorySnapshot; recent: string[] }) {
   const db = useDb();
   const [adding, setAdding] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
   const names = props.snap.locations.map((l) => l.name);
   const shown = props.loc ?? props.item.location;
   const quick = props.recent.filter((r) => names.includes(r)).slice(0, 5);
@@ -726,7 +752,22 @@ function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: s
             New location…
           </button>
         )}
+        <button type="button" class="fchip" onClick={() => setScanning(true)}>
+          <Icon name="scan" />
+          Scan
+        </button>
       </div>
+      {scanning && (
+        <LocationScanDialog
+          locations={props.snap.locations}
+          notFound="offer"
+          onClose={() => setScanning(false)}
+          onPicked={(l) => {
+            setScanning(false);
+            props.onLoc(l.name === props.item.location ? undefined : l.name);
+          }}
+        />
+      )}
       {adding !== null && (
         <div class="wloc-add">
           <div class="inline-add">

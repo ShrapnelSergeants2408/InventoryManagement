@@ -30,6 +30,7 @@ import { isUnlocked } from '../../../security/lock';
 import { PinMark, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { PhotoButtons } from '../../components/PhotoButtons';
+import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { ScanDialog } from '../../components/ScanDialog';
 import { forgetThumbnail, useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
@@ -104,6 +105,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const [recent, setRecent] = useState<string[]>([]);
   const [newLoc, setNewLoc] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [scanningLoc, setScanningLoc] = useState(false);
   const today = localIsoDate();
   const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
   // A photo taken or removed in the form; undefined keeps the stored one.
@@ -309,27 +311,34 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
               </Field>
             )}
             <Field id="loc" label="Location" optional>
-              <select
-                id="loc"
-                class="field"
-                value={newLoc !== null ? NEW : d.location}
-                onChange={(e) => {
-                  const v = (e.currentTarget as HTMLSelectElement).value;
-                  if (v === NEW) setNewLoc('');
-                  else {
-                    setNewLoc(null);
-                    set({ location: v });
-                  }
-                }}
-              >
-                <option value="">No location</option>
-                {locOptions.map((l) => (
-                  <option key={l} value={l}>
-                    {l}
-                  </option>
-                ))}
-                <option value={NEW}>+ New location…</option>
-              </select>
+              <div class="inline-add">
+                <select
+                  id="loc"
+                  class="field"
+                  value={newLoc !== null ? NEW : d.location}
+                  onChange={(e) => {
+                    const v = (e.currentTarget as HTMLSelectElement).value;
+                    if (v === NEW) setNewLoc('');
+                    else {
+                      setNewLoc(null);
+                      set({ location: v });
+                    }
+                  }}
+                >
+                  <option value="">No location</option>
+                  {locOptions.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                  <option value={NEW}>+ New location…</option>
+                </select>
+                {/* F29: the bin's QR code holds the location's name. */}
+                <button type="button" class="btn" aria-label="Scan a location" onClick={() => setScanningLoc(true)}>
+                  <Icon name="scan" />
+                  Scan
+                </button>
+              </div>
               {newLoc !== null && (
                 <>
                   <div class="inline-add">
@@ -497,6 +506,19 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
             set({ barcode: code });
             setScanning(false);
             showToast(`Barcode ${code} filled in. Save to keep it.`);
+          }}
+        />
+      )}
+      {scanningLoc && (
+        <LocationScanDialog
+          locations={snap.locations}
+          notFound="offer"
+          onClose={() => setScanningLoc(false)}
+          onPicked={(l, how) => {
+            setNewLoc(null);
+            set({ location: l.name });
+            setScanningLoc(false);
+            if (how === 'found') showToast(`Location set to ${l.name}. Save to keep it.`);
           }}
         />
       )}

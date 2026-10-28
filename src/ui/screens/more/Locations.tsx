@@ -7,6 +7,7 @@ import { nameKey, type Location } from '../../../domain/types';
 import { gate } from '../../../security/gate';
 import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
+import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { useCloseOnRelock } from '../../shell/LockPill';
@@ -15,7 +16,7 @@ import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { EntryDialog } from './EntryDialog';
 
-type Open = { kind: 'add' } | { kind: 'edit'; l: Location } | { kind: 'remove'; l: Location } | null;
+type Open = { kind: 'add' } | { kind: 'scan' } | { kind: 'edit'; l: Location } | { kind: 'remove'; l: Location } | null;
 
 const fail = (e: unknown) => showToast(e instanceof Error ? e.message : String(e));
 
@@ -64,6 +65,10 @@ export function LocationsScreen() {
             <button type="button" class={reorder ? 'btn on' : 'btn'} aria-pressed={reorder} disabled={list.length < 2} onClick={() => setReorder(!reorder)}>
               <Icon name={reorder ? 'check' : 'reorder'} />
               {reorder ? 'Done' : 'Reorder'}
+            </button>
+            <button type="button" class="btn" disabled={!snap} onClick={() => setOpen({ kind: 'scan' })}>
+              <Icon name="scan" />
+              Add by scan
             </button>
             <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'add' })}>
               <Icon name="plus" />
@@ -148,6 +153,19 @@ export function LocationsScreen() {
             const l = await addLocation(db, v.name, v.notes);
             setOpen(null);
             showToast(`Added “${l.name}”.`);
+          }}
+        />
+      )}
+      {open?.kind === 'scan' && (
+        // F29: the bin's QR code holds the name. Added at the end of the walk order.
+        <LocationScanDialog
+          locations={list}
+          notFound="offer"
+          title="Add a location by scan"
+          onClose={() => setOpen(null)}
+          onPicked={(l, how) => {
+            setOpen(null);
+            if (how === 'found') showToast(`“${l.name}” is already in the list.`);
           }}
         />
       )}

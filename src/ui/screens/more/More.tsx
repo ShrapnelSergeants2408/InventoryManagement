@@ -4,6 +4,7 @@ import { useState } from 'preact/hooks';
 import { TopBar, plural } from '../../components/common';
 import { daysSinceBackup } from '../../../domain/backup-reminder';
 import { formatBytes } from '../../../domain/dates';
+import { APP_VERSION } from '../../../io/backup';
 import { useNow, useSettings, useSnapshot, useStorageStatus } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { lockNow, formatRemaining } from '../../../security/lock';
@@ -101,6 +102,7 @@ export function MoreScreen() {
           <div class="grp">
             <h3>About</h3>
             <Row icon="database" title="FRC 2408 Inventory Management" sub={`${snap ? `${plural(snap.items.length, 'item')} on this tablet` : 'Stored on this tablet'}${storageText}`} />
+            <Row icon="info" title={`App version ${APP_VERSION}`} sub={`Built ${new Date(__BUILD_TIME__).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`} />
           </div>
         </div>
       </div>

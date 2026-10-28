@@ -1,7 +1,19 @@
-# FRC 2408 Inventory Management — Specification v0.11
+# FRC 2408 Inventory Management — Specification v0.12
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-21 13:46 CDT · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT
+**Status:** Approved by Dan 2026-10-21 13:46 CDT · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT
+
+**Changes in v0.12:** Ten Import counts details (§18.5), filled in while building M16c and confirmed by Dan on 2026-10-28 (`docs/reviews/M16c.md`, "Details I filled in"):
+- (a) Within one import, a row exactly the same as one in an earlier file (same helper, item, time and values) counts as already applied: cumulative files repeat their rows.
+- (b) A helper's count older than this tablet's last count by the same helper is skipped as already applied, so an older file imported after a newer one can't undo it.
+- (c) A different location or barcode defaults to **Keep** this tablet's and doesn't hold up Apply; only count conflicts must be chosen.
+- (d) A barcode that another item already has is not used; it's listed under Skipped.
+- (e) A file from an unknown kit has no kit time to compare with: a different number is a conflict unless this tablet never counted the item or the same helper did.
+- (f) **Add together** takes the newer of the two count times; counted_by becomes the helper's name.
+- (g) A new location name left as **Add** is created even if no item ends up there.
+- (h) Only the last import can be undone. Undo puts the five fields back even if an item was counted again after the import, and puts back the helpers' last-import time.
+- (i) Decided pending items (accepted, matched, combined away or discarded) are remembered, so importing the same file again never brings them back. A full restore of an older backup can bring back the pending items it holds.
+- (j) Accepting a pending item that has no supplier asks for one, as adding any item does (F6).
 
 **Changes in v0.11:** Seven helper-mode details, filled in while building M16b and confirmed by Dan on 2026-10-28 (`docs/reviews/M16b.md`, "Details I filled in"):
 - (a) In `counts.csv`, a blank `on_hand` (and `counted_at`) means the item wasn't counted: only its location or barcode changed (§18.4).
@@ -451,6 +463,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | Dan (M17 tablet check): "the qr code reads so quickly that if several codes are close to each other it is not possible to focus on the correct one before the pop-up occurs". Chose aim (only the code in the on-screen square) and hold (0.6 s), on every scanner |
 | 2026-10-28 | v0.10: aim and hold (F21, F29) |
 | 2026-10-28 | Dan merged M16b (PR #24) and confirmed the seven helper-mode details (a)–(g) in `docs/reviews/M16b.md`. v0.11: written into §18.3 and §18.4 |
+| 2026-10-28 | Dan merged M16c (PR #26), accepted the ten import details (a)–(j) in `docs/reviews/M16c.md`, and reported the M16c tablet check working and helper mode working in iPhone Safari (after clearing its cache). v0.12: the details written into §18.5 |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -553,6 +566,18 @@ When several files are imported together, they're applied in order of counted_at
 - **Discard:** removes it (confirmation).
 - **Likely duplicates** are flagged: pending items with the same barcode as each other or as an existing item, or with nearly the same name. Two pending items can be **combined into one** (add counts or keep one) before accepting.
 - Pending items can wait. They stay in the list and travel in full backups until decided.
+
+**Import details** (v0.12, Dan 2026-10-28):
+- (a) Within one import, a row exactly the same as one in an earlier file (same helper, item, time and values) counts as already applied: cumulative files repeat their rows.
+- (b) A helper's count older than this tablet's last count by the same helper is skipped as already applied, so an older file imported after a newer one can't undo it.
+- (c) A different location or barcode defaults to **Keep** this tablet's and doesn't hold up Apply; only count conflicts must be chosen.
+- (d) A barcode that another item already has is not used; it's listed under Skipped.
+- (e) A file from an unknown kit has no kit time to compare with: a different number is a conflict unless this tablet never counted the item or the same helper did.
+- (f) **Add together** takes the newer of the two count times; counted_by becomes the helper's name.
+- (g) A new location name left as **Add** is created even if no item ends up there.
+- (h) Only the last import can be undone. Undo puts the five fields back even if an item was counted again after the import, and puts back the helpers' last-import time.
+- (i) Decided pending items (accepted, matched, combined away or discarded) are remembered, so importing the same file again never brings them back. A full restore of an older backup can bring back the pending items it holds.
+- (j) Accepting a pending item that has no supplier asks for one, as adding any item does (F6).
 
 ### 18.6 Must-have tests for §18 (Vitest)
 - Every row of the §18.5 preview table, including a conflict between two helpers and the same helper sending twice.

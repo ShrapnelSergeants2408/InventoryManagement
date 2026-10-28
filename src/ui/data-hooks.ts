@@ -10,6 +10,7 @@ import { loadPending } from '../data/pending';
 import type { PendingRecord } from '../domain/helper-mode';
 import { loadOrderLists } from '../data/order-lists';
 import { getThumbnail } from '../data/photos';
+import { STORAGE_PERSISTED_EVENT } from '../data/setup';
 import type { Helper } from '../domain/helpers';
 import type { NamedOrderList } from '../domain/order-lists';
 import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
@@ -117,10 +118,16 @@ export type StorageStatus = { persisted: boolean | null; usage: number | null };
 export function useStorageStatus(): StorageStatus | null {
   const [s, setS] = useState<StorageStatus | null>(null);
   useEffect(() => {
-    const st = navigator.storage;
-    Promise.all([st?.persisted?.().catch(() => null) ?? null, st?.estimate?.().catch(() => null) ?? null]).then(([p, e]) =>
-      setS({ persisted: p, usage: e?.usage ?? null }),
-    );
+    const read = () => {
+      const st = navigator.storage;
+      void Promise.all([st?.persisted?.().catch(() => null) ?? null, st?.estimate?.().catch(() => null) ?? null]).then(([p, e]) =>
+        setS({ persisted: p, usage: e?.usage ?? null }),
+      );
+    };
+    read();
+    // A grant during this launch shows without reopening the screen (Stage 5 finding 9).
+    window.addEventListener(STORAGE_PERSISTED_EVENT, read);
+    return () => window.removeEventListener(STORAGE_PERSISTED_EVENT, read);
   }, []);
   return s;
 }

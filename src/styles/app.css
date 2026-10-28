@@ -454,6 +454,8 @@ input[type="date"].field { padding: 0 12px; }
 .cmp thead th { font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 .cmp tbody th { font-weight: 400; }
 .cmp tbody tr:first-child td { font-weight: 700; }
+.cmp td.attn { background: #fff7db; font-weight: 700; }
+.bk-store p { margin: 0; }
 .tick { display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 8px 14px; border: 2px solid var(--line-2); border-radius: 12px; cursor: pointer; font-size: 18px; }
 .tick input { width: 28px; height: 28px; flex: none; accent-color: var(--ink); }
 .notes-list, .problems { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
@@ -512,6 +514,8 @@ input[type="date"].field { padding: 0 12px; }
 .setup-main { overflow: auto; padding: 32px 36px; }
 .setup-pin { display: grid; grid-template-columns: minmax(0, 1fr) 440px; gap: 36px; align-items: start; }
 .setup-text p { margin: 0 0 14px; font-size: 18px; }
+.setup-text p.setup-cleared { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; background: #f4f1ec; font-size: 16px; }
+.setup-cleared .ic { flex: none; margin-top: 2px; }
 .setup-h { margin: 0 0 18px; font-family: var(--font-display); font-size: 44px; line-height: 1.05; }
 .setup-card { background: #fff; border-radius: 20px; padding: 24px 26px; box-shadow: 0 12px 40px rgba(0, 0, 0, .15); }
 .setup-code { max-width: 720px; display: flex; flex-direction: column; gap: 18px; }

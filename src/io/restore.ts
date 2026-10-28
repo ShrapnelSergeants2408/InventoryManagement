@@ -16,6 +16,11 @@ export interface RestorePlan {
   items: Item[];
   /** ZIP: the backup's photos. CSV: empty; photos on the tablet are kept for matching ids. */
   photos: Map<string, Blob>;
+  /**
+   * ZIP: item ids whose photo the ZIP names but doesn't have. The tablet keeps its own photo
+   * for these (Stage 5 finding 5). CSV: empty.
+   */
+  missingPhotos: string[];
   suppliers: Supplier[];
   locations: Location[];
   categories: Category[];
@@ -61,7 +66,10 @@ function savedDate(bundle: Bundle, fileName: string): Pick<RestorePlan, 'savedAt
  */
 export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { name: string; size: number }, warnings: string[] = []): RestoreRead {
   const problems: FileProblem[] = [];
-  if (bundle.items.length === 0) {
+  // A full backup of a tablet set up with Start empty has no items but does have its lists
+  // (Stage 5 finding 4). A file with neither (any CSV) is refused: it would only empty the tablet.
+  const hasLists = bundle.suppliers !== null || bundle.locations !== null || bundle.categories !== null;
+  if (bundle.items.length === 0 && !hasLists) {
     problems.push({ file: file.name, row: null, message: 'the backup has no items, so restoring it would empty the tablet' });
     return { ok: false, problems, warnings };
   }
@@ -69,7 +77,7 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
   // columns are all blank: restoring it would wipe the tablet's prices (independent M16a review,
   // finding 1). Hand-made files without price columns still load (§7).
   const priced = (items: readonly Item[]) => items.some((i) => i.vendors.some((v) => v !== null && (v.packPriceCents !== null || v.priceChecked !== '')));
-  if (bundle.priceColumns && !priced(bundle.items) && priced(current.items)) {
+  if (bundle.items.length > 0 && bundle.priceColumns && !priced(bundle.items) && priced(current.items)) {
     problems.push({
       file: file.name,
       row: null,
@@ -96,6 +104,7 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
       fileSize: file.size,
       items: spellLikeLists(bundle.items, categories.list, locations.list),
       photos: bundle.photos,
+      missingPhotos: bundle.missingPhotos,
       suppliers: suppliers.list,
       locations: locations.list,
       categories: categories.list,

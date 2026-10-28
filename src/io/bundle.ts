@@ -33,6 +33,8 @@ export interface Bundle {
   items: Item[];
   /** Item id → photo bytes, for items whose photo_file was found in the ZIP. */
   photos: Map<string, Blob>;
+  /** Item ids whose photo_file names a photo the ZIP doesn't have (Stage 5 finding 5). */
+  missingPhotos: string[];
   /** null when the file wasn't in the backup (lists are then rebuilt by the caller). */
   suppliers: Supplier[] | null;
   locations: Location[] | null;
@@ -76,6 +78,7 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
       kind: 'csv',
       items: parsed.items,
       photos: new Map(),
+      missingPhotos: [],
       suppliers: null,
       locations: null,
       categories: null,
@@ -191,6 +194,7 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     item.hasPhoto = true;
   }
   onPhoto?.(total, total, read.bundle.items.length);
+  const missingPhotos = [...missing];
   const pendingPhotos = new Map<string, Blob>();
   for (const p of pending?.items ?? []) {
     const path = pending!.photoFiles.get(p.id);
@@ -217,6 +221,7 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
       ...read.bundle,
       kind: 'zip',
       photos,
+      missingPhotos,
       suppliers: suppliers?.list ?? null,
       locations: locations?.list ?? null,
       categories: categories?.list ?? null,

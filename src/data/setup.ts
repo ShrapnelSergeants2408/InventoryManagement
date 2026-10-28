@@ -75,3 +75,22 @@ export async function ensurePersistentStorage(
     return null;
   }
 }
+
+/** Sent on the window when a launch-time request finds storage persistent, so open screens re-read it (Stage 5 finding 9). */
+export const STORAGE_PERSISTED_EVENT = 'inventory:storage-persisted';
+
+type EventHost = Pick<EventTarget, 'addEventListener' | 'removeEventListener' | 'dispatchEvent'>;
+
+/**
+ * App boot (§2, T-01): asks now and again after install, and announces a grant. Returns the
+ * cleanup for the install listener.
+ */
+export function watchPersistentStorage(host: EventHost = window, ensure: () => Promise<boolean | null> = ensurePersistentStorage): () => void {
+  const ask = () =>
+    void ensure().then((granted) => {
+      if (granted) host.dispatchEvent(new Event(STORAGE_PERSISTED_EVENT));
+    });
+  ask();
+  host.addEventListener('appinstalled', ask);
+  return () => host.removeEventListener('appinstalled', ask);
+}

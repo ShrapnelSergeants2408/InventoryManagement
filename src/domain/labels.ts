@@ -1,5 +1,6 @@
-// QR label layouts and sheet geometry (SPEC §9). Layouts are data: another sheet can be
-// added here without code changes. Sizes are in inches, nudges in millimetres.
+// QR label layouts and sheet geometry (SPEC §9). Each layout is one entry in SHEET_LAYOUTS:
+// another sheet is added there (a small code change and a new release, not a setting).
+// Sizes are in inches, nudges in millimetres.
 //
 // VERIFY AGAINST PACKAGE (SPEC §9, §15 Q2): the margins and pitches below come from the
 // published Avery templates for 5160 and 5163. For 22805 the 4 × 6 grid of 1½ in squares

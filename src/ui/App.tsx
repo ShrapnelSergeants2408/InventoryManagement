@@ -6,7 +6,7 @@ import { useEffect, useState } from 'preact/hooks';
 import { InventoryDb, checkSchema } from '../data/db';
 import { HelperDb, existingDatabases, getKit, leaveHelperMode } from '../data/helper-db';
 import { hasPin } from '../data/pin';
-import { SETUP_DONE, STARTER_LOADED, ensurePersistentStorage, isSetUp } from '../data/setup';
+import { SETUP_DONE, STARTER_LOADED, isSetUp, watchPersistentStorage } from '../data/setup';
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
 import { CountScreen } from './screens/count/Count';
@@ -176,12 +176,7 @@ export function App() {
   };
   useEffect(start, []);
   // Ask for persistent storage on every launch until granted, and again once installed (§2, T-01).
-  useEffect(() => {
-    const ask = () => void ensurePersistentStorage();
-    ask();
-    window.addEventListener('appinstalled', ask);
-    return () => window.removeEventListener('appinstalled', ask);
-  }, []);
+  useEffect(() => watchPersistentStorage(), []);
 
   if (boot.state === 'role') return <FirstLaunch onShop={openMain} onJoined={(db) => setBoot({ state: 'helper', db })} />;
   if (boot.state === 'helper') return <HelperApp db={boot.db} onLeft={() => setBoot({ state: 'role' })} />;

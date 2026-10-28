@@ -1,5 +1,5 @@
-// QR label payloads and what a scanned or typed code means (SPEC §9, F21).
-import type { Item } from './types';
+// QR label payloads and what a scanned or typed code means (SPEC §9, F21, F29).
+import { nameKey, type Item, type Location } from './types';
 
 /** Team labels encode `2408:<item id>`; the prefix tells them apart from vendor QR codes. */
 export const QR_PREFIX = '2408:';
@@ -20,18 +20,57 @@ export function barcodeKey(code: string): string {
   return c.toUpperCase();
 }
 
+/**
+ * A scanned or typed location name (F29): trimmed, runs of spaces made one. Unlike
+ * `cleanCode` the inner spaces stay, since bin codes read "Electrical 15".
+ */
+export const locationText = (raw: string) => raw.trim().replace(/\s+/g, ' ');
+
+const spaceless = (s: string) => nameKey(s).replace(/\s+/g, '');
+
+/**
+ * The location a bin's QR code names (F29): the name ignoring capitals, or else the one name
+ * that matches with spaces ignored ("Tools7" for "Tools 7"). Null when none, or when several
+ * match that way. A team item label is never a location.
+ */
+export function findLocation(raw: string, locations: readonly Location[]): Location | null {
+  const text = locationText(raw);
+  if (text === '' || text.toLowerCase().startsWith(QR_PREFIX)) return null;
+  const exact = locations.find((l) => nameKey(l.name) === nameKey(text));
+  if (exact) return exact;
+  const loose = locations.filter((l) => spaceless(l.name) === spaceless(text));
+  return loose.length === 1 ? loose[0]! : null;
+}
+
+/** Longest scanned text offered as a new location name (F29); bin codes are short. */
+export const LOCATION_TEXT_MAX = 60;
+
+/**
+ * Whether an unknown code could be a bin's location QR code (F29), so "Location not found"
+ * offers Add and Rename: a QR code or typed text with a letter, not a web address or team
+ * label, and short. Manufacturer barcodes (UPC, Code 128…) never are.
+ */
+export function couldBeLocation(raw: string, format: string | null): boolean {
+  if (format !== null && format !== 'qr_code') return false;
+  const text = locationText(raw);
+  return text !== '' && text.length <= LOCATION_TEXT_MAX && /\p{L}/u.test(text) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(text) && !text.toLowerCase().startsWith(QR_PREFIX);
+}
+
 export type ScanResult =
   | { kind: 'empty' }
-  /** One item: by its team label, its typed id, or its barcode. */
-  | { kind: 'item'; item: Item; via: 'label' | 'id' | 'barcode'; code: string }
+  /** One item: by its team label, its typed id, its barcode, or picked from a scanned location (F29). */
+  | { kind: 'item'; item: Item; via: 'label' | 'id' | 'barcode' | 'location'; code: string }
   /** The same barcode on more than one item: the user picks. */
   | { kind: 'many'; items: Item[]; code: string }
   /** A team label whose item isn't on this tablet (deleted, or an older backup). */
   | { kind: 'missing-label'; id: string; code: string }
-  /** Not a team label, id or known barcode: offer attach or add (F21). */
-  | { kind: 'unknown'; code: string };
+  /** A bin's QR code naming a location (F29). */
+  | { kind: 'location'; location: Location; code: string }
+  /** Not a team label, id, known barcode or location: offer attach or add (F21, F29). `text` keeps the spaces, for a location name. */
+  | { kind: 'unknown'; code: string; text: string };
 
-export function resolveScan(raw: string, items: readonly Item[]): ScanResult {
+/** Team labels, item ids and barcodes come first, so item scans work as before; location names last (F29). */
+export function resolveScan(raw: string, items: readonly Item[], locations: readonly Location[] = []): ScanResult {
   const code = cleanCode(raw);
   if (code === '') return { kind: 'empty' };
   const byId = (id: string) => items.find((i) => i.id.toLowerCase() === id.toLowerCase());
@@ -48,7 +87,9 @@ export function resolveScan(raw: string, items: readonly Item[]): ScanResult {
   const matches = items.filter((i) => i.barcode !== '' && barcodeKey(i.barcode) === key);
   if (matches.length === 1) return { kind: 'item', item: matches[0]!, via: 'barcode', code };
   if (matches.length > 1) return { kind: 'many', items: matches, code };
-  return { kind: 'unknown', code };
+  const location = findLocation(raw, locations);
+  if (location) return { kind: 'location', location, code: locationText(raw) };
+  return { kind: 'unknown', code, text: locationText(raw) };
 }
 
 const FORMAT_NAMES: Record<string, string> = {

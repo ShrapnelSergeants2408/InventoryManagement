@@ -188,7 +188,7 @@ try {
   await js(`await key('None — zero'); await key('3');`);
   await shot('03-count-walk-typed');
   // Location: quick picks are the recently used locations; pick Bin A, saved with the count.
-  check('location quick picks: recent locations, then New location…', await js(`return [norm($('.wloc-h').textContent), $$('.locs .fchip').map((b) => norm(b.textContent))]`), ['Location: not set', ['Shelf Z', 'Bin A', 'New location…']]);
+  check('location quick picks: recent locations, then New location… and Scan (F29, M17)', await js(`return [norm($('.wloc-h').textContent), $$('.locs .fchip').map((b) => norm(b.textContent))]`), ['Location: not set', ['Shelf Z', 'Bin A', 'New location…', 'Scan']]);
   await js(`await click('.locs .fchip', 'Bin A');`);
   check('picked location shows it will be saved with the count', await js(`return norm($('.wloc-h').textContent)`), 'Location: Bin A (saved with the count)');
   await js(`await act('Save & next');`);

@@ -1,9 +1,13 @@
-// Filters panel (F5): side sheet in landscape, bottom sheet in portrait.
-import { useEffect, useRef } from 'preact/hooks';
+// Filters panel (F5): side sheet in landscape, bottom sheet in portrait. The location can
+// also be set by scanning a bin's QR code (F29).
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Filters } from '../../../domain/filters';
 import { NO_LOCATION } from '../../../domain/lists';
 import type { FilterOptions, Totals } from '../../../domain/inventory-view';
+import { nameKey, type Location } from '../../../domain/types';
+import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Icon } from '../../icons';
+import { showToast } from '../../shell/toast';
 
 export const NO_LOCATION_LABEL = NO_LOCATION;
 
@@ -18,6 +22,8 @@ function Choice(props: { on: boolean; label: string; onClick: () => void }) {
 export function FilterPanel(props: {
   filters: Filters;
   options: FilterOptions;
+  /** Every location, so a scanned name in the list but with no items can say so. */
+  locations: readonly Location[];
   totals: Totals;
   shown: number;
   onChange: (f: Filters) => void;
@@ -26,6 +32,7 @@ export function FilterPanel(props: {
 }) {
   const { filters: f, onChange } = props;
   const closeBtn = useRef<HTMLButtonElement>(null);
+  const [scanning, setScanning] = useState(false);
   useEffect(() => {
     closeBtn.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && props.onClose();
@@ -62,7 +69,13 @@ export function FilterPanel(props: {
             </div>
           </section>
           <section class="fsec">
-            <h3>Location</h3>
+            <div class="fsec-h">
+              <h3>Location</h3>
+              <button type="button" class="btn sm" onClick={() => setScanning(true)}>
+                <Icon name="scan" />
+                Scan a location
+              </button>
+            </div>
             <div class="fgrid">
               {props.options.locations.map((l) => (
                 <Choice key={l} on={f.location === l} label={l || NO_LOCATION_LABEL} onClick={() => pick('location', l)} />
@@ -88,6 +101,20 @@ export function FilterPanel(props: {
           </button>
         </div>
       </div>
+      {scanning && (
+        <LocationScanDialog
+          locations={props.locations}
+          notFound="report"
+          title="Filter by a location"
+          onClose={() => setScanning(false)}
+          onPicked={(l) => {
+            setScanning(false);
+            const name = props.options.locations.find((o) => o !== '' && nameKey(o) === nameKey(l.name));
+            if (name === undefined) showToast(`No items are in ${l.name} yet.`);
+            else onChange({ ...f, location: name });
+          }}
+        />
+      )}
     </>
   );
 }

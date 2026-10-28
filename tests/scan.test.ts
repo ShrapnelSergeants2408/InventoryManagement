@@ -60,7 +60,8 @@ describe('scan resolution (F21)', () => {
     expect(kind('5012345678900')).toEqual(['unknown']);
     expect(kind('https://www.revrobotics.com/rev-21-1650/')).toEqual(['unknown']);
     expect(kind('   ')).toEqual(['empty']);
-    expect(resolveScan(' 0 1234 ', items)).toEqual({ kind: 'unknown', code: '01234' });
+    // F29: the text keeps its spaces, in case it is a location name to add.
+    expect(resolveScan(' 0 1234 ', items)).toEqual({ kind: 'unknown', code: '01234', text: '0 1234' });
   });
 
   it('an item with no barcode is never matched by a blank one', () => {

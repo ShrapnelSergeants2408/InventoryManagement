@@ -306,7 +306,8 @@ try {
   check('leaving Scan releases the camera', await js(`return document.querySelectorAll('video').length`), 0);
 
   // Editor: Scan button next to the barcode; a team label is refused there.
-  await js(`await go('#/item/st-0005/edit'); await settle(500); await click('.inline-add .btn', 'Scan');`);
+  // M17: the Location field has its own Scan button now, so click the barcode field's.
+  await js(`await go('#/item/st-0005/edit'); await settle(500); document.querySelector('#bc').parentElement.querySelector('.btn').click(); await settle();`);
   await waitFor(`document.querySelector('[aria-label="Scan a barcode"] .err')`, 20000);
   check('editor Scan: the camera opens; a team QR label is refused, the field stays empty', await js(`return [norm(document.querySelector('[aria-label="Scan a barcode"] .err').textContent), document.querySelector('#bc').value]`), ['That’s a team QR label, not a manufacturer barcode. Scan the barcode on the packaging.', '']);
   await js(`await click('[aria-label="Scan a barcode"] .btn', 'Cancel'); await settle(300);`);

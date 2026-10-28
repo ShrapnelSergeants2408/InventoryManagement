@@ -635,3 +635,28 @@ High for the upgrade (field-by-field unit tests on both DST sides, real-browser 
 **Next:** the independent review of the M16a PR (if Dan wants it run as a separate agent, as for M12); Dan merges with a merge commit, backs up the tablet first, and does the tablet check in the M16a review; then M16b.
 | later | Dan: "yes, run the independent review". A separate review agent wrote `docs/reviews/M16a-independent.md`: **merge after fixes** (2 minor, 4 notes; the upgrade itself sound) |
 | later | Dan: "fix all of them and commit". Restore refuses a kit's `inventory.csv` when the tablet has prices; the helper dialog drops removed groups; the upgrade converts only real dates; `buildKit` uses `now`; spreadsheet date-times read; setup clears helpers. Unit 669; mutants 11/11 on the fixes; M2–M15b 541, M16a 42, upgrade 24; Tab S8 backup again. One more `python -` heredoc hang, stopped |
+
+---
+
+## 2026-10-28 — M17: location QR codes (F29) and the app version line
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session on `m16a-helpers`, then `m17-location-scan` from `main` (`ae3ce0a`, PR #21 merged).
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| morning | Dan asked to add, select and filter by a location by scanning the existing QR codes. Answers: each bin's QR holds the area and a number ("Electrical 15", "Tools 7"); scanning in the item editor, count-in, the Scan tab and More › Locations; unknown codes can be added (anyone) or rename a location (PIN); filtering reports "Location not found" |
+| — | M16a tablet check: the Reload banner never showed and close/reopen didn't update; a Chrome force-stop and opening the site in a tab did. Dan: "update occured; tablet check completed successfully". Recorded in `docs/reviews/M16a.md` |
+| — | Dan: add the Add button on the Scan tab, offer rename and add, add an app version line, build M17. Spec v0.9 (F29, §20) |
+| — | `locationText`, `findLocation`, `couldBeLocation`, location results in `resolveScan`; `LocationScanDialog`; editor, count-in, Scan tab, Locations, Filters; More › About version and build time; `APP_VERSION` 0.4.0. One shell command waited on stdin (`python -` left in a command) and was stopped; nothing changed |
+| — | Unit 682 pass (13 new). `m17-ui-check` 34/34. Mutants 13/14, then 14/14 after one test case. Regression M2–M16a 583/583 after three intended check updates (M8, M9, M16a); M9 and M12 each flaked once and passed on re-run |
+| — | `docs/reviews/M17.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F29 location QR codes in five places, "Location not found" with Add / Rename (PIN), the app version line. No schema or backup change.
+
+**CONFIDENCE**
+High for matching and placement (unit tests, mutants, a real QR read by the camera in headless Chrome). Not yet done: the Tab S8 check with real bin labels, including poor light and distance.
+
+**Next:** Dan merges the M17 PR, updates the tablet and checks More › About shows 0.4.0, then runs the tablet check in `docs/reviews/M17.md`; then M16b.

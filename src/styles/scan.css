@@ -52,6 +52,13 @@
 .scan-dlg .reticle span { width: 40px; height: 40px; }
 .scan-dlg .reticle .line { width: auto; height: 3px; }
 
+/* Location QR codes (F29): square reticle; the name keeps its spaces. */
+.scan-dlg.loc { display: flex; flex-direction: column; gap: 12px; }
+.scan-dlg.loc .cam { height: 300px; }
+.scan-dlg.loc .reticle { width: 200px; height: 200px; }
+.loc-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.loc-res .picks { max-height: 40vh; overflow-y: auto; }
+
 @media (orientation: portrait) {
   .reticle { top: 40%; }
   .chint { top: calc(40% + 196px); }

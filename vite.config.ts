@@ -5,6 +5,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig({
   // Relative base so the build works under any GitHub Pages sub-path.
   base: './',
+  // When this copy was built, shown in More › About with the app version (SPEC v0.9), so a
+  // tablet check can tell whether an update arrived.
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     preact(),
     // Installable and fully usable offline (SPEC §2): the service worker precaches the app,

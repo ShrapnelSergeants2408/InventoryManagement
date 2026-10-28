@@ -134,6 +134,8 @@
 .fpanel-body { flex: 1 1 auto; overflow: auto; }
 .fpanel-foot { display: flex; gap: 12px; padding: 16px 24px; border-top: 1px solid var(--line); }
 .fsec { padding: 16px 24px; border-bottom: 1px solid #e6dfd6; }
+.fsec-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.fsec .fsec-h h3 { margin: 0; }
 .fsec h3 { margin: 0 0 10px; font-family: var(--font-body); font-size: 15px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
 .fgrid { display: flex; flex-wrap: wrap; gap: 8px; }
 

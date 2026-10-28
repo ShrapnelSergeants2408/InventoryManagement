@@ -2,6 +2,7 @@
 // shows (mockup 3d), and the PIN rule for vendor fields (§6).
 import { centsToPlain, parsePrice } from './money';
 import { nameKey, preferredVendorOf, type Category, type Item, type ItemSource, type Vendor, type VendorSlot } from './types';
+import type { PendingItem } from './helper-mode';
 import { normalizeUrl } from './url';
 import { isIsoDate, parseWholeNumber } from './validate';
 
@@ -277,4 +278,29 @@ export function mergeEdit(base: Item, edited: Item, current: Item): Item {
     out.preferredVendor = edited.preferredVendor;
   }
   return out;
+}
+
+/**
+ * Accepting a pending item (§18.5): the Add item form filled in with what the helper entered.
+ * A subcategory the list doesn't have comes in as a new one; vendor option 1 is open while
+ * adding (F6), with the helper's price dated the day it was counted.
+ */
+export function draftFromPending(p: PendingItem, categories: readonly Category[]): ItemDraft {
+  const cat = categories.find((c) => nameKey(c.name) === nameKey(p.category));
+  const sub = p.subcategory === '' ? '' : (cat?.subcategories.find((s) => nameKey(s) === nameKey(p.subcategory)) ?? null);
+  const v = p.vendor;
+  return {
+    ...newDraft(cat?.name ?? p.category, p.name),
+    subcategory: sub ?? '',
+    newSubcategory: sub === null ? p.subcategory : null,
+    location: p.location,
+    unit: p.unit,
+    onHand: String(p.onHand),
+    desired: String(p.desired),
+    barcode: p.barcode,
+    notes: p.notes,
+    vendors: v
+      ? [{ supplier: v.supplier, partNo: v.partNo, url: v.url, packSize: String(v.packSize), price: v.packPriceCents === null ? '' : centsToPlain(v.packPriceCents), priceChecked: v.packPriceCents === null ? '' : p.countedAt.slice(0, 10) }]
+      : [blankVendor()],
+  };
 }

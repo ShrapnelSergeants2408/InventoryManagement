@@ -1,0 +1,61 @@
+/* Import counts and pending items on the shop tablet (§18.5; mockups 11d–11f). */
+
+.chelp-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Choose / preview / summary */
+.imp { max-width: 1100px; }
+.imp-start, .imp-undo, .imp-file { padding: 14px 18px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; flex: none; }
+.imp-start > .ic, .imp-undo > .ic, .imp-file > .ic { flex: none; }
+.imp-file .mono { overflow-wrap: anywhere; }
+.imp-grid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.imp-grid > .cbody { min-height: 0; }
+.imp-side { padding: 18px 20px 24px; display: flex; flex-direction: column; gap: 14px; background: #fbf9f6; border-left: 1px solid var(--line); overflow: auto; min-height: 0; }
+.imp-side .btn.pri { width: 100%; }
+.imp-tiles6 { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; flex: none; }
+.imp-tiles6 .k, .imp-tiles .k { font-size: 13px; }
+.sumgrid.imp-tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.tile.hot { border: 3px solid var(--ink); }
+.imp-sec { display: flex; flex-direction: column; gap: 10px; flex: none; }
+.imp-sec-h { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.imp-conf { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.imp-conf-n { font-size: 20px; }
+.imp-opts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.imp-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 96px; padding: 10px 14px; border: 2px solid var(--line-2); border-radius: 14px; background: #fff; font: inherit; color: var(--ink); text-align: left; cursor: pointer; }
+.imp-opt.on { border-color: var(--navy); background: #e3eaf3; box-shadow: inset 0 0 0 2px var(--navy); }
+.imp-opt-v { font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1; }
+.imp-row { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+.imp-loc { flex-direction: row; align-items: center; flex-wrap: wrap; }
+.imp-sel { width: auto; min-width: 260px; flex: 0 1 320px; }
+.imp-ku { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.imp-ku .lbl { margin: 0 8px 0 0; }
+.imp-skip { padding: 8px 12px; border-radius: 10px; background: #ece7e1; }
+.imp-total { padding: 14px 18px; display: flex; gap: 16px; align-items: center; flex: none; }
+.imp-total > .ic { flex: none; }
+.imp-money { font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1.1; }
+.imp-pend { padding: 14px 16px; display: flex; gap: 12px; align-items: center; }
+
+/* Pending from helpers (11f) */
+.pcard { padding: 16px; display: grid; grid-template-columns: 140px minmax(0, 1fr) 240px; gap: 18px; align-items: start; flex: none; }
+.pcard-ph { width: 140px; height: 140px; border-radius: 14px; border: 2px dashed var(--line-2); object-fit: contain; background: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--ink-2); }
+img.pcard-ph { border-style: solid; border-width: 1px; }
+.pcard-t { display: flex; flex-direction: column; gap: 8px; min-width: 0; overflow-wrap: anywhere; }
+.pcard-h { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.pcard-notes { white-space: pre-line; }
+.pcard-acts { display: flex; flex-direction: column; gap: 10px; }
+.pdup { align-items: center; }
+.pdup .btn { flex: none; }
+
+@media (orientation: portrait) {
+  .imp-grid { display: flex; flex-direction: column; overflow: auto; }
+  .imp-grid > .cbody { overflow: visible; flex: none; }
+  .imp-side { border-left: 0; border-top: 1px solid var(--line); overflow: visible; flex: none; }
+  .imp-tiles6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .sumgrid.imp-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pcard { grid-template-columns: 110px minmax(0, 1fr); }
+  .pcard-ph { width: 110px; height: 110px; }
+  .pcard-acts { grid-column: 1 / -1; flex-direction: row; flex-wrap: wrap; }
+}
+@media (orientation: landscape) and (max-width: 1100px) {
+  .imp-grid { grid-template-columns: minmax(0, 1fr) 280px; }
+  .imp-tiles6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

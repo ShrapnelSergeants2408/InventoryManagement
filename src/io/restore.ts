@@ -2,6 +2,7 @@
 // what. Nothing here touches the database; data/restore.ts applies a plan in one transaction.
 import type { InventorySnapshot } from '../data/inventory';
 import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
+import type { PendingRecord } from '../domain/helper-mode';
 import type { Category, Item, Location, Supplier } from '../domain/types';
 import { dateFromFileName } from './backup';
 import { readBackupZip, readInventoryCsvBundle, type Bundle } from './bundle';
@@ -23,6 +24,9 @@ export interface RestorePlan {
    * the tablet keeps its lists and drops lines for items that aren't in the backup (§15 Q7d).
    */
   orderLists: NamedOrderList[] | null;
+  /** Pending items from helpers: ZIP replaces the tablet's; CSV: null, the tablet keeps them (§15 Q7d). */
+  pending: PendingRecord[] | null;
+  pendingPhotos: Map<string, Blob>;
   /** Names that weren't in the lists and were added from the item data. */
   addedSuppliers: string[];
   addedLocations: string[];
@@ -96,6 +100,8 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
       locations: locations.list,
       categories: categories.list,
       orderLists,
+      pending: bundle.pending,
+      pendingPhotos: bundle.pendingPhotos,
       addedSuppliers: suppliers.added,
       addedLocations: locations.added,
       ...savedDate(bundle, file.name),

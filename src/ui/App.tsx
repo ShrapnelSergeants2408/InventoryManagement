@@ -11,6 +11,8 @@ import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
 import { CountScreen } from './screens/count/Count';
 import { HelpersScreen } from './screens/count/Helpers';
+import { ImportScreen } from './screens/count/Import';
+import { PendingScreen } from './screens/count/Pending';
 import { InventoryScreen } from './screens/inventory/Inventory';
 import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
@@ -110,13 +112,17 @@ function Screen({ route }: { route: Route }) {
     case 'edit':
       return <EditorScreen key={`edit-${route.id}`} mode="edit" id={route.id} />;
     case 'add':
-      return <EditorScreen key={`add-${route.name}-${route.barcode}`} mode="add" name={route.name} barcode={route.barcode} />;
+      return <EditorScreen key={`add-${route.name}-${route.barcode}-${route.pending}`} mode="add" name={route.name} barcode={route.barcode} pending={route.pending} />;
     case 'labels':
       return <LabelsScreen key={route.ids.join(',')} ids={route.ids} />;
     case 'orderList':
       return <OrderScreen key={route.id} listId={route.id} />;
     case 'helpers':
       return <HelpersScreen />;
+    case 'import':
+      return <ImportScreen />;
+    case 'pending':
+      return <PendingScreen />;
     case 'suppliers':
       return <SuppliersScreen />;
     case 'categories':

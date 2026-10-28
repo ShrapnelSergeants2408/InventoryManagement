@@ -146,7 +146,7 @@ try {
   await js(`await go('#/more/backup');`);
   await waitFor(`document.querySelector('.bkcard')`);
   await sleep(800);
-  check('Backup screen (8a): three cards, last backup Never, 128 photos', await js(`return [document.querySelector('.top .h1').textContent, [...document.querySelectorAll('.bkcard .h2')].map((h) => h.textContent.trim()), norm(document.querySelector('.bk-last').textContent), norm(document.querySelectorAll('.bkopt')[0].textContent).includes('128 photos')]`), ['Backup & restore', ['Back up', 'Restore', 'Price update import'], 'Last backup: Never', true]);
+  check('Backup screen (8a): four cards (Counts from helpers since M16c), last backup Never, 128 photos', await js(`return [document.querySelector('.top .h1').textContent, [...document.querySelectorAll('.bkcard .h2')].map((h) => h.textContent.trim()), norm(document.querySelector('.bk-last').textContent), norm(document.querySelectorAll('.bkopt')[0].textContent).includes('128 photos')]`), ['Backup & restore', ['Back up', 'Counts from helpers', 'Restore', 'Price update import'], 'Last backup: Never', true]);
   check('sizes shown: full about 5–7 MB, CSV in KB', await js(`const t = [...document.querySelectorAll('.bkopt .small')].map((e) => e.textContent); return [/about [5-7]\\.\\d MB/.test(t[0]), /about \\d+ KB/.test(t[1])]`), [true, true]);
   check('storage status note (§2)', await js(`return /Persistent storage (granted|not granted|unknown)/.test(document.querySelector('.bk-store').textContent)`), true);
   await shot('01-backup');

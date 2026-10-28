@@ -39,7 +39,7 @@ import { Dialog, DialogActions } from '../../components/Dialog';
 import { Keypad } from '../../components/Keypad';
 import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Scanner, type CameraState } from '../../components/Scanner';
-import { useDb, useHelpers, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
+import { useDb, useHelpers, usePending, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { useHelper } from '../../helper/session';
 import { href } from '../../shell/router';
@@ -99,6 +99,8 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
   const [newRound, setNewRound] = useState(false);
   const [scanningLoc, setScanningLoc] = useState(false);
   const liveHelpers = useHelpers();
+  const livePending = usePending();
+  const pendingCount = livePending.state === 'ready' ? livePending.value.length : 0;
   const helpers = liveHelpers.state === 'ready' ? liveHelpers.value : [];
   useEffect(() => {
     const sub = liveQuery(() => getCountSince(db)).subscribe({ next: setSince, error: () => undefined });
@@ -412,9 +414,21 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
                 : 'Other phones or tablets can count at the same time: give each its groups and send it a count kit.'}
             </div>
           </div>
-          <a class="btn" href={href.helpers}>
-            Helper devices
-          </a>
+          <div class="chelp-acts">
+            <a class="btn" href={href.helpers}>
+              Helper devices
+            </a>
+            <a class="btn" href={href.importCounts}>
+              <Icon name="upload" />
+              Import counts
+            </a>
+            {pendingCount > 0 && (
+              <a class="btn pri" href={href.pending}>
+                <span class="chip pend">{pendingCount}</span>
+                Pending from helpers
+              </a>
+            )}
+          </div>
         </div>
           </>
         )}

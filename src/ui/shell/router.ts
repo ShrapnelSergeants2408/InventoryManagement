@@ -9,10 +9,12 @@ export type Route =
   | { tab: Tab; screen: 'tab' }
   | { tab: 'inventory'; screen: 'item'; id: string }
   | { tab: 'inventory'; screen: 'edit'; id: string }
-  | { tab: 'inventory'; screen: 'add'; name: string; barcode: string }
+  | { tab: 'inventory'; screen: 'add'; name: string; barcode: string; pending: string }
   | { tab: 'labels'; screen: 'labels'; ids: string[] }
   | { tab: 'order'; screen: 'orderList'; id: string }
   | { tab: 'count'; screen: 'helpers' }
+  | { tab: 'count'; screen: 'import' }
+  | { tab: 'count'; screen: 'pending' }
   | { tab: 'more'; screen: ManagedList }
   | { tab: 'more'; screen: 'backup' }
   | { tab: 'more'; screen: 'settings' };
@@ -34,9 +36,11 @@ export function parseHash(hash: string): Route {
   }
   if (parts[0] === 'order' && parts[1]) return { tab: 'order', screen: 'orderList', id: parts[1] };
   if (parts[0] === 'count' && parts[1] === 'helpers') return { tab: 'count', screen: 'helpers' };
+  if (parts[0] === 'count' && parts[1] === 'import') return { tab: 'count', screen: 'import' };
+  if (parts[0] === 'count' && parts[1] === 'pending') return { tab: 'count', screen: 'pending' };
   if (parts[0] === 'add') {
     const q = new URLSearchParams(query);
-    return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '' };
+    return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '', pending: q.get('pending') ?? '' };
   }
   if (parts[0] === 'labels' && query) {
     const ids = (new URLSearchParams(query).get('ids') ?? '').split(',').filter(Boolean);
@@ -66,6 +70,12 @@ export const href = {
   orderList: (id: string) => `#/order/${encodeURIComponent(id)}`,
   /** Helper devices (§18.1), from the count-in start screen. */
   helpers: '#/count/helpers',
+  /** Import counts (§18.5), from count-in and the Backup screen. */
+  importCounts: '#/count/import',
+  /** Pending from helpers (§18.5). */
+  pending: '#/count/pending',
+  /** Accept a pending item: the Add item form, filled in (§18.5). */
+  accept: (pendingId: string) => `#/add?${new URLSearchParams({ pending: pendingId })}`,
   labels: (ids: string[]) => `#/labels?${new URLSearchParams({ ids: ids.join(',') })}`,
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',

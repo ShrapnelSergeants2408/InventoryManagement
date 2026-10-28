@@ -14,6 +14,8 @@ import {
 } from './lists-csv';
 import { ORDER_LISTS_FILE, parseOrderListsCsv } from './order-lists-csv';
 import type { NamedOrderList } from '../domain/order-lists';
+import type { PendingRecord } from '../domain/helper-mode';
+import { PENDING_ITEMS_FILE, parsePendingCsv } from './pending-csv';
 
 export const MANIFEST_FILE = 'manifest.json';
 
@@ -37,6 +39,10 @@ export interface Bundle {
   categories: Category[] | null;
   /** Named order lists (F27): null for a CSV; a ZIP without order-lists.csv has none ([]). */
   orderLists: NamedOrderList[] | null;
+  /** Pending items from helpers (§7, §18.5): null for a CSV; a ZIP without pending-items.csv has none ([]). */
+  pending: PendingRecord[] | null;
+  /** Pending id → photo. */
+  pendingPhotos: Map<string, Blob>;
   manifest: Manifest | null;
   /** Latest modification date among the ZIP entries, as a fallback "saved" date. */
   zipDate: Date | null;
@@ -74,6 +80,8 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
       locations: null,
       categories: null,
       orderLists: null,
+      pending: null,
+      pendingPhotos: new Map(),
       manifest: null,
       zipDate: null,
       priceColumns: parsed.priceColumns,
@@ -108,6 +116,15 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     };
   }
 
+  // A helper's counts file (§18.4) is never a backup either (§7, F17).
+  if (!opts.kit && Object.values(zip.files).some((f) => !f.dir && /(^|\/)counts\.json$/i.test(f.name))) {
+    return {
+      bundle: null,
+      problems: [{ file: 'backup', row: null, message: 'this is a counts file from a helper device, not a backup. Import it with Count › Import counts' }],
+      warnings: [],
+    };
+  }
+
   // Accept files at the root or inside one top-level folder (a re-zipped backup folder).
   const csvEntry = Object.values(zip.files)
     .filter((f) => !f.dir && /(^|\/)inventory\.csv$/i.test(f.name) && !f.name.startsWith('__MACOSX/'))
@@ -137,7 +154,9 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   const locations = locationsText === null ? null : parseLocationsCsv(locationsText);
   const categories = categoriesText === null ? null : parseCategoriesCsv(categoriesText);
   const orderLists = orderListsText === null ? null : parseOrderListsCsv(orderListsText);
-  for (const p of [suppliers, locations, categories, orderLists]) if (p) problems.push(...p.problems);
+  const pendingText = await text(PENDING_ITEMS_FILE);
+  const pending = pendingText === null ? null : parsePendingCsv(pendingText, PENDING_ITEMS_FILE, null);
+  for (const p of [suppliers, locations, categories, orderLists, pending]) if (p) problems.push(...p.problems);
 
   let manifest: Manifest | null = null;
   const manifestText = await text(MANIFEST_FILE);
@@ -172,6 +191,20 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     item.hasPhoto = true;
   }
   onPhoto?.(total, total, read.bundle.items.length);
+  const pendingPhotos = new Map<string, Blob>();
+  for (const p of pending?.items ?? []) {
+    const path = pending!.photoFiles.get(p.id);
+    if (!path) continue;
+    const f = entry(path);
+    const type = photoType(path);
+    if (!f || !type) {
+      missing.push(p.id);
+      continue;
+    }
+    used.add(f.name);
+    pendingPhotos.set(p.id, new Blob([await f.async('arraybuffer')], { type }));
+    p.hasPhoto = true;
+  }
   if (missing.length > 0) warnings.push(`Photos named in ${INVENTORY_FILE} but not in the ZIP: ${missing.join(', ')}`);
   const unused = Object.values(zip.files).filter((f) => !f.dir && f.name.startsWith(`${prefix}photos/`) && !used.has(f.name));
   if (unused.length > 0) warnings.push(`${unused.length} photo file(s) in the ZIP aren't used by any item`);
@@ -188,6 +221,8 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
       locations: locations?.list ?? null,
       categories: categories?.list ?? null,
       orderLists: orderLists?.lists ?? [],
+      pending: pending?.items ?? [],
+      pendingPhotos,
       manifest,
       zipDate: dates.length ? new Date(Math.max(...dates)) : null,
     },

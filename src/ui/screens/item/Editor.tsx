@@ -5,7 +5,9 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addItem, getRecentLocations, updateItem } from '../../../data/items';
 import { addLocation } from '../../../data/lists';
+import { loadPending, pendingPhoto } from '../../../data/pending';
 import type { PhotoChange } from '../../../data/photos';
+import type { PendingRecord } from '../../../domain/helper-mode';
 import { localIsoDate, nowLocalIso } from '../../../domain/dates';
 import { newTeamId } from '../../../domain/ids';
 import {
@@ -14,6 +16,7 @@ import {
   blankVendor,
   buildItem,
   draftFromItem,
+  draftFromPending,
   editVendor,
   newDraft,
   removeVendor,
@@ -27,7 +30,7 @@ import { nameKey, type Item } from '../../../domain/types';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { gate } from '../../../security/gate';
 import { isUnlocked } from '../../../security/lock';
-import { PinMark, TopBar } from '../../components/common';
+import { PinMark, StateMessage, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { PhotoButtons } from '../../components/PhotoButtons';
 import { LocationScanDialog } from '../../components/LocationScanDialog';
@@ -42,8 +45,10 @@ import { ItemMissing } from './Detail';
 
 const NEW = '__new';
 
-export function EditorScreen(props: { mode: 'add'; name: string; barcode?: string } | { mode: 'edit'; id: string }) {
+export function EditorScreen(props: { mode: 'add'; name: string; barcode?: string; pending?: string } | { mode: 'edit'; id: string }) {
   const live = useSnapshot();
+  const pendingId = props.mode === 'add' ? (props.pending ?? '') : '';
+  const accepting = useAccepting(pendingId);
   const fallback = props.mode === 'edit' ? href.item(props.id) : href.tab('inventory');
   const cancel = (
     <button type="button" class="btn" onClick={() => goBack(fallback)}>
@@ -74,7 +79,50 @@ export function EditorScreen(props: { mode: 'add'; name: string; barcode?: strin
     if (!item) return <ItemMissing id={props.id} back={cancel} />;
     return <Form snap={live.value} base={item} startName="" fallback={fallback} />;
   }
+  if (pendingId) {
+    if (accepting === undefined) {
+      return (
+        <>
+          <TopBar title="Accept pending item" back={cancel} />
+          <div class="state" aria-busy="true">
+            <p class="state-text muted">Loading…</p>
+          </div>
+        </>
+      );
+    }
+    if (accepting === null) {
+      return (
+        <>
+          <TopBar title="Accept pending item" back={cancel} />
+          <StateMessage icon="check" title="Already dealt with" actions={<a class="btn lg" href={href.pending}>Pending from helpers</a>}>
+            <p class="state-text muted">This pending item was accepted, matched, combined or discarded already.</p>
+          </StateMessage>
+        </>
+      );
+    }
+    return <Form snap={live.value} base={null} startName="" fallback={href.pending} accepting={accepting} />;
+  }
   return <Form snap={live.value} base={null} startName={props.name} startBarcode={props.barcode ?? ''} fallback={fallback} />;
+}
+
+/** A pending item being accepted (§18.5) and its photo: undefined while loading, null when it's gone. */
+type Accepting = { p: PendingRecord; photo: Blob | null };
+function useAccepting(id: string): Accepting | null | undefined {
+  const db = useDb();
+  const [v, setV] = useState<Accepting | null | undefined>(id ? undefined : null);
+  useEffect(() => {
+    if (!id) return;
+    let alive = true;
+    void (async () => {
+      const p = (await loadPending(db)).find((x) => x.id === id) ?? null;
+      const photo = p?.hasPhoto ? await pendingPhoto(db, id) : null;
+      if (alive) setV(p ? { p, photo } : null);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [db, id]);
+  return v;
 }
 
 /** Field-level message under an input. */
@@ -89,13 +137,15 @@ function FieldError({ errors, field }: { errors: FormError[]; field: string }) {
   );
 }
 
-function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; startBarcode?: string; fallback: string }) {
+function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; startBarcode?: string; fallback: string; accepting?: Accepting }) {
   const db = useDb();
   const { snap } = props;
   const adding = props.base === null;
   // The editor works on the item as it was when opened; later list changes don't reset the form.
   const [base] = useState(props.base);
-  const [initial] = useState<ItemDraft>(() => (base ? draftFromItem(base, snap.categories) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName), barcode: props.startBarcode ?? '' }));
+  const [initial] = useState<ItemDraft>(() =>
+    base ? draftFromItem(base, snap.categories) : props.accepting ? draftFromPending(props.accepting.p, snap.categories) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName), barcode: props.startBarcode ?? '' },
+  );
   const [d, setD] = useState<ItemDraft>(initial);
   const [errors, setErrors] = useState<FormError[]>([]);
   // Already unlocked (§6): vendor fields open straight away.
@@ -109,7 +159,8 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const today = localIsoDate();
   const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
   // A photo taken or removed in the form; undefined keeps the stored one.
-  const [photo, setPhotoChange] = useState<PhotoChange | undefined>(undefined);
+  // Accepting a pending item: the helper's photo comes with it (§18.5).
+  const [photo, setPhotoChange] = useState<PhotoChange | undefined>(props.accepting?.photo ? { full: props.accepting.photo, thumb: null } : undefined);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   useEffect(() => {
     const url = photo && photo !== 'remove' ? URL.createObjectURL(photo.thumb ?? photo.full) : null;
@@ -183,9 +234,10 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     if (vendorChangesNeedPin(base, r.item) && !(await gate('Saving changes to vendors or prices needs the mentor PIN.'))) return;
     setBusy(true);
     try {
-      const saved = base ? await updateItem(db, base, r.item, undefined, photo) : await addItem(db, r.item, undefined, photo);
+      const pendingId = props.accepting?.p.id;
+      const saved = base ? await updateItem(db, base, r.item, undefined, photo) : await addItem(db, r.item, undefined, photo, { pendingId });
       if (photo) forgetThumbnail(saved.id);
-      showToast(base ? 'Saved.' : `Added “${saved.name}”.`);
+      showToast(base ? 'Saved.' : pendingId ? `Accepted “${saved.name}” into the inventory.` : `Added “${saved.name}”.`);
       // Opened from this item's card: go back to it. Otherwise (a new item, or the editor
       // opened directly) the card replaces the form, so Back never returns to the form.
       if (base && openedFrom() === href.item(saved.id)) history.back();
@@ -202,7 +254,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     <>
       <TopBar
         title={adding ? 'Add item' : d.name.trim() || base!.name}
-        kicker={adding ? 'New team item — anyone can add' : `${base!.id} · ${base!.source === 'starter' ? 'starter item' : 'team item'}`}
+        kicker={props.accepting ? `Accepting a pending item from ${props.accepting.p.helperName} — anyone can accept` : adding ? 'New team item — anyone can add' : `${base!.id} · ${base!.source === 'starter' ? 'starter item' : 'team item'}`}
         back={
           <button type="button" class="btn" onClick={cancel}>
             <Icon name="close" />

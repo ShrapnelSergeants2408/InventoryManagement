@@ -743,3 +743,5 @@ M16b (helper mode). Ten details filled in for Dan to confirm: review "Details I 
 High for the import rules (one unit test per preview row, mutants, a real two-device round trip in the browser) and for Undo (field-by-field tests and the browser check). Not yet done: the plan's independent fresh-session review (recommended: this changes real counts), and a real two-device count on the tablet.
 
 **Next:** Dan merges PR #25, decides on the independent review, merges M16c with a merge commit, backs up the tablet, and runs the tablet check in `docs/reviews/M16c.md`.
+
+**Later (16:39):** PRs #25 and #26 merged (`a434e4e`). Dan: "a-j accepted; tablet check worked; iphone safari works (cache needed to be cleared)". SPEC v0.12 (§18.5 import details, decision log); results recorded in `docs/reviews/M16c.md` and `docs/reviews/M16b.md` (Safari item closed), on branch `m16c-details-confirmed`. With M16c, every Stage 6 milestone in `docs/stage6-plan.md` is merged.

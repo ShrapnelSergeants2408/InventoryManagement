@@ -9,9 +9,18 @@ export const PIN_H = `
     $('.pin-go').click();
     await settle(450);
   };
+  // M16b (F22): a fresh device first asks what it is; builds before M16b go straight to the PIN.
+  const pickShopTablet = async () => {
+    for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100);
+    const shop = $$('.role-opt').find((b) => norm(b.textContent).includes('Set up the shop tablet'));
+    if (!shop) return;
+    shop.click();
+    for (let i = 0; i < 100 && !$('.setup .pinpad'); i++) await settle(100);
+  };
   const doSetup = async (pin = '${TEST_PIN}') => {
     for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100);
     if (!$('.setup')) throw new Error('first-launch setup did not appear');
+    await pickShopTablet();
     await enterPin(pin);
     await enterPin(pin);
     $('.recovery input[type=checkbox]').click();

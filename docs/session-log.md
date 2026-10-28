@@ -680,3 +680,33 @@ Same session. Dan merged PR #22 (M17, `e615f6e`). Branch `m17b-scan-aim` from `m
 High that the right code is chosen and held (unit tests on the mapping, a three-code camera picture in four screens). Not yet done: the Tab S8 with real shelves, and whether 0.6 s feels right.
 
 **Next:** Dan merges, checks More › About shows the new build time, runs the M17b tablet check; then M16b.
+
+---
+
+## 2026-10-28 (afternoon) — M16b: helper mode on the helper device
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session. Dan merged PR #23 (M17b, `ee65adc`) and asked "build m16b". Branch `m16b-helper-mode` from `main`. The M17b tablet check wasn't reported in this session.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| start–13:20 | Read the plan, SPEC §2, §3, §15, §17, §18, the count-in, setup, kit, backup and database code, mockups 11a–11c. "Before" tablet screenshots of `main` (`scripts/m16b-tablet-shots.mjs`), taken twice to measure photo noise |
+| 13:20–13:40 | `src/domain/helper-mode.ts`, `readCountKit` / `buildCountsFile`, `src/data/helper-db.ts` (own database, change records), hooks in `saveCount`, `setBarcode`, `addLocation`. `tests/helper-mode.test.ts` 59 pass. One shell command waited on stdin (a `python -` placeholder) and was stopped; nothing changed |
+| 13:40–14:00 | First question, helper shell, Count / Scan / Add / Send, phone styles. Tablet before/after: one text-kerning change found and fixed. `m16b-ui-check` 35/38 → 36/36 after one app fix (Add form too wide at 360 px), one wording fix and two check fixes |
+| 14:00–14:20 | M6, M10, M12 and `pin-helpers` answer the new question. All checks M2–M17b + M16b 660/660. Mutants 47/53 → 53/53 after 6 test cases. `APP_VERSION` 0.5.0; M16a, M17, M16b re-run. `m16a-upgrade-check` 24/24 (old build in a scratch worktree; two runs lost to unquoted Windows paths in my command) |
+| 14:25 | `docs/reviews/M16b.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+F22 first question; §18.2 join (kit check, newer format refused with reload); §18.3 counting on the helper's own database (assigned groups, outside flagged, new locations, barcodes, pending items); §18.4 cumulative counts file, unsent count and reminder; Open a new kit and Leave helper mode ask about unsent changes; phone layouts from 360 px with the tablet pixel-identical outside photos.
+
+**DELIVERABLES PRODUCED**
+New: `src/domain/helper-mode.ts`, `src/data/helper-db.ts`, `src/ui/helper/{HelperApp,HelperAdd,HelperSend,KitPicker}.tsx`, `src/ui/helper/session.ts`, `src/ui/screens/FirstLaunch.tsx`, `src/styles/helper.css`, `tests/helper-mode.test.ts`, `scripts/m16b-ui-check.mjs`, `scripts/m16b-tablet-shots.mjs`, `docs/reviews/M16b.md`. Changed: `src/ui/App.tsx`, `src/ui/screens/count/Count.tsx`, `src/io/{count-kit,bundle,backup}.ts`, `src/data/{count,items,lists}.ts`, `src/ui/components/{common,LocationScanDialog}.tsx`, `src/main.tsx`, `scripts/{pin-helpers,m6-ui-check,m10-ui-check,m12-ui-check,m16a-ui-check,m17-ui-check}.mjs`.
+
+**PREDECESSORS/CONTEXT**
+M16a (helpers and count kits on the shop tablet). Next is M16c (Import counts on the shop tablet). Seven details filled in for Dan to confirm: review "Details I filled in" (a)–(g).
+
+**CONFIDENCE**
+High for the counts file and change records (unit tests, mutants, a real kit → helper → counts file read back in the browser check) and for the tablet layout (pixel comparison). Not yet done: real Android and iPhone phones (share sheets, zxing on Safari, 360 px by hand), and the plan's independent fresh-session review for M16.
+
+**Next:** Dan decides on the independent review; merges with a merge commit; runs the tablet and phone check in `docs/reviews/M16b.md`; then M16c.

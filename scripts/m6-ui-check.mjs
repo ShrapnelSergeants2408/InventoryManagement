@@ -150,6 +150,8 @@ try {
   await send('Page.navigate', { url: 'http://localhost:4321/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await sleep(500);
+  // M16b (F22): a fresh device first asks what it is.
+  await J(`await pickShopTablet();`);
 
   // ── First-launch setup (9f, 9g) ──
   check('a new tablet opens setup at step 1, without the app navigation or lock button', await J(`return [norm($('.setup-steps li.now').textContent), !$('.nav'), norm($('.pinpad .pin-sub').textContent), !$('.lockpill')]`), ['1Set mentor PIN', true, 'Choose 4–6 digits', true]);

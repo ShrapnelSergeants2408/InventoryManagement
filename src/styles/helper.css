@@ -1,0 +1,104 @@
+/* Helper mode (SPEC §17, §18.3; mockups 11a–11c) and phone sizes (§2: from 360 CSS px).
+   Everything here is under .happ (the helper shell) or inside a phone-width query, so the shop
+   tablet's layout (1280 × 800 and portrait) is unchanged (§18.7: compared pixel by pixel). */
+
+/* First launch: what is this device? (F22) */
+.role-opt > .ic { flex: none; color: var(--navy); }
+
+/* Shell: navy helper bar, content, three bottom tabs. */
+.app.happ { flex-direction: column; }
+.hbar { flex: none; display: flex; align-items: center; gap: 8px; min-height: 52px; padding: 8px 16px; background: var(--navy); color: #fff; font-size: 18px; white-space: nowrap; overflow: hidden; }
+.hbar strong { letter-spacing: .08em; }
+.hbar-t { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.hbar .ic { flex: none; }
+.happ > .main { flex: 1 1 auto; }
+.hnav { flex: none; display: flex; gap: 6px; padding: 6px 8px; background: var(--rail); }
+.hnav a { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 72px; border-radius: 14px; color: #f1ddd2; text-decoration: none; font-weight: 700; font-size: 16px; }
+.hnav a.on { background: var(--rust); color: #fff; }
+.hbadge { display: inline-block; min-width: 24px; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--amber); color: var(--ink); font-size: 14px; line-height: 22px; text-align: center; }
+.happ .toast-host { bottom: 100px; }
+
+/* Count start: the helper's groups and the send reminder (§18.4). */
+.hremind { border-radius: 14px; }
+.hmine .btn { flex: none; }
+.happ .sumgrid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hout { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: #e3eaf3; color: var(--navy); font-weight: 700; }
+.hout .ic { flex: none; width: 20px; height: 20px; }
+.hunk { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; overflow-wrap: anywhere; }
+.hunk-acts { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* PENDING (§17): a dashed outline chip, never a status color. */
+.chip.pend { height: 30px; border: 2px dashed var(--ink); color: var(--ink); background: #fff; }
+
+/* Info box (11b, 11c) */
+.hinfo { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: #e3eaf3; border: 1px solid #c3d0e0; }
+.hinfo > .ic { flex: none; color: var(--navy); }
+
+/* Send (11c) */
+.hlast { padding: 14px 18px; display: flex; gap: 16px; align-items: center; flex: none; }
+.hlast > .ic { flex: none; }
+.hlast-h { font-weight: 700; font-size: 20px; }
+.hsum { flex: none; overflow: hidden; }
+.hsum-r { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 56px; padding: 6px 18px; border-top: 1px solid #eee7de; }
+.hsum-r:first-child { border-top: 0; }
+.hsum-r strong { font-family: var(--font-display); font-size: 30px; }
+.hsend-go { display: flex; flex-direction: column; gap: 8px; align-items: stretch; text-align: center; }
+.hmore { padding: 14px 18px; display: flex; flex-direction: column; gap: 10px; flex: none; }
+.kitpick { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.happ .hsend, .happ .hadd { max-width: 760px; width: 100%; margin: 0 auto; }
+
+/* Add item not on the list (11b) */
+.hadd .ta { min-height: 96px; padding: 12px 16px; resize: vertical; }
+.hadd .inline-add { margin-top: 0; }
+.hadd .inline-add + .inline-add { margin-top: 10px; }
+.hadd .inline-add .field { flex: 1 1 auto; min-width: 0; }
+.hvendor { flex: none; }
+.hadd .btn { white-space: normal; text-align: center; }
+.hadd-acts .btn:not(.wsave) { flex: none; }
+
+/* Phones (§2, §17: 360–430 CSS px). Keypad keys and steppers stay ≥ 64 px; nothing scrolls sideways. */
+@media (max-width: 480px) {
+  .setup-main { padding: 16px 12px; }
+  .setup .setup-h { font-size: 34px; }
+  .setup-side .setup-title { font-size: 26px; }
+  .sopt { padding: 12px 14px; gap: 12px; }
+
+  .happ .top { padding: 8px 12px; min-height: 64px; }
+  .happ .h1 { font-size: 28px; }
+  .happ .top > .btn { padding: 0 14px; }
+  .happ .cbody { padding: 12px 12px 24px; gap: 12px; }
+  .happ .cprog { order: 9; flex: 1 1 100%; }
+  .happ .chelp, .happ .hmine { gap: 12px; }
+  .happ .chelp > .ic { display: none; }
+  .happ .chelp > .grow { flex-basis: 100%; }
+  .happ .cg-row { grid-template-columns: minmax(0, 1fr) auto 104px; gap: 8px; padding: 8px 12px; }
+  .happ .cg-n strong { font-size: 18px; }
+  .happ .tog { width: 100%; }
+
+  .happ .wl { grid-template-columns: 96px minmax(0, 1fr); padding: 12px; gap: 12px; }
+  .happ .wphoto { max-height: 96px; border-radius: 12px; }
+  .happ .wphoto.nophoto { font-size: 14px; }
+  .happ .wname { font-size: 24px; }
+  .happ .wl-t { min-width: 0; overflow-wrap: anywhere; }
+  .happ .wl .wloc { grid-column: 1 / -1; }
+  .happ .wr { padding: 12px; }
+  .happ .wq { font-size: 19px; }
+  .happ .val { min-width: 0; flex: 1 1 150px; height: 80px; font-size: 56px; }
+  .happ .val.empty { font-size: 22px; }
+  .happ .pad { max-width: none; gap: 8px; }
+  .happ .pad button { height: 64px; }
+  .happ .wacts .btn:not(.wsave) { padding: 0 14px; }
+  .happ .wsave { flex: 1 1 150px; }
+  .happ .scanm > .wcam { padding: 12px 12px 0; }
+  .happ .wscan .reticle { width: 140px; height: 140px; }
+
+  .happ .sumgrid.three .v { font-size: 28px; }
+  .happ .done-ic { width: 56px; height: 56px; }
+
+  .happ .row2 { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 10px; }
+  .happ .hinfo { padding: 12px; }
+  .happ .hlast-h { font-size: 18px; }
+  .happ .hnav a { min-height: 64px; }
+  .happ .dlg { max-width: calc(100vw - 24px); }
+  .happ .dlg-actions { flex-wrap: wrap; }
+}

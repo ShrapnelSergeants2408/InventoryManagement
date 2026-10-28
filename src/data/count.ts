@@ -5,16 +5,19 @@ import { nowLocalIso } from '../domain/dates';
 import { pushRecent } from '../domain/lists';
 import { nameKey, type Item } from '../domain/types';
 import { fromItemRow, type InventoryDb } from './db';
+import { isHelperDb, noteItemChange } from './helper-db';
 import { RECENT_LOCATIONS, getRecentLocations } from './items';
 
 /**
  * Saves one counted item. `location` is a name from the Location list or '' for "No
  * location"; undefined leaves the item's location as it is. `countedAt` is the local
- * date-time with offset (§3); counted_by becomes '' (this tablet). Returns the item as saved.
+ * date-time with offset (§3); counted_by becomes '' (this device). On a helper device the
+ * count is also recorded for the next counts file (§18.4). Returns the item as saved.
  */
 export async function saveCount(db: InventoryDb, id: string, onHand: number, location?: string, countedAt = nowLocalIso(), now = Date.now()): Promise<Item> {
   if (!Number.isSafeInteger(onHand) || onHand < 0) throw new RangeError('the count must be a whole number ≥ 0');
-  return db.transaction('rw', db.items, db.locations, db.settings, async () => {
+  const tables = isHelperDb(db) ? [db.items, db.locations, db.settings, db.changes] : [db.items, db.locations, db.settings];
+  return db.transaction('rw', tables, async () => {
     const row = await db.items.get(id);
     if (!row) throw new Error(`no item with id ${id}`);
     let loc = row.location;
@@ -33,6 +36,7 @@ export async function saveCount(db: InventoryDb, id: string, onHand: number, loc
     };
     await db.items.put(saved);
     await db.settings.put({ key: 'lastChangeAt', value: now });
+    if (isHelperDb(db)) await noteItemChange(db, row, { counted: true, location: loc !== row.location }, now);
     if (location !== undefined && loc !== '')
       await db.settings.put({
         key: RECENT_LOCATIONS,

@@ -1,7 +1,10 @@
-// Boot: open the database → storage error | first-launch setup (PIN, recovery code, then
-// what the inventory starts with: §6, F22, Q2) | app (SPEC §2).
+// Boot: which databases this device has → the shop tablet (open the inventory → storage
+// error | first-launch setup: PIN, recovery code, then what the inventory starts with, §6, F22,
+// Q2 | app, SPEC §2), a helper (its own database, §18.7), or, on a fresh device, the
+// first-launch question (F22). A helper never opens the inventory database.
 import { useEffect, useState } from 'preact/hooks';
 import { InventoryDb, checkSchema } from '../data/db';
+import { HelperDb, existingDatabases, getKit, leaveHelperMode } from '../data/helper-db';
 import { hasPin } from '../data/pin';
 import { SETUP_DONE, STARTER_LOADED, ensurePersistentStorage, isSetUp } from '../data/setup';
 import { TopBar } from './components/common';
@@ -20,7 +23,9 @@ import { SuppliersScreen } from './screens/more/Suppliers';
 import { OrderScreen } from './screens/order/Order';
 import { LabelsScreen } from './screens/labels/Labels';
 import { ScanScreen } from './screens/scan/Scan';
+import { FirstLaunch } from './screens/FirstLaunch';
 import { SetupScreen } from './screens/Setup';
+import { HelperApp } from './helper/HelperApp';
 import { AppOutdated, OpenBlocked, StorageError, UpdatedElsewhere } from './screens/StorageError';
 import { GateHost } from './shell/GateHost';
 import { Shell } from './shell/Shell';
@@ -31,6 +36,10 @@ type SetupNeeded = 'all' | 'start' | null;
 
 type Boot =
   | { state: 'opening' }
+  /** A fresh device: shop tablet or helper? (F22) */
+  | { state: 'role' }
+  /** A helper device with a kit (§18.2). */
+  | { state: 'helper'; db: HelperDb }
   | { state: 'ready'; db: InventoryDb; setup: SetupNeeded }
   | { state: 'error'; error: unknown }
   /** Another tab of the app holds the database while this one upgrades it (§3 upgrade plan). */
@@ -61,6 +70,32 @@ async function openDb(on: { blocked: () => void; replaced: () => void }): Promis
     if (marker) await db.settings.put({ key: SETUP_DONE, value: marker.value });
   }
   return db;
+}
+
+/**
+ * What this device is (F22, §18.7): an inventory database means the shop tablet, whatever
+ * else is there; a helper database with a kit means a helper; otherwise the question. If the
+ * browser can't say, it's treated as the shop tablet, as every device was before M16b.
+ */
+async function deviceRole(): Promise<{ role: 'main' } | { role: 'helper'; db: HelperDb } | { role: 'new' }> {
+  let has: { inventory: boolean; helper: boolean };
+  try {
+    has = await existingDatabases();
+  } catch {
+    return { role: 'main' };
+  }
+  if (has.inventory) return { role: 'main' };
+  if (!has.helper) return { role: 'new' };
+  const db = new HelperDb();
+  try {
+    await db.open();
+    if (await getKit(db)) return { role: 'helper', db };
+  } catch {
+    // An unreadable helper copy holds nothing the shop tablet needs; it's cleared below.
+  }
+  // A helper database without a kit (closed while joining): start again.
+  await leaveHelperMode(db);
+  return { role: 'new' };
 }
 
 async function setupNeeded(db: InventoryDb): Promise<SetupNeeded> {
@@ -116,7 +151,7 @@ export function App() {
   // Failed opens in a row, so "Set up again" waits until Try again has failed too (finding 1).
   const [failures, setFailures] = useState(0);
   const route = useRoute();
-  const start = () => {
+  const openMain = () => {
     setBoot({ state: 'opening' });
     openDb({ blocked: () => setBoot({ state: 'blocked' }), replaced: () => setBoot({ state: 'replaced' }) }).then(
       async (db) => {
@@ -129,6 +164,10 @@ export function App() {
       },
     );
   };
+  const start = () => {
+    setBoot({ state: 'opening' });
+    void deviceRole().then((r) => (r.role === 'main' ? openMain() : setBoot(r.role === 'helper' ? { state: 'helper', db: r.db } : { state: 'role' })));
+  };
   useEffect(start, []);
   // Ask for persistent storage on every launch until granted, and again once installed (§2, T-01).
   useEffect(() => {
@@ -138,6 +177,8 @@ export function App() {
     return () => window.removeEventListener('appinstalled', ask);
   }, []);
 
+  if (boot.state === 'role') return <FirstLaunch onShop={openMain} onJoined={(db) => setBoot({ state: 'helper', db })} />;
+  if (boot.state === 'helper') return <HelperApp db={boot.db} onLeft={() => setBoot({ state: 'role' })} />;
   if (boot.state === 'error') {
     return (
       <Shell tab={route.tab}>

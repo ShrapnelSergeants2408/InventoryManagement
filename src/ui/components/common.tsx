@@ -3,6 +3,7 @@ import type { ComponentChildren } from 'preact';
 import { groupChips, type StatusCounts } from '../../domain/inventory-view';
 import { statusLabel, type StockStatus } from '../../domain/status';
 import { Icon, type IconName } from '../icons';
+import { useHelper } from '../helper/session';
 import { LockPill } from '../shell/LockPill';
 import { goBack } from '../shell/router';
 
@@ -77,6 +78,8 @@ export function TopBar(props: {
   /** After the lock button (Add, Save, Reorder). */
   actions?: ComponentChildren;
 }) {
+  // A helper device has no PIN (§6), so no lock button.
+  const helper = useHelper();
   return (
     <header class="top">
       {props.back}
@@ -86,7 +89,7 @@ export function TopBar(props: {
         {props.subtitle !== undefined && <span class="small muted">{props.subtitle}</span>}
       </div>
       {props.children}
-      <LockPill />
+      {!helper && <LockPill />}
       {props.actions}
     </header>
   );

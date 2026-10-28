@@ -7,6 +7,7 @@ import { couldBeLocation, findLocation, locationText, QR_PREFIX } from '../../do
 import type { Location } from '../../domain/types';
 import { gate } from '../../security/gate';
 import { useDb } from '../data-hooks';
+import { useHelper } from '../helper/session';
 import { Icon } from '../icons';
 import { useCloseOnRelock } from '../shell/LockPill';
 import { showToast } from '../shell/toast';
@@ -27,6 +28,8 @@ export function LocationScanDialog(props: {
   onClose: () => void;
 }) {
   const db = useDb();
+  // A helper has no PIN and can't rename locations (§18.3); adding one is allowed.
+  const canRename = useHelper() === null;
   const [phase, setPhase] = useState<Phase>({ kind: 'scan' });
   const [camera, setCamera] = useState<CameraState>('starting');
   const [typed, setTyped] = useState('');
@@ -128,7 +131,9 @@ export function LocationScanDialog(props: {
             <div class="code-big loc-text">{phase.text}</div>
             <p class="dlg-p">
               {phase.offer
-                ? 'No location has this name yet. Add it, or rename an existing location to match the code on the bin.'
+                ? canRename
+                  ? 'No location has this name yet. Add it, or rename an existing location to match the code on the bin.'
+                  : 'No location has this name yet. Add it as a new location; the shop tablet sees it when your counts arrive.'
                 : props.notFound === 'offer'
                   ? 'This doesn’t look like a location name. Scan the QR code on the bin or shelf.'
                   : 'No location has this name. Add it in More › Locations first.'}
@@ -168,7 +173,7 @@ export function LocationScanDialog(props: {
           <button type="button" class="btn lg" disabled={busy} onClick={() => setPhase({ kind: 'scan' })}>
             Scan again
           </button>
-          {phase.offer && props.locations.length > 0 && (
+          {phase.offer && canRename && props.locations.length > 0 && (
             <button type="button" class="btn lg" disabled={busy} onClick={() => void startRename(phase.text)}>
               Rename a location to “{phase.text}”…
               <PinMark />

@@ -18,6 +18,7 @@ import { nameKey, type Item, type Location, type Supplier } from '../domain/type
 import { normalizeUrl } from '../domain/url';
 import { renameGroup, type GroupKind } from '../domain/helpers';
 import { fromHelperRow, fromItemRow, toHelperRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb } from './db';
+import { isHelperDb, noteLocationAdded } from './helper-db';
 import { RECENT_LOCATIONS, getRecentLocations } from './items';
 
 function fail(message: string): never {
@@ -93,15 +94,17 @@ async function writeLocations(db: InventoryDb, list: readonly Location[]): Promi
   await db.locations.bulkAdd(renumber(list).map(toLocationRow));
 }
 
-/** Adds a location at the end of the walk order. Returns it as stored. */
+/** Adds a location at the end of the walk order (a helper also records it for its counts file, §18.4). Returns it as stored. */
 export async function addLocation(db: InventoryDb, name: string, notes = '', now = Date.now()): Promise<Location> {
-  return db.transaction('rw', db.locations, db.settings, async () => {
+  const tables = isHelperDb(db) ? [db.locations, db.settings, db.changes] : [db.locations, db.settings];
+  return db.transaction('rw', tables, async () => {
     const list = await orderedLocations(db);
     const checked = checkName(name, takenLocationNames(list.map((l) => l.name)), 'Location');
     if (!checked.ok) return fail(checked.error);
     const loc = { name: checked.name, notes: notes.trim(), order: list.length };
     await writeLocations(db, [...list, loc]);
     await touch(db, now);
+    if (isHelperDb(db)) await noteLocationAdded(db, loc.name, now);
     return loc;
   });
 }

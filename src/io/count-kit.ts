@@ -16,11 +16,27 @@ import {
   serializeSuppliersCsv,
 } from './lists-csv';
 import { slug } from './order-csv';
+import {
+  COUNTS_COLUMNS,
+  COUNTS_FORMAT,
+  COUNTS_FORMAT_VERSION,
+  KIT_FORMAT,
+  KIT_FORMAT_VERSION,
+  NEW_ITEMS_COLUMNS,
+  checkKitJson,
+  countsRows,
+  type HelperChange,
+  type HelperKit,
+  type PendingItem,
+} from '../domain/helper-mode';
+import { centsToPlain } from '../domain/money';
+import type { ReplaceAllInput } from '../data/inventory';
+import { readBackupZip } from './bundle';
+import { writeCsv } from './csv';
+import { completeCategories, completeLocations, completeSuppliers, spellLikeLists } from './lists-csv';
 
 export const KIT_FILE = 'kit.json';
-export const KIT_FORMAT = 'frc2408-count-kit';
-/** Raised when the kit layout changes; a helper refuses a newer kit and asks to reload (§18.7). */
-export const KIT_FORMAT_VERSION = 1;
+export { KIT_FORMAT, KIT_FORMAT_VERSION };
 
 export interface KitJson {
   format: typeof KIT_FORMAT;
@@ -97,6 +113,149 @@ export async function buildCountKit(input: KitInput): Promise<Blob> {
   zip.file(CATEGORIES_FILE, serializeCategoriesCsv(input.snapshot.categories), { date });
   // Bytes rather than Blobs: JSZip reads a Blob through FileReader, which Node (tests) lacks.
   for (const [id, path] of paths) zip.file(path, new Uint8Array(await input.photos.get(id)!.arrayBuffer()), { date, compression: 'STORE' });
+  const bytes = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+  return new Blob([bytes], { type: 'application/zip' });
+}
+
+export interface ReadKit {
+  kit: HelperKit;
+  /** The kit's inventory and lists, ready for the helper's own database. */
+  data: ReplaceAllInput;
+  warnings: string[];
+}
+
+export type KitRead = { ok: true; read: ReadKit } | { ok: false; newer: boolean; problems: string[] };
+
+/**
+ * Reads a count kit on a helper (§18.2 Joining). A newer kit format is refused with "reload"
+ * (§18.7). Backups and counts files are refused with a pointer to the screen that uses them.
+ */
+export async function readCountKit(bytes: Uint8Array | ArrayBuffer): Promise<KitRead> {
+  const refuse = (message: string, newer = false): KitRead => ({ ok: false, newer, problems: [message] });
+  let zip: JSZip;
+  try {
+    zip = await JSZip.loadAsync(bytes);
+  } catch {
+    return refuse('This file isn’t a count kit. Choose the count-kit-….zip the shop tablet sent.');
+  }
+  const named = (re: RegExp) => Object.values(zip.files).find((f) => !f.dir && re.test(f.name) && !f.name.startsWith('__MACOSX/')) ?? null;
+  const kitEntry = named(/(^|\/)kit\.json$/i);
+  if (!kitEntry) {
+    if (named(/(^|\/)counts\.json$/i)) return refuse('This is a counts file from a helper. Open it on the shop tablet with Import counts.');
+    if (named(/(^|\/)inventory\.csv$/i)) return refuse('This is an inventory backup, not a count kit. Ask for a count kit from the shop tablet (Count › Helper devices › Send count kit).');
+    return refuse('This file isn’t a count kit. Choose the count-kit-….zip the shop tablet sent.');
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(await kitEntry.async('string'));
+  } catch {
+    json = null;
+  }
+  const checked = checkKitJson(json);
+  if (!checked.ok) return refuse(checked.message, checked.newer);
+  const read = await readBackupZip(bytes, undefined, { kit: true });
+  if (!read.bundle) return { ok: false, newer: false, problems: read.problems.map((p) => (p.row === null ? `${p.file}: ${p.message}` : `${p.file} row ${p.row}: ${p.message}`)) };
+  const b = read.bundle;
+  const suppliers = completeSuppliers(b.suppliers ?? [], b.items).list;
+  const locations = completeLocations(b.locations ?? [], b.items).list;
+  const categories = completeCategories(b.categories ?? [], b.items).list;
+  // The helper's progress is its own (§18.3): every item starts "not counted yet" on the helper.
+  const items = spellLikeLists(b.items, categories, locations).map((i) => ({ ...i, lastCounted: '', countedBy: '' }));
+  return { ok: true, read: { kit: checked.kit, data: { items, photos: b.photos, suppliers, locations, categories }, warnings: read.warnings } };
+}
+
+// ── Counts file (§18.4): what a helper sends back ──
+
+export const COUNTS_JSON_FILE = 'counts.json';
+export const COUNTS_CSV_FILE = 'counts.csv';
+export const NEW_ITEMS_FILE = 'new-items.csv';
+export const NEW_LOCATIONS_FILE = 'locations-new.csv';
+
+export interface CountsJson {
+  format: typeof COUNTS_FORMAT;
+  format_version: number;
+  kit_id: string;
+  helper_id: string;
+  helper_name: string;
+  /** Local date-time with offset. */
+  created_at: string;
+  /** 1 for the first file sent from this kit, then 2, 3, … */
+  sequence: number;
+  app_version: string;
+}
+
+export interface CountsInput {
+  kit: HelperKit;
+  sequence: number;
+  createdAt: string;
+  changes: readonly HelperChange[];
+  items: ReadonlyMap<string, Item>;
+  pending: readonly PendingItem[];
+  /** Pending id → photo. */
+  pendingPhotos: ReadonlyMap<string, Blob>;
+  now: Date;
+}
+
+export function countsJson(input: Pick<CountsInput, 'kit' | 'sequence' | 'createdAt'>): CountsJson {
+  return {
+    format: COUNTS_FORMAT,
+    format_version: COUNTS_FORMAT_VERSION,
+    kit_id: input.kit.kitId,
+    helper_id: input.kit.helperId,
+    helper_name: input.kit.helperName,
+    created_at: input.createdAt,
+    sequence: input.sequence,
+    app_version: APP_VERSION,
+  };
+}
+
+/** counts-<helper name>-2026-10-26-1912.zip (local time). */
+export function countsFileName(helperName: string, now: Date): string {
+  return kitFileName(helperName, now).replace(/^count-kit-/, 'counts-');
+}
+
+export function newItemRow(p: PendingItem, photoFile: string): string[] {
+  const v = p.vendor;
+  return [
+    p.id,
+    p.name,
+    p.category,
+    p.subcategory,
+    p.unit,
+    String(p.onHand),
+    String(p.desired),
+    p.location,
+    p.barcode,
+    p.notes,
+    photoFile,
+    p.countedAt,
+    v?.supplier ?? '',
+    v?.partNo ?? '',
+    v?.url ?? '',
+    v ? String(v.packSize) : '',
+    v && v.packPriceCents !== null ? centsToPlain(v.packPriceCents) : '',
+  ];
+}
+
+/** Builds the cumulative counts file: everything since the kit was opened, every time (§18.4). */
+export async function buildCountsFile(input: CountsInput): Promise<Blob> {
+  const zip = new JSZip();
+  const date = input.now;
+  zip.file(COUNTS_JSON_FILE, JSON.stringify(countsJson(input), null, 2) + '\n', { date });
+  const rows = countsRows(input.changes, input.items);
+  zip.file(COUNTS_CSV_FILE, writeCsv(COUNTS_COLUMNS, rows.map((r) => COUNTS_COLUMNS.map((c) => r[c]))), { date });
+  const pending = [...input.pending].sort((a, b) => a.id.localeCompare(b.id, 'en-US', { numeric: true }));
+  const photoPath = (p: PendingItem) => {
+    const blob = input.pendingPhotos.get(p.id);
+    return p.hasPhoto && blob ? photoPathFor(p.id, blob.type) : '';
+  };
+  zip.file(NEW_ITEMS_FILE, writeCsv(NEW_ITEMS_COLUMNS, pending.map((p) => newItemRow(p, photoPath(p)))), { date });
+  const created = input.changes.filter((c): c is Extract<HelperChange, { kind: 'location' }> => c.kind === 'location').map((c) => [c.name]);
+  zip.file(NEW_LOCATIONS_FILE, writeCsv(['name'], created), { date });
+  for (const p of pending) {
+    const path = photoPath(p);
+    if (path) zip.file(path, new Uint8Array(await input.pendingPhotos.get(p.id)!.arrayBuffer()), { date, compression: 'STORE' });
+  }
   const bytes = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   return new Blob([bytes], { type: 'application/zip' });
 }

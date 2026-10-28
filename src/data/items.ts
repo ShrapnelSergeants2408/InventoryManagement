@@ -7,6 +7,7 @@ import { nameKey, type Item } from '../domain/types';
 import { validateItem } from '../domain/validate';
 import { fromItemRow, fromOrderListRow, toItemRow, toLocationRow, toOrderListRow, type InventoryDb } from './db';
 import { isHelperDb, noteItemChange } from './helper-db';
+import { removePending } from './pending';
 import { applyPhotoChange, type PhotoChange } from './photos';
 
 export const RECENT_LOCATIONS = 'recentLocations';
@@ -53,11 +54,22 @@ async function touch(db: InventoryDb, item: Item, now: number): Promise<void> {
 
 const TABLES = (db: InventoryDb) => [db.items, db.photos, db.suppliers, db.categories, db.locations, db.settings];
 
-/** Adds a new item (F6), with its photo if one was taken in the form. The id must be unused. */
-export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photo?: PhotoChange): Promise<Item> {
-  return db.transaction('rw', TABLES(db), async () => {
+/**
+ * Adds a new item (F6), with its photo if one was taken in the form. The id must be unused.
+ * With `pendingId`, it accepts that pending item from a helper (§18.5): the item's count keeps
+ * the helper's time and name, and the pending item is removed, in the same transaction.
+ */
+export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photo?: PhotoChange, opts: { pendingId?: string } = {}): Promise<Item> {
+  return db.transaction('rw', [...TABLES(db), db.pendingItems, db.pendingPhotos], async () => {
     if (await db.items.get(item.id)) throw new Error(`an item with id ${item.id} already exists`);
-    const fitted = await fitToLists(db, { ...item, hasPhoto: false });
+    let given = item;
+    if (opts.pendingId) {
+      const p = await db.pendingItems.get(opts.pendingId);
+      if (!p) throw new Error('that pending item was already dealt with');
+      given = { ...item, lastCounted: String(p.countedAt), countedBy: String(p.helperName) };
+      await removePending(db, [opts.pendingId]);
+    }
+    const fitted = await fitToLists(db, { ...given, hasPhoto: false });
     await db.items.add(toItemRow(fitted, now));
     await touch(db, fitted, now);
     if (!photo) return fitted;

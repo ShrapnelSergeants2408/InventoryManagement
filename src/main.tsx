@@ -9,6 +9,7 @@ import './styles/labels.css';
 import './styles/scan.css';
 import './styles/count.css';
 import './styles/helper.css';
+import './styles/import.css';
 import { render } from 'preact';
 import { App } from './ui/App';
 import { startServiceWorker } from './ui/shell/UpdateBanner';

@@ -14,6 +14,7 @@ import {
   type HelperChange,
   type HelperKit,
   type PendingItem,
+  type PendingRecord,
 } from '../domain/helper-mode';
 import type { Item } from '../domain/types';
 import type { ReadKit } from '../io/count-kit';
@@ -28,7 +29,7 @@ export const HELPER_DB_NAME = 'frc2408-helper';
 export type ChangeRow = HelperChange & { key: string };
 
 /** Pending item as stored on the helper (the main tablet's table has the same shape, M16c). */
-export type HelperPendingRow = PendingItemRow & PendingItem & { helperName: string };
+export type HelperPendingRow = PendingItemRow & PendingRecord;
 
 const KIT_KEY = 'helperKit';
 const SENT_KEY = 'helperSent';

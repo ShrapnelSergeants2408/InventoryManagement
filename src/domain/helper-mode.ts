@@ -202,6 +202,9 @@ export interface PendingItem {
   hasPhoto: boolean;
 }
 
+/** A pending item with the helper it came from: on the helper, in new-items.csv, and on the shop tablet until decided (§18.5). */
+export type PendingRecord = PendingItem & { helperId: string; helperName: string };
+
 /** The Add item form as typed. */
 export interface PendingDraft {
   name: string;

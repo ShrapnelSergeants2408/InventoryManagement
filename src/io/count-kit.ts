@@ -29,9 +29,9 @@ import {
   type HelperKit,
   type PendingItem,
 } from '../domain/helper-mode';
-import { centsToPlain } from '../domain/money';
 import type { ReplaceAllInput } from '../data/inventory';
 import { readBackupZip } from './bundle';
+import { newItemRow } from './pending-csv';
 import { writeCsv } from './csv';
 import { completeCategories, completeLocations, completeSuppliers, spellLikeLists } from './lists-csv';
 
@@ -214,28 +214,6 @@ export function countsFileName(helperName: string, now: Date): string {
   return kitFileName(helperName, now).replace(/^count-kit-/, 'counts-');
 }
 
-export function newItemRow(p: PendingItem, photoFile: string): string[] {
-  const v = p.vendor;
-  return [
-    p.id,
-    p.name,
-    p.category,
-    p.subcategory,
-    p.unit,
-    String(p.onHand),
-    String(p.desired),
-    p.location,
-    p.barcode,
-    p.notes,
-    photoFile,
-    p.countedAt,
-    v?.supplier ?? '',
-    v?.partNo ?? '',
-    v?.url ?? '',
-    v ? String(v.packSize) : '',
-    v && v.packPriceCents !== null ? centsToPlain(v.packPriceCents) : '',
-  ];
-}
 
 /** Builds the cumulative counts file: everything since the kit was opened, every time (§18.4). */
 export async function buildCountsFile(input: CountsInput): Promise<Blob> {

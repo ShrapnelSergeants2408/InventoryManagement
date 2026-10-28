@@ -713,3 +713,33 @@ High for the counts file and change records (unit tests, mutants, a real kit →
 **Later:** Dan: "confirm the seven details. merged." PR #24 merged (`419323a`). Details (a)–(g) written into SPEC v0.11 (§18.3, §18.4, decision log) and marked confirmed in `docs/reviews/M16b.md`, on branch `m16b-details-confirmed`
 **Later (14:46):** Dan: "tablet check works." Recorded in `docs/reviews/M16b.md` (Tablet check result). Next: M16c.
 **Later:** Dan: helper mode worked on an iPhone only in Chrome; a Safari retest is to come. Open item in `docs/reviews/M16b.md`.
+
+---
+
+## 2026-10-28 (late afternoon) — M16c: import counts, undo, pending items
+
+**SESSION IDENTITY**
+Same session. Dan: "build m16c". PR #25 (SPEC v0.11) still open, so `m16c-import-counts` is stacked on `m16b-details-confirmed`.
+
+**DATES & TIMES**
+| Time (CDT) | Activity |
+|---|---|
+| 15:15 | Read §18.5, mockups 11d–11f, the backup, restore and helper code |
+| 15:15–15:30 | `src/domain/import-counts.ts` (planner, duplicates, combine, match), `src/io/counts-file.ts`, `src/io/pending-csv.ts`, `src/data/import-counts.ts` (apply, undo), `src/data/pending.ts`; pending items in backups and restore; `addItem` accepts a pending item. `tests/import-counts.test.ts` 41 → 44 |
+| 15:30–15:45 | Import counts and Pending screens, Accept in the editor, count-in and Backup entry points, the restore comparison row. Planner fixes: repeats across cumulative files asked once; within-import repeats of new items not reported as skipped |
+| 15:45–15:56 | `m16c-ui-check` (two browser contexts at one address) 25/25 after check fixes. Regression M2–M16b 660/660 after the intended M5 change (M11 flaked once, passed twice). Tablet screenshots unchanged. Mutants 48/50 → 50/50 compiling after 3 tests. Two edits to the check went wrong the same way as in M16b (`$$` in a JS replace string), found and fixed |
+| 15:56 | `docs/reviews/M16c.md`; committed, pushed, opened the PR |
+
+**WORK COMPLETED**
+§18.5 in full: check, preview with every row of the table, choices, Use newest for all, all-or-nothing Apply, summary, Undo this import (summary and Backup screen), pending review (accept, same as existing, discard, duplicates, combine); `pending-items.csv` and pending photos in full backups; restore replaces or keeps them and clears Undo.
+
+**DELIVERABLES PRODUCED**
+New: `src/domain/import-counts.ts`, `src/io/counts-file.ts`, `src/io/pending-csv.ts`, `src/data/import-counts.ts`, `src/data/pending.ts`, `src/ui/screens/count/{Import,Pending}.tsx`, `src/styles/import.css`, `tests/import-counts.test.ts`, `scripts/m16c-ui-check.mjs`, `docs/reviews/M16c.md`. Changed: backup, bundle, restore, setup, items, count-kit, item-form, Editor, Count, Backup, RestoreDialog, router, App, data-hooks; `scripts/m5-ui-check.mjs`, `tests/router.test.ts`, `tests/helper-devices.test.ts`.
+
+**PREDECESSORS/CONTEXT**
+M16b (helper mode). Ten details filled in for Dan to confirm: review "Details I filled in" (a)–(j).
+
+**CONFIDENCE**
+High for the import rules (one unit test per preview row, mutants, a real two-device round trip in the browser) and for Undo (field-by-field tests and the browser check). Not yet done: the plan's independent fresh-session review (recommended: this changes real counts), and a real two-device count on the tablet.
+
+**Next:** Dan merges PR #25, decides on the independent review, merges M16c with a merge commit, backs up the tablet, and runs the tablet check in `docs/reviews/M16c.md`.

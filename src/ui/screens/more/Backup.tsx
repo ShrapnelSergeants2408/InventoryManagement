@@ -13,7 +13,7 @@ import { planPriceImport, type PricePlan, type PriceProblem } from '../../../io/
 import { readRestoreFile, type RestorePlan } from '../../../io/restore';
 import { gate } from '../../../security/gate';
 import { BackButton, TopBar, plural } from '../../components/common';
-import { useDb, useNow, useOrderLists, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
+import { useDb, useImportUndo, useNow, usePending, useOrderLists, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
@@ -22,6 +22,7 @@ import { StorageError } from '../StorageError';
 import { exportBackup, exportMessage } from './export-backup';
 import { PriceImportDone, PriceImportPreview, ProblemsDialog } from './ImportDialogs';
 import { RestoreDialog, type TabletNow } from './RestoreDialog';
+import { UndoDialog } from '../count/Import';
 
 const BACKUP_ACCEPT = '.zip,.csv,application/zip,application/x-zip-compressed,text/csv,text/comma-separated-values';
 const CSV_ACCEPT = '.csv,text/csv,text/comma-separated-values';
@@ -71,6 +72,9 @@ type Dlg =
   | { kind: 'priceDone'; plan: PricePlan };
 
 export function BackupScreen() {
+  const undo = useImportUndo();
+  const pending = usePending();
+  const [undoing, setUndoing] = useState(false);
   const db = useDb();
   const live = useSnapshot();
   const lists = useOrderLists();
@@ -174,7 +178,7 @@ export function BackupScreen() {
   const fullSize = csvBytes !== null && photos ? formatBytes(csvBytes + photos.bytes) : '…';
   const tablet: TabletNow | null =
     snap && photos && lists.state === 'ready'
-      ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, suppliers: snap.suppliers.length, orderLists: lists.value, lastChangeAt: settings.lastChangeAt }
+      ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, suppliers: snap.suppliers.length, orderLists: lists.value, pending: pending.state === 'ready' ? pending.value.length : 0, lastChangeAt: settings.lastChangeAt }
       : null;
 
   return (
@@ -222,6 +226,33 @@ export function BackupScreen() {
         </section>
 
         <div class="mcol">
+          <section class="card bkcard" aria-labelledby="ic-h">
+            <div class="bk-h">
+              <h2 class="h2 grow" id="ic-h">
+                Counts from helpers
+              </h2>
+              <span class="chip ok">No PIN</span>
+            </div>
+            <p class="bk-p">Import the counts files helper devices send. You see a preview and settle any conflicts before anything is saved.</p>
+            <div class="setup-acts">
+              <a class="btn lg" href={href.importCounts}>
+                <Icon name="upload" />
+                Import counts…
+              </a>
+              {undo && (
+                <button type="button" class="btn danger lg" onClick={() => setUndoing(true)}>
+                  <Icon name="retry" />
+                  Undo this import
+                </button>
+              )}
+            </div>
+            {undo && (
+              <p class="small muted bk-p">
+                Last import: {undo.helperNames.join(', ')}, {formatDateTime(new Date(undo.at), new Date(now))}. It can be undone until the next import or restore.
+              </p>
+            )}
+          </section>
+
           <section class="card bkcard" aria-labelledby="rs-h">
             <div class="bk-h">
               <h2 class="h2 grow" id="rs-h">
@@ -282,6 +313,7 @@ export function BackupScreen() {
           </div>
         </div>
       )}
+      {undoing && <UndoDialog onClose={() => setUndoing(false)} />}
       {dlg?.kind === 'restore' && tablet && <RestoreDialog plan={dlg.plan} tablet={tablet} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'problems' && (
         <ProblemsDialog title={dlg.title} fileName={dlg.fileName} problems={dlg.problems} warnings={dlg.warnings} footer={dlg.footer} onClose={() => setDlg(null)} />

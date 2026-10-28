@@ -4,6 +4,7 @@ import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
 import { loadSnapshot, replaceAll } from './inventory';
 import { loadOrderLists } from './order-lists';
+import { loadPending, replacePending } from './pending';
 import { setSettings } from './settings';
 
 /** The backup file's contents, read in one transaction so items and photos agree. */
@@ -12,12 +13,14 @@ export async function buildBackup(db: InventoryDb, kind: BackupKind, now: Date):
     const snap = await loadSnapshot(db);
     return new Blob([buildDataCsv(snap)], { type: 'text/csv' });
   }
-  const { snap, photos, lists } = await db.transaction('r', [db.items, db.suppliers, db.locations, db.categories, db.photos, db.orderLists], async () => ({
+  const { snap, photos, lists, pending, pendingPhotos } = await db.transaction('r', [db.items, db.suppliers, db.locations, db.categories, db.photos, db.orderLists, db.pendingItems, db.pendingPhotos], async () => ({
     snap: await loadSnapshot(db),
     photos: new Map((await db.photos.toArray()).map((p) => [p.itemId, p.full] as const)),
     lists: await loadOrderLists(db),
+    pending: await loadPending(db),
+    pendingPhotos: new Map((await db.pendingPhotos.toArray()).map((p) => [p.pendingId, p.full] as const)),
   }));
-  return buildFullBackup(snap, photos, now, lists);
+  return buildFullBackup(snap, photos, now, lists, pending, pendingPhotos);
 }
 
 /** Exporting (shared or saved to Downloads) resets the reminder clock (F16, Q1). */
@@ -31,9 +34,14 @@ export async function photoCount(db: InventoryDb): Promise<number> {
 
 /**
  * Applies a restore plan (F17) in one transaction: a CSV keeps the tablet's photos for matching
- * ids and its order lists (minus lines for items that are gone); a ZIP replaces both (§15 Q7d).
- * Returns how many items have a photo.
+ * ids, its order lists (minus lines for items that are gone) and its pending items; a ZIP
+ * replaces all three (§15 Q7d). Either clears Undo this import (§18.5). Returns how many items have a photo.
  */
 export async function applyRestore(db: InventoryDb, plan: RestorePlan, now = Date.now()): Promise<number> {
-  return replaceAll(db, plan, now, { keepPhotos: plan.kind === 'csv', orderLists: plan.orderLists ?? undefined });
+  return db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.pendingItems, db.pendingPhotos, db.importUndo], async () => {
+    const n = await replaceAll(db, plan, now, { keepPhotos: plan.kind === 'csv', orderLists: plan.orderLists ?? undefined });
+    if (plan.pending !== null) await replacePending(db, plan.pending, plan.pendingPhotos);
+    await db.importUndo.clear();
+    return n;
+  });
 }

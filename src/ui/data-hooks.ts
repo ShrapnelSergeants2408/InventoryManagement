@@ -5,6 +5,9 @@ import { useContext, useEffect, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
 import { loadHelpers } from '../data/helpers';
+import { getImportUndo, type ImportUndo } from '../data/import-counts';
+import { loadPending } from '../data/pending';
+import type { PendingRecord } from '../domain/helper-mode';
 import { loadOrderLists } from '../data/order-lists';
 import { getThumbnail } from '../data/photos';
 import type { Helper } from '../domain/helpers';
@@ -192,4 +195,29 @@ export function useHelpers(): Live<Helper[]> {
     return () => sub.unsubscribe();
   }, [db]);
   return live;
+}
+
+/** Pending items from helpers (§18.5), live. */
+export function usePending(): Live<PendingRecord[]> {
+  const db = useDb();
+  const [live, setLive] = useState<Live<PendingRecord[]>>({ state: 'loading' });
+  useEffect(() => {
+    const sub = liveQuery(() => loadPending(db)).subscribe({
+      next: (value) => setLive({ state: 'ready', value }),
+      error: (error: unknown) => setLive({ state: 'error', error }),
+    });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return live;
+}
+
+/** The import Undo this import would reverse (§18.5), or null; live. */
+export function useImportUndo(): ImportUndo | null {
+  const db = useDb();
+  const [undo, setUndo] = useState<ImportUndo | null>(null);
+  useEffect(() => {
+    const sub = liveQuery(() => getImportUndo(db)).subscribe({ next: setUndo, error: () => setUndo(null) });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return undo;
 }

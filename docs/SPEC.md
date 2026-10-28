@@ -1,9 +1,9 @@
-# FRC 2408 Inventory Management — Specification v0.13 (draft)
+# FRC 2408 Inventory Management — Specification v0.13
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** v0.12 approved by Dan 2026-10-28; v0.13 is a draft awaiting approval (§15 Q8) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT (draft)
+**Status:** Approved by Dan 2026-10-28 (v0.13) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT
 
-**Changes in v0.13 (draft):**
+**Changes in v0.13 (approved by Dan 2026-10-28, §15 Q8):**
 - **Stage 5 leftovers** (`docs/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
   - (a) First-launch setup says that a tablet which had inventory before has had its storage cleared, and points to Restore (§2, F22; finding 3).
   - (b) A full backup with no items but with list files can be restored, with a warning that the inventory will be empty (F17; finding 4).
@@ -455,7 +455,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
    - (e) Helper mode keeps its data in its own database on the device, separate from a main tablet's (§18.7).
    - (f) A schema-version check ships before the first database upgrade (§18.7; Stage 5 review finding 6).
    - (g) Imported helper counts join the current count round by their counted_at date (F24).
-8. **Approve v0.13 (draft, 2026-10-28).** Dan decided the design of F30–F32 (start from an order list, split by supplier; order #, payment / PO and receipts; receiving adds to on hand; offer to update prices with the PIN; PIN to record, edit and delete; order-level discount in $ or %; typed lines allowed; date presets, custom range, CSV, printable summary, by-category breakdown; subtract what's on order; ordered lines leave a named list; tax and shipping as dollar amounts) and the Stage 5 finding 7 option. Details Claude filled in, for Dan to confirm:
+8. ~~Approve v0.13~~ — approved 2026-10-28 (Dan: "spec details approved"), (a)–(g) as written. Dan decided the design of F30–F32 (start from an order list, split by supplier; order #, payment / PO and receipts; receiving adds to on hand; offer to update prices with the PIN; PIN to record, edit and delete; order-level discount in $ or %; typed lines allowed; date presets, custom range, CSV, printable summary, by-category breakdown; subtract what's on order; ordered lines leave a named list; tax and shipping as dollar amounts) and the Stage 5 finding 7 option. Details Claude filled in, as approved:
    - (a) Season start (a date) and school-year start (month and day, default August 1) are settings, so the date presets work.
    - (b) Spending falls on the placed date. Cancelled orders stay in the history but don't count.
    - (c) By category: item lines by the category copied onto the line when the order was recorded; typed lines under "Other"; discount, tax, shipping and fees as their own rows rather than spread over categories.
@@ -514,6 +514,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | Dan merged M16c (PR #26), accepted the ten import details (a)–(j) in `docs/reviews/M16c.md`, and reported the M16c tablet check working and helper mode working in iPhone Safari (after clearing its cache). v0.12: the details written into §18.5 |
 | 2026-10-28 | Dan: take care of the Stage 5 leftovers, and add a record of orders actually placed (tax, discounts, shipping, etc.) and an order history over a date range with a spending summary by vendor and in total. Answers to Claude Code's questions: start from an order list, split by supplier; order #, payment / PO, receipt photo or PDF; receiving adds to on hand; offer to update prices (PIN); PIN to record, edit and delete; order-level discount in $ or %; typed lines allowed; presets + custom range, CSV, printable summary, by category; subtract what's on order; ordered lines leave a named list; tax and shipping in dollars; finding 7: reset but warn |
 | 2026-10-28 | v0.13 draft: Stage 5 leftovers (findings 3, 4, 5, 7, 8, 9), F30 placed orders, F31 receiving, F32 order history and spending, §21, §22. Awaiting approval (§15 Q8) |
+| 2026-10-28 | Dan merged PRs #27 and #28 (M18) and approved the v0.13 details (§15 Q8 (a)–(g)): "spec details approved". v0.13 approved; M19 next |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -697,7 +698,7 @@ v0.7 is built (milestones 1–10) and verified in Stage 5. v0.8 is added to that
   - a code without a position counts only when it is the only one;
   - the same code must stay 0.6 s before it is used; a different code starts over; a gap of up to 0.4 s keeps the hold and a longer one loses it.
 
-## 21. Placed orders, receiving and spending (F30–F32, v0.13 draft)
+## 21. Placed orders, receiving and spending (F30–F32, v0.13)
 
 **Purpose:** keep an accurate record of what the team actually bought and paid, separate from the plans in order lists (F12, F27). An order list says what to buy; a placed order says what was bought, from whom, when and for how much, including tax, shipping and discounts. The app doesn't send orders: the mentor orders on the supplier's site, then records it here.
 

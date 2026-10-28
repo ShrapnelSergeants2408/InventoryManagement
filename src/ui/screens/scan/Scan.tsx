@@ -83,7 +83,7 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
             <span class="d" />
             <span class="line" />
           </div>
-          <div class="chint">{camera === 'starting' ? 'Starting the camera…' : 'Point at a QR label or a barcode — it scans by itself'}</div>
+          <div class="chint">{camera === 'starting' ? 'Starting the camera…' : 'Hold a QR label or barcode in the square — it scans by itself'}</div>
           {panel.kind !== 'none' && <div class="cam-paused">Camera paused</div>}
         </Scanner>
       )}

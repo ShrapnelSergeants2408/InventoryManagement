@@ -7,6 +7,8 @@ import { SCAN_FORMATS } from '../domain/scan';
 export interface Detected {
   rawValue: string;
   format: string;
+  /** Where the code is in the frame, in video pixels; used to aim (scan-aim.ts). */
+  boundingBox?: { x: number; y: number; width: number; height: number };
 }
 
 export interface Detector {

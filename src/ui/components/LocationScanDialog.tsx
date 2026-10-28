@@ -96,7 +96,7 @@ export function LocationScanDialog(props: {
                 </div>
               </Scanner>
             )}
-            <p class="small muted m0">Point at the QR code on the bin or shelf. It holds the location’s name, e.g. Electrical 15.</p>
+            <p class="small muted m0">Hold the bin or shelf’s QR code in the square for a moment. Its text is the location’s name, e.g. Electrical 15.</p>
             {note && (
               <p class="small err" role="alert">
                 <Icon name="short" />

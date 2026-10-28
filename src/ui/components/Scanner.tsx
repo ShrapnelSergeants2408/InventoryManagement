@@ -2,6 +2,7 @@
 // editor's barcode field. The camera is released when the screen closes or the app is hidden.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { pickAimed, stepHold, type Hold } from '../../domain/scan-aim';
 import { getDetector } from '../../io/barcode';
 
 export type CameraState = 'starting' | 'live' | 'denied' | 'nocamera' | 'error';
@@ -21,6 +22,8 @@ export function Scanner(props: {
   children?: ComponentChildren;
 }) {
   const video = useRef<HTMLVideoElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const hold = useRef<Hold | null>(null);
   const [state, setStateRaw] = useState<CameraState>('starting');
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [visible, setVisible] = useState(() => document.visibilityState === 'visible');
@@ -87,7 +90,19 @@ export function Scanner(props: {
     void track.applyConstraints({ advanced: [{ torch: props.torch } as MediaTrackConstraintSet] }).catch(() => {});
   }, [stream, props.torch]);
 
-  // Look for codes a few times a second while live and not paused.
+  // While a code is held in the square: data-hold on the camera box (the corners turn amber)
+  // and --hold (0–1), which fills a bar.
+  // Set on the element directly, so the camera view doesn't re-render a few times a second.
+  const showHold = (holding: boolean, progress: number) => {
+    const el = box.current;
+    if (!el) return;
+    el.style.setProperty('--hold', String(progress));
+    if (holding) el.dataset.hold = 'on';
+    else delete el.dataset.hold;
+  };
+
+  // Look for codes a few times a second while live and not paused. Only a code in the square
+  // (the children's .reticle) counts, and it is used once held there for HOLD_MS (F21, F29).
   useEffect(() => {
     if (state !== 'live' || props.paused) return;
     let alive = true;
@@ -97,15 +112,26 @@ export function Scanner(props: {
       try {
         if (v && v.readyState >= 2 && v.videoWidth > 0) {
           const found = await (await getDetector()).detect(v);
-          const hit = found.find((f) => f.rawValue.trim() !== '');
-          if (alive && hit) {
+          const el = box.current;
+          if (alive && el) {
+            const frame = el.getBoundingClientRect();
+            const r = el.querySelector('.reticle')?.getBoundingClientRect();
+            const aim = r ? { x: r.left - frame.left, y: r.top - frame.top, width: r.width, height: r.height } : null;
+            const hit = pickAimed(found, { width: v.videoWidth, height: v.videoHeight }, { width: frame.width, height: frame.height }, aim);
             const now = Date.now();
             const prev = last.current;
-            if (!(prev && prev.code === hit.rawValue && now - prev.at < REPEAT_IGNORE_MS)) {
-              last.current = { code: hit.rawValue, at: now };
+            // The code just reported, still in view, is ignored for a moment.
+            const fresh = hit && !(prev && prev.code === hit.rawValue && now - prev.at < REPEAT_IGNORE_MS) ? hit : null;
+            const step = stepHold(hold.current, fresh?.rawValue ?? null, now);
+            hold.current = step.hold;
+            showHold(step.hold !== null, step.progress);
+            if (step.ready && fresh) {
+              hold.current = null;
+              showHold(false, 0);
+              last.current = { code: fresh.rawValue, at: now };
               // Scanning carries on after a report (count-in never pauses); pausing stops it.
-              latest.current.onDetect(hit.rawValue, hit.format);
-            } else last.current = { code: hit.rawValue, at: prev!.at };
+              latest.current.onDetect(fresh.rawValue, fresh.format);
+            }
           }
         }
       } catch {
@@ -115,6 +141,8 @@ export function Scanner(props: {
     };
     // Resuming: the code just handled is ignored for a moment, counted from now.
     if (last.current) last.current = { ...last.current, at: Date.now() };
+    hold.current = null;
+    showHold(false, 0);
     void tick();
     return () => {
       alive = false;
@@ -123,7 +151,7 @@ export function Scanner(props: {
   }, [state, props.paused]);
 
   return (
-    <div class={props.paused ? 'cam paused' : 'cam'} data-state={state}>
+    <div ref={box} class={props.paused ? 'cam paused' : 'cam'} data-state={state}>
       <video ref={video} class="cam-v" playsInline muted autoPlay aria-hidden="true" />
       {props.children}
     </div>

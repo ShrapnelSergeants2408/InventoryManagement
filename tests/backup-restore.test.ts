@@ -41,7 +41,8 @@ function tabletData(): ReplaceAllInput {
         spares: 2,
         notes: TRICKY_NOTES,
         source: 'starter',
-        lastCounted: '2026-10-24',
+        lastCounted: '2026-10-24T18:42:07-05:00',
+        countedBy: 'Tablet 2 · Alex & Jordan, "B"',
         barcode: '012345678905',
         preferredVendor: 2,
         vendors: [

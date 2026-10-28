@@ -61,6 +61,19 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
     problems.push({ file: file.name, row: null, message: 'the backup has no items, so restoring it would empty the tablet' });
     return { ok: false, problems, warnings };
   }
+  // A count kit's inventory.csv (§18.2), taken out of the kit, is a valid §7 file whose price
+  // columns are all blank: restoring it would wipe the tablet's prices (independent M16a review,
+  // finding 1). Hand-made files without price columns still load (§7).
+  const priced = (items: readonly Item[]) => items.some((i) => i.vendors.some((v) => v !== null && (v.packPriceCents !== null || v.priceChecked !== '')));
+  if (bundle.priceColumns && !priced(bundle.items) && priced(current.items)) {
+    problems.push({
+      file: file.name,
+      row: null,
+      message:
+        "this file has no prices at all, but this tablet has prices, so restoring it would remove every price. It looks like the inventory from a helper's count kit, which isn't a backup. Choose an inventory-backup file",
+    });
+    return { ok: false, problems, warnings };
+  }
   // Items were checked while the file was read, and every supplier they use is now in the
   // list, so the plan always passes replaceAll's check.
   const suppliers = completeSuppliers(bundle.suppliers ?? current.suppliers, bundle.items);

@@ -227,7 +227,7 @@ Numbering continues from Stage 4 (M1–M10), so `docs/reviews/` stays unambiguou
 | Version | Milestone | Change | Data migration |
 |---|---|---|---|
 | 2 | M15 | Add `orderLists: 'id, key, *itemIds'` | None (new empty table). Writes `schemaVersion = 2` |
-| 3 | M16a | Add `helpers: 'id, key'`, `pendingItems: 'id, helperId, barcode'`, `pendingPhotos: 'pendingId'`, `importUndo: 'id'` | Every item: a date-only `lastCounted` becomes local midnight with that date's UTC offset; `countedBy = ''` added. Nothing else changes. Writes `schemaVersion = 3` |
+| 3 | M16a | Add `helpers: 'id, &key'` (unique name key, like `orderLists`; M16a), `pendingItems: 'id, helperId, barcode'`, `pendingPhotos: 'pendingId'`, `importUndo: 'id'` | Every item: a date-only `lastCounted` becomes local midnight with that date's UTC offset; `countedBy = ''` added. Nothing else changes. Writes `schemaVersion = 3` |
 
 **Guard (built in M15, before `version(2)` ships):**
 - the app knows its own schema version;
@@ -259,6 +259,8 @@ This covers an old cached copy, and a rollback of the Pages deploy. Dexie 4 does
    - then serve the old build again: the guard screen appears and nothing is written.
 
    **Corrected in M15:** the old build can't show the guard screen, because the guard is new in M15. So step 3 serves the old build again to show what a rollback actually does: Dexie 4 opens the v2 database without an error and leaves the v2 data alone (`scripts/m15-upgrade-check.mjs`). The guard itself is tested from M15 onward: a v2 build opening a database marked v3 (unit tests and `scripts/m15-ui-check.mjs`). The old build in step 3 is `main` before M15, which the tablet runs today, not `stage5-verified`.
+
+   **M16a (the second upgrade):** `main` before M16a has the guard, so step 3 now shows it for real: `scripts/m16a-upgrade-check.mjs` serves `main` (v2) again over the upgraded v3 database, which shows "This app is out of date" and writes nothing.
 4. **On the tablet:**
    - export a full backup first; that backup is the way back (§18.7);
    - after the deploy, reload and check the item count, the order total and the About screen;

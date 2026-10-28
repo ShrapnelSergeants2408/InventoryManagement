@@ -5,7 +5,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { adjustCount, setCount, type CountField } from '../../../data/inventory';
 import { setPhoto, type PhotoChange } from '../../../data/photos';
-import { formatIsoDate } from '../../../domain/dates';
+import { countedDate, formatIsoDate } from '../../../domain/dates';
 import { orderLines, packText, stockLines } from '../../../domain/item-text';
 import { formatCents } from '../../../domain/money';
 import { stockStatus } from '../../../domain/status';
@@ -160,7 +160,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
             </span>
             <span class="chip mut">{item.source === 'starter' ? 'Starter item' : 'Team item'}</span>
             <span class="chip mut">ID {item.id}</span>
-            <span class="chip mut">{item.lastCounted ? `Counted ${formatIsoDate(item.lastCounted)}` : 'Not counted yet'}</span>
+            <span class="chip mut">{item.lastCounted ? `Counted ${formatIsoDate(countedDate(item.lastCounted))}${item.countedBy ? ` by ${item.countedBy}` : ''}` : 'Not counted yet'}</span>
           </div>
 
           <div class="card box">

@@ -40,6 +40,8 @@ export interface Bundle {
   manifest: Manifest | null;
   /** Latest modification date among the ZIP entries, as a fallback "saved" date. */
   zipDate: Date | null;
+  /** inventory.csv has price columns (whether or not any price is filled in). */
+  priceColumns: boolean;
 }
 
 export interface BundleRead {
@@ -74,6 +76,7 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
       orderLists: null,
       manifest: null,
       zipDate: null,
+      priceColumns: parsed.priceColumns,
     },
     problems: [],
     warnings,
@@ -90,6 +93,15 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     zip = await JSZip.loadAsync(data);
   } catch {
     return { bundle: null, problems: [{ file: 'backup', row: null, message: "this file isn't a readable ZIP backup" }], warnings: [] };
+  }
+
+  // A count kit (§18.2) has an inventory.csv too, but with prices left out: it is never a backup (§7).
+  if (Object.values(zip.files).some((f) => !f.dir && /(^|\/)kit\.json$/i.test(f.name))) {
+    return {
+      bundle: null,
+      problems: [{ file: 'backup', row: null, message: 'this is a count kit for a helper device, not a backup. Open it on the helper with “Join as a helper”' }],
+      warnings: [],
+    };
   }
 
   // Accept files at the root or inside one top-level folder (a re-zipped backup folder).

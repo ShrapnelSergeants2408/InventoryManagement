@@ -1,4 +1,5 @@
 // inventory.csv (SPEC §7): one row per item, vendor options flattened into v1_/v2_/v3_ groups.
+import { readCountStamp } from '../domain/dates';
 import { centsToPlain, parsePrice } from '../domain/money';
 import { VENDOR_SLOTS, type Item, type Vendor, type VendorSlot } from '../domain/types';
 import { isIsoDate, parseWholeNumber, validateItem } from '../domain/validate';
@@ -24,6 +25,7 @@ export const INVENTORY_COLUMNS: readonly string[] = [
   'preferred_vendor',
   'photo_file',
   'last_counted',
+  'counted_by',
   ...VENDOR_SLOTS.flatMap((s) => VENDOR_FIELDS.map((f) => `v${s}_${f}`)),
 ];
 
@@ -37,6 +39,8 @@ export interface ParsedInventory {
   problems: FileProblem[];
   /** Headers present in the file that this app doesn't use (ignored). */
   ignoredColumns: string[];
+  /** The file has a v1_pack_price column (a kit's inventory.csv has it, with every price blank). */
+  priceColumns: boolean;
 }
 
 const EXCEL_SCIENTIFIC = /^\d(\.\d+)?e\+\d+$/i;
@@ -49,7 +53,7 @@ export function parseInventoryCsv(text: string): ParsedInventory {
   const missing = REQUIRED_INVENTORY_COLUMNS.filter((c) => !table.columns.has(c));
   if (missing.length > 0) {
     problems.push({ file: INVENTORY_FILE, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
-    return { items: [], photoFiles: new Map(), problems, ignoredColumns };
+    return { items: [], photoFiles: new Map(), problems, ignoredColumns, priceColumns: false };
   }
 
   const items: Item[] = [];
@@ -84,6 +88,14 @@ export function parseInventoryCsv(text: string): ParsedInventory {
         return '';
       }
       return d;
+    };
+    // §7: a date-time with offset as written; a date only (v0.4–v0.7 files) as local midnight.
+    const counted = (): string => {
+      const raw = t('last_counted');
+      // A US spreadsheet date (10/24/2026) is a date only, like 2026-10-24.
+      const s = readCountStamp(normalizeDate(raw) ?? raw);
+      if (s === null) rowErrors.push(`last counted "${raw}" must be a date and time like 2026-10-24T18:42-05:00, or a date like 2026-10-24`);
+      return s ?? '';
     };
 
     const id = t('id');
@@ -144,7 +156,8 @@ export function parseInventoryCsv(text: string): ParsedInventory {
       // Notes keep their inner line breaks and spacing; only outer whitespace is trimmed.
       notes: get('notes').trim(),
       source,
-      lastCounted: date('last_counted', 'last counted'),
+      lastCounted: counted(),
+      countedBy: t('counted_by'),
       preferredVendor,
       vendors,
       hasPhoto: false,
@@ -160,7 +173,7 @@ export function parseInventoryCsv(text: string): ParsedInventory {
     if (photoFile !== '') photoFiles.set(id, photoFile);
     items.push(item);
   }
-  return { items, photoFiles, problems, ignoredColumns };
+  return { items, photoFiles, problems, ignoredColumns, priceColumns: table.columns.has('v1_pack_price') };
 }
 
 /** Photo path inside a full backup ZIP (§7); the extension follows the photo's type. */
@@ -186,6 +199,7 @@ export function inventoryRow(item: Item, photoPath: (id: string) => string = pho
     preferred_vendor: String(item.preferredVendor),
     photo_file: item.hasPhoto ? photoPath(item.id) : '',
     last_counted: item.lastCounted,
+    counted_by: item.countedBy,
   };
   for (const slot of VENDOR_SLOTS) {
     const v = item.vendors[slot - 1];

@@ -6,14 +6,14 @@ import { item, vendor } from './helpers';
 const csv = (rows: string[][]) => Papa.unparse(rows, { newline: '\r\n' });
 
 describe('inventory.csv columns (SPEC §7)', () => {
-  it('writes the §7 column order, with last_counted after photo_file', () => {
+  it('writes the §7 column order, with last_counted and counted_by after photo_file', () => {
     const header = serializeInventoryCsv([]).replace(/^﻿/, '').split('\r\n')[0];
     expect(header).toBe(INVENTORY_COLUMNS.join(','));
-    expect(INVENTORY_COLUMNS.slice(0, 15)).toEqual([
+    expect(INVENTORY_COLUMNS.slice(0, 16)).toEqual([
       'id', 'name', 'category', 'subcategory', 'location', 'unit', 'on_hand', 'desired', 'spares',
-      'barcode', 'notes', 'source', 'preferred_vendor', 'photo_file', 'last_counted',
+      'barcode', 'notes', 'source', 'preferred_vendor', 'photo_file', 'last_counted', 'counted_by',
     ]);
-    expect(INVENTORY_COLUMNS).toHaveLength(15 + 18);
+    expect(INVENTORY_COLUMNS).toHaveLength(16 + 18);
   });
 
   it('matches columns by header name, not position (shuffled, mixed case, padded)', () => {
@@ -57,7 +57,8 @@ describe('quoting and round-trip', () => {
     item({ id: 'n2', name: 'Café ½" tube — ×4', notes: 'commas, "quotes", and\r\nCRLF inside', location: 'Bin F3' }),
     item({
       id: 'n3',
-      lastCounted: '2026-10-24',
+      lastCounted: '2026-10-24T18:42:07-05:00',
+      countedBy: 'Tablet 2 · Alex & Jordan, "B"',
       barcode: '012345678905',
       preferredVendor: 2,
       vendors: [vendor({ supplier: 'REV' }), vendor({ supplier: 'WCP', packSize: 25, packPriceCents: null, priceChecked: '', url: 'https://x.test/a?b=1,2' }), null],
@@ -127,7 +128,7 @@ describe('row problems', () => {
   it('accepts US spreadsheet dates and stores them as ISO', () => {
     const r = parseInventoryCsv(csv([header, withRow({ last_counted: '10/24/2026', v1_price_checked: '1/5/2027' })]));
     expect(r.problems).toEqual([]);
-    expect(r.items[0]!.lastCounted).toBe('2026-10-24');
+    expect(r.items[0]!.lastCounted).toBe('2026-10-24T00:00:00-05:00');
     expect(r.items[0]!.vendors[0]!.priceChecked).toBe('2027-01-05');
   });
 

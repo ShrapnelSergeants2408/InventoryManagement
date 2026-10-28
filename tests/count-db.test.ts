@@ -38,35 +38,35 @@ async function setup() {
 describe('saveCount (F24)', () => {
   it('sets on_hand and last_counted together, keeping the location when none was picked', async () => {
     await setup();
-    const saved = await saveCount(db, 'a', 3, undefined, '2026-10-24', 50);
-    expect(saved).toMatchObject({ onHand: 3, lastCounted: '2026-10-24', location: 'Shelf B' });
-    expect(await getItem(db, 'a')).toMatchObject({ onHand: 3, lastCounted: '2026-10-24', location: 'Shelf B' });
+    const saved = await saveCount(db, 'a', 3, undefined, '2026-10-24T18:42:07-05:00', 50);
+    expect(saved).toMatchObject({ onHand: 3, lastCounted: '2026-10-24T18:42:07-05:00', countedBy: '', location: 'Shelf B' });
+    expect(await getItem(db, 'a')).toMatchObject({ onHand: 3, lastCounted: '2026-10-24T18:42:07-05:00', countedBy: '', location: 'Shelf B' });
     expect((await db.settings.get('lastChangeAt'))?.value).toBe(50);
   });
 
   it('a counted 0 is a count: last_counted is set', async () => {
     await setup();
-    await saveCount(db, 'b', 0, undefined, '2026-10-24');
-    expect(await getItem(db, 'b')).toMatchObject({ onHand: 0, lastCounted: '2026-10-24' });
+    await saveCount(db, 'b', 0, undefined, '2026-10-24T09:05:00-05:00');
+    expect(await getItem(db, 'b')).toMatchObject({ onHand: 0, lastCounted: '2026-10-24T09:05:00-05:00' });
   });
 
   it('files the item to a picked location, spelled as in the list, and remembers it as recent', async () => {
     await setup();
-    await saveCount(db, 'b', 1, 'bin a', '2026-10-24');
+    await saveCount(db, 'b', 1, 'bin a', '2026-10-24T09:05:00-05:00');
     expect((await getItem(db, 'b'))?.location).toBe('Bin A');
     expect(await getRecentLocations(db)).toEqual(['Bin A']);
   });
 
   it("'' moves the item to No location", async () => {
     await setup();
-    await saveCount(db, 'a', 1, '', '2026-10-24');
+    await saveCount(db, 'a', 1, '', '2026-10-24T09:05:00-05:00');
     expect((await getItem(db, 'a'))?.location).toBe('');
     expect(await getRecentLocations(db)).toEqual([]);
   });
 
   it('a location not in the list is refused and nothing changes', async () => {
     await setup();
-    await expect(saveCount(db, 'b', 1, 'Nowhere', '2026-10-24')).rejects.toThrow(/Location list/);
+    await expect(saveCount(db, 'b', 1, 'Nowhere', '2026-10-24T09:05:00-05:00')).rejects.toThrow(/Location list/);
     expect(await getItem(db, 'b')).toMatchObject({ onHand: 0, lastCounted: '', location: '' });
   });
 
@@ -82,8 +82,8 @@ describe('saveCount (F24)', () => {
 
   it('resume: after two saves the group says Continue and opens at the third item', async () => {
     await setup();
-    await saveCount(db, 'a', 2, undefined, '2026-10-24');
-    await saveCount(db, 'b', 2, undefined, '2026-10-24');
+    await saveCount(db, 'a', 2, undefined, '2026-10-24T09:05:00-05:00');
+    await saveCount(db, 'b', 2, undefined, '2026-10-24T09:05:00-05:00');
     const snap = await loadSnapshot(db);
     const [g] = countGroups(snap.items, snap.categories, snap.locations, 'category', false);
     expect(g!.action).toBe('continue');
@@ -117,12 +117,12 @@ describe('count rounds (SPEC v0.6 F24)', () => {
 
   it('starting a round erases nothing', async () => {
     await setup();
-    await saveCount(db, 'a', 5, undefined, '2026-10-01');
+    await saveCount(db, 'a', 5, undefined, '2026-10-01T23:59:00-05:00');
     await setCountSince(db, '2026-10-24');
-    expect(await getItem(db, 'a')).toMatchObject({ onHand: 5, lastCounted: '2026-10-01' });
+    expect(await getItem(db, 'a')).toMatchObject({ onHand: 5, lastCounted: '2026-10-01T23:59:00-05:00' });
     const snap = await loadSnapshot(db);
     expect(overallProgress(snap.items, await getCountSince(db))).toEqual({ counted: 0, total: 4 });
-    await saveCount(db, 'a', 6, undefined, '2026-10-24');
+    await saveCount(db, 'a', 6, undefined, '2026-10-24T09:05:00-05:00');
     expect(overallProgress((await loadSnapshot(db)).items, '2026-10-24')).toEqual({ counted: 1, total: 4 });
   });
 });
@@ -140,7 +140,7 @@ describe('count-in on the starter catalog', () => {
     expect(countGroups(snap.items, snap.categories, snap.locations, 'location', false).map((g) => [g.name, g.items.length])).toEqual([['No location', 129]]);
     const [first] = countGroups(snap.items, snap.categories, snap.locations, 'category', false);
     const it0 = first!.items[0]!;
-    await saveCount(db, it0.id, it0.desired + it0.spares, undefined, '2026-10-24');
+    await saveCount(db, it0.id, it0.desired + it0.spares, undefined, '2026-10-24T09:05:00-05:00');
     snap = await loadSnapshot(db);
     expect(orderTotalCents(snap.items)).toBeLessThan(841366);
     expect(overallProgress(snap.items).counted).toBe(1);

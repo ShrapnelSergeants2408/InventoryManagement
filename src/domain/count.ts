@@ -1,5 +1,6 @@
 // Count-in (F24): walk order, progress, the keypad and the group summary. Pure, so it is
 // unit-tested; the screen and the save live in ui/screens/count and data/count.ts.
+import { countedDate } from './dates';
 import { listOrder } from './inventory-view';
 import { NO_LOCATION } from './lists';
 import { buildOrderList } from './order';
@@ -9,10 +10,14 @@ import { nameKey, type Category, type Item, type Location } from './types';
 export type CountMode = 'category' | 'location' | 'scan';
 
 /**
- * Counted in this round (F24 count rounds): last_counted on or after `since` (ISO dates compare
- * as text). A blank `since` (the first count) means counted at any time.
+ * Counted in this round (F24 count rounds): the local date of last_counted is on or after
+ * `since` (YYYY-MM-DD dates compare as text). A blank `since` (the first count) means counted
+ * at any time.
  */
-export const isCounted = (i: Item, since = '') => i.lastCounted !== '' && i.lastCounted >= since;
+export const isCounted = (i: Item, since = '') => {
+  const day = countedDate(i.lastCounted);
+  return day !== '' && day >= since;
+};
 
 /** A "counting since" date as stored: YYYY-MM-DD, or '' for none. Anything else counts as none. */
 export const cleanSince = (v: unknown): string => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : '');

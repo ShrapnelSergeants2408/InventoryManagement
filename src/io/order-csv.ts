@@ -93,7 +93,7 @@ export function filteredNote(query: string, shown: OrderList, all: OrderList): s
 }
 
 /** Text reduced to letters, digits and dashes, at most 30 characters, for a file name. */
-function slug(text: string): string {
+export function slug(text: string): string {
   return normalize(text)
     .replace(/[^a-z0-9]+/g, '-')
     .slice(0, 30)

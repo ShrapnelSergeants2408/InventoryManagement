@@ -16,7 +16,8 @@ import {
 } from '../domain/lists';
 import { nameKey, type Item, type Location, type Supplier } from '../domain/types';
 import { normalizeUrl } from '../domain/url';
-import { fromItemRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb } from './db';
+import { renameGroup, type GroupKind } from '../domain/helpers';
+import { fromHelperRow, fromItemRow, toHelperRow, toItemRow, toLocationRow, toSupplierRow, type InventoryDb } from './db';
 import { RECENT_LOCATIONS, getRecentLocations } from './items';
 
 function fail(message: string): never {
@@ -107,7 +108,7 @@ export async function addLocation(db: InventoryDb, name: string, notes = '', now
 
 /** Renames a location and/or changes its notes; items that used the old name follow. */
 export async function updateLocation(db: InventoryDb, oldName: string, name: string, notes: string, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.locations, db.items, db.settings, async () => {
+  await db.transaction('rw', db.locations, db.items, db.settings, db.helpers, async () => {
     const list = await orderedLocations(db);
     const at = list.findIndex((l) => nameKey(l.name) === nameKey(oldName));
     if (at < 0) fail(`location "${oldName}" isn't in the list`);
@@ -117,6 +118,7 @@ export async function updateLocation(db: InventoryDb, oldName: string, name: str
     list[at] = { ...list[at]!, name: checked.name, notes: notes.trim() };
     await writeLocations(db, list);
     await saveItems(db, reassignLocation(await allItems(db), old, checked.name), now);
+    await followRename(db, 'location', old, checked.name);
     const recent = await getRecentLocations(db);
     await db.settings.put({ key: RECENT_LOCATIONS, value: recent.map((r) => (nameKey(r) === nameKey(old) ? checked.name : r)) });
     await touch(db, now);
@@ -182,7 +184,7 @@ export async function addCategory(db: InventoryDb, name: string, now = Date.now(
 }
 
 export async function renameCategory(db: InventoryDb, oldName: string, name: string, now = Date.now()): Promise<string> {
-  return db.transaction('rw', db.categories, db.items, db.settings, async () => {
+  return db.transaction('rw', db.categories, db.items, db.settings, db.helpers, async () => {
     const list = await orderedCategories(db);
     const at = list.findIndex((c) => c.name === oldName);
     if (at < 0) fail(`category "${oldName}" isn't in the list`);
@@ -191,6 +193,7 @@ export async function renameCategory(db: InventoryDb, oldName: string, name: str
     list[at] = { ...list[at]!, name: checked.name };
     await writeCategories(db, list);
     await saveItems(db, renameCategoryItems(await allItems(db), oldName, checked.name), now);
+    await followRename(db, 'category', oldName, checked.name);
     await touch(db, now);
     return checked.name;
   });
@@ -333,4 +336,10 @@ export async function moveItemsTo(db: InventoryDb, ids: readonly string[], to: C
     await touch(db, now);
     return unique.length;
   });
+}
+
+/** Helpers counting a renamed category or location follow the new name (§18.1), in the rename's transaction. */
+async function followRename(db: InventoryDb, kind: GroupKind, from: string, to: string): Promise<void> {
+  const changed = renameGroup((await db.helpers.toArray()).map(fromHelperRow), kind, from, to);
+  if (changed.length > 0) await db.helpers.bulkPut(changed.map(toHelperRow));
 }

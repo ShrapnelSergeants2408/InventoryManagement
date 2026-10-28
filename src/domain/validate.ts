@@ -1,4 +1,5 @@
 // Field rules shared by the item editor and every importer (SPEC §3, §4; spec-questions Q6).
+import { isCountStamp } from './dates';
 import { VENDOR_SLOTS, nameKey, vendorAt, type Item } from './types';
 
 export type NumberParse = { ok: true; value: number } | { ok: false; error: string };
@@ -48,8 +49,8 @@ export function validateItem(item: Item, supplierNames: readonly string[] | null
   for (const [field, label] of [['onHand', 'on hand'], ['desired', 'desired'], ['spares', 'spares']] as const) {
     if (!isWhole(item[field], 0)) errors.push({ field, message: `${label} must be a whole number ≥ 0` });
   }
-  if (item.lastCounted !== '' && !isIsoDate(item.lastCounted)) {
-    errors.push({ field: 'lastCounted', message: `last counted "${item.lastCounted}" must be a date like 2026-10-24` });
+  if (item.lastCounted !== '' && !isCountStamp(item.lastCounted)) {
+    errors.push({ field: 'lastCounted', message: `last counted "${item.lastCounted}" must be a date and time like 2026-10-24T18:42-05:00` });
   }
   const known = supplierNames ? new Set(supplierNames.map(nameKey)) : null;
   for (const slot of VENDOR_SLOTS) {

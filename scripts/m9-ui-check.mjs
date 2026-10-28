@@ -192,7 +192,7 @@ try {
   await js(`await click('.locs .fchip', 'Bin A');`);
   check('picked location shows it will be saved with the count', await js(`return norm($('.wloc-h').textContent)`), 'Location: Bin A (saved with the count)');
   await js(`await act('Save & next');`);
-  check('Save sets on_hand, last_counted (today) and the location in IndexedDB', await js(`const i = await idb('items', ${JSON.stringify(expectFirst.ids[0])}); return [i.onHand, i.lastCounted === today, i.location]`), [3, true, 'Bin A']);
+  check('Save sets on_hand, last_counted (now, a local date-time), counted_by blank and the location in IndexedDB', await js(`const i = await idb('items', ${JSON.stringify(expectFirst.ids[0])}); return [i.onHand, i.lastCounted.startsWith(today + 'T') && i.countedBy === '', i.location]`), [3, true, 'Bin A']);
   check('next item, overall progress 1 of 129', await js(`return [pos()[1], wname(), prog()]`), [`Item 2 of ${expectFirst.n}`, expectFirst.names[1], ['1 of 129 counted', '1%']]);
   // New location from count-in (F25: no PIN); a duplicate is refused.
   await js(`await click('.locs .fchip', 'New location'); await type('.wloc-add input', 'bin a');`);
@@ -262,7 +262,7 @@ try {
   await shot('05-count-scan');
   check('the reticle scan line is a thin line inside the reticle', await js(`const l = $('.wscan .reticle .line').getBoundingClientRect(), r = $('.wscan .reticle').getBoundingClientRect(); const cs = getComputedStyle($('.wscan .reticle .line')); return [Math.round(l.height), l.left > r.left && l.right < r.right, cs.height, cs.width]`), [3, true, '3px', '132px']);
   await js(`await key('4'); await act('Save & scan next');`);
-  check('saved; waiting for the next scan', await js(`const i = await idb('items', 'st-0063'); return [i.onHand, i.lastCounted === today, norm($('.wwait .h2').textContent)]`), [4, true, 'Scan the next item']);
+  check('saved; waiting for the next scan', await js(`const i = await idb('items', 'st-0063'); return [i.onHand, i.lastCounted.startsWith(today + 'T'), norm($('.wwait .h2').textContent)]`), [4, true, 'Scan the next item']);
   await js(`await settle(3500);`);
   check('the label still in view does not reopen the item just saved', await js(`return [!!$('.wname'), !!$('.wscan .cam[data-state=live]')]`), [false, true]);
   await js(`await type('.wscan input', 'st-0001'); await click('.wscan .btn', 'Find');`);

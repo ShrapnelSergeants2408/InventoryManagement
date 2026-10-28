@@ -1,5 +1,7 @@
 // IndexedDB schema (SPEC §2, §3; stage4-plan §3).
 import Dexie, { type Table } from 'dexie';
+import { isCountStamp, midnightLocalIso } from '../domain/dates';
+import type { Helper } from '../domain/helpers';
 import type { NamedOrderList } from '../domain/order-lists';
 import { nameKey, type Category, type Item, type Location, type Supplier } from '../domain/types';
 
@@ -44,9 +46,43 @@ export interface OrderListRow extends NamedOrderList {
   itemIds: string[];
 }
 
+/** Helper as stored (§3, main tablet only): adds the name key (unique ignoring capitals). */
+export interface HelperRow extends Helper {
+  key: string;
+}
+
+/**
+ * Stores for the counts import (§18.5), created in v3 and filled from M16c: a pending item a
+ * helper added, its photo, and the record that undoes the last import.
+ */
+export interface PendingItemRow {
+  id: string;
+  helperId: string;
+  barcode: string;
+  [field: string]: unknown;
+}
+export interface PendingPhotoRow {
+  pendingId: string;
+  full: Blob;
+}
+export interface ImportUndoRow {
+  id: string;
+  [field: string]: unknown;
+}
+
 /** The schema this code was built for (stage6-plan §3). Stored as a setting so an older copy can tell. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const SCHEMA_KEY = 'schemaVersion';
+
+/**
+ * The v3 change to one stored item (§18.7): a date-only last_counted becomes local midnight
+ * with that date's UTC offset, and counted_by is added blank. Nothing else changes.
+ */
+export function upgradeItemToV3(row: { lastCounted?: unknown; countedBy?: unknown }): void {
+  // Only a real date only: anything else (never written by the app) is left as it is rather than shifted.
+  if (typeof row.lastCounted === 'string' && row.lastCounted.length === 10 && isCountStamp(row.lastCounted)) row.lastCounted = midnightLocalIso(row.lastCounted);
+  if (row.countedBy === undefined) row.countedBy = '';
+}
 
 export class InventoryDb extends Dexie {
   items!: Table<ItemRow, string>;
@@ -56,6 +92,10 @@ export class InventoryDb extends Dexie {
   categories!: Table<CategoryRow, string>;
   settings!: Table<SettingRow, string>;
   orderLists!: Table<OrderListRow, string>;
+  helpers!: Table<HelperRow, string>;
+  pendingItems!: Table<PendingItemRow, string>;
+  pendingPhotos!: Table<PendingPhotoRow, string>;
+  importUndo!: Table<ImportUndoRow, string>;
 
   constructor(name = 'frc2408-inventory') {
     super(name);
@@ -71,7 +111,26 @@ export class InventoryDb extends Dexie {
     this.version(2).stores({
       orderLists: 'id, &key, *itemIds',
     });
+    // v3 (M16a): helper devices (§18) and count times (§3). Four new empty tables; every item
+    // gets a date-time last_counted and a blank counted_by, and nothing else changes.
+    this.version(3)
+      .stores({
+        helpers: 'id, &key',
+        pendingItems: 'id, helperId, barcode',
+        pendingPhotos: 'pendingId',
+        importUndo: 'id',
+      })
+      .upgrade((tx) => tx.table('items').toCollection().modify(upgradeItemToV3));
   }
+}
+
+export function toHelperRow(h: Helper): HelperRow {
+  return { ...h, key: nameKey(h.name) };
+}
+
+export function fromHelperRow(row: HelperRow): Helper {
+  const { key: _k, ...h } = row;
+  return h;
 }
 
 /**

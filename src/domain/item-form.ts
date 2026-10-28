@@ -130,8 +130,10 @@ export interface BuildContext {
   id: string;
   /** The item as loaded into the editor, or null when adding. */
   base: Item | null;
-  /** YYYY-MM-DD; a new item's on-hand counts as a count (§3 last_counted). */
+  /** YYYY-MM-DD, for "price checked". */
   today: string;
+  /** Local date-time with offset: a new item's on-hand counts as a count (§3 last_counted). */
+  countedAt: string;
   supplierNames: readonly string[];
   categories: readonly Category[];
   /**
@@ -237,7 +239,8 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
     barcode: d.barcode.trim(),
     notes: d.notes.trim(),
     source,
-    lastCounted: base ? base.lastCounted : ctx.today,
+    lastCounted: base ? base.lastCounted : ctx.countedAt,
+    countedBy: base ? base.countedBy : '',
     preferredVendor: keep && base ? base.preferredVendor : ((d.preferred + 1) as VendorSlot),
     vendors: keep && base ? base.vendors : [vendors[0] ?? null, vendors[1] ?? null, vendors[2] ?? null],
     hasPhoto: base?.hasPhoto ?? false,

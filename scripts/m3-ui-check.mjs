@@ -163,7 +163,7 @@ try {
   await js(`await click('.top button', 'Add item'); await settle(700);`);
   const newId = await js(`return decodeURIComponent(location.hash.split('/')[2] ?? '')`);
   check('add saves a team item with a tm- id and opens it; no PIN for vendor option 1', [/^tm-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/.test(newId), await js(`return gates()`)], [true, 2]);
-  check('new item in IndexedDB: counted today, team, packs of 4 at $5.00', await js(`const r = await idb('items', ${JSON.stringify(newId)}); return [r.source, r.lastCounted, r.onHand, r.desired, r.subcategory, r.location, r.vendors[0].packSize, r.vendors[0].packPriceCents, r.vendors[0].priceChecked]`), ['team', today, 3, 8, 'Standoffs Test', 'Pit cart', 4, 500, today]);
+  check('new item in IndexedDB: counted now (local date-time with offset, counted_by blank), team, packs of 4 at $5.00', await js(`const r = await idb('items', ${JSON.stringify(newId)}); return [r.source, r.lastCounted.startsWith('${today}T') && /^.{19}[+-]\\d\\d:\\d\\d$/.test(r.lastCounted) && r.countedBy === '', r.onHand, r.desired, r.subcategory, r.location, r.vendors[0].packSize, r.vendors[0].packPriceCents, r.vendors[0].priceChecked]`), ['team', true, 3, 8, 'Standoffs Test', 'Pit cart', 4, 500, today]);
   check('new subcategory added to Mechanical (F6)', await js(`return (await idb('categories', 'Mechanical')).subcategories.at(-1)`), 'Standoffs Test');
   check('header count now 130 items (the new one is short)', await js(`await go('#/inventory'); return document.querySelector('.top .small').textContent`), '130 items · 125 short · 0 low spares');
 

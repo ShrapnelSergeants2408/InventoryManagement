@@ -21,18 +21,19 @@ import {
   type CountGroup,
   type CountMode,
 } from '../../../domain/count';
-import { formatIsoDate, localIsoDate } from '../../../domain/dates';
+import { countedDate, formatIsoDate, localIsoDate } from '../../../domain/dates';
+import { assignedHelpers } from '../../../domain/helpers';
 import { NO_LOCATION, checkName, takenLocationNames } from '../../../domain/lists';
 import { formatCents } from '../../../domain/money';
 import { resolveScan } from '../../../domain/scan';
 import { matchesQuery } from '../../../domain/search';
 import { statusLabel, stockStatus } from '../../../domain/status';
-import { preferredVendorOf, type Item } from '../../../domain/types';
-import { StatusChip, TopBar, plural } from '../../components/common';
+import { nameKey, preferredVendorOf, type Item } from '../../../domain/types';
+import { StatusChip, Toggle, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { Keypad } from '../../components/Keypad';
 import { Scanner, type CameraState } from '../../components/Scanner';
-import { useDb, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
+import { useDb, useHelpers, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -87,6 +88,8 @@ function Count({ snap }: { snap: InventorySnapshot }) {
   // The count round (F24): items count as done when counted on or after this date; '' = ever.
   const [since, setSince] = useState('');
   const [newRound, setNewRound] = useState(false);
+  const liveHelpers = useHelpers();
+  const helpers = liveHelpers.state === 'ready' ? liveHelpers.value : [];
   useEffect(() => {
     const sub = liveQuery(() => getCountSince(db)).subscribe({ next: setSince, error: () => undefined });
     return () => sub.unsubscribe();
@@ -297,6 +300,8 @@ function Count({ snap }: { snap: InventorySnapshot }) {
 
   // Start (10a)
   const groups = groupsFor(options.mode);
+  // F24: each group shows the helper it's assigned to (scan mode tracks by category).
+  const assigned = assignedHelpers(helpers, options.mode === 'location' ? 'location' : 'category');
   const pause = loadCountPause();
   const paused = (() => {
     if (!pause) return null;
@@ -379,6 +384,20 @@ function Count({ snap }: { snap: InventorySnapshot }) {
           )}
         </div>
         {newRound && <NewRoundDialog since={since} onClose={() => setNewRound(false)} />}
+        <div class="card chelp">
+          <Icon name="phone" class="ic xl" />
+          <div class="grow">
+            <div class="chelp-h">{helpers.length ? `${plural(helpers.length, 'helper device')}` : 'Count with several devices'}</div>
+            <div class="small muted">
+              {helpers.length
+                ? `${helpers.filter((h) => h.kits.length > 0).length} sent a count kit. Their counts come back here with Import counts.`
+                : 'Other phones or tablets can count at the same time: give each its groups and send it a count kit.'}
+            </div>
+          </div>
+          <a class="btn" href={href.helpers}>
+            Helper devices
+          </a>
+        </div>
         {paused && (
           <div class="banner cpause" role="status">
             <Icon name="count" />
@@ -450,10 +469,12 @@ function Count({ snap }: { snap: InventorySnapshot }) {
           {groups.map((g) => {
             const p = Math.round((100 * g.counted) / g.items.length);
             const mode = options.mode;
+            const who = assigned.get(nameKey(g.name));
             return (
               <div key={g.name} class="cg-row">
                 <div class="cg-n">
                   <strong>{g.name}</strong> <span class="small muted">{plural(g.items.length, 'item')}</span>
+                  {who && <span class="small cg-help">Helper: {who.join(', ')}</span>}
                 </div>
                 <strong class="tnum">
                   {g.counted} / {g.items.length}
@@ -529,16 +550,6 @@ function NewRoundDialog(props: { since: string; onClose: () => void }) {
     </Dialog>
   );
 }
-function Toggle(props: { on: boolean; onClick: () => void; children: string | Array<string | number> }) {
-  return (
-    <button type="button" class="tog" role="switch" aria-checked={props.on} onClick={props.onClick}>
-      <span class={props.on ? 'sw on' : 'sw'} aria-hidden="true">
-        <span />
-      </span>
-      <span>{props.children}</span>
-    </button>
-  );
-}
 
 // ── One item (10b, 10e) ──
 
@@ -600,7 +611,7 @@ function ItemCount(p: ItemCountProps) {
             <span class="small muted">unit</span> <strong>{p.item.unit}</strong>
           </div>
           <div class="small muted">
-            {p.item.lastCounted ? `Last counted ${formatIsoDate(p.item.lastCounted)}: ${p.item.onHand} ${p.item.unit}` : `Not counted yet (on hand now: ${p.item.onHand})`}
+            {p.item.lastCounted ? `Last counted ${formatIsoDate(countedDate(p.item.lastCounted))}${p.item.countedBy ? ` by ${p.item.countedBy}` : ''}: ${p.item.onHand} ${p.item.unit}` : `Not counted yet (on hand now: ${p.item.onHand})`}
           </div>
           {p.askLocation && <LocationPick item={p.item} loc={loc} onLoc={setLoc} snap={p.snap} recent={p.recent} />}
         </div>

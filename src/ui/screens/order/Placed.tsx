@@ -2,7 +2,7 @@
 // Un-cancel, Delete and receipts (PIN). The list of orders is the order history (History.tsx, §21.5).
 import { useEffect, useState } from 'preact/hooks';
 import { addReceipt, deleteOrder, getReceipt, receiveOrder, removeReceipt, setCancelled } from '../../../data/placed-orders';
-import { formatIsoDate } from '../../../domain/dates';
+import { formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { formatCents } from '../../../domain/money';
 import {
   MAX_RECEIPTS,
@@ -13,6 +13,7 @@ import {
   lineUnits,
   orderStatus,
   orderTotals,
+  overdueDays,
   percentText,
   receiveProblem,
   receivedAnything,
@@ -23,7 +24,7 @@ import {
 import { gate } from '../../../security/gate';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../components/common';
-import { useDb, useOrders, useSnapshot } from '../../data-hooks';
+import { useDb, useOrders, useSettings, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href, replaceRoute } from '../../shell/router';
 import { useCloseOnRelock } from '../../shell/LockPill';
@@ -40,12 +41,24 @@ export function StatusBadge({ order }: { order: PlacedOrder }) {
   return <span class={STATUS_CHIP[s]}>{STATUS_LABEL[s]}</span>;
 }
 
+/** "Overdue · 18 days" (v0.17), in the attention style; nothing when `days` is null. */
+export function OverdueChip({ days }: { days: number | null }) {
+  if (days === null) return null;
+  return (
+    <span class="chip att">
+      <Icon name="clock" />
+      Overdue · {days} days
+    </span>
+  );
+}
+
 type Dlg = 'receive' | 'edit' | 'cancel' | 'delete' | { view: ReceiptRef } | { remove: ReceiptRef } | null;
 
 export function PlacedOrderScreen({ id }: { id: string }) {
   const db = useDb();
   const live = useOrders();
   const snap = useSnapshot();
+  const settings = useSettings();
   const [dlg, setDlg] = useState<Dlg>(null);
   const [busy, setBusy] = useState(false);
   const back = <BackButton fallback={href.placed} />;
@@ -127,8 +140,9 @@ export function PlacedOrderScreen({ id }: { id: string }) {
       <div class="po-page">
         <div class="po-head">
           <StatusBadge order={order} />
+          <OverdueChip days={overdueDays(order, localIsoDate(), settings.overdueDays)} />
           <span class="small muted">
-            {[order.orderNo && `Order # ${order.orderNo}`, order.payment && `Paid by ${order.payment}`, order.fromList && `From ${order.fromList}`].filter(Boolean).join(' · ') || 'No order # or payment recorded'}
+            {[order.orderNo && `Order # ${order.orderNo}`, order.payment && `Paid by ${order.payment}`, order.funding && `From ${order.funding} funds`, order.fromList && `From ${order.fromList}`].filter(Boolean).join(' · ') || 'No order # or payment recorded'}
           </span>
           <span class="grow" />
           <button type="button" class="btn" onClick={() => void pinThen('Editing an order needs the PIN.', () => setDlg('edit'))}>

@@ -8,6 +8,7 @@ import { useMemo, useRef, useState } from 'preact/hooks';
 import { deleteOrderList } from '../../../data/order-lists';
 import { addReceipt, applyPriceChanges, recordOrder, updateOrder, type OrderInput, type RecordResult } from '../../../data/placed-orders';
 import { localIsoDate } from '../../../domain/dates';
+import { fundingSources } from '../../../domain/order-history';
 import { centsToPlain, formatCents, parsePrice } from '../../../domain/money';
 import {
   AUTOMATIC_LIST,
@@ -36,7 +37,7 @@ import { gate } from '../../../security/gate';
 import { prepareReceiptPhoto } from '../../../io/image';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { PinMark, plural } from '../../components/common';
-import { useDb, useSnapshot } from '../../data-hooks';
+import { useDb, useOrders, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { showToast } from '../../shell/toast';
 
@@ -101,6 +102,9 @@ export function OrderForm(props: OrderFormProps) {
   const [placedOn, setPlacedOn] = useState(editing?.placedOn ?? localIsoDate());
   const [orderNo, setOrderNo] = useState(editing?.orderNo ?? '');
   const [payment, setPayment] = useState(editing?.payment ?? '');
+  const [funding, setFunding] = useState(editing?.funding ?? '');
+  const orders = useOrders();
+  const fundingNames = useMemo(() => (orders.state === 'ready' ? fundingSources(orders.value) : []), [orders]);
   const [tax, setTax] = useState(editing ? centsToPlain(editing.taxCents) : '');
   const [shipping, setShipping] = useState(editing ? centsToPlain(editing.shippingCents) : '');
   const [fees, setFees] = useState(editing ? centsToPlain(editing.feesCents) : '');
@@ -122,6 +126,7 @@ export function OrderForm(props: OrderFormProps) {
     placedOn,
     orderNo: orderNo.trim(),
     payment: payment.trim(),
+    funding: funding.trim(),
     taxCents: amount(tax),
     shippingCents: amount(shipping),
     feesCents: amount(fees),
@@ -299,6 +304,17 @@ export function OrderForm(props: OrderFormProps) {
             Payment / PO <span class="lbl-opt">(optional)</span>
           </span>
           <input class="field" value={payment} placeholder="e.g. PO 2408-17, team card" autoComplete="off" onInput={(e) => setPayment((e.currentTarget as HTMLInputElement).value)} />
+        </label>
+        <label>
+          <span class="lbl">
+            Paid from <span class="lbl-opt">(funding, optional)</span>
+          </span>
+          <input class="field" value={funding} list="of-funding" placeholder="e.g. School budget, FIRST grant" autoComplete="off" onInput={(e) => setFunding((e.currentTarget as HTMLInputElement).value)} />
+          <datalist id="of-funding">
+            {fundingNames.map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
         </label>
         <MoneyField label="Tax" value={tax} onInput={setTax} problem={tried ? fieldProblem('taxCents') : null} />
         <MoneyField label="Shipping" value={shipping} onInput={setShipping} problem={tried ? fieldProblem('shippingCents') : null} />

@@ -5,7 +5,10 @@ import Papa from 'papaparse';
 import { describe, expect, it } from 'vitest';
 import { loadHistoryRange, saveHistoryRange, type KeyValueStore } from '../src/data/prefs';
 import {
+  NO_FUNDING,
   addDays,
+  budgetStatus,
+  fundingSources,
   historyOrders,
   isMonthDay,
   offeredRanges,
@@ -15,7 +18,7 @@ import {
   summaryOrders,
   type HistorySettings,
 } from '../src/domain/order-history';
-import type { PlacedLine, PlacedOrder } from '../src/domain/placed-orders';
+import { overdueDays, type PlacedLine, type PlacedOrder } from '../src/domain/placed-orders';
 import type { Category } from '../src/domain/types';
 import { categoryRows, historyFileName, serializeHistoryCsv, serializeHistoryLinesCsv } from '../src/io/history-csv';
 
@@ -41,6 +44,7 @@ const order = (over: Partial<PlacedOrder> = {}): PlacedOrder => ({
   placedOn: '2026-10-01',
   orderNo: '',
   payment: '',
+  funding: '',
   cancelled: false,
   taxCents: 0,
   shippingCents: 0,
@@ -208,24 +212,26 @@ describe('spending summary (§21.5)', () => {
 });
 
 describe('CSV exports (§21.5)', () => {
-  const tricky = order({ supplier: '=REV', placedOn: '2026-09-02', orderNo: '+1', payment: '@PO', notes: '-x, "y"', taxCents: 100, discount: { kind: '$', value: 250 }, receipts: [{ id: 'r1', type: 'image/jpeg' }], lines: [line({ itemId: 'tm-1', description: '=HYPERLINK("x")', partNo: 'REV-1', packs: 2, packSize: 10, packPriceCents: 1234, received: 5 }), line({ itemId: '', category: '', description: 'Shirts', unit: 'shirt', packs: 3, packSize: 2, packPriceCents: 1500 })] });
+  const tricky = order({ supplier: '=REV', placedOn: '2026-09-02', orderNo: '+1', payment: '@PO', funding: '=Grant', notes: '-x, "y"', taxCents: 100, discount: { kind: '$', value: 250 }, receipts: [{ id: 'r1', type: 'image/jpeg' }], lines: [line({ itemId: 'tm-1', description: '=HYPERLINK("x")', partNo: 'REV-1', packs: 2, packSize: 10, packPriceCents: 1234, received: 5 }), line({ itemId: '', category: '', description: 'Shirts', unit: 'shirt', packs: 3, packSize: 2, packPriceCents: 1500 })] });
   const cancelled = order({ supplier: 'WCP', placedOn: '2026-09-01', cancelled: true });
   const x = { kind: 'custom' as const, range: { from: '2026-09-01', to: '2026-09-30' }, filters: { supplier: null, status: 'all' as const } };
   const shown = [tricky, cancelled];
   const parse = (text: string) => Papa.parse<string[]>(text.replace(/^﻿/, ''), { delimiter: ',' }).data.filter((r) => r.some((c) => c !== ''));
 
-  it('Export CSV: a first row naming the range and filters, the orders, then both summaries under headings', () => {
+  it('Export CSV: a first row naming the range and filters, the orders, then the three summaries under headings', () => {
     const rows = parse(serializeHistoryCsv(x, shown, spendingSummary(summaryOrders(shown, x.range, null), cats('Electrical'))));
     expect(rows[0]).toEqual(['Order history: Custom (2026-09-01 to 2026-09-30) · Supplier: any · Status: all']);
-    expect(rows[1]).toEqual(['Placed', 'Supplier', 'Order #', 'Payment', 'Status', 'Parts', 'Discount', 'Tax', 'Shipping', 'Fees', 'Total', 'Receipts', 'From list', 'Notes']);
-    expect(rows[2]).toEqual(['2026-09-02', "'=REV", "'+1", "'@PO", 'Partly received', '69.68', '-2.50', '1.00', '0.00', '0.00', '68.18', '1', 'Automatic', "'-x, \"y\""]);
-    expect(rows[3]!.slice(0, 5)).toEqual(['2026-09-01', 'WCP', '', '', 'Cancelled']);
+    expect(rows[1]).toEqual(['Placed', 'Supplier', 'Order #', 'Payment', 'Paid from', 'Status', 'Parts', 'Discount', 'Tax', 'Shipping', 'Fees', 'Total', 'Receipts', 'From list', 'Notes']);
+    expect(rows[2]).toEqual(['2026-09-02', "'=REV", "'+1", "'@PO", "'=Grant", 'Partly received', '69.68', '-2.50', '1.00', '0.00', '0.00', '68.18', '1', 'Automatic', "'-x, \"y\""]);
+    expect(rows[3]!.slice(0, 6)).toEqual(['2026-09-01', 'WCP', '', '', '', 'Cancelled']);
     expect(rows[4]).toEqual(['Spending by supplier (cancelled orders left out)']);
     expect(rows[5]).toEqual(['Supplier', 'Orders', 'Parts', 'Discount', 'Tax', 'Shipping', 'Fees', 'Total']);
     expect(rows[6]).toEqual(["'=REV", '1', '69.68', '-2.50', '1.00', '0.00', '0.00', '68.18']);
     expect(rows[7]).toEqual(['Total', '1', '69.68', '-2.50', '1.00', '0.00', '0.00', '68.18']);
     expect(rows[8]).toEqual(['Spending by category (cancelled orders left out)']);
-    expect(rows.slice(9)).toEqual([['Category', 'Amount'], ['Electrical', '24.68'], ['Other', '45.00'], ['Discount', '-2.50'], ['Tax', '1.00'], ['Shipping', '0.00'], ['Fees', '0.00'], ['Total', '68.18']]);
+    expect(rows.slice(9, 17)).toEqual([['Category', 'Amount'], ['Electrical', '24.68'], ['Other', '45.00'], ['Discount', '-2.50'], ['Tax', '1.00'], ['Shipping', '0.00'], ['Fees', '0.00'], ['Total', '68.18']]);
+    // v0.17: by funding, guarded like every other cell; the cancelled order is left out.
+    expect(rows.slice(17)).toEqual([['Spending by funding (cancelled orders left out)'], ['Paid from', 'Orders', 'Total'], ["'=Grant", '1', '68.18'], ['Total', '1', '68.18']]);
   });
 
   it('Export lines CSV: one row per line, typed lines under Other, quantity in units', () => {
@@ -263,5 +269,44 @@ describe('the remembered range (on the device)', () => {
     const broken: KeyValueStore = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
     expect(loadHistoryRange(broken)).toEqual({ kind: 'schoolYear', from: '', to: '' });
     expect(() => saveHistoryRange({ kind: 'month', from: '', to: '' }, broken)).not.toThrow();
+  });
+});
+
+describe('funding, budget and overdue deliveries (v0.17)', () => {
+  const o = (placedOn: string, funding: string, cents: number, over: Partial<PlacedOrder> = {}) => order({ placedOn, funding, lines: [line({ packPriceCents: cents })], ...over });
+
+  it('by funding: names ignoring capitals (as on the newest order), A–Z, "Not recorded" last, cancelled left out; adds up to the total', () => {
+    const os = [o('2026-09-01', 'school budget', 1000), o('2026-09-05', 'School Budget', 2500), o('2026-09-03', 'FIRST grant', 400), o('2026-09-04', '', 99), o('2026-09-06', '', 1), o('2026-09-07', 'Sponsor', 5000, { cancelled: true })];
+    const s = spendingSummary(os, cats('Electrical'));
+    expect(s.funding).toEqual([
+      { funding: 'FIRST grant', orders: 1, totalCents: 400 },
+      { funding: 'School Budget', orders: 2, totalCents: 3500 },
+      { funding: NO_FUNDING, orders: 2, totalCents: 100 },
+    ]);
+    expect(s.funding.reduce((n, r) => n + r.totalCents, 0)).toBe(s.total.totalCents);
+    expect(spendingSummary([], cats('Electrical')).funding).toEqual([]);
+  });
+
+  it('the form suggests each funding name once, as on its newest order, A–Z, blanks left out', () => {
+    expect(fundingSources([o('2026-09-01', 'school budget', 1), o('2026-09-05', 'School Budget', 1), o('2026-09-03', ' FIRST grant ', 1), o('2026-09-04', '', 1)])).toEqual(['FIRST grant', 'School Budget']);
+  });
+
+  it('budget: this school year, every supplier, cancelled left out; over budget gives a negative left', () => {
+    const os = [o('2026-07-31', 'x', 99999), o('2026-08-01', 'x', 1000, { supplier: 'WCP' }), o('2026-10-29', 'x', 2000), o('2026-10-01', 'x', 7777, { cancelled: true })];
+    expect(budgetStatus(os, null, '2026-10-29', '08-01')).toBeNull();
+    expect(budgetStatus(os, 5000, '2026-10-29', '08-01')).toEqual({ range: { from: '2026-08-01', to: '2026-10-29' }, budgetCents: 5000, spentCents: 3000, leftCents: 2000 });
+    expect(budgetStatus(os, 2500, '2026-10-29', '08-01')!.leftCents).toBe(-500);
+    expect(budgetStatus(os, 0, '2026-10-29', '09-01')!.spentCents).toBe(2000);
+  });
+
+  it('overdue: open orders placed more than n days ago; received and cancelled never', () => {
+    const open = o('2026-10-15', '', 100);
+    expect(overdueDays(open, '2026-10-29', 14)).toBeNull(); // 14 days: not yet
+    expect(overdueDays(open, '2026-10-30', 14)).toBe(15);
+    const part = o('2026-10-01', '', 100, { lines: [line({ packs: 2, packSize: 1, received: 1 })] });
+    expect(overdueDays(part, '2026-10-29', 14)).toBe(28); // partly received is still open
+    expect(overdueDays(o('2026-10-01', '', 100, { lines: [line({ packs: 1, packSize: 1, received: 1 })] }), '2026-10-29', 14)).toBeNull();
+    expect(overdueDays(o('2026-10-01', '', 100, { cancelled: true }), '2026-10-29', 14)).toBeNull();
+    expect(overdueDays(open, '2026-10-17', 1)).toBe(2);
   });
 });

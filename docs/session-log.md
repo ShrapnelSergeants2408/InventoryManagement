@@ -833,3 +833,21 @@ High for the ranges and money (boundary dates, hand-worked and random summaries,
 **Later:** Dan merged PR #32 (M20) and ran its tablet check: "tablet check successful". Every v0.13 milestone (M18–M20) is built and checked on the tablet. Still open from Stage 5: the real label-sheet print (D-01), waiting for labels to be bought.
 
 **Later:** Dan: "label print test can be closed". SPEC §15 question 2 (which label sheets) and the Stage 5 real label-print test (D-01) are closed; decision log updated. Nothing from Stage 5 or v0.13 is still open.
+
+## 2026-10-29 (midday, about 11:40–13:00 CDT) — Independent mentor review; M21 and M22
+
+**SESSION IDENTITY**
+New session. Dan asked for an independent look at the app "as a mentor of an FRC team": features, ease of use, layout, and up to 10 suggestions. Reviewed SPEC v0.15, the earlier reviews and screenshots of every screen from the existing browser checks.
+
+**DECISIONS (Dan)**
+Layout issues: "fix 1, 2, don't worry about 3, fix 4, 5, 6. don't worry about 7." Suggestions: 1–3 (part checkout, pit packing list, tool checkout) go to the team as a document; "do not include 4, 5, 6"; "Add 7, 8, 9 to current build"; "don't do 10".
+
+**WORK COMPLETED**
+- `docs/proposals/2026-10-29-team-feature-ideas.md`: the three ideas, each with "inside this app" vs "a separate app" and questions for the team.
+- **M21** (`m21-ui-fixes`, SPEC v0.16, `APP_VERSION` 0.8.0): toasts under the top bar and tap-through; NOT COUNTED for never-counted items; portrait search shares the lock's row; Scan panel label, hint and alignment; lock always at the right. `docs/reviews/M21.md`.
+- **M22** (`m22-spending-overdue-search`, stacked on M21, SPEC v0.17, `APP_VERSION` 0.9.0): Paid from (funding) on orders, By funding summary, school-year budget, overdue deliveries and their setting, the Inventory shop status strip, search by category / subcategory / barcode, recently viewed. `docs/reviews/M22.md`.
+
+**EVIDENCE**
+See the two review files (unit tests, browser checks, screenshots).
+
+**Next:** Dan confirms the details in `docs/reviews/M21.md` and `M22.md`, merges M21 then M22 (merge commits: M22 is stacked), and runs both tablet checks.

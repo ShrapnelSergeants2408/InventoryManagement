@@ -8,16 +8,19 @@ import { STATUS_LABEL, lineTotalCents, lineUnits, orderStatus, orderTotals, type
 import { writeRows } from './csv';
 import { guardCell } from './order-csv';
 
-export const HISTORY_ORDER_COLUMNS = ['Placed', 'Supplier', 'Order #', 'Payment', 'Status', 'Parts', 'Discount', 'Tax', 'Shipping', 'Fees', 'Total', 'Receipts', 'From list', 'Notes'] as const;
+export const HISTORY_ORDER_COLUMNS = ['Placed', 'Supplier', 'Order #', 'Payment', 'Paid from', 'Status', 'Parts', 'Discount', 'Tax', 'Shipping', 'Fees', 'Total', 'Receipts', 'From list', 'Notes'] as const;
 
 export const HISTORY_SUPPLIER_COLUMNS = ['Supplier', 'Orders', 'Parts', 'Discount', 'Tax', 'Shipping', 'Fees', 'Total'] as const;
 
 export const HISTORY_CATEGORY_COLUMNS = ['Category', 'Amount'] as const;
 
+export const HISTORY_FUNDING_COLUMNS = ['Paid from', 'Orders', 'Total'] as const;
+
 export const HISTORY_LINE_COLUMNS = ['Placed', 'Supplier', 'Order #', 'Status', 'Item id', 'Item', 'Part #', 'Category', 'Unit', 'Packs', 'Pack size', 'Qty', 'Pack price', 'Line total', 'Received'] as const;
 
 export const SUPPLIER_HEADING = 'Spending by supplier (cancelled orders left out)';
 export const CATEGORY_HEADING = 'Spending by category (cancelled orders left out)';
+export const FUNDING_HEADING = 'Spending by funding (cancelled orders left out)';
 
 const money = centsToPlain;
 const minus = (cents: number) => centsToPlain(-cents);
@@ -59,6 +62,7 @@ export function serializeHistoryCsv(x: HistoryExport, orders: readonly PlacedOrd
       guardCell(o.supplier),
       guardCell(o.orderNo),
       guardCell(o.payment),
+      guardCell(o.funding),
       STATUS_LABEL[orderStatus(o)],
       money(t.partsCents),
       minus(t.discountCents),
@@ -73,6 +77,13 @@ export function serializeHistoryCsv(x: HistoryExport, orders: readonly PlacedOrd
   }
   rows.push([], [SUPPLIER_HEADING], [...HISTORY_SUPPLIER_COLUMNS], ...summary.suppliers.map(supplierRow), supplierRow(summary.total));
   rows.push([], [CATEGORY_HEADING], [...HISTORY_CATEGORY_COLUMNS], ...categoryRows(summary).map(([c, cents]) => [guardCell(c), money(cents)]));
+  rows.push(
+    [],
+    [FUNDING_HEADING],
+    [...HISTORY_FUNDING_COLUMNS],
+    ...summary.funding.map((f) => [guardCell(f.funding), String(f.orders), money(f.totalCents)]),
+    ['Total', String(summary.total.orders), money(summary.total.totalCents)],
+  );
   return writeRows(rows);
 }
 

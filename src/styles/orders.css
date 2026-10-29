@@ -131,3 +131,15 @@
   .hi-f .field { min-width: 0; }
   .hi-t th, .hi-t td { padding: 8px 10px; }
 }
+
+/* v0.17: overdue deliveries (attention style, §17: light amber, never a stock-status fill), the
+   row's status cell, the school-year budget and the funding table's "Not recorded" row. */
+.chip.att { background: #fff7db; border: 2px solid #c99700; color: var(--ink); }
+.po-st { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; align-items: center; }
+.hi-budget { display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: flex-end; padding: 16px 20px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+.hi-budget > div { display: flex; flex-direction: column; gap: 2px; }
+.hi-budget .lbl { margin: 0; }
+.hi-bv { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 1.1; }
+.hi-budget.over { background: #fff7db; border-color: #e8d9a8; }
+.hi-budget > p { flex-basis: 100%; margin: 0; }
+.hi-t tr.mutrow td { color: var(--ink-2); font-style: italic; }

@@ -150,12 +150,33 @@ export interface CategoryRow {
   partsCents: number;
 }
 
+export interface FundingRow {
+  /** As written on its newest order, or "Not recorded" for orders without one. */
+  funding: string;
+  orders: number;
+  totalCents: number;
+}
+
 export interface SpendingSummary {
   suppliers: SupplierRow[];
   /** The Total row of the supplier summary. */
   total: SupplierRow;
   /** Parts cost by category (§11 order, then old categories, then Other). */
   categories: CategoryRow[];
+  /** Order totals by where the money came from (v0.17): A–Z, then "Not recorded". */
+  funding: FundingRow[];
+}
+
+export const NO_FUNDING = 'Not recorded';
+
+/** The funding names used on orders, each once (as on its newest order), A–Z: the form's suggestions. */
+export function fundingSources(orders: readonly PlacedOrder[]): string[] {
+  const seen = new Map<string, string>();
+  for (const o of sortOrders(orders)) {
+    const f = o.funding.trim();
+    if (f !== '' && !seen.has(nameKey(f))) seen.set(nameKey(f), f);
+  }
+  return [...seen.values()].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }));
 }
 
 export const OTHER_CATEGORY = 'Other';
@@ -214,7 +235,42 @@ export function spendingSummary(orders: readonly PlacedOrder[], categories: read
   const gone = [...parts.entries()].filter(([k]) => !listKey.has(k)).map(([, r]) => r).sort((a, b) => a.category.localeCompare(b.category, 'en', { sensitivity: 'base' }));
   const cats = [...inList, ...gone];
   if (other > 0 || orders.some((o) => !o.cancelled && o.lines.some((l) => l.itemId === '' || l.category.trim() === ''))) cats.push({ category: OTHER_CATEGORY, partsCents: other });
-  return { suppliers, total, categories: cats };
+
+  const byFunding = new Map<string, FundingRow>();
+  let none: FundingRow | null = null;
+  for (const o of sortOrders(orders)) {
+    if (o.cancelled) continue;
+    const f = o.funding.trim();
+    let row: FundingRow | undefined;
+    if (f === '') row = none ??= { funding: NO_FUNDING, orders: 0, totalCents: 0 };
+    else if (!(row = byFunding.get(nameKey(f)))) byFunding.set(nameKey(f), (row = { funding: f, orders: 0, totalCents: 0 }));
+    row.orders++;
+    row.totalCents += orderTotals(o).totalCents;
+  }
+  const funding = [...byFunding.values()].sort((a, b) => a.funding.localeCompare(b.funding, 'en', { sensitivity: 'base' }));
+  if (none) funding.push(none);
+  return { suppliers, total, categories: cats, funding };
+}
+
+export interface BudgetStatus {
+  /** The school year the budget is for, start to today. */
+  range: DateRange;
+  budgetCents: number;
+  /** Order totals this school year, every supplier, cancelled orders left out. */
+  spentCents: number;
+  /** Budget − spent; negative when over. */
+  leftCents: number;
+}
+
+/**
+ * The school-year budget (v0.17): what has been spent this school year against it, whatever range
+ * or supplier the history shows. Null when no budget is set.
+ */
+export function budgetStatus(orders: readonly PlacedOrder[], budgetCents: number | null, today: string, schoolYearStart: string): BudgetStatus | null {
+  if (budgetCents === null) return null;
+  const range = rangeDates('schoolYear', today, { seasonStart: '', schoolYearStart })!;
+  const spentCents = summaryOrders(orders, range, null).reduce((n, o) => n + orderTotals(o).totalCents, 0);
+  return { range, budgetCents, spentCents, leftCents: budgetCents - spentCents };
 }
 
 /** The range for a file name or a heading: "This school year (2026-08-01 to 2026-10-29)". */

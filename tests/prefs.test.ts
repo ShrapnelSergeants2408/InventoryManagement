@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadExpanded, loadFilters, saveExpanded, saveFilters, type KeyValueStore } from '../src/data/prefs';
+import { RECENT_MAX, loadExpanded, loadFilters, loadRecent, noteViewed, saveExpanded, saveFilters, type KeyValueStore } from '../src/data/prefs';
 import { NO_FILTERS } from '../src/domain/filters';
 
 function memoryStore(): KeyValueStore & { data: Map<string, string> } {
@@ -52,5 +52,25 @@ describe('remembered list state (F1 expanded groups, F5 filters)', () => {
     expect(() => saveExpanded(new Set(['x']), throwing)).not.toThrow();
     expect(() => saveFilters(NO_FILTERS, throwing)).not.toThrow();
     expect(loadFilters(null)).toEqual(NO_FILTERS);
+  });
+});
+
+describe('recently viewed items (v0.17)', () => {
+  it('newest first, each once, at most ${RECENT_MAX}', () => {
+    const store = memoryStore();
+    expect(loadRecent(store)).toEqual([]);
+    for (const id of ['a', 'b', 'c', 'a']) noteViewed(id, store);
+    expect(loadRecent(store)).toEqual(['a', 'c', 'b']);
+    for (let i = 0; i < 20; i++) noteViewed(`x${i}`, store);
+    expect(loadRecent(store)).toHaveLength(RECENT_MAX);
+    expect(loadRecent(store)[0]).toBe('x19');
+  });
+  it('bad or blocked storage gives an empty list and never throws', () => {
+    const store = memoryStore();
+    store.setItem('frc2408.inventory.recent', '{"not":"a list"}');
+    expect(loadRecent(store)).toEqual([]);
+    const blocked: KeyValueStore = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
+    expect(loadRecent(blocked)).toEqual([]);
+    expect(() => noteViewed('a', blocked)).not.toThrow();
   });
 });

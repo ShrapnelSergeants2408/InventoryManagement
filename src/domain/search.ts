@@ -13,10 +13,11 @@ export function normalize(s: string): string {
 
 /**
  * Everything F4 searches: name, part numbers and suppliers of every vendor
- * option (D2: not just the preferred one), location and notes.
+ * option (D2: not just the preferred one), location and notes; and (v0.17) category,
+ * subcategory and barcode, so "bearings" finds the Bearings even when the name doesn't say so.
  */
 export function searchText(item: Item): string {
-  const parts = [item.name, item.location, item.notes];
+  const parts = [item.name, item.location, item.notes, item.category, item.subcategory, item.barcode];
   for (const v of item.vendors) if (v) parts.push(v.partNo, v.supplier);
   return normalize(parts.join(' \n '));
 }

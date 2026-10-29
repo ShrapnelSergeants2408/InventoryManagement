@@ -9,9 +9,11 @@ import { formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { formatCents } from '../../../domain/money';
 import {
   DEFAULT_RANGE,
+  NO_FUNDING,
   RANGE_LABEL,
   STATUS_FILTERS,
   STATUS_FILTER_LABEL,
+  budgetStatus,
   filtersText,
   historyOrders,
   matchesStatus,
@@ -19,13 +21,14 @@ import {
   rangeDates,
   spendingSummary,
   summaryOrders,
+  type BudgetStatus,
   type DateRange,
   type HistoryFilters,
   type RangeKind,
   type SpendingSummary,
   type StatusFilter,
 } from '../../../domain/order-history';
-import { orderTotals, type PlacedOrder } from '../../../domain/placed-orders';
+import { orderTotals, overdueDays, type PlacedOrder } from '../../../domain/placed-orders';
 import { nameKey, type Category } from '../../../domain/types';
 import { categoryRows, historyFileName, serializeHistoryCsv, serializeHistoryLinesCsv, type HistoryExport } from '../../../io/history-csv';
 import { shareOrDownload } from '../../../io/share';
@@ -35,7 +38,7 @@ import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
-import { StatusBadge } from './Placed';
+import { OverdueChip, StatusBadge } from './Placed';
 import { ListTabs } from './Order';
 
 type View = 'orders' | 'summary';
@@ -76,6 +79,7 @@ export function HistoryScreen() {
   const suppliers = useMemo(() => (orders ? orderSuppliers(orders) : []), [orders]);
   const shown = useMemo(() => (orders && range ? historyOrders(orders, range, filters) : []), [orders, range?.from, range?.to, supplier, status]);
   const summary = useMemo(() => (orders && range ? spendingSummary(summaryOrders(orders, range, supplier), categories) : null), [orders, range?.from, range?.to, supplier, categories]);
+  const budget = useMemo(() => (orders ? budgetStatus(orders, settings.budgetCents, today, settings.schoolYearStart) : null), [orders, settings.budgetCents, settings.schoolYearStart, today]);
   const counts = useMemo(() => {
     const inRangeOf = orders && range ? historyOrders(orders, range, { supplier, status: 'all' }) : [];
     return Object.fromEntries(STATUS_FILTERS.map((s) => [s, inRangeOf.filter((o) => matchesStatus(o, s)).length])) as Record<StatusFilter, number>;
@@ -253,7 +257,10 @@ export function HistoryScreen() {
                       {[o.orderNo && `# ${o.orderNo}`, plural(o.lines.length, 'line'), o.receipts.length > 0 && plural(o.receipts.length, 'receipt')].filter(Boolean).join(' · ')}
                     </span>
                   </span>
-                  <StatusBadge order={o} />
+                  <span class="po-st">
+                    <StatusBadge order={o} />
+                    <OverdueChip days={overdueDays(o, today, settings.overdueDays)} />
+                  </span>
                   <span class={o.cancelled ? 'po-total mut' : 'po-total'}>{formatCents(orderTotals(o).totalCents)}</span>
                   <Icon name="chevRight" />
                 </a>
@@ -262,6 +269,7 @@ export function HistoryScreen() {
           ) : (
             summary && (
               <div class="hi-sum">
+                {budget && <BudgetCard budget={budget} />}
                 <p class="small muted">Every order in these dates{supplier ? ` from ${supplier}` : ''}, whatever its status, except cancelled orders.</p>
                 <SummaryTables summary={summary} />
               </div>
@@ -274,7 +282,7 @@ export function HistoryScreen() {
         summary &&
         createPortal(
           <div id="print-root">
-            <PrintedSummary kind={kind} range={range} filters={filters} summary={summary} orders={shown} today={today} />
+            <PrintedSummary kind={kind} range={range} filters={filters} summary={summary} orders={shown} today={today} budget={budget} />
           </div>,
           document.body,
         )}
@@ -282,7 +290,31 @@ export function HistoryScreen() {
   );
 }
 
-/** The two summaries (§21.5): by supplier, then by category; both end on the same total. */
+/** The school-year budget (v0.17): budget, spent this school year, left (or over). */
+function BudgetCard({ budget }: { budget: BudgetStatus }) {
+  const over = budget.leftCents < 0;
+  return (
+    <div class={over ? 'hi-budget over' : 'hi-budget'} aria-label="School-year budget">
+      <div>
+        <span class="lbl">School-year budget</span>
+        <span class="hi-bv">{formatCents(budget.budgetCents)}</span>
+      </div>
+      <div>
+        <span class="lbl">Spent</span>
+        <span class="hi-bv">{formatCents(budget.spentCents)}</span>
+      </div>
+      <div>
+        <span class="lbl">{over ? 'Over budget by' : 'Left'}</span>
+        <span class="hi-bv">{formatCents(Math.abs(budget.leftCents))}</span>
+      </div>
+      <p class="small muted">
+        {formatIsoDate(budget.range.from)} – {formatIsoDate(budget.range.to)}, every supplier, cancelled orders left out, whatever dates are chosen above.
+      </p>
+    </div>
+  );
+}
+
+/** The two summaries (§21.5): by supplier, then by category; both end on the same total. Then by funding (v0.17). */
 function SummaryTables({ summary }: { summary: SpendingSummary }) {
   const t = summary.total;
   if (t.orders === 0) return <p class="state-text muted">Nothing was spent in these dates.</p>;
@@ -334,12 +366,38 @@ function SummaryTables({ summary }: { summary: SpendingSummary }) {
           </tbody>
         </table>
       </div>
+      <h2 class="h2">By funding</h2>
+      <div class="hi-tw cat">
+        <table class="hi-t" aria-label="Spending by funding">
+          <thead>
+            <tr>
+              <th>Paid from</th>
+              <th class="r">Orders</th>
+              <th class="r">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {summary.funding.map((r) => (
+              <tr key={r.funding} class={r.funding === NO_FUNDING ? 'mutrow' : undefined}>
+                <td>{r.funding}</td>
+                <td class="r">{r.orders}</td>
+                <td class="r">{m(r.totalCents)}</td>
+              </tr>
+            ))}
+            <tr class="tot">
+              <td>Total</td>
+              <td class="r">{t.orders}</td>
+              <td class="r">{m(t.totalCents)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
 
 /** One printable page (§21.5): title, range, filters, printed date, both summaries, then the orders. */
-function PrintedSummary(props: { kind: RangeKind; range: DateRange; filters: HistoryFilters; summary: SpendingSummary; orders: readonly PlacedOrder[]; today: string }) {
+function PrintedSummary(props: { kind: RangeKind; range: DateRange; filters: HistoryFilters; summary: SpendingSummary; orders: readonly PlacedOrder[]; today: string; budget: BudgetStatus | null }) {
   const { range } = props;
   return (
     <div class="psum">
@@ -347,6 +405,7 @@ function PrintedSummary(props: { kind: RangeKind; range: DateRange; filters: His
       <p>
         <strong>{RANGE_LABEL[props.kind]}:</strong> {formatIsoDate(range.from)} – {formatIsoDate(range.to)} · {filtersText(props.filters)} · Printed {formatIsoDate(props.today)}
       </p>
+      {props.budget && <BudgetCard budget={props.budget} />}
       <SummaryTables summary={props.summary} />
       <h2 class="h2">Orders ({props.orders.length})</h2>
       <table class="hi-t">

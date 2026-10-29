@@ -5,6 +5,7 @@ import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { adjustCount, setCount, type CountField } from '../../../data/inventory';
 import { setPhoto, type PhotoChange } from '../../../data/photos';
+import { noteViewed } from '../../../data/prefs';
 import { countedDate, formatIsoDate } from '../../../domain/dates';
 import { orderLines, packText, stockLines } from '../../../domain/item-text';
 import { formatCents } from '../../../domain/money';
@@ -83,6 +84,8 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const onOrder = useOnOrder().get(item.id) ?? 0;
   const order = orderLines(item, onOrder);
   const vendors = item.vendors.flatMap((v, i) => (v ? [{ v, slot: i + 1 }] : []));
+  // Offered under the Inventory search box (v0.16).
+  useEffect(() => noteViewed(item.id), [item.id]);
 
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
   const changePhoto = async (change: PhotoChange) => {

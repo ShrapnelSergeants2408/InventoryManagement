@@ -526,6 +526,26 @@ describe('orders.csv and order-lines.csv (§21.6)', () => {
       ['order-lines.csv', 4, 'order po-ZZZ isn\'t in orders.csv'],
     ]);
   });
+
+  it('a receipt named twice, or more than 5 on an order, is a row problem (review finding 6)', () => {
+    const jpg = (id: string) => ({ id, type: 'image/jpeg' as const });
+    const twice = order({ id: 'po-BBBBBB', placedOn: '2026-09-01', receipts: [jpg('po-AAAAAA-1')] });
+    const six = order({ id: 'po-CCCCCC', placedOn: '2026-08-01', receipts: [1, 2, 3, 4, 5, 6].map((n) => jpg(`po-CCCCCC-${n}`)) });
+    const r = parseOrdersCsv(serializeOrdersCsv([tricky, twice, six]), serializeOrderLinesCsv([tricky, twice, six]));
+    expect(r.problems.map((p) => [p.file, p.row, p.message])).toEqual([
+      ['orders.csv', 3, 'receipt "receipts/po-AAAAAA-1.jpg" is named twice (first on row 2)'],
+      ['orders.csv', 4, 'an order can have at most 5 receipts (this one names 6)'],
+      ['order-lines.csv', 4, 'order po-BBBBBB isn\'t in orders.csv'],
+      ['order-lines.csv', 5, 'order po-CCCCCC isn\'t in orders.csv'],
+    ]);
+    expect(r.orders.map((o) => o.id)).toEqual(['po-AAAAAA']);
+  });
+
+  it('an order with 5 receipts reads back (the file isn’t taken for semicolon-separated)', () => {
+    const five = order({ id: 'po-DDDDDD', receipts: [1, 2, 3, 4, 5].map((n) => ({ id: `po-DDDDDD-${n}`, type: 'image/jpeg' as const })) });
+    const r = parseOrdersCsv(serializeOrdersCsv([five]), serializeOrderLinesCsv([five]));
+    expect([r.problems, r.orders[0]?.receipts.length]).toEqual([[], 5]);
+  });
 });
 
 describe('backups (§21.6)', () => {

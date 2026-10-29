@@ -237,3 +237,15 @@ Dan: "fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8".
 Not done from finding 8: a real-browser check of an existing helper database (v100) upgrading, and a browser check of the delete-item text. The formula-guard and `line` notes needed no change beyond the sort.
 
 **Evidence:** type check and build clean. Unit **859 pass** (1 skipped), real tablet backup test passes. `m19-ui-check` **45/45** (8 new), clean console. Regression M3 50, M5 39, M15b 26, M16c 25, M18 14, all pass with clean consoles. M15 37, then the timeout from finding 4 (unchanged).
+
+### Findings 4 and 6 (builder, 2026-10-29, later)
+
+Dan: "fix 4 and 6 too".
+
+| # | What was done | Evidence |
+|---|---|---|
+| 4 | `m15-ui-check` writes schemaVersion 5 (one above the app's 4) for the guard, and 4 to come back. Every browser check script (`scripts/*check.mjs`, 25 files) now exits 1 when any result is FAIL or ERROR, so a broken check can't read as a pass | M15 **40/40** again (the three guard checks run). Full regression below, every script exit 0 |
+| 6 | `parseOrdersCsv` refuses a receipt file named twice ("receipt … is named twice (first on row n)") and more than 5 receipts on an order, as row problems before the confirmation | Unit test for both |
+| — | **Found while fixing 6, and more serious:** `readCsv` let Papa Parse guess the separator. A cell with several semicolons made it pick `;`, and the whole file was refused ("missing columns"). An order with **4 or more receipts** made a full backup unrestorable. So did item **notes with about 5 semicolons** (e.g. "use: M3; M4; M5; M6; M8"), which has affected `inventory.csv` since Stage 4. The Oct 23 tablet backup isn't affected (its test passes). Fixed: `readCsv` always uses `,` | Probes before the fix: 5 receipts → 0 orders, notes "a; b; c; d; e; f" → 0 items; after: all read. Two unit tests, both failing without the fix |
+
+**Evidence:** type check and build clean. Unit **862 pass** (1 skipped); real tablet backup test passes. Browser regression M2–M19, all exit 0, clean consoles: M2 28, M3 50, M4 25, M5 39, M6 54, M7 32, M8 61, M9 71, M10 42, M11 12, M12 16, M13 25, M14 20, M15 40, M15b 26, M16a 42, M17 34, M17b 7, M16b 36, M16c 25, M18 14, M19 45: **744, all pass.** The non-zero exit was checked by reading the code, not by forcing a failure.

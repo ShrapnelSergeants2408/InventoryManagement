@@ -22,6 +22,8 @@ Also in v0.14, from the independent review of M19 (`docs/reviews/M19-independent
 - In the price copy, a line charged $0.00 starts unticked (§21.3; finding 8).
 - Restore puts each order's lines back in their `line` order; a blank number keeps the file order (§21.6; finding 8).
 - The first-launch summary's order total, after restoring a backup with orders, subtracts what is on order (F22, §4; finding 8).
+- A backup's `orders.csv` that names one receipt file twice, or more than 5 receipts on one order, is refused at the file check with the row named, not at Replace everything (§21.6; finding 6).
+- **Every CSV the app reads is comma-separated.** Found while fixing finding 6: the CSV reader guessed the separator, and a cell with several semicolons (an order with 4 or more receipts, or notes like "M3; M4; M5; M6; M8") made it pick ";", so the whole file was refused ("missing columns"). That affected `inventory.csv` since Stage 4. The real Oct 23 tablet backup wasn't affected (§7).
 
 **Changes in v0.13 (approved by Dan 2026-10-28, §15 Q8):**
 - **Stage 5 leftovers** (`docs/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
@@ -339,7 +341,7 @@ One row per item. Vendor options flattened into column groups so the file opens 
 - `photo_file` is the photo's path inside the ZIP, e.g. `photos/st-0001.jpg` (blank if none).
 - `last_counted` is an ISO 8601 date-time with offset (`2026-10-24T18:42-05:00`) or blank. A date-only value (`2026-10-24`, as written by v0.4–v0.7 files) is read as midnight local time that day. Files without this column (e.g. the starter catalog) import with it blank. `counted_by` is text or blank; files without it import blank.
 - Import matches columns by header name, not position, so older files (without `last_counted` or `counted_by`) and hand-edited files still load.
-- Notes with commas or line breaks are quoted correctly (tested).
+- Notes with commas or line breaks are quoted correctly (tested). Files are always read as comma-separated, so semicolons in a cell are just text (v0.14).
 
 ### Full backup (ZIP)
 `inventory.csv` + `suppliers.csv` (name, website, notes) + `locations.csv` (name, notes, order) + `categories.csv` (category, subcategory, order) + `order-lists.csv` (list_id, list_name, list_notes, item_id, quantity) + `pending-items.csv` (only if pending items exist) + `orders.csv` and `order-lines.csv` (only if placed orders exist, §21.6) + `manifest.json` + `photos/<item id>.jpg` and `photos/<pending id>.jpg` + `receipts/<order id>-<n>.jpg|.pdf`.
@@ -536,6 +538,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | v0.13 draft: Stage 5 leftovers (findings 3, 4, 5, 7, 8, 9), F30 placed orders, F31 receiving, F32 order history and spending, §21, §22. Awaiting approval (§15 Q8) |
 | 2026-10-28 | Dan merged PRs #27 and #28 (M18) and approved the v0.13 details (§15 Q8 (a)–(g)): "spec details approved". v0.13 approved; M19 next |
 | 2026-10-29 | Dan merged PR #30 (M19) and confirmed its details: "approve a-g except for c - allow for different pack sizes and units on typed lines". v0.14: typed lines have their own pack size and unit. Independent review of M19 next |
+| 2026-10-29 | Independent review of M19: Dan asked for findings 1–8 fixed ("fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8", then "fix 4 and 6 too"). Undo this import leaves items received since the import alone. CSV files are always read as comma-separated (a separator-guessing bug found while fixing finding 6) |
 
 ## 17. UI conventions (from Stage 3)
 

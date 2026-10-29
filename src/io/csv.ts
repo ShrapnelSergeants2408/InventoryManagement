@@ -26,7 +26,9 @@ export function normalizeHeader(h: string): string {
 
 export function readCsv(text: string, file: string): CsvTable {
   const problems: FileProblem[] = [];
-  const parsed = Papa.parse<string[]>(text.replace(/^﻿/, ''), { header: false, skipEmptyLines: false });
+  // Always commas, as the app and spreadsheets write them. Papa's guess picked ";" when a cell
+  // held several (an order's receipts, notes like "M3; M4; M5; M6") and the file couldn't be read.
+  const parsed = Papa.parse<string[]>(text.replace(/^﻿/, ''), { header: false, skipEmptyLines: false, delimiter: ',' });
   for (const e of parsed.errors) {
     // Papa reports a trailing-newline "row" as UndetectableDelimiter on one-column files; that's harmless.
     if (e.code === 'UndetectableDelimiter') continue;

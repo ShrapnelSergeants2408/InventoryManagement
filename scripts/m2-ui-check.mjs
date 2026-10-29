@@ -183,9 +183,10 @@ try {
   results.push('ERROR ' + e.message);
 } finally {
   console.log(results.join('\n'));
+  process.exitCode = results.some((r) => /^(FAIL|ERROR)/.test(r)) ? 1 : 0;
   console.log(problems.length ? 'Console problems:\n' + problems.join('\n') : 'No console errors or warnings');
   ws.close();
   proc.kill();
   preview.kill();
-  process.exit(0);
+  process.exit(process.exitCode);
 }

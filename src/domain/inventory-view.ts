@@ -3,7 +3,7 @@ import { passesFilters, activeFilterCount, type Filters } from './filters';
 import { compareSupplierNames, orderLineFor, type OrderLine } from './order';
 import { onOrderOf, type OnOrder } from './placed-orders';
 import { matchesTerms, queryTerms, searchText } from './search';
-import { stockStatus, type StockStatus } from './status';
+import { itemStatus, type StockStatus } from './status';
 import { nameKey, preferredVendorOf, type Category, type Item, type Location, type Vendor } from './types';
 
 export interface ItemInfo {
@@ -20,7 +20,7 @@ export interface ItemInfo {
 export function itemInfo(item: Item, onOrder = 0): ItemInfo {
   return {
     item,
-    status: stockStatus(item.onHand, item.desired, item.spares),
+    status: itemStatus(item),
     vendor: preferredVendorOf(item),
     order: orderLineFor(item, onOrder),
     onOrder,
@@ -30,6 +30,8 @@ export function itemInfo(item: Item, onOrder = 0): ItemInfo {
 export interface StatusCounts {
   short: number;
   low: number;
+  /** Items never counted (blank last_counted, v0.16): neither short nor low until counted. */
+  uncounted: number;
 }
 
 export interface CategoryLine extends StatusCounts {
@@ -93,11 +95,13 @@ export function subcategoryKey(category: string, subcategory: string): string {
 function countStatus(infos: readonly ItemInfo[]): StatusCounts {
   let short = 0;
   let low = 0;
+  let uncounted = 0;
   for (const i of infos) {
     if (i.status.kind === 'short') short++;
     else if (i.status.kind === 'low') low++;
+    else if (i.status.kind === 'uncounted') uncounted++;
   }
-  return { short, low };
+  return { short, low, uncounted };
 }
 
 /** Category order: the Category list, then any category only items use (first appearance). */
@@ -212,11 +216,12 @@ export function buildInventoryView(input: ViewInput): InventoryView {
   };
 }
 
-/** "12 short", "2 low spares" or "All stocked" chips for a group header (§17). */
-export function groupChips(c: StatusCounts): Array<'short' | 'low' | 'ok'> {
-  const out: Array<'short' | 'low' | 'ok'> = [];
+/** "12 short", "2 low spares", "5 not counted" or "All stocked" chips for a group header (§17, v0.16). */
+export function groupChips(c: StatusCounts): Array<'short' | 'low' | 'uncounted' | 'ok'> {
+  const out: Array<'short' | 'low' | 'uncounted' | 'ok'> = [];
   if (c.short > 0) out.push('short');
   if (c.low > 0) out.push('low');
+  if (c.uncounted > 0) out.push('uncounted');
   if (out.length === 0) out.push('ok');
   return out;
 }

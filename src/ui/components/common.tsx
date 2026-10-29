@@ -10,7 +10,13 @@ import { goBack } from '../shell/router';
 /** Color, icon and word together; never color alone (§17). */
 export function StatusChip({ status, prefix = '' }: { status: StockStatus; prefix?: string }) {
   const [cls, icon]: [string, IconName] =
-    status.kind === 'short' ? ['chip red', 'short'] : status.kind === 'low' ? ['chip yel', 'low'] : ['chip ok', 'check'];
+    status.kind === 'short'
+      ? ['chip red', 'short']
+      : status.kind === 'low'
+        ? ['chip yel', 'low']
+        : status.kind === 'uncounted'
+          ? ['chip unc', 'help']
+          : ['chip ok', 'check'];
   return (
     <span class={cls}>
       <Icon name={icon} />
@@ -34,6 +40,11 @@ export function GroupChips({ counts }: { counts: StatusCounts }) {
           <span class="chip yel" key={k}>
             <Icon name="low" />
             {counts.low} low spares
+          </span>
+        ) : k === 'uncounted' ? (
+          <span class="chip unc" key={k}>
+            <Icon name="help" />
+            {counts.uncounted} not counted
           </span>
         ) : (
           <span class="chip ok" key={k}>
@@ -73,9 +84,17 @@ export function TopBar(props: {
   kicker?: string;
   /** Back or Cancel button before the title. */
   back?: ComponentChildren;
-  /** Between the title and the lock button (search, filters). */
+  /**
+   * The screen's search box (Inventory, Order). It sits right after the title in landscape; in
+   * portrait it shares a row with the lock button, so the lock never wraps onto a line alone (v0.16).
+   */
+  search?: ComponentChildren;
+  /** Between the title and the lock button (filters, exports, Reorder). */
   children?: ComponentChildren;
-  /** After the lock button (Add, Save, Reorder). */
+  /**
+   * After the lock button: only the screen's one main button (Add, Save, Receive). Everything else
+   * goes in children, so the lock is always at the right edge or just before that button (v0.16).
+   */
   actions?: ComponentChildren;
 }) {
   // A helper device has no PIN (§6), so no lock button.
@@ -89,7 +108,14 @@ export function TopBar(props: {
         {props.subtitle !== undefined && <span class="small muted">{props.subtitle}</span>}
       </div>
       {props.children}
-      {!helper && <LockPill />}
+      {props.search !== undefined ? (
+        <div class="top-sl">
+          {props.search}
+          {!helper && <LockPill />}
+        </div>
+      ) : (
+        !helper && <LockPill />
+      )}
       {props.actions}
     </header>
   );

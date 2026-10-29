@@ -120,7 +120,7 @@ const P = `
     return { full: [...(await dims(row.full)), row.full.type], thumb: row.thumb ? await dims(row.thumb) : null, taken: typeof row.taken === 'number' };
   };
   const toast = () => norm(document.querySelector('.toast span')?.textContent ?? '');
-  const closeToast = async () => { document.querySelector('.toast .btn')?.click(); await settle(150); };
+  const closeToast = async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); await settle(150); };
   const camLabel = () => norm(document.querySelector('input[data-photo=camera]').closest('label').textContent);
   const removeBtn = () => byText('.pacts button', 'Remove');
   const rowThumb = () => document.querySelector('a.rlink[href="#/item/st-0099"] img.thumb');

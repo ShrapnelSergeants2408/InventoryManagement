@@ -8,7 +8,7 @@ import { setPhoto, type PhotoChange } from '../../../data/photos';
 import { countedDate, formatIsoDate } from '../../../domain/dates';
 import { orderLines, packText, stockLines } from '../../../domain/item-text';
 import { formatCents } from '../../../domain/money';
-import { stockStatus } from '../../../domain/status';
+import { itemStatus } from '../../../domain/status';
 import type { Item } from '../../../domain/types';
 import { safeHref } from '../../../domain/url';
 import { BackButton, StateMessage, StatusChip, TopBar, plural } from '../../components/common';
@@ -78,7 +78,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const [removing, setRemoving] = useState(false);
   const [adding, setAdding] = useState(false);
   const camera = useRef<HTMLInputElement>(null);
-  const status = stockStatus(item.onHand, item.desired, item.spares);
+  const status = itemStatus(item);
   const stock = stockLines(item);
   const onOrder = useOnOrder().get(item.id) ?? 0;
   const order = orderLines(item, onOrder);
@@ -161,7 +161,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
             </span>
             <span class="chip mut">{item.source === 'starter' ? 'Starter item' : 'Team item'}</span>
             <span class="chip mut">ID {item.id}</span>
-            <span class="chip mut">{item.lastCounted ? `Counted ${formatIsoDate(countedDate(item.lastCounted))}${item.countedBy ? ` by ${item.countedBy}` : ''}` : 'Not counted yet'}</span>
+            {item.lastCounted && <span class="chip mut">{`Counted ${formatIsoDate(countedDate(item.lastCounted))}${item.countedBy ? ` by ${item.countedBy}` : ''}`}</span>}
           </div>
 
           <div class="card box">

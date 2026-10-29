@@ -4,7 +4,6 @@
 .bar > span { display: block; height: 100%; background: var(--ink); }
 
 .cprog { min-width: 220px; margin-left: auto; display: flex; flex-direction: column; gap: 6px; }
-.cprog + .lockpill { margin-left: 0; }
 .cprog-t { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
 
 /* Start (10a) and summary (10d) */

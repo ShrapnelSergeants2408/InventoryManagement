@@ -80,7 +80,7 @@ try {
   await sleep(500);
 
   // Quick-filter row: Needs order · Short only · Low spares only · Category · Location · Supplier
-  check('quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 124', 'Low spares only · 0', 'Category: All', 'Location: All', 'Supplier: All']);
+  check('quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 0', 'Low spares only · 0', 'Category: All', 'Location: All', 'Supplier: All']);
   await shot('01-quick-row');
 
   // Filters panel: Stock (needs order, short, low spares) · Category · Location · Preferred supplier
@@ -107,7 +107,7 @@ try {
   // Portrait: same order in the bottom sheet, and nothing under 48 px in the panel (§17).
   await size(800, 1280);
   await sleep(400);
-  check('portrait: quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 124', 'Low spares only · 0', 'Category: All', 'Location: All', 'Supplier: All']);
+  check('portrait: quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 0', 'Low spares only · 0', 'Category: All', 'Location: All', 'Supplier: All']);
   await js(openPanel);
   check('portrait: panel section order', await js(PANEL), ['Stock', 'Category', 'Location', 'Preferred supplier']);
   const small = await js(`return [...document.querySelectorAll('.fpanel button')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 48 || r.width < 48); }).map((e) => e.className + ':' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height))`);

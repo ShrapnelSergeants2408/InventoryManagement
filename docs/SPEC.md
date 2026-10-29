@@ -1,7 +1,14 @@
-# FRC 2408 Inventory Management — Specification v0.15
+# FRC 2408 Inventory Management — Specification v0.16
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-29 (v0.15) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT
+**Status:** Approved by Dan 2026-10-29 (v0.16) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT
+
+**Changes in v0.16:** Five ease-of-use and layout fixes from the independent mentor review (2026-10-29; Dan: "fix 1, 2, … fix 4, 5, 6"), built as M21:
+- (1) **Messages (toasts)** appear just below the screen's top bar instead of at the bottom, where the main buttons are (Save & next, Skip for now). Taps go through a message to what's underneath, and any tap hides it, so a message never blocks a button (§17).
+- (2) **Not counted yet:** an item whose last_counted is blank shows a dashed **NOT COUNTED** chip instead of SHORT or LOW SPARES, with no row tint. Group headers add "n not counted", the Inventory summary adds "· n not counted", and the Short and Low spares filters leave these items out. The order list is unchanged: uncounted items are still ordered from the on hand they have (F12 banner). Before the first count, red now means a counted item really is short (§4, F2, F5, §17).
+- (4) **Portrait top bars:** a search box shares its row with the lock button, so the lock no longer wraps onto a line of its own (§17).
+- (5) **Scan result panel:** "On hand (unit)" with a plain hint line ("Took some? Tap − once for each one you took."); the stepper lines up with the rest of the panel; the camera hint is hidden while a panel covers it (F21).
+- (6) **Lock button position:** always at the right end of the top bar, followed only by the screen's one main button (Save, Add, Receive), if it has one. Order history's exports and the Reorder / Add by scan buttons on Categories and Locations moved to the left of the lock (§17).
 
 **Changes in v0.15:** Eleven order-history details, filled in while building M20 and confirmed by Dan on 2026-10-29 (`docs/reviews/M20.md`, "Details I filled in"; Dan: "confirm a-k"):
 - (a) **History** takes the place of the Placed orders tab (same place, same address). Its status buttons are All / Open / Received / Cancelled, each with its count (§21.5).
@@ -297,6 +304,8 @@ Validation and edge cases:
 
 Highlighting never relies on color alone: each state also has its own icon and word (§17).
 
+**Not counted yet (v0.16):** an item whose last_counted is blank shows **NOT COUNTED** instead of any of the three, because its on hand hasn't been confirmed by a count (F24). It isn't counted as short or low spares in group headers, the Inventory summary or the Short / Low spares filters. Order quantities (above) and Needs order still use its on hand as it is.
+
 ## 5. Features (v1)
 
 | # | Feature | Acceptance criteria |
@@ -554,6 +563,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Independent review of M19: Dan asked for findings 1–8 fixed ("fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8", then "fix 4 and 6 too"). Undo this import leaves items received since the import alone. CSV files are always read as comma-separated (a separator-guessing bug found while fixing finding 6) |
 | 2026-10-29 | Dan merged PR #31 and checked M19 on the tablet (a PDF receipt opens in Chrome). M20 built; Dan confirmed its details (a)–(k): "confirm a-k". v0.15 |
 | 2026-10-29 | Dan merged PR #32 (M20; tablet check passed) and closed the label-sheet question and the real label print test (Stage 5 D-01): "label print test can be closed". §15 has no open questions left |
+| 2026-10-29 | Independent mentor review (ease of use, layout, ten suggestions). Dan: fix layout issues 1, 2, 4, 5 and 6 (not 3 or 7) → v0.16, M21; suggestions 7 (spending by funding source and a budget), 8 (overdue deliveries and a shop status strip) and 9 (search by category, subcategory and barcode; recently viewed) go into the build (M22); 1–3 (part checkout, pit packing list, tool checkout) go to the team as `docs/proposals/2026-10-29-team-feature-ideas.md`; 4–6 and 10 dropped |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -566,9 +576,11 @@ Reference: Stage 3 mockup canvas and `stage3-design-notes.md`. Helper-device and
   - Short: red #B3122E fill, octagon icon, "SHORT n".
   - Low spares: amber #F5B700 fill, triangle icon, "LOW SPARES".
   - OK: outline, check icon, "OK".
-  - Row tints are supplementary. Category headers show "n short" / "n low spares" / "All stocked".
+  - Not counted yet (v0.16): dashed outline, question-mark icon, "NOT COUNTED"; no row tint.
+  - Row tints are supplementary. Category headers show "n short" / "n low spares" / "n not counted" / "All stocked".
 - **Destructive actions** (delete item, replace everything on restore, remove supplier/category/location): **black button with a red outline**, a trash or warning icon, and the action spelled out ("Delete item", "Replace everything"). Never a red fill, so they can't be mistaken for status badges.
-- **PIN:** navy (#1F3A5F). A lock button on every screen shows "Locked" or "Unlocked m:ss". Locked fields are dashed blue-gray with a lock in the label. A PIN prompt says why it's needed and continues the action after unlocking.
+- **PIN:** navy (#1F3A5F). A lock button on every screen shows "Locked" or "Unlocked m:ss". It sits at the right end of the top bar, followed only by the screen's one main button (Save, Add, Receive), if any (v0.16). In portrait, a screen's search box shares its row with it. Locked fields are dashed blue-gray with a lock in the label. A PIN prompt says why it's needed and continues the action after unlocking.
+- **Messages (toasts):** one line just below the top bar, hidden after 6 seconds or by any tap. Taps go through it, so it never blocks a button (v0.16).
 - **Banners:** navy for information (backup reminder, count-in progress); light amber for attention (stale prices). Never red.
 - **Sizes:** all touch targets ≥ 48 px. Primary actions 56–64 px; steppers 64 px in lists and 80 px on detail, scan and count-in; keypad keys 68–72 px. Text ≥ 15 px; item names 19 px; counts 26–64 px.
 - **Fonts:** Barlow Condensed (headings, numbers) and Atkinson Hyperlegible (body), both SIL OFL, bundled for offline use.

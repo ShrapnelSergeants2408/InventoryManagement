@@ -112,12 +112,15 @@ export function InventoryScreen() {
   };
   const chosen: Item[] = snap ? snap.items.filter((i) => selected.has(i.id)) : [];
   const summary = view
-    ? `${plural(view.totals.items, 'item')} · ${view.totals.short} short · ${view.totals.low} low spares`
+    ? `${plural(view.totals.items, 'item')} · ${view.totals.short} short · ${view.totals.low} low spares${view.totals.uncounted > 0 ? ` · ${view.totals.uncounted} not counted` : ''}`
     : 'Loading…';
 
   return (
     <>
-      <TopBar title="Inventory" subtitle={summary}>
+      <TopBar
+        title="Inventory"
+        subtitle={summary}
+        search={
         <div class="searchwrap">
           <Icon name="search" />
           <input
@@ -136,6 +139,8 @@ export function InventoryScreen() {
             </button>
           )}
         </div>
+        }
+      >
         <button type="button" class="btn" onClick={() => setPanelOpen(true)}>
           <Icon name="filter" />
           {nFilters ? `Filters (${nFilters})` : 'Filters'}

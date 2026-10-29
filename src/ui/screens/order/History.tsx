@@ -111,8 +111,8 @@ export function HistoryScreen() {
     <TopBar
       title="Order history"
       subtitle={orders && range && summary ? `${RANGE_LABEL[kind]} · ${plural(summary.total.orders, 'order')} · ${spent} spent` : orders ? RANGE_LABEL[kind] : 'Loading…'}
-      actions={
-        orders &&
+    >
+      {orders &&
         orders.length > 0 && (
           <>
             <button type="button" class="btn" disabled={busy || !range} onClick={() => void exportFile(false)}>
@@ -128,9 +128,8 @@ export function HistoryScreen() {
               Print summary
             </button>
           </>
-        )
-      }
-    />
+        )}
+    </TopBar>
   );
   const tabs = <ListTabs lists={lists.state === 'ready' ? lists.value : []} current="placed" />;
   if (live.state === 'error') {

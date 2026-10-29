@@ -212,7 +212,7 @@ try {
   check('the web server is really down', await fetch('http://localhost:4330/').then(() => 'up', () => 'down'), 'down');
   await send('Page.navigate', { url: 'http://localhost:4330/#/inventory' });
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 30000);
-  check('offline: the app opens with the inventory', await js(`return [document.querySelectorAll('.cathdr').length, norm($('.top .small').textContent)]`), [11, '129 items · 124 short · 0 low spares']);
+  check('offline: the app opens with the inventory', await js(`return [document.querySelectorAll('.cathdr').length, norm($('.top .small').textContent)]`), [11, '129 items · 0 short · 0 low spares · 129 not counted']);
   check('offline: both fonts load from the cache', await js(`await document.fonts.ready; await Promise.all([document.fonts.load('16px "Atkinson Hyperlegible"'), document.fonts.load('700 16px "Barlow Condensed"')]); return [document.fonts.check('16px "Atkinson Hyperlegible"'), document.fonts.check('700 16px "Barlow Condensed"'), [...document.fonts].filter((f) => f.status === 'loaded').length >= 2]`), [true, true, true]);
   await js(`$('.cathdr button, .cathdr')?.click(); await settle(800);`);
   check('offline: the logo shows', await js(`const i = $('.nav-logo img'); return i.complete && i.naturalWidth > 0`), true);

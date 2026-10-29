@@ -230,7 +230,7 @@ Numbering continues from Stage 4 (M1–M10), so `docs/reviews/` stays unambiguou
 
 - **M18:** done as `docs/reviews/M18.md`.
 - **M19:** done as `docs/reviews/M19.md` and `docs/reviews/M19-independent.md` (PRs #30, #31); tablet check passed 2026-10-29. v0.13 approved 2026-10-28. Acceptance and tests are §21.1–§21.4, §21.6 and the matching §22 items. Regression: `m5` (backup and restore with the new files and the Orders row), `m15`/`m15b` (named lists losing ordered lines; quantity rules subtracting on order), `m3` (delete with units on order), the upgrade check pattern from `m16a-upgrade-check.mjs` (v3 → v4 against a copy of the tablet backup). Independent fresh-session review recommended (receiving changes real counts; a schema upgrade).
-- **M20:** built as `docs/reviews/M20.md` (branch `m20-order-history`). Acceptance and tests are §21.5 and the matching §22 items, with ranges tested on boundary dates. Regression: `m14` (order exports), `m8` (print route).
+- **M20:** done as `docs/reviews/M20.md` (PR #32); tablet check passed 2026-10-29. Every v0.13 milestone is built. Acceptance and tests are §21.5 and the matching §22 items, with ranges tested on boundary dates. Regression: `m14` (order exports), `m8` (print route).
 
 ## 3. The Dexie schema upgrade
 

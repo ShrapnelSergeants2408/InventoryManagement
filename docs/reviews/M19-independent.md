@@ -234,7 +234,7 @@ Dan: "fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8".
 | 7 | `data-l` labels on the order page's cells, shown in portrait | `m19-ui-check`: Ordered, Pack price, Line total, Received |
 | 8 | Future placed date refused when recording or editing (not on restore); amounts too large to add up exactly refused; a $0 line starts unticked in the price copy; restore sorts lines by `line`; Setup's order total subtracts on order; stage6-plan §3 v4 row and SPEC §21.6 settings wording; tablet-check steps for viewing a PDF on Android and for a typed line | Unit: future date with and without today; 2²⁶ × 2²⁸ refused; lines from a reversed file and a blank number. `m19-ui-check`: $0 line unticked |
 
-Not done from finding 8: a real-browser check of an existing helper database (v100) upgrading, and a browser check of the delete-item text. The formula-guard and `line` notes needed no change beyond the sort.
+Not done from finding 8: a real-browser check of an existing helper database (v100) upgrading, and a browser check of the delete-item text. **Both done in M23** (2026-10-29): `scripts/m23-helper-upgrade-check.mjs` and `scripts/m23-ui-check.mjs`. The helper check found that the M19 build patched an old helper database in place (Dexie: "Schema was extended without increasing the number passed to db.version()"); M23 raises the helper's version with the inventory's (104). The formula-guard and `line` notes needed no change beyond the sort.
 
 **Evidence:** type check and build clean. Unit **859 pass** (1 skipped), real tablet backup test passes. `m19-ui-check` **45/45** (8 new), clean console. Regression M3 50, M5 39, M15b 26, M16c 25, M18 14, all pass with clean consoles. M15 37, then the timeout from finding 4 (unchanged).
 

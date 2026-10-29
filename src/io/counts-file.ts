@@ -23,7 +23,7 @@ export function parseCountsCsv(text: string): { counts: IncomingCount[]; problem
   const problems = [...table.problems];
   const missing = missingColumns(table.columns, ['item_id', 'on_hand', 'counted_at', 'location', 'barcode', 'outside_assignment']);
   if (missing.length > 0) {
-    problems.push({ file, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
+    problems.push({ file, row: table.headerRow, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
     return { counts: [], problems };
   }
   const counts: IncomingCount[] = [];

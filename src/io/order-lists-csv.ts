@@ -28,7 +28,7 @@ export function parseOrderListsCsv(text: string, now = Date.now()): { lists: Nam
   const problems = [...table.problems];
   const missing = ['list_id', 'list_name', 'item_id', 'quantity'].filter((c) => !table.columns.has(c));
   if (missing.length > 0) {
-    problems.push({ file, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
+    problems.push({ file, row: table.headerRow, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
     return { lists: [], problems };
   }
   const byId = new Map<string, { list: NamedOrderList; row: number; items: Map<string, number> }>();

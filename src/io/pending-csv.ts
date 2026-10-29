@@ -50,7 +50,7 @@ export function parsePendingCsv(text: string, file: string, helper: { id: string
   const required = ['pending_id', 'name', 'category', 'unit', 'on_hand', ...(helper ? [] : ['helper_name'])];
   const missing = missingColumns(table.columns, required);
   if (missing.length > 0) {
-    problems.push({ file, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
+    problems.push({ file, row: table.headerRow, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
     return { items: [], photoFiles: new Map(), problems };
   }
   const items: PendingRecord[] = [];

@@ -248,12 +248,25 @@ describe('a helper device’s database (version 100) after M19', () => {
     await old.table('changes').add({ key: 'item:h1', changedAt: 5 });
     old.close();
 
-    const { HelperDb } = await import('../src/data/helper-db');
+    const { HelperDb, HELPER_DB_VERSION } = await import('../src/data/helper-db');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const db = track(new HelperDb(name));
     await db.open();
     expect((await db.items.get('h1'))!.id).toBe('h1');
     expect(await db.changes.count()).toBe(1);
     expect(await db.orders.count()).toBe(0);
+    // M23: a real version upgrade (100 → 104), not Dexie patching an extended schema.
+    expect([HELPER_DB_VERSION, db.verno]).toEqual([104, 104]);
+    expect(warn.mock.calls.map((c) => String(c[0])).filter((m) => /Schema was extended/.test(m))).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it('a new helper database is created at 100 + the inventory schema version (M23)', async () => {
+    const { HelperDb } = await import('../src/data/helper-db');
+    const db = track(new HelperDb(`helper-new-${Math.random()}`));
+    await db.open();
+    expect(db.verno).toBe(100 + SCHEMA_VERSION);
+    expect(db.tables.map((t) => t.name)).toEqual(expect.arrayContaining(['changes', 'items', 'orders', 'receipts']));
   });
 });
 

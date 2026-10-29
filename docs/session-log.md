@@ -853,3 +853,16 @@ See the two review files (unit tests, browser checks, screenshots).
 **Next:** Dan confirms the details in `docs/reviews/M21.md` and `M22.md`, merges M21 then M22 (merge commits: M22 is stacked), and runs both tablet checks.
 
 **Later:** Dan, 2026-10-29: "m21: accept a-e; m22 accept a-h; merged; tablet checks pass." PRs #35 and #36 are merged; the details are recorded in `docs/reviews/M21.md`, `M22.md` and SPEC v0.17. Open: the team's answers on `docs/proposals/2026-10-29-team-feature-ideas.md`.
+
+## 2026-10-29 (afternoon) — M23: cleanup of open review findings
+
+**SESSION IDENTITY**
+Same session. Dan asked what remained to build apart from the three team questions; the answer was the low-severity findings earlier reviews left open. Dan: "fix 1-5 as a cleanup milestone". Branch `m23-cleanup` from `main` (`3f963b8`).
+
+**WORK COMPLETED**
+M5 review findings 3–6 (CSV in a ZIP read as Windows-1252; links cleaned on restore; blank lines before a header; backup or snooze dated in the future), M6 review finding 7 and M19 review finding 8 (new browser checks: the PIN pad's answer, the delete text, a helper upgrading from before M19). The helper check found that M19–M22 patched old helper databases in place with a Dexie warning; the helper's version now follows the inventory's (104). Import counts' "No PIN needed" moved before the lock. SPEC v0.18, `APP_VERSION` 0.10.0. `docs/reviews/M23.md`.
+
+**EVIDENCE**
+Unit 902 pass; real tablet backup passes; mutants 15/15; M23 13/13; helper upgrade 9/9; regression M2–M22 807/807, clean consoles.
+
+**Next:** Dan confirms details (a)–(d) in `docs/reviews/M23.md`, merges, and runs the tablet check.

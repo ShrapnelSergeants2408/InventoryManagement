@@ -5,14 +5,16 @@ import { buildBackup } from '../src/data/backup';
 import { InventoryDb } from '../src/data/db';
 import { loadSnapshot, replaceAll } from '../src/data/inventory';
 import { applyPriceImport } from '../src/data/price-import';
-import { backupDue } from '../src/domain/backup-reminder';
+import { SNOOZE_MS, backupDue, backupInFuture, showBackupBanner } from '../src/domain/backup-reminder';
+import { readCsv } from '../src/io/csv';
 import { planPriceImport } from '../src/io/price-import';
 import { readRestoreFile } from '../src/io/restore';
 import { readSeed } from '../src/io/seed';
 import { item, seedBytes, vendor } from './helpers';
 
 // Independent fresh-session review of M5 (docs/reviews/M5-independent.md). Tests named
-// "open:" assert behaviour that was reported and left as it is; the others guard fixes.
+// "open:" asserted behaviour that was reported and left as it was; M23 fixed findings 3–6, so
+// every test here now guards a fix.
 
 const dbs: InventoryDb[] = [];
 afterEach(() => {
@@ -122,11 +124,16 @@ describe('M5 independent review', () => {
     }
   });
 
-  it('open: a blank first line makes the real header row 2 but the error says row 1 "missing column"', () => {
-    const items = [item({ id: 'st-0001' })];
-    const r = planPriceImport('\r\nid,v1_pack_price\r\nst-0001,9', 'p.csv', { items, suppliers });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.problems).toContainEqual(expect.objectContaining({ row: 1, message: 'missing column: id' }));
+  it('finding 5 (fixed in M23): blank lines before the header are skipped; data rows and header problems keep their real row numbers', () => {
+    const items = [item({ id: 'st-0001', vendors: [vendor({ packPriceCents: 100 }), null, null] })];
+    const ok = planPriceImport('\r\n\r\nid,v1_pack_price\r\nst-0001,9', 'p.csv', { items, suppliers });
+    expect(ok.ok).toBe(true);
+    const bad = planPriceImport('\r\nv1_pack_price\r\n9', 'p.csv', { items, suppliers });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(bad.problems).toContainEqual(expect.objectContaining({ row: 2, message: 'missing column: id' }));
+    const t = readCsv(' , \r\nid,id\r\n\r\nx,y', 't.csv');
+    expect([t.headerRow, t.rows.map((r) => r.row), t.problems.map((p) => p.row)]).toEqual([2, [4], [2]]);
+    expect(readCsv('id\r\nx', 't.csv').headerRow).toBe(1);
   });
 
   it('seed exported as data-only CSV re-imports as a price file with no errors', async () => {
@@ -140,27 +147,56 @@ describe('M5 independent review', () => {
     expect(r.plan.optionsChanged).toBe(0);
   });
 
-  it('open: restore accepts a vendor url "javascript:alert(1)" and a website with no scheme check (price import / editor would reject)', async () => {
-    const csv = 'id,name,category,unit,on_hand,desired,v1_supplier,v1_pack_size,v1_url\r\na1,A,Motors,each,1,1,REV,1,javascript:alert(1)';
+  it('finding 4 (fixed in M23): restored links follow the editor rule; others are left blank and named in a warning', async () => {
+    const csv = 'id,name,category,unit,on_hand,desired,v1_supplier,v1_pack_size,v1_url,v2_supplier,v2_pack_size,v2_url\r\n' +
+      'a1,A,Motors,each,1,1,REV,1,javascript:alert(1),WCP,1,www.wcproducts.com/x\r\n' +
+      'a2,B,Motors,each,1,1,REV,1,https://www.revrobotics.com/y,,,';
     const read = await readRestoreFile({ name: 'x.csv', bytes: new TextEncoder().encode(csv) }, { items: [], suppliers, locations: [], categories: [] });
-    expect(read.ok).toBe(true);
-    if (read.ok) expect(read.plan.items[0]!.vendors[0]!.url).toBe('javascript:alert(1)');
+    if (!read.ok) throw new Error(JSON.stringify(read.problems));
+    const urls = read.plan.items.map((i) => i.vendors.map((v) => v?.url ?? null));
+    expect(urls).toEqual([['', 'https://www.wcproducts.com/x', null], ['https://www.revrobotics.com/y', null, null]]);
+    expect(read.plan.warnings).toContain("Links that aren't web addresses were left blank: a1 option 1 (javascript:alert(1))");
+
+    const z = new JSZip();
+    z.file('inventory.csv', 'id,name,category,unit,on_hand,desired,v1_supplier,v1_pack_size\r\na1,A,Motors,each,1,1,REV,1\r\n');
+    z.file('suppliers.csv', 'name,website,notes\r\nREV,revrobotics.com,\r\nWCP,mailto:x@y.z,\r\nother,,\r\n');
+    const zr = await readRestoreFile({ name: 'x.zip', bytes: await z.generateAsync({ type: 'uint8array' }) }, { items: [], suppliers, locations: [], categories: [] });
+    if (!zr.ok) throw new Error(JSON.stringify(zr.problems));
+    expect(zr.plan.suppliers.map((x) => [x.name, x.website])).toEqual(expect.arrayContaining([['REV', 'https://revrobotics.com'], ['WCP', '']]));
+    expect(zr.plan.warnings).toContain("Links that aren't web addresses were left blank: WCP website (mailto:x@y.z)");
   });
 
-  it('open: Windows-1252 inventory.csv inside a ZIP is decoded as UTF-8 silently (mojibake, no warning)', async () => {
+  it('finding 3 (fixed in M23): a Windows-1252 CSV inside a ZIP is read as Windows-1252, with a warning naming the file', async () => {
     const head = new TextEncoder().encode('id,name,category,unit,on_hand,desired,v1_supplier,v1_pack_size\r\nw1,Bolt ');
     const bytes = new Uint8Array([...head, 0xd7, ...new TextEncoder().encode(',Fasteners,each,1,1,REV,1\r\n')]);
     const z = new JSZip();
     z.file('inventory.csv', bytes);
+    z.file('locations.csv', new Uint8Array([...new TextEncoder().encode('name,notes,order\r\nCaf'), 0xe9, ...new TextEncoder().encode(' shelf,,0\r\n')]));
     const read = await readRestoreFile({ name: 'x.zip', bytes: await z.generateAsync({ type: 'uint8array' }) }, { items: [], suppliers, locations: [], categories: [] });
     if (!read.ok) throw new Error(JSON.stringify(read.problems));
-    expect(read.plan.items[0]!.name).toBe('Bolt �');
-    expect(read.plan.warnings).toEqual([]);
+    expect(read.plan.items[0]!.name).toBe('Bolt ×');
+    expect(read.plan.locations.map((l) => l.name)).toContain('Café shelf');
+    expect(read.plan.warnings.filter((w) => w.includes('UTF-8'))).toEqual([
+      'inventory.csv isn’t UTF-8, so it was read as a Windows (Excel “CSV”) file. Check names with symbols like × or ¾.',
+      'locations.csv isn’t UTF-8, so it was read as a Windows (Excel “CSV”) file. Check names with symbols like × or ¾.',
+    ]);
   });
 
-  it('open: clock moved backwards — a backup stamped in the future suppresses the reminder', () => {
+  it('finding 6 (fixed in M23): a backup or a snooze dated in the future no longer keeps the reminder off', () => {
     const DAY = 86_400_000;
+    const HOUR = 3_600_000;
     const now = Date.UTC(2026, 9, 18);
-    expect(backupDue({ lastBackupAt: now + 365 * DAY, setupDoneAt: now - 400 * DAY, reminderDays: 7 }, now)).toBe(false);
+    const clock = { setupDoneAt: now - 400 * DAY, reminderDays: 7 };
+    expect(backupDue({ ...clock, lastBackupAt: now + 365 * DAY }, now)).toBe(true);
+    expect(backupInFuture(now + 365 * DAY, now)).toBe(true);
+    // Up to an hour ahead is clock drift between devices, not a changed clock: a fresh backup.
+    expect(backupDue({ ...clock, lastBackupAt: now + 30 * 60_000 }, now)).toBe(false);
+    expect(backupInFuture(now + 30 * 60_000, now)).toBe(false);
+    expect(backupInFuture(null, now)).toBe(false);
+    const due = { ...clock, lastBackupAt: now - 10 * DAY };
+    expect(showBackupBanner(due, now, now + 2 * HOUR)).toBe(true); // snoozed "in the future"
+    expect(showBackupBanner(due, now, now + 60_000)).toBe(false); // a screen clock a minute behind
+    expect(showBackupBanner(due, now, now - SNOOZE_MS + 1)).toBe(false);
+    expect(showBackupBanner(due, now, now - SNOOZE_MS)).toBe(true);
   });
 });

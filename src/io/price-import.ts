@@ -146,14 +146,14 @@ export function planPriceImport(text: string, fileName: string, current: { items
       const n = Number(m[1]);
       // "v01_…" would be read as slot 1 but its cells looked up as "v1_…", so it's refused.
       if (n >= 1 && n <= 3 && m[1] === String(n)) slotColumns.add(key);
-      else problems.push({ file, row: 1, message: `column “${h}” isn’t recognized — items have at most 3 vendor options (v1_, v2_, v3_)` });
+      else problems.push({ file, row: table.headerRow, message: `column “${h}” isn’t recognized — items have at most 3 vendor options (v1_, v2_, v3_)` });
     } else if (INVENTORY_SET.has(key)) ignoredColumns.push(h);
-    else problems.push({ file, row: 1, message: `column “${h}” isn’t recognized — a price file can have id and v1_…v3_ supplier, part_no, url, pack_size, pack_price, price_checked` });
+    else problems.push({ file, row: table.headerRow, message: `column “${h}” isn’t recognized — a price file can have id and v1_…v3_ supplier, part_no, url, pack_size, pack_price, price_checked` });
   });
-  if (!table.columns.has('id')) problems.push({ file, row: 1, message: 'missing column: id' });
+  if (!table.columns.has('id')) problems.push({ file, row: table.headerRow, message: 'missing column: id' });
   if (problems.length > 0) return { ok: false, problems };
   if (slotColumns.size === 0) {
-    return { ok: false, problems: [{ file, row: 1, message: 'the file has no vendor columns (v1_pack_price, v1_price_checked, …), so there is nothing to import' }] };
+    return { ok: false, problems: [{ file, row: table.headerRow, message: 'the file has no vendor columns (v1_pack_price, v1_price_checked, …), so there is nothing to import' }] };
   }
 
   const byId = new Map(current.items.map((i) => [i.id, i]));

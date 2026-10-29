@@ -2,7 +2,7 @@
 // Nothing here touches the database; restore and the starter-catalog load apply a bundle later.
 import JSZip from 'jszip';
 import type { Category, Item, Location, Supplier } from '../domain/types';
-import type { FileProblem } from './csv';
+import { decodeCsvBytes, type FileProblem } from './csv';
 import { INVENTORY_FILE, parseInventoryCsv } from './inventory-csv';
 import {
   CATEGORIES_FILE,
@@ -73,11 +73,18 @@ function photoType(path: string): string | null {
   return PHOTO_TYPES[ext] ?? null;
 }
 
+/** Links left blank on reading because they weren't web addresses (M23, F11). */
+function clearedText(links: readonly string[]): string {
+  const shown = links.slice(0, 5).join(', ');
+  return `Links that aren't web addresses were left blank: ${shown}${links.length > 5 ? ` and ${links.length - 5} more` : ''}`;
+}
+
 export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles: Map<string, string> } {
   const parsed = parseInventoryCsv(text);
   const photoFiles = parsed.photoFiles;
   const warnings: string[] = [];
   if (parsed.ignoredColumns.length > 0) warnings.push(`Ignored columns: ${parsed.ignoredColumns.join(', ')}`);
+  if (parsed.clearedLinks.length > 0) warnings.push(clearedText(parsed.clearedLinks));
   if (parsed.problems.length > 0) return { bundle: null, problems: parsed.problems, warnings, photoFiles };
   return {
     bundle: {
@@ -148,12 +155,19 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     const want = (prefix + name).toLowerCase();
     return Object.values(zip.files).find((f) => !f.dir && f.name.toLowerCase() === want) ?? null;
   };
+  // A CSV edited in Excel and zipped again may be Windows-1252, as a loose CSV may (M23).
+  const decodeWarnings: string[] = [];
+  const decode = (bytes: Uint8Array, name: string) => {
+    const d = decodeCsvBytes(bytes, name);
+    decodeWarnings.push(...d.warnings);
+    return d.text;
+  };
   const text = async (name: string) => {
     const f = entry(name);
-    return f ? f.async('string') : null;
+    return f ? decode(await f.async('uint8array'), name) : null;
   };
 
-  const read = readInventoryCsvBundle((await csvEntry.async('string'))!);
+  const read = readInventoryCsvBundle(decode(await csvEntry.async('uint8array'), INVENTORY_FILE));
   const problems = [...read.problems];
   const warnings = [...read.warnings];
 
@@ -170,6 +184,8 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   const ordersText = await text(ORDERS_FILE);
   const orders = ordersText === null ? null : parseOrdersCsv(ordersText, (await text(ORDER_LINES_FILE)) ?? '');
   for (const p of [suppliers, locations, categories, orderLists, pending, orders]) if (p) problems.push(...p.problems);
+  warnings.unshift(...decodeWarnings);
+  if (suppliers?.clearedLinks?.length) warnings.push(clearedText(suppliers.clearedLinks));
 
   let manifest: Manifest | null = null;
   const manifestText = await text(MANIFEST_FILE);

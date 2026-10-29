@@ -13,6 +13,8 @@ export interface CsvTable {
   columns: Map<string, number>;
   /** Headers as written, in file order. */
   headers: string[];
+  /** Spreadsheet row of the header: 1, or later when blank lines come first (M23). */
+  headerRow: number;
   /** Data rows with their spreadsheet row numbers; fully blank rows are skipped. */
   rows: { row: number; cells: string[] }[];
   problems: FileProblem[];
@@ -35,21 +37,25 @@ export function readCsv(text: string, file: string): CsvTable {
     problems.push({ file, row: e.row === undefined ? null : e.row + 1, message: `CSV format problem: ${e.message}` });
   }
   const records = parsed.data;
-  const headers = (records[0] ?? []).map((h) => h.trim());
+  // Blank lines before the header are skipped, so a file that starts with one still reads (M23).
+  let h = 0;
+  while (h < records.length - 1 && (records[h] ?? []).every((c) => c.trim() === '')) h++;
+  const headerRow = h + 1;
+  const headers = (records[h] ?? []).map((x) => x.trim());
   const columns = new Map<string, number>();
-  headers.forEach((h, i) => {
-    const key = normalizeHeader(h);
+  headers.forEach((name, i) => {
+    const key = normalizeHeader(name);
     if (key === '') return;
-    if (columns.has(key)) problems.push({ file, row: 1, message: `column "${h}" appears more than once` });
+    if (columns.has(key)) problems.push({ file, row: headerRow, message: `column "${name}" appears more than once` });
     else columns.set(key, i);
   });
   const rows: CsvTable['rows'] = [];
-  for (let i = 1; i < records.length; i++) {
+  for (let i = h + 1; i < records.length; i++) {
     const cells = records[i] ?? [];
     if (cells.every((c) => c.trim() === '')) continue;
     rows.push({ row: i + 1, cells });
   }
-  return { columns, headers, rows, problems };
+  return { columns, headers, headerRow, rows, problems };
 }
 
 /** Cell accessor by normalized header; missing column or cell → ''. */
@@ -86,13 +92,14 @@ export function normalizeDate(raw: string): string | null {
  * Text of a CSV file from disk. UTF-8 (with or without a BOM) is expected; a file that isn't
  * valid UTF-8 is most likely Excel's plain "CSV" (Windows-1252), so it's read that way.
  */
-export function decodeCsvBytes(bytes: Uint8Array): { text: string; warnings: string[] } {
+export function decodeCsvBytes(bytes: Uint8Array, name?: string): { text: string; warnings: string[] } {
   try {
     return { text: new TextDecoder('utf-8', { fatal: true }).decode(bytes), warnings: [] };
   } catch {
+    const what = name === undefined ? 'The file isn’t' : `${name} isn’t`;
     return {
       text: new TextDecoder('windows-1252').decode(bytes),
-      warnings: ['The file isn’t UTF-8, so it was read as a Windows (Excel “CSV”) file. Check names with symbols like × or ¾.'],
+      warnings: [`${what} UTF-8, so it was read as a Windows (Excel “CSV”) file. Check names with symbols like × or ¾.`],
     };
   }
 }

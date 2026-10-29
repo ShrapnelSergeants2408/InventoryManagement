@@ -11,8 +11,21 @@ export interface ReminderClock {
   reminderDays: number;
 }
 
-/** True once a whole reminder period has passed with no backup. Before setup: never. */
+/**
+ * How far ahead of the clock a time may be before it's taken as wrong (M23): a backup or
+ * snooze time from a tablet whose clock was ahead and has since been corrected.
+ */
+export const FUTURE_SLACK_MS = 60 * 60 * 1000;
+
+/** The last backup is dated later than this tablet's clock allows (M23). */
+export const backupInFuture = (lastBackupAt: number | null, now: number) => lastBackupAt !== null && lastBackupAt - now > FUTURE_SLACK_MS;
+
+/**
+ * True once a whole reminder period has passed with no backup. Before setup: never. A backup
+ * dated in the future can't say how long ago it was, so the reminder shows (M23).
+ */
 export function backupDue(c: ReminderClock, now: number): boolean {
+  if (backupInFuture(c.lastBackupAt, now)) return true;
   const since = c.lastBackupAt ?? c.setupDoneAt;
   if (since === null) return false;
   return now - since >= c.reminderDays * DAY_MS;
@@ -26,9 +39,11 @@ export function daysSinceBackup(lastBackupAt: number | null, now: number): numbe
 /**
  * The banner shows when a backup is due and "Later" wasn't tapped within the snooze time.
  * `now` can be a little older than `snoozedAt` (a screen's clock ticks once a minute); that
- * still counts as snoozed.
+ * still counts as snoozed. A snooze more than an hour ahead of the clock (the clock was moved
+ * back) no longer counts (M23).
  */
 export function showBackupBanner(c: ReminderClock, now: number, snoozedAt: number | null): boolean {
   if (!backupDue(c, now)) return false;
+  if (snoozedAt !== null && snoozedAt - now > FUTURE_SLACK_MS) return true;
   return snoozedAt === null || now - snoozedAt >= SNOOZE_MS;
 }

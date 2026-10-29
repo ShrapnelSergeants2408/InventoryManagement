@@ -12,6 +12,17 @@
 - (f) Placed orders has All / Open; date ranges and the spending summary come with F32 (M20).
 - (g) A PDF receipt opens in the browser's PDF viewer in a new tab (§21.2).
 
+Also in v0.14, from the independent review of M19 (`docs/reviews/M19-independent.md`; Dan, 2026-10-29: "fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8"):
+- **Undo this import** leaves alone every item that has had parts received since the import (F31): it keeps the on hand, location, barcode and count date it has now. The confirmation and the result say how many were kept (§18.5; review finding 3).
+- The Receive confirmation treats a line whose item was deleted like a typed line: "n received (item deleted, no inventory change)" (F31; finding 1).
+- Once Record order has saved the order, the form never comes back: a receipt that can't be saved is named in the "Recorded" message, to add on the order page. Recording again can't make a second order (§21.2; finding 2).
+- The Cancel order and Remove receipt confirmations close when mentor tools relock, like the other PIN dialogs (§6; finding 5).
+- In portrait, each number on an order's page has its label (Ordered, Pack price, Line total, Received) (§21.4; finding 7).
+- Recording and editing refuse a placed date after today; a restore doesn't, so a backup from a tablet with another clock still reads. Amounts too large to add up exactly in whole cents are refused (§21.1; finding 8).
+- In the price copy, a line charged $0.00 starts unticked (§21.3; finding 8).
+- Restore puts each order's lines back in their `line` order; a blank number keeps the file order (§21.6; finding 8).
+- The first-launch summary's order total, after restoring a backup with orders, subtracts what is on order (F22, §4; finding 8).
+
 **Changes in v0.13 (approved by Dan 2026-10-28, §15 Q8):**
 - **Stage 5 leftovers** (`docs/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
   - (a) First-launch setup says that a tablet which had inventory before has had its storage cleared, and points to Restore (§2, F22; finding 3).
@@ -619,7 +630,7 @@ When several files are imported together, they're applied in order of counted_at
 
 **4. Summary.** Shows counts applied, skipped, conflicts settled, outside assignment, new items waiting, and the order-list total before → after. Buttons: **Review new items**, **Back up now**, **Undo this import**.
 
-**Undo this import.** Before applying, the app records the previous on_hand, location, barcode, last_counted and counted_by of every changed item, plus the locations and pending items the import created. **Undo this import** (on the summary, and on the Backup screen until the next import or restore) puts them all back and removes those locations and pending items. Locations are removed only if no item uses them yet. Items already accepted from pending stay; delete them normally if needed. It's a confirmation dialog in destructive style (§17). Undo replaces a PIN for this action: a bad file can always be reversed.
+**Undo this import.** Before applying, the app records the previous on_hand, location, barcode, last_counted and counted_by of every changed item, plus the locations and pending items the import created. **Undo this import** (on the summary, and on the Backup screen until the next import or restore) puts them all back and removes those locations and pending items, except items that have had parts received since the import (F31): those keep what they have now, and the confirmation says how many (v0.14). Locations are removed only if no item uses them yet. Items already accepted from pending stay; delete them normally if needed. It's a confirmation dialog in destructive style (§17). Undo replaces a PIN for this action: a bad file can always be reversed.
 
 **Pending items: review.** From the summary or **Pending from helpers (n)** on the Count-in start screen:
 - **Accept:** opens the Add item form (F6), filled in with the helper's fields and photo. The item gets its real id when saved. Vendor option 1 is open while adding, as in F6, and prices can be added later by a mentor.
@@ -717,7 +728,7 @@ v0.7 is built (milestones 1–10) and verified in Stage 5. v0.8 is added to that
 - **Lines:** every line of the group, ticked, with its packs (as the list works them out, §4), the vendor option's pack size and pack price. A line with no stored price must have one entered. Untick lines that weren't ordered; change packs, pack size or pack price to what was charged. **+ Add line** adds an inventory item (search by name, part # or barcode; it uses the item's vendor option for this supplier if it has one, otherwise its preferred vendor's pack size, with the price left blank) or a **typed line** (description, unit, packs, pack size and pack price; for things that aren't inventory, e.g. team shirts; v0.14).
 - **Order fields:** placed date (default today), order or invoice number, payment / PO, tax, shipping, other fees (dollar amounts as charged, default 0), discount (a dollar amount or a percent of the parts total), notes, receipts (§21.2).
 - **Totals, shown as you type:** parts = Σ line totals; discount = the dollar amount, or parts × percent ÷ 100 rounded to the cent; **total = parts − discount + tax + shipping + fees**. All money is kept in whole cents.
-- **Checks before saving:** at least one ticked line; packs and pack size whole numbers ≥ 1; prices ≥ 0 in cents; tax, shipping and fees ≥ 0; a percent from 0 to 100; a dollar discount not more than the parts total. Errors are shown beside the field; nothing is saved until all pass.
+- **Checks before saving:** at least one ticked line; a placed date no later than today (v0.14); packs and pack size whole numbers ≥ 1; prices ≥ 0 in cents; tax, shipping and fees ≥ 0; a percent from 0 to 100; a dollar discount not more than the parts total. Errors are shown beside the field; nothing is saved until all pass.
 - **Saving** stores the order with status placed, copies each item line's description, part #, unit and category from the item, and, for a named list, removes the ordered lines from that list (lines that were unticked stay). A named list left empty offers **Delete this list**. The Automatic list changes by itself, because the order quantity subtracts what is on order (§4).
 
 ### 21.2 Receipts
@@ -726,7 +737,7 @@ v0.7 is built (milestones 1–10) and verified in Stage 5. v0.8 is added to that
 - Tap a receipt to view it (a photo full screen; a PDF opens in the browser's viewer). Remove asks to confirm. Adding and removing receipts is part of editing the order (PIN).
 
 ### 21.3 Copying prices into the catalog
-After an order is saved, the app lists every item line whose item has a vendor option for this supplier and whose pack price or pack size differs from it ("REV · NEO 2.0: $45.00 → $47.50"), each ticked, plus "Also mark the n unchanged prices as checked on <placed date>" (ticked). **Update prices** sets the vendor option's pack price and pack size, and price_checked to the placed date, for the ticked lines; **Skip** changes nothing. It runs under the same unlock as the order. Items without a vendor option for this supplier aren't offered (adding a vendor option stays in the item editor). It is offered only when an order is first recorded.
+After an order is saved, the app lists every item line whose item has a vendor option for this supplier and whose pack price or pack size differs from it ("REV · NEO 2.0: $45.00 → $47.50"), each ticked except a line charged $0.00 (v0.14: a free or promo item is rarely the catalog price), plus "Also mark the n unchanged prices as checked on <placed date>" (ticked). **Update prices** sets the vendor option's pack price and pack size, and price_checked to the placed date, for the ticked lines; **Skip** changes nothing. It runs under the same unlock as the order. Items without a vendor option for this supplier aren't offered (adding a vendor option stays in the item editor). It is offered only when an order is first recorded.
 
 ### 21.4 Editing, cancelling and deleting (PIN)
 - **Edit:** every field and line can be changed. A line's packs can't go below what was already received. Editing doesn't remove anything more from order lists and doesn't change inventory.
@@ -746,7 +757,7 @@ After an order is saved, the app lists every item line whose item has a vendor o
 - **Print summary:** a printable page (title, range, filters, printed date, both summaries, then the orders in the range); print it or save it as a PDF from the Android print dialog, as for labels (§9).
 
 ### 21.6 Storage, backups and the upgrade
-- **Schema v4:** adds the order and receipt stores and the two settings (season start, school-year start). Existing data isn't changed. The schema-version check (§18.7) is raised to 4, so an older cached app refuses to write.
+- **Schema v4:** adds the order and receipt stores. The two settings (season start, school-year start) are rows in the existing settings store, so they need no schema change. Existing data isn't changed. On restore, an order's lines go back in their `line` order (v0.14). The schema-version check (§18.7) is raised to 4, so an older cached app refuses to write.
 - **Full backup:** v0.13 always writes `orders.csv` (one row per order: order_id, supplier, placed_on, order_no, payment, cancelled, tax, shipping, fees, discount_kind (`$` or `%`), discount, notes, from_list, receipts, created, updated; money in dollars with two decimals; `receipts` lists the files separated by `;`) and `order-lines.csv` (order_id, line, item_id, description, part_no, unit, category, packs, pack_size, pack_price, received), even when empty, plus the receipt files under `receipts/`.
 - **Restore:** a full backup that has `orders.csv` replaces the tablet's orders and receipts with its own. An older full backup without it, and any CSV-only restore, keep the tablet's orders; the restore confirmation has an Orders row saying which. Order lines naming items that aren't in the restored inventory are kept (they hold their own description) and count as items deleted (§21.4). A receipt named in `orders.csv` but missing from the ZIP is reported like a missing photo.
 - **Round trip:** export → restore keeps every order, line, amount, status and receipt.

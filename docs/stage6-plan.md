@@ -240,6 +240,7 @@ Numbering continues from Stage 4 (M1–M10), so `docs/reviews/` stays unambiguou
 |---|---|---|---|
 | 2 | M15 | Add `orderLists: 'id, key, *itemIds'` | None (new empty table). Writes `schemaVersion = 2` |
 | 3 | M16a | Add `helpers: 'id, &key'` (unique name key, like `orderLists`; M16a), `pendingItems: 'id, helperId, barcode'`, `pendingPhotos: 'pendingId'`, `importUndo: 'id'` | Every item: a date-only `lastCounted` becomes local midnight with that date's UTC offset; `countedBy = ''` added. Nothing else changes. Writes `schemaVersion = 3` |
+| 4 | M19 | Add `orders: 'id, supplierKey, placedOn, *itemIds'` and `receipts: 'id, orderId'`. Season start and school-year start are rows in `settings`, not a schema change | None (two new empty tables). Writes `schemaVersion = 4` |
 
 **Guard (built in M15, before `version(2)` ships):**
 - the app knows its own schema version;

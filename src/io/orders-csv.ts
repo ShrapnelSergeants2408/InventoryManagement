@@ -108,6 +108,7 @@ export function parseOrdersCsv(ordersText: string, linesText: string, now = Date
   if (oMissing.length || lMissing.length) return { orders: [], receiptFiles, problems };
 
   const byId = new Map<string, { order: PlacedOrder; row: number }>();
+  const lineNo = new Map<PlacedLine, number>();
   for (const { row, cells } of ot.rows) {
     const get = cellGetter(ot, cells);
     const file = ORDERS_FILE;
@@ -223,7 +224,17 @@ export function parseOrdersCsv(ordersText: string, linesText: string, now = Date
       received: (received as { value: number }).value,
     };
     entry.order.lines.push(line);
+    const n = get('line').trim();
+    lineNo.set(line, /^\d+$/.test(n) ? Number(n) : Infinity);
   }
+  // Lines go back in their `line` order, so a file sorted in a spreadsheet keeps them; a blank
+  // or unreadable number keeps the file order (the sort is stable).
+  const by = (a: PlacedLine, b: PlacedLine) => {
+    const x = lineNo.get(a)!;
+    const y = lineNo.get(b)!;
+    return x === y ? 0 : x < y ? -1 : 1;
+  };
+  for (const { order } of byId.values()) order.lines.sort(by);
 
   const orders: PlacedOrder[] = [];
   for (const { order, row } of byId.values()) {

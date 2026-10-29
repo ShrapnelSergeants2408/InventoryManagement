@@ -12,6 +12,7 @@ import { saveCount } from '../src/data/count';
 import { InventoryDb, fromItemRow, toHelperRow, toItemRow, toLocationRow, toSupplierRow } from '../src/data/db';
 import { HelperDb, addPendingItem, helperItems, joinKit, loadHelperState, pendingPhotos as helperPhotos } from '../src/data/helper-db';
 import { applyImport, getImportUndo, previewImport, undoImport } from '../src/data/import-counts';
+import { receiveOrder } from '../src/data/placed-orders';
 import { addLocation } from '../src/data/lists';
 import { addItem, setBarcode } from '../src/data/items';
 import { combinePendingItems, discardPending, loadPending, matchPending, pendingPhoto } from '../src/data/pending';
@@ -363,10 +364,37 @@ describe('Apply, Undo (§18.5)', () => {
     const before = await all(db);
     await applyImport(db, [theFile()], noChoices(), 5000);
     const r = await undoImport(db, 6000);
-    expect(r).toEqual({ items: 3, pending: 1, locations: 1 });
+    expect(r).toEqual({ items: 3, kept: 0, pending: 1, locations: 1 });
     expect((await all(db)).map(({ ...i }) => i)).toEqual(before);
     expect([await loadPending(db), await db.pendingPhotos.count(), (await db.locations.toArray()).map((l) => l.name).sort(), await getImportUndo(db)]).toEqual([[], 0, ['Bin A', 'Shelf C1'], null]);
     expect((await db.helpers.get('hp-MAYA1'))!.lastImportAt).toBe(null);
+  });
+
+  it('Undo leaves items received into since the import as they are (v0.14); the rest go back', async () => {
+    const db = await tablet();
+    const before = await all(db);
+    await applyImport(db, [theFile()], noChoices(), 5000);
+    const order = { supplier: 'REV', placedOn: '2026-10-28', orderNo: '', payment: '', cancelled: false, taxCents: 0, shippingCents: 0, feesCents: 0, discount: { kind: '$' as const, value: 0 }, notes: '', fromList: '', receipts: [], created: 1, updated: 1 };
+    await db.orders.add({ ...order, id: 'po-1', supplierKey: 'rev', itemIds: ['A', 'B'], lines: [{ itemId: 'A', description: 'A', partNo: '', unit: 'each', category: '', packs: 5, packSize: 1, packPriceCents: 100, received: 0 }, { itemId: 'B', description: 'B', partNo: '', unit: 'each', category: '', packs: 1, packSize: 1, packPriceCents: 100, received: 0 }] });
+    // A was set to 4 by the import; 3 arrive. B wasn't in the import, so it isn't noted.
+    await receiveOrder(db, 'po-1', [3, 1], 5500);
+    expect((await getImportUndo(db))?.received).toEqual(['A']);
+    await receiveOrder(db, 'po-1', [1, 0], 5600);
+    expect((await getImportUndo(db))?.received).toEqual(['A']);
+    const r = await undoImport(db, 6000);
+    expect([r.items, r.kept]).toEqual([2, 1]);
+    const a = fromItemRow((await db.items.get('A'))!);
+    expect([a.onHand, a.lastCounted, a.countedBy, a.location]).toEqual([8, at('18:50'), MAYA, 'Bin Z']);
+    const others = (await all(db)).filter((i) => i.id !== 'A' && i.id !== 'B');
+    expect(others).toEqual(before.filter((i) => i.id !== 'A' && i.id !== 'B'));
+  });
+
+  it('a receive with no import to undo changes no undo record', async () => {
+    const db = await tablet();
+    const order = { supplier: 'REV', placedOn: '2026-10-28', orderNo: '', payment: '', cancelled: false, taxCents: 0, shippingCents: 0, feesCents: 0, discount: { kind: '$' as const, value: 0 }, notes: '', fromList: '', receipts: [], created: 1, updated: 1 };
+    await db.orders.add({ ...order, id: 'po-1', supplierKey: 'rev', itemIds: ['A'], lines: [{ itemId: 'A', description: 'A', partNo: '', unit: 'each', category: '', packs: 2, packSize: 1, packPriceCents: 100, received: 0 }] });
+    await receiveOrder(db, 'po-1', [2], 5500);
+    expect(await getImportUndo(db)).toBe(null);
   });
 
   it('Undo keeps a location an item now uses, and items already accepted from pending', async () => {

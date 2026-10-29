@@ -251,6 +251,43 @@ try {
   await js(`document.querySelector('.tick input').click(); await settle(150); await click('.dlg button', 'Replace everything'); await answerGate(true); await waitGone('Replace all inventory with this backup?'); await settle(800);`);
   check('restored: the order exactly as before (keys in any order), and both receipts', await js(`const sortKeys = (v) => Array.isArray(v) ? v.map(sortKeys) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sortKeys(v[k])])) : v; const now = JSON.stringify(sortKeys(await idb('orders'))); const was = JSON.stringify(sortKeys(JSON.parse(${JSON.stringify(beforeRestore)}))); return [now === was ? true : [now, was], (await idb('receipts')).length]`), [true, 2]);
 
+  // ── Independent review fixes (2026-10-29): a receipt that can't be saved, a $0 price, a
+  //    deleted item at Receive, dialogs that close on relock ──
+  const nOrders = await js(`return (await idb('orders')).length`);
+  await js(`await go('#/order'); await settle(500); markBtn('REV').click(); await answerGate(true, true); await waitDlg('Mark ordered: REV');
+            const rows = formRows(); for (const r of rows.slice(2)) { r.querySelector('input[type=checkbox]').click(); await settle(30); }
+            await type(rowInput(formRows()[0], 'Pack price of'), '0');
+            await choose(dlg('Mark ordered: REV').querySelector('input[data-receipt=pdf]'), 'invoice.pdf', new TextEncoder().encode('%PDF-1.4 test'), 'application/pdf');
+            window.__put = IDBObjectStore.prototype.put;
+            IDBObjectStore.prototype.put = function (...a) { if (this.name === 'receipts') throw new DOMException('The disk is full', 'QuotaExceededError'); return window.__put.apply(this, a); };
+            await click('.dlg button', 'Record order'); await waitDlg('Update catalog prices?');
+            IDBObjectStore.prototype.put = window.__put;`);
+  const o3 = await js(`return (await idb('orders')).sort((a, b) => b.created - a.created)[0]`);
+  check('a receipt that can’t be saved: the order is saved once, with no receipt, and the form moves on', await js(`return [(await idb('orders')).length - ${nOrders}, ${JSON.stringify(o3.receipts.length)}, !dlg('Mark ordered: REV')]`), [1, 0, true]);
+  check('price copy: a line charged $0 starts unticked', await js(`const d = dlg('Update catalog prices?'); const li = [...d.querySelectorAll('.pc-list label, .pc-list li')].find((x) => /→ \\$0\\.00/.test(norm(x.textContent))); return [!!li, li?.querySelector('input[type=checkbox]')?.checked]`), [true, false]);
+  await js(`await click('.dlg button', 'Skip'); await settle(300);`);
+  check('the Recorded toast says the receipt wasn’t saved', await js(`return /A receipt couldn’t be saved \\(.*\\): add it on the order page\\./.test(toast())`), true);
+  await js(`await relockNow();`);
+
+  // The second line's item is deleted (outside the app), then the order is received.
+  const gone = o3.lines[1];
+  await js(`await idbTx('items', (s) => void s.delete(${JSON.stringify(gone.itemId)})); location.hash = '#/inventory'; location.reload();`);
+  await sleep(1000);
+  await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
+  await js(`await go('#/placed/' + ${JSON.stringify(o3.id)}); await click('.top button', 'Receive…'); await waitDlg('Receive'); await click('.dlg button', 'Receive all'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?');`);
+  const firstUnits = o3.lines[0].packs * o3.lines[0].packSize;
+  check('Receive with a deleted item: only the existing item is added; the deleted one is marked received', await js(`const d = dlg('Add to on hand?'); return [norm(d.querySelector('h2').textContent), $$('.notes-list li').map((l) => norm(l.textContent))[1]]`), [`Add ${firstUnits} to on hand for 1 item?`, `${gone.description}: ${gone.packs * gone.packSize} received (item deleted, no inventory change)`]);
+  await shot('11-receive-deleted-item');
+  await js(`await click('.dlg button', 'Back'); await settle(200); $('.scrim.center').click(); await settle(300);`);
+  check('nothing was received: Back and closing leave the order as it was', await js(`return [!dlg('Receive'), (await idb('orders', ${JSON.stringify(o3.id)})).lines.map((l) => l.received)]`), [true, o3.lines.map(() => 0)]);
+
+  // Cancel and Remove receipt close when mentor tools relock, and change nothing.
+  await js(`await click('.po-head button', 'Cancel order'); await answerGate(true, true); await waitDlg('Cancel this order?'); await relockNow(); await settle(1500);`);
+  check('Cancel order: the confirmation closes on relock; the order isn’t cancelled', await js(`return [!dlg('Cancel this order?'), (await idb('orders', ${JSON.stringify(o3.id)})).cancelled]`), [true, false]);
+  await js(`await choose(document.querySelector('input[data-receipt=pdf]'), 'invoice.pdf', new TextEncoder().encode('%PDF-1.4 test'), 'application/pdf'); await answerGate(true); for (let i = 0; i < 50 && !(await idb('orders', ${JSON.stringify(o3.id)})).receipts.length; i++) await settle(100);
+            await click('.po-rc button', 'Remove'); await answerGate(true, true); await waitDlg('Remove this receipt?'); await relockNow(); await settle(1500);`);
+  check('Remove receipt: the confirmation closes on relock; the receipt stays', await js(`return [!dlg('Remove this receipt?'), (await idb('orders', ${JSON.stringify(o3.id)})).receipts.length]`), [true, 1]);
+
   // ── Layout: targets, text, portrait ──
   await js(`await go('#/order'); await settle(500); markBtn('REV').click(); await answerGate(true, true); await waitDlg('Mark ordered: REV');`);
   check('order form: touch targets ≥ 48 px', await js(`return targets(dlg('Mark ordered: REV'))`), []);
@@ -262,6 +299,7 @@ try {
   await js(`await click('.dlg button', 'Cancel'); await go('#/placed/' + (await idb('orders'))[0].id);`);
   await shot('10-order-portrait');
   check('portrait order page: nothing wider than the screen', await js(`return document.documentElement.scrollWidth <= innerWidth`), true);
+  check('portrait order page: each number has its label', await js(`return [...$$('.po-l:not(.po-lh)')[0].querySelectorAll('[data-l]')].map((c) => getComputedStyle(c, '::before').content)`), ['"Ordered"', '"Pack price"', '"Line total"', '"Received"']);
   await size(1280, 800);
   await sleep(300);
   check('order page: touch targets ≥ 48 px, text ≥ 15 px', await js(`return [targets($('.main')), smallText($('.main'))]`), [[], []]);

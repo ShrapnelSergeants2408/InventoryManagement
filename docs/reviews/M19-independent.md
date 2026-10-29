@@ -220,3 +220,20 @@ I didn't run mutation tests: the rules forbid changing `src/`.
 - orders and receipts round-trip through a full backup.
 
 Finding 3 (Undo after a receive) needs a decision from Dan and can wait for M20. Back up the tablet before updating it, as the builder's tablet check says.
+
+## Fixes after the review (builder, 2026-10-29)
+
+Dan: "fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8". Findings 4 and 6 weren't in the list and are still open.
+
+| # | What was done | Evidence |
+|---|---|---|
+| 1 | `ReceiveDialog` gets the item ids that still exist; a line whose item is gone reads "n received (item deleted, no inventory change)" and isn't counted in the heading or button | `m19-ui-check`: "Add 5 to on hand for 1 item?" with the deleted item's line marked as above |
+| 2 | Once `recordOrder` succeeds the form never comes back; each receipt is tried on its own, and one that fails is named in the "Recorded" toast ("A receipt couldn’t be saved (…): add it on the order page.") | `m19-ui-check` with receipt writes made to fail (`QuotaExceededError`): one order, no receipt, on to the price step, toast. Against the pre-fix build the same check fails (the form stays open) |
+| 3 | Receiving notes each stocked item that the last import changed (`noteReceivedSinceImport`, inside the receive transaction). Undo skips those items; the confirmation and toast say how many were kept. Spec §18.5 (v0.14) | Unit: import → receive → Undo keeps A at 8 and puts the others back; a receive with no import writes no undo record |
+| 5 | `useCloseOnRelock` in `CancelDialog` and `RemoveReceiptDialog` | `m19-ui-check`: both close on relock; the order isn't cancelled and the receipt stays |
+| 7 | `data-l` labels on the order page's cells, shown in portrait | `m19-ui-check`: Ordered, Pack price, Line total, Received |
+| 8 | Future placed date refused when recording or editing (not on restore); amounts too large to add up exactly refused; a $0 line starts unticked in the price copy; restore sorts lines by `line`; Setup's order total subtracts on order; stage6-plan §3 v4 row and SPEC §21.6 settings wording; tablet-check steps for viewing a PDF on Android and for a typed line | Unit: future date with and without today; 2²⁶ × 2²⁸ refused; lines from a reversed file and a blank number. `m19-ui-check`: $0 line unticked |
+
+Not done from finding 8: a real-browser check of an existing helper database (v100) upgrading, and a browser check of the delete-item text. The formula-guard and `line` notes needed no change beyond the sort.
+
+**Evidence:** type check and build clean. Unit **859 pass** (1 skipped), real tablet backup test passes. `m19-ui-check` **45/45** (8 new), clean console. Regression M3 50, M5 39, M15b 26, M16c 25, M18 14, all pass with clean consoles. M15 37, then the timeout from finding 4 (unchanged).

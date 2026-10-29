@@ -25,6 +25,8 @@ export interface ImportUndo {
   pending: string[];
   /** Helper id → last_import_at before. */
   helpers: Array<[string, number | null]>;
+  /** Items received into since the import (F31): Undo leaves them as they are. Absent before v0.14. */
+  received?: string[];
 }
 
 export interface ImportSummary {
@@ -132,17 +134,36 @@ export async function getImportUndo(db: InventoryDb): Promise<ImportUndo | null>
   return row ? (row as unknown as ImportUndo) : null;
 }
 
+/** Notes an item received into (F31), so Undo this import leaves it alone. Call inside the receive transaction. */
+export async function noteReceivedSinceImport(db: InventoryDb, itemIds: readonly string[]): Promise<void> {
+  const undo = await getImportUndo(db);
+  if (!undo) return;
+  const changed = new Set(undo.items.map(([id]) => id));
+  const received = new Set(undo.received ?? []);
+  const add = itemIds.filter((id) => changed.has(id) && !received.has(id));
+  if (add.length === 0) return;
+  await db.importUndo.put({ ...undo, received: [...received, ...add] } as unknown as { id: string });
+}
+
+/** The items Undo this import would put back: changed by the import and not received into since. */
+export const undoableItems = (undo: ImportUndo) => {
+  const received = new Set(undo.received ?? []);
+  return undo.items.filter(([id]) => !received.has(id));
+};
+
 /**
  * Undo this import (§18.5): every changed item gets back its on_hand, location, barcode,
- * last_counted and counted_by exactly; the pending items the import added are removed (ones
- * already accepted stay); the locations it added are removed if no item uses them.
+ * last_counted and counted_by exactly, except items received into since (v0.14), which keep
+ * what they have; the pending items the import added are removed (ones already accepted stay);
+ * the locations it added are removed if no item uses them.
  */
-export async function undoImport(db: InventoryDb, now = Date.now()): Promise<{ items: number; pending: number; locations: number }> {
+export async function undoImport(db: InventoryDb, now = Date.now()): Promise<{ items: number; kept: number; pending: number; locations: number }> {
   return db.transaction('rw', [db.items, db.locations, db.pendingItems, db.pendingPhotos, db.helpers, db.importUndo, db.settings], async () => {
     const undo = await getImportUndo(db);
     if (!undo) throw new Error('there is no import to undo');
     let items = 0;
-    for (const [id, f] of undo.items) {
+    const back = undoableItems(undo);
+    for (const [id, f] of back) {
       const row = await db.items.get(id);
       if (!row) continue;
       await db.items.put({ ...row, ...f, updatedAt: now });
@@ -167,7 +188,7 @@ export async function undoImport(db: InventoryDb, now = Date.now()): Promise<{ i
     }
     await db.importUndo.clear();
     await db.settings.put({ key: 'lastChangeAt', value: now });
-    return { items, pending: stillPending.length, locations };
+    return { items, kept: undo.items.length - back.length, pending: stillPending.length, locations };
   });
 }
 

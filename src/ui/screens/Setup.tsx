@@ -10,6 +10,7 @@ import type { ReplaceAllInput } from '../../data/inventory';
 import { savePinAndRecovery } from '../../data/pin';
 import { emptyStart, requestPersistentStorage, startInventory, type StartChoice } from '../../data/setup';
 import { orderTotalCents } from '../../domain/count';
+import { onOrderMap, type PlacedOrder } from '../../domain/placed-orders';
 import { formatDateTime } from '../../domain/dates';
 import { formatCents } from '../../domain/money';
 import { readRestoreFile, type RestorePlan } from '../../io/restore';
@@ -164,7 +165,7 @@ function StartStep(props: { onStarted: () => void; onDone: () => void }) {
     props.onStarted();
     setStage({
       kind: 'ready',
-      result: { choice: c, items: data.items.length, photos, suppliers: data.suppliers.length, categories: data.categories.length, orderCents: orderTotalCents(data.items), fileName, persisted },
+      result: { choice: c, items: data.items.length, photos, suppliers: data.suppliers.length, categories: data.categories.length, orderCents: orderTotalCents(data.items, onOrderMap((data as { orders?: PlacedOrder[] }).orders ?? [])), fileName, persisted },
     });
   };
   const fail = (e: unknown) => {

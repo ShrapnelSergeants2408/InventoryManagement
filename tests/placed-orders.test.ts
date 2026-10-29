@@ -184,6 +184,17 @@ describe('totals (§21.1)', () => {
     expect(msgs({ discount: { kind: '$', value: 1000 } })).toEqual([]);
     expect(msgs({ lines: [line({ packPriceCents: 0 })] })).toEqual([]);
   });
+
+  it('with today, a placed date after it is refused; without (a restore), it reads', () => {
+    expect(orderProblems(input({ placedOn: '2026-10-30' }), '2026-10-29').map((p) => p.message)).toEqual(['The placed date can’t be after today.']);
+    expect(orderProblems(input({ placedOn: '2026-10-29' }), '2026-10-29')).toEqual([]);
+    expect(orderProblems(input({ placedOn: '2099-01-01' }))).toEqual([]);
+  });
+
+  it('amounts each valid but too large to add up exactly are refused', () => {
+    expect(orderProblems(input({ lines: [line({ packs: 2 ** 26, packPriceCents: 2 ** 28 })] })).map((p) => p.message)).toEqual(['These amounts are too large to add up exactly.']);
+    expect(orderProblems(input({ lines: [line({ packs: 1000, packSize: 100, packPriceCents: 9_999_999 })] }))).toEqual([]);
+  });
 });
 
 describe('status and on order (§3, §4)', () => {
@@ -486,6 +497,17 @@ describe('orders.csv and order-lines.csv (§21.6)', () => {
       ['po-AAAAAA-1', 'receipts/po-AAAAAA-1.jpg'],
       ['po-AAAAAA-2', 'receipts/po-AAAAAA-2.pdf'],
     ]);
+  });
+
+  it('lines come back in their line-number order, even from a file sorted in a spreadsheet', () => {
+    const three = order({ lines: [line({ description: 'one' }), line({ description: 'two' }), line({ description: 'three' })] });
+    const [head, ...rows] = serializeOrderLinesCsv([three]).trim().split('\r\n');
+    const r = parseOrdersCsv(serializeOrdersCsv([three]), [head, ...rows.reverse()].join('\r\n'));
+    expect(r.orders[0]!.lines.map((l) => l.description)).toEqual(['one', 'two', 'three']);
+    // A blank line number keeps the file order, after the numbered lines.
+    const blank = [head, rows[2]!.replace(/^(po-[^,]+),1,/, '$1,,'), rows[0], rows[1]].join('\r\n');
+    expect(blank).not.toContain(',1,one');
+    expect(parseOrdersCsv(serializeOrdersCsv([three]), blank).orders[0]!.lines.map((l) => l.description)).toEqual(['two', 'three', 'one']);
   });
 
   it('an empty history writes both headers', () => {

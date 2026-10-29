@@ -91,7 +91,9 @@
   .po-row { grid-template-columns: minmax(0, 1fr) auto; padding: 10px 16px; }
   .po-row .po-date { grid-column: 1 / -1; }
   .po-row > .ic { display: none; }
-  .po-l { grid-template-columns: minmax(0, 1fr) auto; }
+  .po-l { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
+  .po-l .po-ln { grid-column: 1 / -1; }
+  .po-l [data-l]::before { content: attr(data-l); display: block; margin-bottom: 2px; font-size: 15px; font-weight: 700; color: var(--ink-2); }
   .po-lh { display: none; }
   .po-page { padding: 12px 16px 32px; }
   .po-sum { align-self: stretch; min-width: 0; }

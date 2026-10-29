@@ -831,3 +831,5 @@ High for the ranges and money (boundary dates, hand-worked and random summaries,
 **Later:** Dan: "confirm a-k". SPEC v0.15 writes the eleven M20 details into §21.5 and the decision log; `docs/reviews/M20.md` records the confirmation. PR #32 ready to merge.
 
 **Later:** Dan merged PR #32 (M20) and ran its tablet check: "tablet check successful". Every v0.13 milestone (M18–M20) is built and checked on the tablet. Still open from Stage 5: the real label-sheet print (D-01), waiting for labels to be bought.
+
+**Later:** Dan: "label print test can be closed". SPEC §15 question 2 (which label sheets) and the Stage 5 real label-print test (D-01) are closed; decision log updated. Nothing from Stage 5 or v0.13 is still open.

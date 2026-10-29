@@ -474,7 +474,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 ## 15. Open questions
 
 1. ~~Which Thrifty Bot swerve module version the team owns~~ — answered: TTB-SWERVE-8MM-8MM (Stage 2).
-2. Which label sheets you end up buying (any of the §9 layouts work; others can be added). Still open: waiting on a team purchase decision (2026-10-18). Until then, labels are printed through the PDF route (§9; Dan, 2026-10-21 13:00).
+2. ~~Which label sheets you end up buying~~ — closed 2026-10-29 (Dan: "label print test can be closed"), along with the real label-sheet print test (Stage 5 D-01). The §9 layouts and the PDF route stay as built; another layout can be added later (§9).
 3. ~~Test-fit NEO 2.0 with the WCP-1011 pinion~~ and 4. ~~Which robot radio is legal for 2027~~ — closed 2026-10-18: robot questions, not app questions (Dan). The starter catalog keeps its items; the team can edit them in the app.
 5. ~~Stage 3 proposals S2, S4–S11~~ — approved 2026-10-17 15:34 and written into v0.5 (F7, F9, F14, F16, F17, F18, F21, F25, §2, §6, §9).
 6. ~~Approve the helper devices and other proposal changes (§18, F26–F28)~~ — approved 2026-10-21 13:44 (Dan: "yes to all"). The four details Claude decided in the claude.ai proposal, as approved:
@@ -553,6 +553,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Dan merged PR #30 (M19) and confirmed its details: "approve a-g except for c - allow for different pack sizes and units on typed lines". v0.14: typed lines have their own pack size and unit. Independent review of M19 next |
 | 2026-10-29 | Independent review of M19: Dan asked for findings 1–8 fixed ("fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8", then "fix 4 and 6 too"). Undo this import leaves items received since the import alone. CSV files are always read as comma-separated (a separator-guessing bug found while fixing finding 6) |
 | 2026-10-29 | Dan merged PR #31 and checked M19 on the tablet (a PDF receipt opens in Chrome). M20 built; Dan confirmed its details (a)–(k): "confirm a-k". v0.15 |
+| 2026-10-29 | Dan merged PR #32 (M20; tablet check passed) and closed the label-sheet question and the real label print test (Stage 5 D-01): "label print test can be closed". §15 has no open questions left |
 
 ## 17. UI conventions (from Stage 3)
 

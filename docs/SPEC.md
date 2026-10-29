@@ -9,6 +9,7 @@
 - Blank lines before a CSV's header are skipped, and header problems name the header's real row (§7; finding 5).
 - A last backup dated more than an hour later than the tablet's clock shows the reminder, saying the clock was changed; a "Later" more than an hour in the future no longer counts (F16; finding 6).
 - A helper device's database version rises with the inventory's (100 + the schema version, now 104), so an upgrade adds new stores normally (§18.7). Found by the new helper upgrade check.
+- Details Claude filled in, confirmed by Dan on 2026-10-29 (`docs/reviews/M23.md`): "in the future" means more than an hour ahead; a link that isn't a web address is left blank, not refused; the Windows-1252 fallback covers backups, not count kits or counts files; the PIN pad is tested in the browser rather than with unit tests.
 - New browser checks: the PIN pad's answer (Cancel, wrong PIN, right PIN), the delete confirmation's text with a list and units on order, a helper device upgrading from before M19 (M6 review finding 7, M19 review finding 8).
 
 **Changes in v0.17:** Three suggestions from the independent mentor review (2026-10-29; Dan: "Add 7, 8, 9 to current build"), built as M22:
@@ -583,6 +584,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | v0.17 (M22): suggestions 7–9 as built: Paid from (funding) on orders, By funding summary, school-year budget, overdue deliveries with the Delivery overdue after setting, the Inventory shop status strip, search by category / subcategory / barcode, recently viewed. Details Claude filled in are listed in `docs/reviews/M22.md` for Dan to confirm |
 | 2026-10-29 | Dan merged PRs #35 (M21) and #36 (M22), accepted the M21 details (a)–(e) and the M22 details (a)–(h), and ran both tablet checks: "tablet checks pass" |
 | 2026-10-29 | Dan: "fix 1-5 as a cleanup milestone" (the low-severity findings earlier reviews left open). v0.18 (M23) |
+| 2026-10-29 | Dan merged PR #38 (M23), confirmed details (a)–(d) and ran the tablet check: "details confirmed. merged. tablet checked." |
 
 ## 17. UI conventions (from Stage 3)
 

@@ -872,3 +872,7 @@ Unit 902 pass; real tablet backup passes; mutants 15/15; M23 13/13; helper upgra
 ## 2026-10-29 (late afternoon) — Hand-off guide and cleanup
 
 Dan: "write the hand-off guide and clean up unnecessary files (old deprecated logs and such)". Added `docs/HANDOFF.md` (for the next maintainer) and a root `README.md`. Deleted one-time files: `STAGE6-START.md` and `docs/START-HERE.md` (kickoff prompts), `scripts/cdp-check.mjs` (an M1 probe), `scripts/m15-upgrade-check.mjs` and `scripts/m16a-upgrade-check.mjs` (v1→v2 and v2→v3 upgrades no install needs any more; `m19-upgrade-check` and `m23-helper-upgrade-check` stay as templates). Moved finished planning documents and the Stage 5 review to `docs/history/`, with every reference updated. Unit 902 pass; build clean.
+
+## 2026-10-29 (evening) — Version 1.0.0
+
+Dan: "lets now set this as version 1.0.0", and asked how to start the tablet with a fresh database (no test data, helpers or orders). `APP_VERSION`, `package.json` and `package-lock.json` 1.0.0; the M16a and M17 checks expect it. `docs/HANDOFF.md` §8 gains "Starting completely fresh": clear the site's data in Chrome, then first-launch setup; a restore can't do it because it keeps the PIN, settings and helper list.

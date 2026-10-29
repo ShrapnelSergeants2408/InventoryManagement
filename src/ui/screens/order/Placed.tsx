@@ -1,7 +1,6 @@
-// Placed orders (F30, F31, §21): the list of orders, newest first, and one order's page with
-// Receive… (no PIN), Edit, Cancel / Un-cancel, Delete and receipts (PIN). The date ranges and
-// spending summary of the order history (F32, §21.5) build on this list.
-import { useEffect, useMemo, useState } from 'preact/hooks';
+// Placed orders (F30, F31, §21): one order's page with Receive… (no PIN), Edit, Cancel /
+// Un-cancel, Delete and receipts (PIN). The list of orders is the order history (History.tsx, §21.5).
+import { useEffect, useState } from 'preact/hooks';
 import { addReceipt, deleteOrder, getReceipt, receiveOrder, removeReceipt, setCancelled } from '../../../data/placed-orders';
 import { formatIsoDate } from '../../../domain/dates';
 import { formatCents } from '../../../domain/money';
@@ -24,13 +23,12 @@ import {
 import { gate } from '../../../security/gate';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../components/common';
-import { useDb, useOrderLists, useOrders, useSnapshot } from '../../data-hooks';
+import { useDb, useOrders, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href, replaceRoute } from '../../shell/router';
 import { useCloseOnRelock } from '../../shell/LockPill';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
-import { ListTabs } from './Order';
 import { OrderForm, ReceiptButtons, prepareReceipt } from './OrderForm';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -40,88 +38,6 @@ const STATUS_CHIP: Record<OrderStatus, string> = { placed: 'chip open', 'partly 
 export function StatusBadge({ order }: { order: PlacedOrder }) {
   const s = orderStatus(order);
   return <span class={STATUS_CHIP[s]}>{STATUS_LABEL[s]}</span>;
-}
-
-export function PlacedScreen() {
-  const live = useOrders();
-  const lists = useOrderLists();
-  const [openOnly, setOpenOnly] = useState(false);
-  const orders = live.state === 'ready' ? live.value : null;
-  const shown = useMemo(() => (orders ? (openOnly ? orders.filter(isOpen) : orders) : null), [orders, openOnly]);
-  const open = orders?.filter(isOpen).length ?? 0;
-  const top = <TopBar title="Placed orders" subtitle={orders ? `${plural(orders.length, 'order')} · ${open} open` : 'Loading…'} />;
-  const tabs = <ListTabs lists={lists.state === 'ready' ? lists.value : []} current="placed" />;
-  if (live.state === 'error') {
-    return (
-      <>
-        {top}
-        <StorageError error={live.error} />
-      </>
-    );
-  }
-  if (!orders || !shown) {
-    return (
-      <>
-        {top}
-        {tabs}
-        <div class="state" aria-busy="true">
-          <p class="state-text muted">Loading orders…</p>
-        </div>
-      </>
-    );
-  }
-  return (
-    <>
-      {top}
-      {tabs}
-      {orders.length === 0 ? (
-        <StateMessage
-          icon="truck"
-          title="No orders recorded yet"
-          actions={
-            <a class="btn" href={href.tab('order')}>
-              Open the order list
-            </a>
-          }
-        >
-          <p class="state-text">
-            After ordering on a supplier’s site, tap <strong>Mark ordered…</strong> on that supplier’s group in an order list. The order is kept here with its tax,
-            shipping and discount, and its parts show as on order until they arrive.
-          </p>
-        </StateMessage>
-      ) : (
-        <>
-          <div class="po-bar">
-            <div class="seg" role="group" aria-label="Which orders">
-              <button type="button" class={openOnly ? 'segb' : 'segb on'} aria-pressed={!openOnly} onClick={() => setOpenOnly(false)}>
-                All ({orders.length})
-              </button>
-              <button type="button" class={openOnly ? 'segb on' : 'segb'} aria-pressed={openOnly} onClick={() => setOpenOnly(true)}>
-                Open ({open})
-              </button>
-            </div>
-          </div>
-          <div class="olist">
-            {shown.length === 0 && <p class="state-text muted po-none">No open orders: everything ordered has arrived or was cancelled.</p>}
-            {shown.map((o) => (
-              <a key={o.id} class="po-row" href={href.placedOrder(o.id)}>
-                <span class="po-date">{formatIsoDate(o.placedOn)}</span>
-                <span class="po-main">
-                  <span class="lt">{o.supplier}</span>
-                  <span class="small muted">
-                    {[o.orderNo && `# ${o.orderNo}`, plural(o.lines.length, 'line'), o.receipts.length > 0 && plural(o.receipts.length, 'receipt')].filter(Boolean).join(' · ')}
-                  </span>
-                </span>
-                <StatusBadge order={o} />
-                <span class="po-total">{formatCents(orderTotals(o).totalCents)}</span>
-                <Icon name="chevRight" />
-              </a>
-            ))}
-          </div>
-        </>
-      )}
-    </>
-  );
 }
 
 type Dlg = 'receive' | 'edit' | 'cancel' | 'delete' | { view: ReceiptRef } | { remove: ReceiptRef } | null;

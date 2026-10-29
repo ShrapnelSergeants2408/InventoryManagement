@@ -4,7 +4,7 @@
 // automatic one: the same layout, plus +/− and remove per line, and rename, duplicate, delete.
 // Select on the automatic list puts checkboxes on lines and supplier headers, to add many at once.
 // Units on open placed orders are subtracted (§4) and shown per line; each supplier group has
-// Mark ordered… (F30), and the Placed orders tab lists what was ordered (§21).
+// Mark ordered… (F30), and the History tab lists what was ordered (§21.5).
 import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { duplicateOrderList, removeLine, setLineQuantity } from '../../../data/order-lists';
@@ -362,7 +362,7 @@ export function OrderScreen({ listId }: { listId: string | null }) {
 }
 
 /**
- * Automatic, then each named list A–Z, then Placed orders (§21), then "+ New list" (F27, when
+ * Automatic, then each named list A–Z, then History (placed orders, §21.5), then "+ New list" (F27, when
  * `onNew` is given); `children` at the end (Select). `current`: a list id, null (Automatic) or 'placed'.
  */
 export function ListTabs({ lists, current, onNew, children }: { lists: readonly NamedOrderList[]; current: string | null; onNew?: () => void; children?: ComponentChildren }) {
@@ -380,7 +380,7 @@ export function ListTabs({ lists, current, onNew, children }: { lists: readonly 
       ))}
       <a class={current === 'placed' ? 'ltab po on' : 'ltab po'} href={href.placed} aria-current={current === 'placed' ? 'page' : undefined}>
         <Icon name="truck" />
-        Placed orders
+        History
       </a>
       {onNew && (
         <button type="button" class="ltab new" onClick={onNew}>

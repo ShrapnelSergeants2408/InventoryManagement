@@ -50,6 +50,34 @@
 .po-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .po-total { font-family: var(--font-display); font-weight: 700; font-size: 24px; text-align: right; }
 .po-none { padding: 24px; }
+.po-total.mut { color: var(--ink-2); text-decoration: line-through; }
+.po-bar { flex-wrap: wrap; }
+
+/* Order history (F32, §21.5). */
+.hi-bar { flex: none; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; padding: 10px 24px; border-bottom: 1px solid var(--line); background: #fbf9f6; }
+.hi-f { display: flex; flex-direction: column; }
+.hi-f .lbl { margin-bottom: 4px; }
+.hi-f .field { min-width: 200px; }
+.hi-dates { align-self: center; padding-top: 22px; }
+.hi-sum { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 12px 24px 32px; display: flex; flex-direction: column; gap: 12px; }
+.hi-sum > * { flex: none; }
+.hi-tw { overflow-x: auto; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+.hi-t { width: 100%; border-collapse: collapse; font-size: 18px; }
+.hi-t th, .hi-t td { padding: 10px 14px; border-bottom: 1px solid #eee7de; text-align: left; white-space: nowrap; }
+.hi-t th { font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); background: var(--ground); }
+.hi-t .r { text-align: right; font-variant-numeric: tabular-nums; }
+.hi-t tr.tot td { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; }
+.hi-t tr.sep td { border-top: 2px solid var(--line-2); }
+.hi-tw.cat { max-width: 560px; }
+.psum { padding: 14mm 14mm 10mm; color: #000; font-size: 11pt; }
+.psum h1 { font-size: 18pt; margin: 0 0 4pt; }
+.psum .h2 { font-size: 13pt; margin: 12pt 0 4pt; }
+.psum .hi-t { font-size: 10pt; }
+.psum .hi-t th, .psum .hi-t td { padding: 3pt 6pt; }
+.psum .hi-t th { font-size: 9pt; }
+.psum .chip { height: auto; padding: 0; background: none; color: #000; font-weight: 400; font-size: 10pt; }
+.psum .hi-tw.cat { max-width: 90mm; }
+.psum .chip { border: 0; }
 
 /* One order. */
 .po-page { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 16px 24px 40px; display: flex; flex-direction: column; gap: 18px; }
@@ -91,10 +119,15 @@
   .po-row { grid-template-columns: minmax(0, 1fr) auto; padding: 10px 16px; }
   .po-row .po-date { grid-column: 1 / -1; }
   .po-row > .ic { display: none; }
+  .po-row .po-total { grid-column: 2; }
+  .po-row .po-main { grid-row: span 2; }
   .po-l { grid-template-columns: repeat(4, minmax(0, 1fr)); align-items: start; }
   .po-l .po-ln { grid-column: 1 / -1; }
   .po-l [data-l]::before { content: attr(data-l); display: block; margin-bottom: 2px; font-size: 15px; font-weight: 700; color: var(--ink-2); }
   .po-lh { display: none; }
   .po-page { padding: 12px 16px 32px; }
   .po-sum { align-self: stretch; min-width: 0; }
+  .hi-bar, .hi-sum { padding-left: 16px; padding-right: 16px; }
+  .hi-f .field { min-width: 0; }
+  .hi-t th, .hi-t td { padding: 8px 10px; }
 }

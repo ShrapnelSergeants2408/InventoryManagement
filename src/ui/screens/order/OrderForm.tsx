@@ -182,7 +182,7 @@ export function OrderForm(props: OrderFormProps) {
   };
 
   const finish = (result: RecordResult) => {
-    showToast(`Recorded the ${supplier} order: ${formatCents(orderTotals(result.order).totalCents)}. It’s in Order › Placed orders.${receiptNote.current}`);
+    showToast(`Recorded the ${supplier} order: ${formatCents(orderTotals(result.order).totalCents)}. It’s in Order › History.${receiptNote.current}`);
     if (result.list && result.list.linesLeft === 0) setPhase({ kind: 'emptyList', result });
     else props.onClose();
   };

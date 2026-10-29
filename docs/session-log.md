@@ -811,3 +811,19 @@ Type check and build clean. Unit 854 pass (1 skipped), +1 test (pack size, unit,
 **Later (independent review and fixes):** A separate review agent wrote `docs/reviews/M19-independent.md` (commit `a04f2f6`). Verdict: merge, after fixing findings 1, 2 and 5. Dan: "fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8". Fixed on the same branch: the Receive confirmation for deleted items (1); no second order after a receipt fails (2); Undo leaves items received since the import alone (3, SPEC §18.5 v0.14); Cancel and Remove receipt close on relock (5); portrait labels on the order page (7); future dates, oversized totals, $0 price-copy lines, line order on restore, Setup's order total, plan v4 row, tablet-check steps (8). Unit 859 pass; `m19-ui-check` 45/45; regression M3 50, M5 39, M15b 26, M16c 25, M18 14. Findings 4 (the m15 check stops early and still exits 0) and 6 (a duplicate receipt name in a hand-edited backup) are still open.
 
 **Later (findings 4 and 6):** Dan: "fix 4 and 6 too". M15's guard check uses schemaVersion 5 (M15 40/40 again); every browser check script now exits 1 on a FAIL or ERROR. Orders files naming a receipt twice or more than 5 per order are refused at the check. While testing 6, found that the CSV reader guessed the separator: an order with 4+ receipts, or item notes with about 5 semicolons, made a backup unrestorable ("missing columns"). `readCsv` now always uses commas (SPEC §7, v0.14). The Oct 23 tablet backup was never affected. Unit 862 pass; browser regression M2–M19 744/744, clean consoles.
+
+## 2026-10-29 — M20: order history and spending summary
+
+**SESSION IDENTITY**
+Same session. Dan: "merged and checked" (PR #31; M19 tablet check passed), "step 7 opened the pdf. build m20". Branch `m20-order-history` from `main` (`371d3f8`).
+
+**WORK COMPLETED**
+F32 / §21.5: the History tab (ranges, supplier and status filters), the spending summary by supplier and by category, Export CSV and Export lines CSV, Print summary, and the Season starts and School year starts settings (PIN). The range is remembered on the device. `APP_VERSION` 0.7.0. M19's tablet result recorded in `docs/reviews/M19.md`.
+
+**EVIDENCE**
+Unit 883 pass (1 skipped); tablet-backup test passes. Mutants 23/23 (21/23 first: one test added, one redundant check removed). Browser: M20 37/37; regression M2–M19 744/744, all exit 0, clean consoles.
+
+**CONFIDENCE**
+High for the ranges and money (boundary dates, hand-worked and random summaries, mutants). Medium for the Android print dialog and the share sheet until the tablet check.
+
+**Next:** Dan reviews details (a)–(k) in `docs/reviews/M20.md`, merges, and runs the tablet check there. With M20, every v0.13 milestone is built.

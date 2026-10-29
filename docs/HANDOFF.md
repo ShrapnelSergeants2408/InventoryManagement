@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: a mentor, a programming student, or a future Claude Code session. It covers what the app is, where everything lives, how to change it safely, and what to do when something goes wrong on the tablet.
 
-Written 2026-10-29, at app version 0.10.0 (SPEC v0.18).
+Written 2026-10-29, at app version 1.0.0 (SPEC v0.18).
 
 ---
 
@@ -115,6 +115,17 @@ After a merge, the new version is live within a few minutes, but the installed a
 - **Restore** (PIN) replaces everything with a backup. Its confirmation compares the tablet with the backup and offers **Back up this tablet first**.
 - If the tablet suddenly shows first-time setup, Chrome cleared its storage. Set a PIN, choose **Restore a backup file**, and pick the latest backup.
 - If the app says it **can't open the inventory**, try again first (close other tabs of the app). Only start over if a mentor is sure and has a backup.
+
+### Starting completely fresh (e.g. after testing)
+
+The app has no "erase everything" button on purpose. A restore keeps the PIN, settings and helper list, so the only full reset is clearing the site's data in Chrome:
+
+1. Optional: make a **Full backup** first if you might want the old data again.
+2. Close the app. In Chrome: **Settings › Site settings › All sites › team2408.com › Delete data** (or **Clear & reset**). The domain is shared with the team website; clearing it only logs you out of that site.
+3. Open the app from the home screen (online, so it can load). It shows first-time setup: **Set up the shop tablet**, a new PIN, a new recovery code (write it down), then **Load the starter catalog**, **Restore a backup file** or **Start empty**.
+4. Set More › Reminders & limits again (they're back to the defaults). Label alignment nudges are reset too.
+5. On every helper phone or tablet: Count › Send › **Leave helper mode**, or clear the site's data there too. Old count kits and counts files belong to the old data; don't import them.
+6. Make a **Full backup** of the fresh start.
 
 ## 9. Common jobs (no code needed)
 

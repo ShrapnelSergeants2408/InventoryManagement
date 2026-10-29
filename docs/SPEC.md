@@ -1,7 +1,7 @@
 # FRC 2408 Inventory Management — Specification v0.18
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-29 (v0.18) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT
+**Status:** Approved by Dan 2026-10-29 (v0.18; released as app version 1.0.0) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT
 
 **Changes in v0.18:** Cleanup of the findings earlier reviews left open (Dan, 2026-10-29: "fix 1-5 as a cleanup milestone"), built as M23:
 - A CSV inside a backup ZIP that isn't UTF-8 is read as Windows-1252 (Excel's plain "CSV"), as a loose CSV already was, with a warning naming the file (§7; M5 review finding 3).
@@ -585,6 +585,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Dan merged PRs #35 (M21) and #36 (M22), accepted the M21 details (a)–(e) and the M22 details (a)–(h), and ran both tablet checks: "tablet checks pass" |
 | 2026-10-29 | Dan: "fix 1-5 as a cleanup milestone" (the low-severity findings earlier reviews left open). v0.18 (M23) |
 | 2026-10-29 | Dan merged PR #38 (M23), confirmed details (a)–(d) and ran the tablet check: "details confirmed. merged. tablet checked." |
+| 2026-10-29 | Dan: "set this as version 1.0.0". `APP_VERSION` and `package.json` 1.0.0; SPEC stays v0.18 (no feature change). The tablet then starts fresh: site data cleared, first-launch setup (`docs/HANDOFF.md` §8) |
 
 ## 17. UI conventions (from Stage 3)
 

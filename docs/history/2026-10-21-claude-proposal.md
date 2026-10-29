@@ -342,7 +342,7 @@ Usage log (who took what), competition pit-kit checklist, live multi-device sync
 |---|---|---|---|---|
 | 1 | Interview and spec | Claude chat (mobile OK) | This document | Done |
 | 2 | Category list and starter catalog research | Claude desktop chat (web search, big-screen review) | Seed ZIP + report | Done 2026-10-17 |
-| 3 | UI mockups at tablet size | Claude desktop chat | Interactive mockup canvas, `stage3-design-notes.md`, `stage3-verification.md` | Done 2026-10-17; helper-device screens (row 11) added 2026-10-19 |
+| 3 | UI mockups at tablet size | Claude desktop chat | Interactive mockup canvas, `stage3-design-notes.md`, `docs/stage3-verification.md` | Done 2026-10-17; helper-device screens (row 11) added 2026-10-19 |
 | 4 | Build | Claude Code in VS Code | Git repo, app, tests, GitHub Pages deployment | Built through milestone 10 (Dan, 2026-10-19) |
 | 5 | Verification | Fresh Claude Code session + hands-on testing on the Tab S8 (including a real label print) | Review report checked against §5 acceptance criteria; fixes | In progress (v0.5 build) |
 | 6 | Changes and new features | Claude Code in VS Code | Updates; spec revised | First change: v0.6 helper devices (§18.7), after Stage 5 |

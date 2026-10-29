@@ -1,7 +1,7 @@
 # Spec merge plan: claude.ai proposal → SPEC v0.8
 
 **Date:** 2026-10-21 (America/Chicago) · **Author:** Claude Code (Opus 5.5), Stage 6 step 3 · **No code or `docs/SPEC.md` changed.**
-**Inputs:** `docs/SPEC.md` (v0.7, the approved spec), `docs/proposals/2026-10-21-claude-proposal.md` (the "v0.6 draft" from claude.ai, based on v0.5), the source (`src/data/db.ts`, `src/io/lists-csv.ts`, `src/io/inventory-csv.ts`, `src/domain/count.ts`, `src/data/count.ts`), `docs/spec-questions.md`, `docs/stage5-review.md`, and the new seed `seed/frc2408-starter-catalog-2026-10-21.zip`.
+**Inputs:** `docs/SPEC.md` (v0.7, the approved spec), `docs/history/2026-10-21-claude-proposal.md` (the "v0.6 draft" from claude.ai, based on v0.5), the source (`src/data/db.ts`, `src/io/lists-csv.ts`, `src/io/inventory-csv.ts`, `src/domain/count.ts`, `src/data/count.ts`), `docs/history/spec-questions.md`, `docs/history/stage5-review.md`, and the new seed `seed/frc2408-starter-catalog-2026-10-21.zip`.
 **Output:** `docs/SPEC-next-draft.md` (v0.8 draft), approved by Dan 2026-10-21 13:46 and made `docs/SPEC.md`.
 
 ---
@@ -16,7 +16,7 @@ No git tags exist, locally or on GitHub (`git tag` and `git ls-remote --tags ori
 | **v0.6** | 2026-10-18 18:50 CDT | `744b4c2` "F24 count rounds (SPEC v0.6)" | **Count rounds** for count-in (F24). After the first count, every group showed "Recount 100%", so Dan asked for a "counting since <date>" setting. Progress, Start/Continue/Recount and the group summary count an item only if its `last_counted` is on or after that date. Blank means "any time" (the first count). **Start a new count** sets it to today; it can be changed or cleared. Nothing is erased. Built and tested in the same commit (`countSince` setting, `src/domain/count.ts`, `src/data/count.ts`, `Count.tsx`) |
 | **v0.7** | 2026-10-18 19:57 CDT | `7e6f0cc` "SPEC v0.7" | Spec text only; the code already did this from M5. (1) A **Category** managed list in §3 (name, order, ordered subcategories; empty ones allowed). (2) **`categories.csv`** in the full backup (§7) so empty categories and their order survive a restore (spec-questions Q3, approved 2026-10-17). (3) **`manifest.json`** in the full backup (app version, `savedAt`, item and photo counts), used by the restore comparison (Q8, approved 2026-10-17). (4) §15: the NEO 2.0 / WCP-1011 test fit and the 2027 radio closed as robot questions; label sheets still open, waiting for a purchase |
 
-After v0.7 (no spec change): `34cf04b` T-01 (persistent storage asked on every launch until granted), merged as PR #13; `11baab4` Stage 5 review (`docs/stage5-review.md`); `ba72d61` Stage 6 kit (proposal, helper-screen mockups, new seed).
+After v0.7 (no spec change): `34cf04b` T-01 (persistent storage asked on every launch until granted), merged as PR #13; `11baab4` Stage 5 review (`docs/history/stage5-review.md`); `ba72d61` Stage 6 kit (proposal, helper-screen mockups, new seed).
 
 **The name clash:** the proposal calls itself "v0.6 (draft)". It's a different document from the repo's v0.6. Both branch from v0.5. So the merged version is **v0.8**.
 
@@ -131,7 +131,7 @@ Nothing in the proposal undoes T-01. That changed only code; §2 already asks fo
 ## 6. Other things noticed (not part of the merge)
 
 - **No `stage5-verified` tag.** STAGE6-START step 1 asks for `git tag stage5-verified`. There's a commit with that message (`11baab4`) but no tag. §18.7 relies on the tag as the known-good version to go back to.
-- **No `docs/stage5-findings.md`.** STAGE6-START step 1 names it. The Stage 5 results are in `docs/stage5-review.md`, which doesn't yet mention T-01 as merged or D-01 as deferred.
+- **No `docs/stage5-findings.md`.** STAGE6-START step 1 names it. The Stage 5 results are in `docs/history/stage5-review.md`, which doesn't yet mention T-01 as merged or D-01 as deferred.
 - **Duplicate mockup folder** in `ba72d61`: `docs/mockups/helper-screens/helper-screens/` repeats `docs/mockups/helper-screens/` (16 files, byte-identical by `diff -rq`).
 - **Stage 5 findings 1–9 stay open.** None conflicts with the merge. Finding 2 (category names whose capitals don't match the list) is worth fixing in the categories milestone, since bulk move and the remap touch the same code. Finding 6 is folded into §4 above. Finding 8's other two items (F16 12-hour snooze, §9 layouts in code) aren't written into v0.8; that wasn't part of this step.
 - **The helper-screen mockups** show the old category names (STAGE6-START says so). Follow §11.

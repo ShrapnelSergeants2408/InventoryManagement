@@ -1,6 +1,6 @@
 # M16a independent review: helpers on the main tablet, count kits, schema v3
 
-**Reviewed:** branch `m16a-helpers` at `3af9910` (PR #21), diff `main...m16a-helpers` (main at `197ff26`). Written in a fresh session by a reviewer who took no part in the build. I didn't rely on the builder's [M16a review](M16a.md) and re-checked each of its claims. Requirements: SPEC v0.8 §3 (Item `last_counted` / `counted_by`, Helper), §7, §17, §18.1, §18.2, §18.7, §19 ("last_counted as date-time"), F24; `docs/stage6-plan.md` M16a and §3 (version 3 row, guard, testing steps).
+**Reviewed:** branch `m16a-helpers` at `3af9910` (PR #21), diff `main...m16a-helpers` (main at `197ff26`). Written in a fresh session by a reviewer who took no part in the build. I didn't rely on the builder's [M16a review](M16a.md) and re-checked each of its claims. Requirements: SPEC v0.8 §3 (Item `last_counted` / `counted_by`, Helper), §7, §17, §18.1, §18.2, §18.7, §19 ("last_counted as date-time"), F24; `docs/history/stage6-plan.md` M16a and §3 (version 3 row, guard, testing steps).
 **Date:** 2026-10-26, 15:53–16:15 CDT · **Risk: High** (a schema upgrade on the team's real shop tablet).
 
 ## How it was done

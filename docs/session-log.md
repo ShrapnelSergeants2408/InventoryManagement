@@ -851,3 +851,5 @@ Layout issues: "fix 1, 2, don't worry about 3, fix 4, 5, 6. don't worry about 7.
 See the two review files (unit tests, browser checks, screenshots).
 
 **Next:** Dan confirms the details in `docs/reviews/M21.md` and `M22.md`, merges M21 then M22 (merge commits: M22 is stacked), and runs both tablet checks.
+
+**Later:** Dan, 2026-10-29: "m21: accept a-e; m22 accept a-h; merged; tablet checks pass." PRs #35 and #36 are merged; the details are recorded in `docs/reviews/M21.md`, `M22.md` and SPEC v0.17. Open: the team's answers on `docs/proposals/2026-10-29-team-feature-ideas.md`.

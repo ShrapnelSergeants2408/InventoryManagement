@@ -1,7 +1,7 @@
 # M19 independent review: placed orders, receiving, on order, schema v4
 
 **Reviewed:** branch `m19-details-confirmed` at `b5ca7eb` (PR #31). Diff `30cff18...m19-details-confirmed`: the M19 code (`ee0b59c`, `d627152`, merged as PR #30) plus the follow-up that gives typed lines their own pack size and unit (`b5ca7eb`). Written in a fresh session by a reviewer who took no part in the build. I didn't rely on the builder's [M19 review](M19.md) and re-checked its claims.
-Requirements: SPEC v0.14 §3 (Placed order, Order line), §4 on order, F2, F12, F27, F30, F31, §6, §21.1–§21.4, §21.6, §22; `docs/stage6-plan.md` M19 and §3.
+Requirements: SPEC v0.14 §3 (Placed order, Order line), §4 on order, F2, F12, F27, F30, F31, §6, §21.1–§21.4, §21.6, §22; `docs/history/stage6-plan.md` M19 and §3.
 **Date:** 2026-10-29, 07:58–08:20 CDT · **Risk: High** (receiving changes real on-hand counts; a schema upgrade on the team's real tablet; money).
 
 ## How it was done

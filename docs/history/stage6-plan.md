@@ -5,7 +5,7 @@
 
 ## 1. How every milestone runs
 
-Same routine as Stage 4 (`docs/stage4-plan.md` §4), plus the §18.7 rules:
+Same routine as Stage 4 (`docs/history/stage4-plan.md` §4), plus the §18.7 rules:
 
 1. **Its own branch** from an up-to-date `main` (`m11-filter-order`, `m12-categories`, …). It's merged by PR only after its verification passes and Dan says OK. Each merge deploys to GitHub Pages, so the tablet gets it on the next reload.
 2. **Tests first where there's logic.** Anything with a number or a decision lives in `src/domain/` or `src/io/` and has Vitest tests, including the must-have tests in SPEC §18.6 and §19. UI files only render and call those.

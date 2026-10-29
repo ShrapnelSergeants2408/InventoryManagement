@@ -10,7 +10,7 @@ import { readRestoreFile } from '../src/io/restore';
 import { exportBackup, exportMessage } from '../src/ui/screens/more/export-backup';
 import { item, vendor } from './helpers';
 
-// SPEC v0.13 §22 "Stage 5 leftovers" (docs/stage5-review.md findings 4, 5, 7 and 9).
+// SPEC v0.13 §22 "Stage 5 leftovers" (docs/history/stage5-review.md findings 4, 5, 7 and 9).
 
 const dbs: InventoryDb[] = [];
 afterEach(() => {

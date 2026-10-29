@@ -17,7 +17,7 @@ Claude Code (Opus 5.5), VS Code/terminal on Dan's Windows machine. Repo: `C:\Use
 | ~16:05 | Mockup sources were nested one level too deep; verified against `mockup-source.zip` (68/68) and moved to `docs/mockups/source/` |
 | 16:09 | Commit `a64562d` "Arrange Stage 4 kit" |
 | 16:09–16:14 | Read SPEC v0.5, design notes, verification report, INDEX and the source README; scripted seed checks; checked Chrome Web Share file types (MDN) |
-| ~16:15 | Wrote `spec-questions.md`, `stage4-plan.md` and this log |
+| ~16:15 | Wrote `docs/history/spec-questions.md`, `docs/history/stage4-plan.md` and this log |
 
 **WORK COMPLETED**
 - Repo arranged per START-HERE.md; extraneous ZIPs removed; committed.
@@ -26,10 +26,10 @@ Claude Code (Opus 5.5), VS Code/terminal on Dan's Windows machine. Repo: `C:\Use
 - Build plan: dependencies, repo structure, Dexie schema, 10 milestones with F-criteria, tests and risk levels.
 
 **DELIVERABLES PRODUCED**
-`docs/spec-questions.md`, `docs/stage4-plan.md`, `docs/session-log.md` (uncommitted; they'll go in with M1 or on request).
+`docs/history/spec-questions.md`, `docs/history/stage4-plan.md`, `docs/session-log.md` (uncommitted; they'll go in with M1 or on request).
 
 **PREDECESSORS / CONTEXT**
-Stages 1–3 (claude.ai): SPEC v0.5, `stage3-design-notes.md`, `stage3-verification.md`, 67 mockup artboards, seed ZIP.
+Stages 1–3 (claude.ai): SPEC v0.5, `stage3-design-notes.md`, `docs/history/stage3-verification.md`, 67 mockup artboards, seed ZIP.
 
 **CONFIDENCE**
 High on the seed numbers (scripted). High that `.zip` is not on Chrome's Web Share allow-list (MDN), but it needs a check on the Tab S8. The other questions are judgment calls for Dan.
@@ -41,7 +41,7 @@ High on the seed numbers (scripted). High that `.zip` is not on Chrome's Web Sha
 **DATES & TIMES**
 | Time | Activity |
 |---|---|
-| 16:17 | Dan: "defaults OK, use Preact, commit docs with M1". Approval recorded in `spec-questions.md` |
+| 16:17 | Dan: "defaults OK, use Preact, commit docs with M1". Approval recorded in `docs/history/spec-questions.md` |
 | 16:18–16:24 | Scaffold (Vite 8, TS 7, Preact 11, Vitest 5, Dexie 4, Papa Parse, JSZip, Fontsource); domain types, money, order, status, validation, ids |
 | ~16:22 | Dan: commit regularly, push every 5 commits and at milestone completion, set up Pages. Remote exists (`ShrapnelSergeants2408/InventoryManagement`, private); `gh` token invalid; `git push` works via the credential manager |
 | 16:25 | Domain tests 44/44; commit `70001b1` |
@@ -86,7 +86,7 @@ Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine. Stage 4: M1 h
 | ~17:50 | Resumed. `gh auth status` OK (account `dhiebert-whs`, scopes repo + workflow; admin on the repo) |
 | ~17:52 | **PR #1** opened: m1-foundation → main (https://github.com/ShrapnelSergeants2408/InventoryManagement/pull/1) |
 | ~17:53 | **GitHub Pages enabled**, source = GitHub Actions (API `build_type: workflow`). `github-pages` environment allows deploys from `main` only. Found the org's custom domain: the site will be **https://team2408.com/InventoryManagement/**; the github.io URL 301-redirects there; HTTPS works |
-| ~17:55 | Dan's answer on public vendor photos: **"accept it"**, recorded in `spec-questions.md` › Later decisions |
+| ~17:55 | Dan's answer on public vendor photos: **"accept it"**, recorded in `docs/history/spec-questions.md` › Later decisions |
 | 17:56–18:02 | M2 domain: search, filters, grouped view, prefs, `adjustOnHand`; commit `b36789b` (140 tests) |
 | 18:02–18:10 | M2 UI: shell, Inventory screen, stepper, filter panel, thumbnails, storage error; browser check script; two stepper bugs found and fixed by it; commit `acdfa02` |
 | 18:10–18:14 | 15 px text (§17), storage-error browser scenario; commit `0ec5de8` |
@@ -382,7 +382,7 @@ Claude Code (Opus 5.5), VS Code terminal on Dan's Windows machine, same session 
 - Stage 4 close: every F1–F25 traced to checks that ran on the final source; all ✅, with Stage 5 items noted (share sheet, camera, native detector, real label print, install).
 
 **DELIVERABLES PRODUCED**
-`docs/SPEC.md` (v0.6), `src/domain/count.ts`, `src/data/count.ts`, `src/ui/screens/count/Count.tsx`, `src/styles/count.css`, `src/data/setup.ts`, `src/io/{bundle,seed}.ts` (photo progress), `src/ui/screens/{Setup,StorageError}.tsx`, `src/ui/shell/{UpdateBanner,Shell}.tsx`, `src/ui/App.tsx`, `src/main.tsx`, `src/styles/app.css`, `vite.config.ts`, `tsconfig.json`, `package.json` (`vite-plugin-pwa`), `public/icons/icon-{192,512}.png`, `tests/{setup,count,count-db}.test.ts`, `scripts/m10-ui-check.mjs`, `scripts/{m6,m9}-ui-check.mjs`, `scripts/pin-helpers.mjs`, `docs/reviews/{M9,M10,Stage4-final}.md`, `docs/stage4-plan.md` (Stage 5 list).
+`docs/SPEC.md` (v0.6), `src/domain/count.ts`, `src/data/count.ts`, `src/ui/screens/count/Count.tsx`, `src/styles/count.css`, `src/data/setup.ts`, `src/io/{bundle,seed}.ts` (photo progress), `src/ui/screens/{Setup,StorageError}.tsx`, `src/ui/shell/{UpdateBanner,Shell}.tsx`, `src/ui/App.tsx`, `src/main.tsx`, `src/styles/app.css`, `vite.config.ts`, `tsconfig.json`, `package.json` (`vite-plugin-pwa`), `public/icons/icon-{192,512}.png`, `tests/{setup,count,count-db}.test.ts`, `scripts/m10-ui-check.mjs`, `scripts/{m6,m9}-ui-check.mjs`, `scripts/pin-helpers.mjs`, `docs/reviews/{M9,M10,Stage4-final}.md`, `docs/history/stage4-plan.md` (Stage 5 list).
 
 **PREDECESSORS / CONTEXT**
 M1–M9; spec-questions Q2, D7, D8; the M9 review's open item.
@@ -404,9 +404,9 @@ Claude Code (Opus 5.5), terminal on Dan's Windows machine. Branch `stage6-start`
 | Time (CDT) | Activity |
 |---|---|
 | ~13:30 | Dan: two local commits wouldn't sync. Cause: PR #13 merged and GitHub deleted `fix-t01-persistent-storage`. Created `stage6-start` from `ba72d61` and pushed it (only `11baab4` and `ba72d61` ahead of `origin/main`) |
-| 13:34 | Stage 6 step 3 received. Tags: none (local or remote). Read `git log`, SPEC v0.7, the proposal, `STAGE6-START.md`, `spec-questions.md`, `stage5-review.md` |
+| 13:34 | Stage 6 step 3 received. Tags: none (local or remote). Read `git log`, SPEC v0.7, the proposal, `STAGE6-START.md`, `docs/history/spec-questions.md`, `docs/history/stage5-review.md` |
 | 13:34–13:37 | Read `src/data/db.ts` (Dexie `version(1)`), `src/io/lists-csv.ts` (`categories.csv`), `src/domain/count.ts` and `src/data/count.ts` (count rounds), `src/io/inventory-csv.ts` (`last_counted` parsing); listed the new seed ZIP and read its `categories.csv` |
-| 13:37–13:39 | Wrote `docs/spec-merge-plan.md`; confirmed `docs/mockups/helper-screens/helper-screens/` is byte-identical to its parent (`diff -rq`) |
+| 13:37–13:39 | Wrote `docs/history/spec-merge-plan.md`; confirmed `docs/mockups/helper-screens/helper-screens/` is byte-identical to its parent (`diff -rq`) |
 | 13:39–13:40 | Wrote `docs/SPEC-next-draft.md` (v0.8 draft). `docs/SPEC.md` unchanged (`git status`: only the two new files untracked) |
 
 **WORK COMPLETED**
@@ -417,17 +417,17 @@ Claude Code (Opus 5.5), terminal on Dan's Windows machine. Branch `stage6-start`
 - Seven merge decisions for Dan listed as new §15 Q7.
 
 **DELIVERABLES PRODUCED**
-`docs/spec-merge-plan.md`, `docs/SPEC-next-draft.md`, this log entry. Not committed.
+`docs/history/spec-merge-plan.md`, `docs/SPEC-next-draft.md`, this log entry. Not committed.
 
 **PREDECESSORS / CONTEXT**
-SPEC v0.7; `docs/proposals/2026-10-21-claude-proposal.md`; `STAGE6-START.md`; `docs/stage5-review.md`; `docs/spec-questions.md`.
+SPEC v0.7; `docs/history/2026-10-21-claude-proposal.md`; `STAGE6-START.md`; `docs/history/stage5-review.md`; `docs/history/spec-questions.md`.
 
 **CONFIDENCE**
 High for the version history (git and the spec agree) and for the conflicts list (proposal and v0.7 compared section by section). High that the new seed's `categories.csv` loads with the current parser (read from the code, not run; §19 adds a test). Medium for the schema plan's table layout: it's a proposal for Step 4, not a design that's been tested.
 
 **Noticed, not acted on:** no `stage5-verified` tag yet; no `docs/stage5-findings.md` (STAGE6-START step 1); the duplicate `helper-screens/helper-screens/` folder in `ba72d61`.
 
-**Next:** Dan reviews `docs/spec-merge-plan.md` and the draft (optionally in the claude.ai project), answers §15 Q6 and Q7, then: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md."
+**Next:** Dan reviews `docs/history/spec-merge-plan.md` and the draft (optionally in the claude.ai project), answers §15 Q6 and Q7, then: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md."
 
 | Time (CDT) | Activity (continued) |
 |---|---|
@@ -435,7 +435,7 @@ High for the version history (git and the spec agree) and for the conflicts list
 | 13:46 | Dan: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md." Draft moved to `docs/SPEC.md` (title, status line and "Changes in v0.8" no longer say draft; decision-log row added); `SPEC-next-draft.md` removed; committed on `stage6-start` |
 | 13:46 | Tagged `11baab4` as `stage5-verified` (annotated); removed the duplicate `docs/mockups/helper-screens/helper-screens/` (byte-identical to its parent); pushed `stage6-start` and the tag |
 | 13:48 | Opened PR #14 (`stage6-start` → `main`). Found the Stage 6 kit commit had renamed the 2026-10-17 seed to the 2026-10-21 one, removing the file `src/io/seed.ts`, `Setup.tsx`, the tests and the M7/M10 checks load. Restored it from `11baab4` (STAGE6-START: keep the old seed). `npx vitest run` 33 files / 510 tests pass; `npm run build` clean (16 precache entries) |
-| 13:52 | Dan merged PR #14 (`ef5a800`); "start step 4". Pulled `main`. Read `stage4-plan.md`, `db.ts`, `setup.ts`, `seed.ts`, `inventory.ts`, `FilterPanel.tsx`, `Order.tsx`, Stage 5 findings 1, 2 and 6; counted seed-file and category-name references in tests and checks. Wrote `docs/stage6-plan.md` (M11–M16c, schema v2 in M15 and v3 in M16a, upgrade testing). Uncommitted (goes in with M11, like the Stage 4 plan with M1). Waiting for Dan's OK |
+| 13:52 | Dan merged PR #14 (`ef5a800`); "start step 4". Pulled `main`. Read `docs/history/stage4-plan.md`, `db.ts`, `setup.ts`, `seed.ts`, `inventory.ts`, `FilterPanel.tsx`, `Order.tsx`, Stage 5 findings 1, 2 and 6; counted seed-file and category-name references in tests and checks. Wrote `docs/history/stage6-plan.md` (M11–M16c, schema v2 in M15 and v3 in M16a, upgrade testing). Uncommitted (goes in with M11, like the Stage 4 plan with M1). Waiting for Dan's OK |
 
 
 ---
@@ -453,10 +453,10 @@ Claude Code (Opus 5.5), same session. Dan: "ok, build m11". Branch `m11-filter-o
 | ~14:08–14:07 | Regression: `npx vitest run` 510/510; build clean; browser checks M2–M10 400/400 and M11 12/12, all with clean consoles. Wrote `docs/reviews/M11.md`; committed, pushed, opened the PR |
 
 **WORK COMPLETED**
-F5 filter order (SPEC v0.8) in both places it shows. The Stage 6 plan (`docs/stage6-plan.md`) goes in with this milestone.
+F5 filter order (SPEC v0.8) in both places it shows. The Stage 6 plan (`docs/history/stage6-plan.md`) goes in with this milestone.
 
 **DELIVERABLES PRODUCED**
-`src/ui/screens/inventory/{Inventory,FilterPanel}.tsx`, `scripts/m11-ui-check.mjs`, `docs/reviews/M11.md`, `docs/stage6-plan.md`.
+`src/ui/screens/inventory/{Inventory,FilterPanel}.tsx`, `scripts/m11-ui-check.mjs`, `docs/reviews/M11.md`, `docs/history/stage6-plan.md`.
 
 **CONFIDENCE**
 High: a layout-only change, checked in both orientations, with the mutant caught and the full regression green. One open wording note for Dan (M11 review, finding 1).
@@ -571,7 +571,7 @@ Claude Code (Opus 5.5), new session. Dan merged PR #18 (M14) on 2026-10-21. Bran
 F27 named order lists (create, rename, duplicate, delete; add from row, detail and scan; +/− and remove; search and exports; backup and both restores; item delete). Schema v2 with the guard (Stage 5 finding 6), the blocked-upgrade screen, and the Set up again fix (finding 1). `APP_VERSION` 0.2.0. Spec and plan updated for M15b.
 
 **DELIVERABLES PRODUCED**
-New: `src/domain/{order-lists,storage-error}.ts`, `src/data/order-lists.ts`, `src/io/order-lists-csv.ts`, `src/ui/screens/order/ListDialogs.tsx`, `tests/{order-lists,order-lists-db,schema-upgrade,tablet-backup}.test.ts`, `scripts/m15-ui-check.mjs`, `scripts/m15-upgrade-check.mjs`, `docs/reviews/M15.md`. Changed: `src/data/{db,inventory,items,setup,backup}.ts`, `src/domain/order.ts`, `src/io/{backup,bundle,order-csv,restore}.ts`, `src/ui/App.tsx`, `src/ui/data-hooks.ts`, `src/ui/icons.tsx`, `src/ui/shell/{router.ts,UpdateBanner.tsx}`, `src/ui/screens/{StorageError.tsx,order/Order.tsx,order/ExportDialog.tsx,inventory/ItemRow.tsx,item/Detail.tsx,item/DeleteItem.tsx,scan/Scan.tsx,more/Backup.tsx,more/RestoreDialog.tsx}`, `src/styles/app.css`, `tests/backup-restore.test.ts`, `scripts/m{5,8,10}-ui-check.mjs`, `docs/SPEC.md`, `docs/stage6-plan.md`.
+New: `src/domain/{order-lists,storage-error}.ts`, `src/data/order-lists.ts`, `src/io/order-lists-csv.ts`, `src/ui/screens/order/ListDialogs.tsx`, `tests/{order-lists,order-lists-db,schema-upgrade,tablet-backup}.test.ts`, `scripts/m15-ui-check.mjs`, `scripts/m15-upgrade-check.mjs`, `docs/reviews/M15.md`. Changed: `src/data/{db,inventory,items,setup,backup}.ts`, `src/domain/order.ts`, `src/io/{backup,bundle,order-csv,restore}.ts`, `src/ui/App.tsx`, `src/ui/data-hooks.ts`, `src/ui/icons.tsx`, `src/ui/shell/{router.ts,UpdateBanner.tsx}`, `src/ui/screens/{StorageError.tsx,order/Order.tsx,order/ExportDialog.tsx,inventory/ItemRow.tsx,item/Detail.tsx,item/DeleteItem.tsx,scan/Scan.tsx,more/Backup.tsx,more/RestoreDialog.tsx}`, `src/styles/app.css`, `tests/backup-restore.test.ts`, `scripts/m{5,8,10}-ui-check.mjs`, `docs/SPEC.md`, `docs/history/stage6-plan.md`.
 
 **CONFIDENCE**
 High for the upgrade: byte-equal rows in unit tests and in a real browser, the blocked case and a rollback tried. High for list math (to the cent, mutants caught). Still to do: the real Tab S8 backup through `tests/tablet-backup.test.ts`, before merging.
@@ -744,7 +744,7 @@ High for the import rules (one unit test per preview row, mutants, a real two-de
 
 **Next:** Dan merges PR #25, decides on the independent review, merges M16c with a merge commit, backs up the tablet, and runs the tablet check in `docs/reviews/M16c.md`.
 
-**Later (16:39):** PRs #25 and #26 merged (`a434e4e`). Dan: "a-j accepted; tablet check worked; iphone safari works (cache needed to be cleared)". SPEC v0.12 (§18.5 import details, decision log); results recorded in `docs/reviews/M16c.md` and `docs/reviews/M16b.md` (Safari item closed), on branch `m16c-details-confirmed`. With M16c, every Stage 6 milestone in `docs/stage6-plan.md` is merged.
+**Later (16:39):** PRs #25 and #26 merged (`a434e4e`). Dan: "a-j accepted; tablet check worked; iphone safari works (cache needed to be cleared)". SPEC v0.12 (§18.5 import details, decision log); results recorded in `docs/reviews/M16c.md` and `docs/reviews/M16b.md` (Safari item closed), on branch `m16c-details-confirmed`. With M16c, every Stage 6 milestone in `docs/history/stage6-plan.md` is merged.
 
 ## 2026-10-28 (evening) — SPEC v0.13 draft (placed orders, spending history) and M18 (Stage 5 leftovers)
 
@@ -758,13 +758,13 @@ Claude Code (Opus 5.5), new session after `/clear`. Dan: "take care of the stage
 | ~16:50 | Dan: "go ahead with the spec draft and M18". SPEC v0.13 draft: F30–F32, §3 Placed order, §4 on order, §21, §22, the Stage 5 decisions; §15 Q8 lists the details Claude filled in. One correction to what Claude had told Dan: a data-only backup is one CSV, so orders travel in full backups only |
 | ~17:00–17:20 | M18 code: findings 3, 4, 5, 7, 8, 9. `tests/stage5-leftovers.test.ts`. Mutants 10/12 → 12/12 (one redundant condition removed, two tests added) |
 | ~17:20–17:30 | `scripts/m18-ui-check.mjs` 14/14 (one script fix: the ZIP's `photos/` folder entry). Screenshots showed the setup line's bold text in its own column: fixed. Wording fix in the missing-photo note |
-| ~17:30–18:10 | Regression `m2`–`m16c` in the background; `docs/reviews/M18.md`; v0.13 milestones added to `docs/stage6-plan.md`. `APP_VERSION` 0.5.1 (`m16a`, `m17` checks updated and re-run) |
+| ~17:30–18:10 | Regression `m2`–`m16c` in the background; `docs/reviews/M18.md`; v0.13 milestones added to `docs/history/stage6-plan.md`. `APP_VERSION` 0.5.1 (`m16a`, `m17` checks updated and re-run) |
 
 **WORK COMPLETED**
 SPEC v0.13 draft. M18: cleared-storage line on setup; empty full backups with lists restore (warned); missing ZIP photos shown in the attention style and the tablet's own kept; Downloads-only toast; F16 and §9 text as built; storage status refreshes on a grant.
 
 **DELIVERABLES PRODUCED**
-New: `tests/stage5-leftovers.test.ts`, `scripts/m18-ui-check.mjs`, `docs/reviews/M18.md`. Changed: `docs/SPEC.md`, `docs/stage6-plan.md`, `src/io/{bundle,restore,backup}.ts`, `src/data/{inventory,setup}.ts`, `src/domain/labels.ts`, `src/ui/{App.tsx,data-hooks.ts}`, `src/ui/screens/Setup.tsx`, `src/ui/screens/more/{RestoreDialog.tsx,export-backup.ts}`, `src/styles/app.css`, `tests/helper-devices.test.ts`, `scripts/m16a-ui-check.mjs`, `scripts/m17-ui-check.mjs`.
+New: `tests/stage5-leftovers.test.ts`, `scripts/m18-ui-check.mjs`, `docs/reviews/M18.md`. Changed: `docs/SPEC.md`, `docs/history/stage6-plan.md`, `src/io/{bundle,restore,backup}.ts`, `src/data/{inventory,setup}.ts`, `src/domain/labels.ts`, `src/ui/{App.tsx,data-hooks.ts}`, `src/ui/screens/Setup.tsx`, `src/ui/screens/more/{RestoreDialog.tsx,export-backup.ts}`, `src/styles/app.css`, `tests/helper-devices.test.ts`, `scripts/m16a-ui-check.mjs`, `scripts/m17-ui-check.mjs`.
 
 **EVIDENCE**
 Unit 813 pass (1 skipped). Type check and build clean. Mutants 12/12. Browser: M2 28, M3 50, M4 25, M5 39, M6 54, M7 32, M8 61, M9 71, M10 42, M11 12, M12 16, M13 25, M14 20, M15 40, M15b 26, M16a 42, M17 34, M17b 7, M16b 36, M16c 25, M18 14: **699, all pass, clean consoles.**
@@ -868,3 +868,7 @@ Unit 902 pass; real tablet backup passes; mutants 15/15; M23 13/13; helper upgra
 **Next:** Dan confirms details (a)–(d) in `docs/reviews/M23.md`, merges, and runs the tablet check.
 
 **Later:** Dan, 2026-10-29: "details confirmed. merged. tablet checked." Recorded in `docs/reviews/M23.md` and SPEC v0.18. Nothing in the spec or the reviews is open; the team's answers on `docs/proposals/2026-10-29-team-feature-ideas.md` are next.
+
+## 2026-10-29 (late afternoon) — Hand-off guide and cleanup
+
+Dan: "write the hand-off guide and clean up unnecessary files (old deprecated logs and such)". Added `docs/HANDOFF.md` (for the next maintainer) and a root `README.md`. Deleted one-time files: `STAGE6-START.md` and `docs/START-HERE.md` (kickoff prompts), `scripts/cdp-check.mjs` (an M1 probe), `scripts/m15-upgrade-check.mjs` and `scripts/m16a-upgrade-check.mjs` (v1→v2 and v2→v3 upgrades no install needs any more; `m19-upgrade-check` and `m23-helper-upgrade-check` stay as templates). Moved finished planning documents and the Stage 5 review to `docs/history/`, with every reference updated. Unit 902 pass; build clean.

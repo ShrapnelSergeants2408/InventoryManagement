@@ -1,6 +1,6 @@
 # M12 independent review — Categories (§11), the new seed, `categories.csv`, Stage 5 finding 2
 
-**Reviewed:** branch `m12-categories` at `58a9e1a` (PR #16), diff `main...m12-categories`. Written in a fresh session by a reviewer who took no part in the build. The builder's [M12 review](M12.md) was not trusted; each claim was re-checked. Requirements: SPEC v0.8 §7 (`categories.csv`), §11, §12, F9, F22, §15 Q7b/Q7c, §19 "Categories"; `docs/stage6-plan.md` M12; Stage 5 review finding 2 (probe P1).
+**Reviewed:** branch `m12-categories` at `58a9e1a` (PR #16), diff `main...m12-categories`. Written in a fresh session by a reviewer who took no part in the build. The builder's [M12 review](M12.md) was not trusted; each claim was re-checked. Requirements: SPEC v0.8 §7 (`categories.csv`), §11, §12, F9, F22, §15 Q7b/Q7c, §19 "Categories"; `docs/history/stage6-plan.md` M12; Stage 5 review finding 2 (probe P1).
 **Date:** 2026-10-21, 14:30–14:55 CDT · **Risk: High** (the data every later milestone builds on).
 
 ## How it was done

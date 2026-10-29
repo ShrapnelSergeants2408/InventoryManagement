@@ -62,7 +62,7 @@ Also in v0.14, from the independent review of M19 (`docs/reviews/M19-independent
 - **Every CSV the app reads is comma-separated.** Found while fixing finding 6: the CSV reader guessed the separator, and a cell with several semicolons (an order with 4 or more receipts, or notes like "M3; M4; M5; M6; M8") made it pick ";", so the whole file was refused ("missing columns"). That affected `inventory.csv` since Stage 4. The real Oct 23 tablet backup wasn't affected (§7).
 
 **Changes in v0.13 (approved by Dan 2026-10-28, §15 Q8):**
-- **Stage 5 leftovers** (`docs/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
+- **Stage 5 leftovers** (`docs/history/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
   - (a) First-launch setup says that a tablet which had inventory before has had its storage cleared, and points to Restore (§2, F22; finding 3).
   - (b) A full backup with no items but with list files can be restored, with a warning that the inventory will be empty (F17; finding 4).
   - (c) Photos named in a backup but missing from its ZIP: the restore confirmation shows the count in the attention style, and the tablet keeps its own photo for those items (F17; finding 5).
@@ -109,7 +109,7 @@ Also in v0.14, from the independent review of M19 (`docs/reviews/M19-independent
 - An unknown code shows **Location not found**. It can be added as a new location (anyone) or used to rename an existing location (PIN, as F25). The count-in start screen and Filters only report it, because a new empty location has nothing to count or show.
 - More › About shows the app version and when it was built, so a tablet check can tell which version is running.
 
-**Changes in v0.8:** The changes designed in the claude.ai project (2026-10-19 to 2026-10-21; written there as a "v0.6 draft" from v0.5, `docs/proposals/2026-10-21-claude-proposal.md`) merged into v0.7. Merge details: `docs/spec-merge-plan.md`.
+**Changes in v0.8:** The changes designed in the claude.ai project (2026-10-19 to 2026-10-21; written there as a "v0.6 draft" from v0.5, `docs/history/2026-10-21-claude-proposal.md`) merged into v0.7. Merge details: `docs/history/spec-merge-plan.md`.
 - **Helper devices for counting** (F26, new §18), so several students can count at once (decided 2026-10-19 13:47–13:53):
   - The main tablet sends a **count kit** to helper devices (other tablets or students' phones). Students count their assigned groups and send back a **counts file**. The main tablet runs **Import counts**, which previews the import, settles conflicts and reviews new items before anything is saved.
   - Helpers can add items that aren't in the catalog. They arrive as **pending items** for review on the main tablet.
@@ -488,9 +488,9 @@ Usage log (who took what), competition pit-kit checklist, live multi-device sync
 |---|---|---|---|---|
 | 1 | Interview and spec | Claude chat (mobile OK) | This document | Done |
 | 2 | Category list and starter catalog research | Claude desktop chat (web search, big-screen review) | Seed ZIP + report | Done 2026-10-17; seed remapped to the new categories 2026-10-21 |
-| 3 | UI mockups at tablet size | Claude desktop chat | Interactive mockup canvas (67 artboards), `stage3-design-notes.md`, `stage3-verification.md` | Done 2026-10-17; helper-device screens (row 11) added 2026-10-19 (`docs/mockups/helper-screens/`) |
+| 3 | UI mockups at tablet size | Claude desktop chat | Interactive mockup canvas (67 artboards), `stage3-design-notes.md`, `docs/history/stage3-verification.md` | Done 2026-10-17; helper-device screens (row 11) added 2026-10-19 (`docs/mockups/helper-screens/`) |
 | 4 | Build | Claude Code in VS Code | Git repo, app, tests, GitHub Pages deployment | Done 2026-10-18 (milestones 1–10, built to v0.7) |
-| 5 | Verification | Fresh Claude Code session + hands-on testing on the Tab S8 (including a real label print) | Review report checked against §5 acceptance criteria; fixes | Done 2026-10-21 (`docs/stage5-review.md`), except the real label-sheet print, which waits for labels to be bought |
+| 5 | Verification | Fresh Claude Code session + hands-on testing on the Tab S8 (including a real label print) | Review report checked against §5 acceptance criteria; fixes | Done 2026-10-21 (`docs/history/stage5-review.md`), except the real label-sheet print, which waits for labels to be bought |
 | 6 | Changes and new features | Claude Code in VS Code | Updates; spec revised | v0.8 (§18.7) to v0.12 built (M11–M17b). v0.13: M18 Stage 5 leftovers, M19 placed orders and receiving, M20 order history (§21) |
 
 Recommended build order within Stage 4: data model and storage → item list, search, filters → add/edit/remove items, categories, suppliers, and locations → order math and order list → CSV/ZIP backup, restore, share → PIN → photos → QR labels and scanning → count-in → starter catalog load → offline/PWA install. (v0.7 was built in this order. The v0.8 changes are added afterwards as Stage 6 milestones; see §18.7.)
@@ -508,7 +508,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
    - (b) Helpers can't edit desired, spares, notes, vendor fields or the photos of existing items.
    - (c) The new category mapping (revised 12:54): 10 starter items are still marked for a check in `category-mapping-2026-10-21.csv` (small either/or placements; Claude's choice stands unless Dan changes it).
    - (d) F27 order-list details Claude filled in: the default quantity, adding the same item twice, and deleting an item that's on lists.
-7. ~~Approve the merge decisions (2026-10-21, `docs/spec-merge-plan.md`)~~ — approved 2026-10-21 13:44 (Dan: "yes to all"). Claude Code's choices where the proposal and v0.7 differed or the proposal left a gap, as approved:
+7. ~~Approve the merge decisions (2026-10-21, `docs/history/spec-merge-plan.md`)~~ — approved 2026-10-21 13:44 (Dan: "yes to all"). Claude Code's choices where the proposal and v0.7 differed or the proposal left a gap, as approved:
    - (a) F22: the shop-tablet / helper question comes first, and the shop tablet keeps all three setup choices (starter catalog, restore a backup, start empty).
    - (b) `categories.csv`: backups keep the v0.7 layout; reading accepts both it and the new seed's layout (§7).
    - (c) Upgrading doesn't remap an existing install's categories; the new categories come with a fresh setup or a restore (§18.7).
@@ -562,7 +562,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-21 12:28 | (claude.ai) Categories set (§11), more allowed; bulk move yes; order lists: named lists, add from row / detail / scan, no "on order" status, received items added by hand; order search exports everything by default plus "shown lines only" |
 | 2026-10-21 12:54 | (claude.ai) Stage 5: share sheet fixed (tablet network); B10 full backup, data-only backup, restore and price import passed. Categories revised: new Fasteners (bolts, screws, nuts, washers, rivets, cable ties…), Assemblies (full swerve modules, Climber in a Box…), Electrical › Cameras, gamepads and Pneumatic Hub/PDH/PCM/VRM-type devices in Control System, Pneumatics › Compressors and Tubing, Tools (hammers, wrenches, Allen wrenches, sockets, power tools…), Safety (safety glasses, gloves, first aid, fire extinguishers…) |
 | 2026-10-21 13:00 | (claude.ai) Wiring Tools and Specialty Tools kept; Mini Power Module → Electrical › Control System. Stage 5 B5 and B6 passed. Labels not bought yet and no network printer: labels will be saved as a PDF, emailed and printed from another computer (§9) |
-| 2026-10-21 13:40 | Claude Code: the proposal (`docs/proposals/2026-10-21-claude-proposal.md`) merged into v0.7 as the v0.8 draft. No F-number or section clashes (proposal adds F26–F28, §18, §19). Kept from v0.6/v0.7: count rounds, `manifest.json`, the `categories.csv` layout, the Category table, closed §15 Q3/Q4. Merge decisions listed in §15 Q7. Details: `docs/spec-merge-plan.md` |
+| 2026-10-21 13:40 | Claude Code: the proposal (`docs/history/2026-10-21-claude-proposal.md`) merged into v0.7 as the v0.8 draft. No F-number or section clashes (proposal adds F26–F28, §18, §19). Kept from v0.6/v0.7: count rounds, `manifest.json`, the `categories.csv` layout, the Category table, closed §15 Q3/Q4. Merge decisions listed in §15 Q7. Details: `docs/history/spec-merge-plan.md` |
 | 2026-10-21 13:40 | v0.8 draft: F26 helper devices (§18), F27 named order lists, F28 bulk move, F12 order search, F5 filter order, §11 categories and remapped seed, `last_counted` date-time and `counted_by`, `order-lists.csv` and `pending-items.csv`, §9 PDF route, F22 setup choices, §18.7 upgrade, §18.6 and §19 tests. Awaiting approval (§15 Q6, Q7) |
 | 2026-10-21 13:44 | Dan: §15 Q6 (a)–(d) and Q7 (a)–(g), yes to all. The 10 flagged placements in `category-mapping-2026-10-21.csv` stay as Claude chose |
 | 2026-10-21 13:46 | Dan: "Approved. Make SPEC-next-draft.md the new docs/SPEC.md." v0.8 approved and made `docs/SPEC.md` |

@@ -1,6 +1,6 @@
 # Stage 4 — Build plan (proposal)
 
-**Date:** 2026-10-17 CDT · **Status:** awaiting Dan's approval (with `spec-questions.md`). No code yet.
+**Date:** 2026-10-17 CDT · **Status:** awaiting Dan's approval (with `docs/spec-questions.md`). No code yet.
 
 ## 1. Dependencies
 

@@ -16,7 +16,7 @@
 | `npx vitest run` | **33 files, 510 tests, all pass** (4.2 s). That is 6 more than at `7e6f0cc`, all from the T-01 tests in `tests/setup.test.ts:141-195` |
 | `npm run build` (`tsc --noEmit && vite build`) | **Clean.** 126 modules. Service worker generated with 16 precache entries (7,460 KiB, including the 5.4 MB starter ZIP and the 1.1 MB zxing `.wasm`) |
 | Probe tests P1–P5 (scratchpad, own vitest config pointing at the repo) | 5 run. Confirmed findings 2, 4 and 5. P4 **disproved** the version-rollback scenario in the earlier review (finding 1) |
-| `git status --short` after every run | Only `?? docs/stage5-review.md` |
+| `git status --short` after every run | Only `?? docs/history/stage5-review.md` |
 
 ## Findings (most serious first)
 
@@ -113,7 +113,7 @@ The schema is `version(1)` only (`src/data/db.ts:49-56`), and nothing tests an u
 
 ### 8. Minor: the spec text and the code disagree in approved places
 
-These were approved in `docs/spec-questions.md` but never written into SPEC.md:
+These were approved in `docs/history/spec-questions.md` but never written into SPEC.md:
 - **F16:** "Later" lasts 12 hours *or* until the next launch (`SNOOZE_MS`, `src/domain/backup-reminder.ts:6`). F16 says "until the next app launch".
 - **F22:** first launch offers *starter catalog / restore a backup / start empty* (`src/data/setup.ts:13`). F22 says first launch loads the starter catalog.
 - **§9:** "Additional layouts can be added later as data, without code changes." The layouts are a TypeScript constant (`SHEET_LAYOUTS`, `src/domain/labels.ts:41-45`), so adding one means a rebuild and a deploy. The file's header comment (`labels.ts:1-2`) claims otherwise.
@@ -192,7 +192,7 @@ The fix (`ensurePersistentStorage`, `src/data/setup.ts:57-68`, called from `src/
 
 ## Code the spec doesn't ask for
 
-None of this is harmful, and most of it is approved in `docs/spec-questions.md`. It's listed so the spec can catch up.
+None of this is harmful, and most of it is approved in `docs/history/spec-questions.md`. It's listed so the spec can catch up.
 
 - **First launch** offers *restore a backup* and *start empty* as well as the starter catalog (Q2, `src/data/setup.ts:13`).
 - **"Set up again"** on the storage-error screen deletes the database (finding 1). The spec only asks for a path to Restore.
@@ -243,11 +243,11 @@ These were run with a separate vitest config that resolves `@repo/...` to this r
 
 | Time (CDT) | Step |
 |---|---|
-| 2026-10-21 13:12 | Session start. Branch `fix-t01-persistent-storage` @ `34cf04b`; only untracked file `docs/stage5-review.md` (earlier review of 2026-10-19). SPEC.md is v0.7 (asked for v0.5); reviewing against v0.7 |
+| 2026-10-21 13:12 | Session start. Branch `fix-t01-persistent-storage` @ `34cf04b`; only untracked file `docs/history/stage5-review.md` (earlier review of 2026-10-19). SPEC.md is v0.7 (asked for v0.5); reviewing against v0.7 |
 | 13:12 | Read SPEC.md end to end. Read the earlier review for context and copied it to the session scratchpad before it was replaced |
 | 13:13 | `npx vitest run`: 33 files, 510 tests pass |
 | 13:13 | `npm run build`: clean, 126 modules, 16 precache entries |
 | 13:13–13:15 | Read data layer (`db`, `inventory`, `items`, `lists`, `setup`, `pin`, `price-import`), I/O (`restore`, `bundle`, `backup`, `inventory-csv`, `lists-csv`, `csv`, `price-import`), domain (`order`, `status`, `validate`, `lists`, `labels`), security, and the UI for boot, the storage error screen, restore, delete and the editor gates; traced every `gate()` call |
 | 13:15–13:16 | Probe tests P1–P5 in the scratchpad (first two runs fixed the probe config; P4's first assertion was wrong about Dexie 4 and was changed to report what happens) |
 | 13:16 | Collected test names and line numbers for evidence |
-| 13:17 | Report written to `docs/stage5-review.md`. No code changed; `git status` shows only this file. Headless-Chrome checks not re-run. Session stopped |
+| 13:17 | Report written to `docs/history/stage5-review.md`. No code changed; `git status` shows only this file. Headless-Chrome checks not re-run. Session stopped |

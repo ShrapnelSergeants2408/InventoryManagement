@@ -827,3 +827,5 @@ Unit 883 pass (1 skipped); tablet-backup test passes. Mutants 23/23 (21/23 first
 High for the ranges and money (boundary dates, hand-worked and random summaries, mutants). Medium for the Android print dialog and the share sheet until the tablet check.
 
 **Next:** Dan reviews details (a)–(k) in `docs/reviews/M20.md`, merges, and runs the tablet check there. With M20, every v0.13 milestone is built.
+
+**Later:** Dan: "confirm a-k". SPEC v0.15 writes the eleven M20 details into §21.5 and the decision log; `docs/reviews/M20.md` records the confirmation. PR #32 ready to merge.

@@ -78,18 +78,17 @@ export function CategoriesScreen() {
         subtitle={snap ? `${plural(cats.length, 'category', 'categories')} · ${plural(subCount, 'subcategory', 'subcategories')} · ${plural(items.length, 'item')}` : 'Loading…'}
         back={back}
         actions={
-          <>
-            <button type="button" class={reorder ? 'btn on' : 'btn'} aria-pressed={reorder} disabled={!snap} onClick={() => setReorder(!reorder)}>
-              <Icon name={reorder ? 'check' : 'reorder'} />
-              {reorder ? 'Done' : 'Reorder'}
-            </button>
-            <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'addCategory' })}>
-              <Icon name="plus" />
-              Add category
-            </button>
-          </>
+          <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'addCategory' })}>
+            <Icon name="plus" />
+            Add category
+          </button>
         }
-      />
+      >
+        <button type="button" class={reorder ? 'btn on' : 'btn'} aria-pressed={reorder} disabled={!snap} onClick={() => setReorder(!reorder)}>
+          <Icon name={reorder ? 'check' : 'reorder'} />
+          {reorder ? 'Done' : 'Reorder'}
+        </button>
+      </TopBar>
       <div class="mlist">
         <p class="small muted lockline">
           Anyone can add or reorder.{' '}

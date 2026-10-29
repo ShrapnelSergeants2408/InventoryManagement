@@ -12,7 +12,7 @@ import { saveFilters } from '../../../data/prefs';
 import { NO_FILTERS } from '../../../domain/filters';
 import { couldBeLocation, resolveScan, formatName, type ScanResult } from '../../../domain/scan';
 import { matchesQuery } from '../../../domain/search';
-import { stockStatus } from '../../../domain/status';
+import { itemStatus } from '../../../domain/status';
 import { nameKey, type Item, type Location } from '../../../domain/types';
 import { gate } from '../../../security/gate';
 import { PinMark, StatusChip, plural } from '../../components/common';
@@ -83,7 +83,7 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
             <span class="d" />
             <span class="line" />
           </div>
-          <div class="chint">{camera === 'starting' ? 'Starting the camera…' : 'Hold a QR label or barcode in the square — it scans by itself'}</div>
+          {panel.kind === 'none' && <div class="chint">{camera === 'starting' ? 'Starting the camera…' : 'Hold a QR label or barcode in the square — it scans by itself'}</div>}
           {panel.kind !== 'none' && <div class="cam-paused">Camera paused</div>}
         </Scanner>
       )}
@@ -382,13 +382,14 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
         </div>
       </div>
       <div class="found-st">
-        <StatusChip status={stockStatus(item.onHand, item.desired, item.spares)} />
+        <StatusChip status={itemStatus(item)} />
         <span class="small muted">
           Desired {item.desired} · spares {item.spares}
         </span>
       </div>
-      <div>
-        <span class="lbl">On hand ({item.unit}) — took some? tap −</span>
+      <div class="found-oh">
+        <span class="lbl">On hand ({item.unit})</span>
+        <span class="small muted">Took some? Tap − once for each one you took.</span>
         <CountStepper
           label="On hand"
           size="xl"

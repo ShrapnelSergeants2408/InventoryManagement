@@ -112,7 +112,7 @@ export function InventoryScreen() {
   };
   const chosen: Item[] = snap ? snap.items.filter((i) => selected.has(i.id)) : [];
   const summary = view
-    ? `${plural(view.totals.items, 'item')} · ${view.totals.short} short · ${view.totals.low} low spares`
+    ? `${plural(view.totals.items, 'item')} · ${view.totals.short} short · ${view.totals.low} low spares${view.totals.uncounted > 0 ? ` · ${view.totals.uncounted} not counted` : ''}`
     : 'Loading…';
 
   return (

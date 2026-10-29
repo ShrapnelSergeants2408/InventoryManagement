@@ -108,7 +108,7 @@ try {
   await js(`document.querySelector('.list').scrollTop = 200; await settle(100);`);
   await js(`await click('a.rlink', 'NEO 2.0 Brushless Motor'); await settle(400);`);
   check('row tap opens the detail card', await js(`return [location.hash, document.querySelector('.top .h1').textContent, document.querySelector('.top .small').textContent]`), ['#/item/st-0063', 'NEO 2.0 Brushless Motor (15T spline shaft)', 'Electrical › Motors']);
-  check('status, source, id and counted chips', await js(`return [...document.querySelectorAll('.dchips .chip')].map((c) => norm(c.textContent))`), ['SHORT 8', 'Starter item', 'ID st-0063', 'Not counted yet']);
+  check('status, source, id and counted chips', await js(`return [...document.querySelectorAll('.dchips .chip')].map((c) => norm(c.textContent))`), ['NOT COUNTED', 'Starter item', 'ID st-0063']);
   check('stock and order lines (§4)', await js(`return [...document.querySelectorAll('.qty-title')].map((e) => e.textContent).concat(document.querySelector('.ordbox .small').textContent)`), ['Short 8 for current needs', 'Order 8 each', '8 × $55.00 = $440.00 from REV (preferred vendor)']);
   check('vendor options open the product page in a new tab (F11)', await js(`return [...document.querySelectorAll('.vend a.btn')].map((a) => [a.target, a.rel, a.href.startsWith('https://')])[0]`), ['_blank', 'noopener noreferrer', true]);
   await sleep(600);
@@ -165,7 +165,7 @@ try {
   check('add saves a team item with a tm- id and opens it; no PIN for vendor option 1', [/^tm-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/.test(newId), await js(`return gates()`)], [true, 2]);
   check('new item in IndexedDB: counted now (local date-time with offset, counted_by blank), team, packs of 4 at $5.00', await js(`const r = await idb('items', ${JSON.stringify(newId)}); return [r.source, r.lastCounted.startsWith('${today}T') && /^.{19}[+-]\\d\\d:\\d\\d$/.test(r.lastCounted) && r.countedBy === '', r.onHand, r.desired, r.subcategory, r.location, r.vendors[0].packSize, r.vendors[0].packPriceCents, r.vendors[0].priceChecked]`), ['team', true, 3, 8, 'Standoffs Test', 'Pit cart', 4, 500, today]);
   check('new subcategory added to Mechanical (F6)', await js(`return (await idb('categories', 'Mechanical')).subcategories.at(-1)`), 'Standoffs Test');
-  check('header count now 130 items (the new one is short)', await js(`await go('#/inventory'); return document.querySelector('.top .small').textContent`), '130 items · 125 short · 0 low spares');
+  check('header count now 130 items (the new one is short)', await js(`await go('#/inventory'); return document.querySelector('.top .small').textContent`), '130 items · 1 short · 0 low spares · 129 not counted');
 
   // ── Delete (F8) ──
   await js(`await relockNow(); await go('#/item/' + encodeURIComponent(${JSON.stringify(newId)})); await click('.dacts button', 'Delete item'); await answerGate(true, true);`);
@@ -174,7 +174,7 @@ try {
   await js(`await click('[aria-label="Delete item"] button', 'Keep item');`);
   check('Keep item changes nothing', await js(`return [!dlg('Delete item'), !!(await idb('items', ${JSON.stringify(newId)}))]`), [true, true]);
   await js(`await relockNow(); await click('.dacts button', 'Delete item'); await answerGate(true, true); await click('[aria-label="Delete item"] button', 'Delete item'); await settle(600);`);
-  check('delete removes the item and returns to the list', await js(`return [location.hash, (await idb('items', ${JSON.stringify(newId)})) ?? null, document.querySelector('.top .small').textContent]`), ['#/inventory', null, '129 items · 124 short · 0 low spares']);
+  check('delete removes the item and returns to the list', await js(`return [location.hash, (await idb('items', ${JSON.stringify(newId)})) ?? null, document.querySelector('.top .small').textContent]`), ['#/inventory', null, '129 items · 0 short · 0 low spares · 129 not counted']);
   check('a deleted item’s link shows "not found"', await js(`await go('#/item/' + encodeURIComponent(${JSON.stringify(newId)})); return document.querySelector('.state h2').textContent`), `No item “${newId}” on this tablet`);
 
   // ── Suppliers (F23) ──

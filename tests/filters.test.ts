@@ -4,10 +4,11 @@ import { item, vendor } from './helpers';
 
 const f = (over: Partial<Filters>): Filters => ({ ...NO_FILTERS, ...over });
 
-// desired 10, spares 3 → short below 10, low spares 10–12, OK from 13.
-const short = item({ id: 'short', onHand: 4, desired: 10, spares: 3 });
-const low = item({ id: 'low', onHand: 11, desired: 10, spares: 3 });
-const ok = item({ id: 'ok', onHand: 13, desired: 10, spares: 3 });
+// desired 10, spares 3 → short below 10, low spares 10–12, OK from 13. All counted (v0.16).
+const C = '2026-10-20T18:00-05:00';
+const short = item({ id: 'short', onHand: 4, desired: 10, spares: 3, lastCounted: C });
+const low = item({ id: 'low', onHand: 11, desired: 10, spares: 3, lastCounted: C });
+const ok = item({ id: 'ok', onHand: 13, desired: 10, spares: 3, lastCounted: C });
 const all = [short, low, ok];
 const ids = (filters: Filters) => all.filter((i) => passesFilters(i, filters)).map((i) => i.id);
 
@@ -35,6 +36,14 @@ describe('SPEC F5 filters', () => {
     expect(ids(f({ short: true, low: true }))).toEqual(['short', 'low']);
   });
 
+  it('an item not counted yet is neither short nor low spares, but still needs ordering (v0.16)', () => {
+    const never = item({ onHand: 0, desired: 5, spares: 2 });
+    expect(passesFilters(never, f({ short: true }))).toBe(false);
+    expect(passesFilters(never, f({ low: true }))).toBe(false);
+    expect(passesFilters(never, f({ needsOrder: true }))).toBe(true);
+    expect(passesFilters({ ...never, lastCounted: C }, f({ short: true }))).toBe(true);
+  });
+
   it('by category', () => {
     const a = item({ category: 'Motors' });
     expect(passesFilters(a, f({ category: 'Motors' }))).toBe(true);
@@ -57,7 +66,7 @@ describe('SPEC F5 filters', () => {
   });
 
   it('combinations must all pass', () => {
-    const a = item({ category: 'Motors', location: 'Bin A1', onHand: 0, desired: 2 });
+    const a = item({ category: 'Motors', location: 'Bin A1', onHand: 0, desired: 2, lastCounted: C });
     expect(passesFilters(a, f({ category: 'Motors', location: 'Bin A1', short: true, needsOrder: true }))).toBe(true);
     expect(passesFilters(a, f({ category: 'Motors', location: 'Bin B2', short: true }))).toBe(false);
     expect(passesFilters(a, f({ category: 'Motors', low: true }))).toBe(false);

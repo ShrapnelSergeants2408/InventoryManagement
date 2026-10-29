@@ -17,10 +17,9 @@
 
 /* Top bar */
 .top { flex: none; min-height: 76px; display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: var(--card); border-bottom: 1px solid var(--line); }
-.top-title { display: flex; flex-direction: column; gap: 4px; margin-right: 8px; }
+.top-title { display: flex; flex-direction: column; gap: 4px; margin-right: auto; }
 .h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: .01em; }
 .h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; }
-.top > .lockpill { margin-left: auto; }
 .top > .searchwrap + .btn, .top > .lockpill { flex: none; }
 .muted { color: var(--ink-2); }
 .small { font-size: 15px; }
@@ -42,6 +41,8 @@
 .chip.red { background: var(--short); color: #fff; }
 .chip.yel { background: var(--amber); color: var(--ink); }
 .chip.ok { border: 2px solid var(--line-2); color: var(--ink-2); background: #fff; }
+/* Not counted yet (v0.16): dashed like other not-yet-real things (§17), never a status color. */
+.chip.unc { border: 2px dashed var(--ink-2); color: var(--ink-2); background: #fff; }
 
 /* Filter chips */
 .fchip { display: inline-flex; align-items: center; gap: 8px; min-height: 48px; padding: 0 16px; border-radius: 999px; border: 2px solid var(--line-2); background: #fff; font: inherit; font-weight: 700; font-size: 16px; color: var(--ink); cursor: pointer; white-space: nowrap; flex: none; }
@@ -150,8 +151,8 @@
   .nav-logo { display: none; }
   .nav a { flex: 1 1 0; margin: 0; min-height: 0; }
   .top { padding: 10px 16px; flex-wrap: wrap; row-gap: 10px; }
-  .top > .lockpill { margin-left: 0; }
-  .searchwrap { order: 9; flex: 1 1 100%; }
+  .searchwrap { order: 9; flex: 1 1 calc(100% - 200px); }
+  .searchwrap ~ .lockpill { order: 10; }
   .frow { padding: 10px 16px; }
   .cathdr { padding: 8px 16px; }
   .subhdr { padding-left: 44px; }

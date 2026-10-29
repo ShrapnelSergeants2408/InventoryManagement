@@ -61,22 +61,21 @@ export function LocationsScreen() {
         subtitle={snap ? `${plural(list.length, 'location')} · ${plural(placed, 'item')} placed · ${unplaced} with no location` : 'Loading…'}
         back={back}
         actions={
-          <>
-            <button type="button" class={reorder ? 'btn on' : 'btn'} aria-pressed={reorder} disabled={list.length < 2} onClick={() => setReorder(!reorder)}>
-              <Icon name={reorder ? 'check' : 'reorder'} />
-              {reorder ? 'Done' : 'Reorder'}
-            </button>
-            <button type="button" class="btn" disabled={!snap} onClick={() => setOpen({ kind: 'scan' })}>
-              <Icon name="scan" />
-              Add by scan
-            </button>
-            <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'add' })}>
-              <Icon name="plus" />
-              Add location
-            </button>
-          </>
+          <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'add' })}>
+            <Icon name="plus" />
+            Add location
+          </button>
         }
-      />
+      >
+        <button type="button" class={reorder ? 'btn on' : 'btn'} aria-pressed={reorder} disabled={list.length < 2} onClick={() => setReorder(!reorder)}>
+          <Icon name={reorder ? 'check' : 'reorder'} />
+          {reorder ? 'Done' : 'Reorder'}
+        </button>
+        <button type="button" class="btn" disabled={!snap} onClick={() => setOpen({ kind: 'scan' })}>
+          <Icon name="scan" />
+          Add by scan
+        </button>
+      </TopBar>
       <div class="mlist">
         <p class="small muted lockline">
           The list order is the <strong>walk order</strong> for count-in by location and labels by location. Anyone can add or reorder.{' '}

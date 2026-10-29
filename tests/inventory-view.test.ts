@@ -20,12 +20,13 @@ const categories: Category[] = [
   { name: 'Empty', order: 2, subcategories: [] },
 ];
 
+const C = '2026-10-17T18:00-05:00';
 const items = [
-  item({ id: 'm1', name: 'NEO', category: 'Motors', subcategory: 'Brushless', desired: 2, onHand: 0 }), // short
-  item({ id: 'm2', name: 'Kraken', category: 'Motors', subcategory: 'Brushless', desired: 2, spares: 1, onHand: 2 }), // low
-  item({ id: 'm3', name: 'CIM', category: 'Motors', subcategory: 'Brushed', desired: 0, onHand: 3 }), // ok
+  item({ id: 'm1', name: 'NEO', category: 'Motors', subcategory: 'Brushless', desired: 2, onHand: 0, lastCounted: C }), // short
+  item({ id: 'm2', name: 'Kraken', category: 'Motors', subcategory: 'Brushless', desired: 2, spares: 1, onHand: 2, lastCounted: C }), // low
+  item({ id: 'm3', name: 'CIM', category: 'Motors', subcategory: 'Brushed', desired: 0, onHand: 3 }), // not counted (v0.16)
   item({ id: 'f1', name: 'Bolt', category: 'Fasteners', subcategory: 'Bolts', desired: 1, onHand: 1, lastCounted: '2026-10-17' }), // ok
-  item({ id: 'f2', name: 'Loose kit', category: 'Fasteners', subcategory: '', desired: 1, onHand: 5 }), // ok, no subcategory
+  item({ id: 'f2', name: 'Loose kit', category: 'Fasteners', subcategory: '', desired: 1, onHand: 5, lastCounted: C }), // ok, no subcategory
 ];
 
 const view = (over: { query?: string; filters?: Partial<Filters>; expanded?: string[] } = {}) =>
@@ -64,29 +65,36 @@ describe('SPEC F1 grouping', () => {
     expect(shape(view({ expanded: [subcategoryKey('Motors', 'Brushless')] }).lines)).toEqual(['[Motors]', '[Fasteners]', '[Empty]']);
   });
 
-  it('headers count short and low-spares items inside (F1) and counted items', () => {
+  it('headers count short, low-spares and not-counted items inside (F1, v0.16) and counted items', () => {
     const v = view({ expanded: [categoryKey('Motors')] });
     const motors = v.lines[0] as CategoryLine;
-    expect(motors).toMatchObject({ total: 3, short: 1, low: 1, counted: 0 });
+    expect(motors).toMatchObject({ total: 3, short: 1, low: 1, uncounted: 1, counted: 2 });
     const brushless = v.lines[1] as SubcategoryLine;
-    expect(brushless).toMatchObject({ name: 'Brushless', total: 2, short: 1, low: 1 });
-    expect(groupChips(motors)).toEqual(['short', 'low']);
+    expect(brushless).toMatchObject({ name: 'Brushless', total: 2, short: 1, low: 1, uncounted: 0 });
+    expect(groupChips(motors)).toEqual(['short', 'low', 'uncounted']);
     const fasteners = v.lines.find((l) => l.kind === 'category' && l.name === 'Fasteners') as CategoryLine;
-    expect(fasteners).toMatchObject({ total: 2, short: 0, low: 0, counted: 1 });
+    expect(fasteners).toMatchObject({ total: 2, short: 0, low: 0, uncounted: 0, counted: 2 });
     expect(groupChips(fasteners)).toEqual(['ok']); // "All stocked"
   });
 
   it('an empty category shows "All stocked"', () => {
-    expect(groupChips({ short: 0, low: 0 })).toEqual(['ok']);
+    expect(groupChips({ short: 0, low: 0, uncounted: 0 })).toEqual(['ok']);
   });
 
-  it('only short → just the short chip; only low → just the low chip', () => {
-    expect(groupChips({ short: 3, low: 0 })).toEqual(['short']);
-    expect(groupChips({ short: 0, low: 2 })).toEqual(['low']);
+  it('only short → just the short chip; only low → just the low chip; only uncounted → "n not counted", never "All stocked"', () => {
+    expect(groupChips({ short: 3, low: 0, uncounted: 0 })).toEqual(['short']);
+    expect(groupChips({ short: 0, low: 2, uncounted: 0 })).toEqual(['low']);
+    expect(groupChips({ short: 0, low: 0, uncounted: 4 })).toEqual(['uncounted']);
+  });
+
+  it('an item never counted shows "not counted", whatever its numbers (v0.16)', () => {
+    const v = view({ expanded: [categoryKey('Motors'), subcategoryKey('Motors', 'Brushed')] });
+    const m3 = v.lines.find((l) => l.kind === 'item' && l.info.item.id === 'm3');
+    expect(m3?.kind === 'item' && m3.info.status).toEqual({ kind: 'uncounted' });
   });
 
   it('totals cover every item', () => {
-    expect(view().totals).toEqual({ items: 5, short: 1, low: 1, needsOrder: 2 });
+    expect(view().totals).toEqual({ items: 5, short: 1, low: 1, uncounted: 1, needsOrder: 2 });
   });
 
   it('categories only items use are appended after the list', () => {
@@ -102,7 +110,7 @@ describe('search and filters in the grouped list (F4, F5)', () => {
     expect(shape(v.lines)).toEqual(['[Motors]', ' [Brushless]', '  m1']);
     expect(v.shown).toBe(1);
     const motors = v.lines[0] as CategoryLine;
-    expect(motors).toMatchObject({ matching: 1, total: 3, short: 1, low: 1 }); // header counts stay whole-group
+    expect(motors).toMatchObject({ matching: 1, total: 3, short: 1, low: 1, uncounted: 1 }); // header counts stay whole-group
   });
 
   it('a filter with no search', () => {
@@ -159,15 +167,21 @@ describe('starter catalog in the list (SPEC §12 numbers)', async () => {
   const { data } = seed;
   const v = buildInventoryView({ items: data.items, categories: data.categories, query: '', filters: NO_FILTERS, expanded: new Set() });
 
-  it('header summary: 129 items · 124 short · 0 low spares; 124 need ordering', () => {
-    expect(v.totals).toEqual({ items: 129, short: 124, low: 0, needsOrder: 124 });
+  it('header summary before the first count: 129 items · 0 short · 0 low spares · 129 not counted; 124 need ordering (v0.16)', () => {
+    expect(v.totals).toEqual({ items: 129, short: 0, low: 0, uncounted: 129, needsOrder: 124 });
+  });
+
+  it('once counted at 0, the 124 items with a desired amount are short', () => {
+    const counted = data.items.map((i) => ({ ...i, lastCounted: '2026-10-29T18:00-05:00' }));
+    const cv = buildInventoryView({ items: counted, categories: data.categories, query: '', filters: NO_FILTERS, expanded: new Set() });
+    expect(cv.totals).toEqual({ items: 129, short: 124, low: 0, uncounted: 0, needsOrder: 124 });
   });
 
   it('11 category headers (§11, empty ones included) whose item counts add up to 129', () => {
     const cats = v.lines.filter((l): l is CategoryLine => l.kind === 'category');
     expect(cats).toHaveLength(11);
     expect(cats.reduce((n, c) => n + c.total, 0)).toBe(129);
-    expect(cats.reduce((n, c) => n + c.short, 0)).toBe(124);
+    expect(cats.reduce((n, c) => n + c.uncounted, 0)).toBe(129);
   });
 
   it('expanding every group lists every item exactly once', () => {

@@ -1,6 +1,6 @@
 // Inventory filters (SPEC F5).
 import { orderLineFor } from './order';
-import { stockStatus } from './status';
+import { itemStatus } from './status';
 import { nameKey, preferredVendorOf, type Item } from './types';
 
 export interface Filters {
@@ -35,7 +35,8 @@ export function activeFilterCount(f: Filters): number {
 export function passesFilters(item: Item, f: Filters, onOrder = 0): boolean {
   if (f.needsOrder && orderLineFor(item, onOrder) === null) return false;
   if (f.short || f.low) {
-    const kind = stockStatus(item.onHand, item.desired, item.spares).kind;
+    // An item not counted yet is neither (v0.16), as its chip shows.
+    const kind = itemStatus(item).kind;
     if (!((f.short && kind === 'short') || (f.low && kind === 'low'))) return false;
   }
   if (f.category !== null && item.category !== f.category) return false;

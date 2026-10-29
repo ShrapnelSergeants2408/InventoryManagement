@@ -1,6 +1,7 @@
 // Named order lists (SPEC §3 "Order list", F27): lists of chosen items and quantities, kept
 // apart from the automatic list (F12). A list is a plan: nothing here changes an item.
 import { groupOrderLines, orderLineFor, type OrderLine, type OrderList } from './order';
+import { onOrderOf, type OnOrder } from './placed-orders';
 import { nameKey, preferredVendorOf, type Item } from './types';
 
 export interface OrderListLine {
@@ -32,8 +33,8 @@ export function packsFor(quantity: number, packSize: number): { packs: number; o
  * F27 default when adding an item: its suggested order quantity (§4) when it needs ordering,
  * otherwise one pack of its preferred vendor.
  */
-export function defaultQuantity(item: Item): number {
-  return orderLineFor(item)?.orderQty ?? preferredVendorOf(item)?.packSize ?? 1;
+export function defaultQuantity(item: Item, onOrder = 0): number {
+  return orderLineFor(item, onOrder)?.orderQty ?? preferredVendorOf(item)?.packSize ?? 1;
 }
 
 /**
@@ -118,12 +119,15 @@ export const QUANTITY_RULES: readonly { rule: QuantityRule; label: string }[] = 
   { rule: 'pack', label: 'One pack each' },
 ];
 
-/** The quantity a rule gives, in whole packs of the preferred vendor; 0 when the item is already at that target. */
-export function ruleQuantity(item: Item, rule: QuantityRule): number {
+/**
+ * The quantity a rule gives, in whole packs of the preferred vendor; 0 when the item is already
+ * at that target. Both targets count units already on order (§4, v0.13).
+ */
+export function ruleQuantity(item: Item, rule: QuantityRule, onOrder = 0): number {
   const packSize = preferredVendorOf(item)?.packSize;
   if (!packSize) return 0;
   if (rule === 'pack') return packSize;
-  const need = (rule === 'spares' ? item.desired + item.spares : item.desired) - item.onHand;
+  const need = (rule === 'spares' ? item.desired + item.spares : item.desired) - item.onHand - onOrder;
   return need > 0 ? packsFor(need, packSize).orderQty : 0;
 }
 
@@ -137,11 +141,11 @@ export interface AddManyPlan {
 }
 
 /** What adding `chosen` to `list` (null: a new list) with `rule` would do, before anything is saved. */
-export function planAddMany(chosen: readonly Item[], rule: QuantityRule, list: NamedOrderList | null): AddManyPlan {
+export function planAddMany(chosen: readonly Item[], rule: QuantityRule, list: NamedOrderList | null, onOrder?: OnOrder): AddManyPlan {
   const current = new Map((list?.lines ?? []).map((l) => [l.itemId, l.quantity]));
   const plan: AddManyPlan = { add: [], onList: [], skipped: [] };
   for (const item of chosen) {
-    const quantity = ruleQuantity(item, rule);
+    const quantity = ruleQuantity(item, rule, onOrderOf(onOrder, item.id));
     if (quantity === 0) plan.skipped.push(item);
     else if (current.has(item.id)) plan.onList.push({ itemId: item.id, was: current.get(item.id)!, quantity });
     else plan.add.push({ itemId: item.id, quantity });

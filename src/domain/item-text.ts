@@ -19,10 +19,10 @@ export function stockLines(item: Item): TwoLines {
   return { title: 'Stocked: covers desired and spares', sub };
 }
 
-/** "Order 8 each" / "8 × $55.00 = $440.00 from REV (preferred vendor)" (§4). */
-export function orderLines(item: Item): TwoLines {
-  const line = orderLineFor(item);
-  if (!line) return { title: 'Nothing to order', sub: 'On hand covers desired + spares' };
+/** "Order 8 each" / "8 × $55.00 = $440.00 from REV (preferred vendor)" (§4); units on order count (F30). */
+export function orderLines(item: Item, onOrder = 0): TwoLines {
+  const line = orderLineFor(item, onOrder);
+  if (!line) return { title: 'Nothing to order', sub: onOrder > 0 ? `On hand + ${onOrder} on order covers desired + spares` : 'On hand covers desired + spares' };
   const { vendor, packs, orderQty } = line;
   const title = `Order ${orderQty} ${item.unit}`;
   const from = `from ${vendor.supplier} (preferred vendor)`;

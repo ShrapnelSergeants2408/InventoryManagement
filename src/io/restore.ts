@@ -3,6 +3,7 @@
 import type { InventorySnapshot } from '../data/inventory';
 import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
 import type { PendingRecord } from '../domain/helper-mode';
+import type { PlacedOrder } from '../domain/placed-orders';
 import type { Category, Item, Location, Supplier } from '../domain/types';
 import { dateFromFileName } from './backup';
 import { readBackupZip, readInventoryCsvBundle, type Bundle } from './bundle';
@@ -32,6 +33,10 @@ export interface RestorePlan {
   /** Pending items from helpers: ZIP replaces the tablet's; CSV: null, the tablet keeps them (§15 Q7d). */
   pending: PendingRecord[] | null;
   pendingPhotos: Map<string, Blob>;
+  /** Placed orders (§21.6): a ZIP with orders.csv replaces the tablet's; null keeps them (CSV, older ZIPs). */
+  orders: PlacedOrder[] | null;
+  /** Receipt id → file. */
+  receipts: Map<string, Blob>;
   /** Names that weren't in the lists and were added from the item data. */
   addedSuppliers: string[];
   addedLocations: string[];
@@ -111,6 +116,8 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
       orderLists,
       pending: bundle.pending,
       pendingPhotos: bundle.pendingPhotos,
+      orders: bundle.orders,
+      receipts: bundle.receipts,
       addedSuppliers: suppliers.added,
       addedLocations: locations.added,
       ...savedDate(bundle, file.name),

@@ -33,7 +33,7 @@ export function ItemRow(props: {
   onStep: (id: string, delta: number) => void;
   onSet: (id: string, value: number) => Promise<unknown>;
 }) {
-  const { item, status, vendor, order } = props.info;
+  const { item, status, vendor, order, onOrder } = props.info;
   const [menu, setMenu] = useState<'menu' | 'add' | null>(null);
   const tint = status.kind === 'short' ? 'row red' : status.kind === 'low' ? 'row yel' : 'row';
   return (
@@ -68,6 +68,7 @@ export function ItemRow(props: {
           <span class="cl">Order</span>
           <span class="cv">{order ? order.orderQty : '—'}</span>
           {order && <span class="cs">{order.vendor.packSize > 1 ? `${order.packs} × ${order.vendor.packSize}` : item.unit}</span>}
+          {onOrder > 0 && <span class="cs onord-t">On order {onOrder}</span>}
         </div>
       </div>
       <span class="rchip">

@@ -113,7 +113,7 @@ describe('full backup ZIP (F15, §7)', () => {
     expect(blob.type).toBe('application/zip');
     const zip = await JSZip.loadAsync(new Uint8Array(await blob.arrayBuffer()));
     expect(Object.keys(zip.files).sort()).toEqual(
-      ['categories.csv', 'inventory.csv', 'locations.csv', 'manifest.json', 'order-lists.csv', 'photos/', 'photos/st-0001.jpg', 'photos/tm-ABCDE.png', 'suppliers.csv'].sort(),
+      ['categories.csv', 'inventory.csv', 'locations.csv', 'manifest.json', 'order-lists.csv', 'orders.csv', 'order-lines.csv', 'photos/', 'photos/st-0001.jpg', 'photos/tm-ABCDE.png', 'suppliers.csv'].sort(),
     );
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string'));
     expect(manifest).toMatchObject({ itemCount: 3, photoCount: 2, savedAt: new Date(2026, 9, 18, 9, 30).toISOString() });

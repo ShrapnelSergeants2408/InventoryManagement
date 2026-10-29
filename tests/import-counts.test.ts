@@ -318,6 +318,16 @@ describe('Apply, Undo (§18.5)', () => {
     expect((await getImportUndo(db))?.fileNames).toEqual([theFile().fileName]);
   });
 
+  it('the preview’s order totals subtract units on open placed orders (§4, v0.13)', async () => {
+    const db = await tablet();
+    await db.items.update('A', { desired: 10 });
+    const order = { supplier: 'REV', placedOn: '2026-10-28', orderNo: '', payment: '', cancelled: false, taxCents: 0, shippingCents: 0, feesCents: 0, discount: { kind: '$' as const, value: 0 }, notes: '', fromList: '', receipts: [], created: 1, updated: 1 };
+    await db.orders.add({ ...order, id: 'po-1', supplierKey: 'rev', itemIds: ['A'], lines: [{ itemId: 'A', description: 'A', partNo: '', unit: 'each', category: '', packs: 4, packSize: 1, packPriceCents: 100, received: 0 }] });
+    const plan = await previewImport(db, [file([count('A', 1, at('18:50'))])]);
+    // A: desired 10, on hand 0 → 1 after the import, 4 on order: 6 then 5 to order at $10.
+    expect([plan.totalBefore, plan.totalAfter]).toEqual([6000, 5000]);
+  });
+
   it('importing the same file twice changes nothing the second time', async () => {
     const db = await tablet();
     await applyImport(db, [theFile()], noChoices(), 5000);

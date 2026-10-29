@@ -3,6 +3,8 @@
 // with "Export shown lines only" (F12, SPEC v0.8). Named order lists (F27) sit beside the
 // automatic one: the same layout, plus +/− and remove per line, and rename, duplicate, delete.
 // Select on the automatic list puts checkboxes on lines and supplier headers, to add many at once.
+// Units on open placed orders are subtracted (§4) and shown per line; each supplier group has
+// Mark ordered… (F30), and the Placed orders tab lists what was ordered (§21).
 import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { duplicateOrderList, removeLine, setLineQuantity } from '../../../data/order-lists';
@@ -17,7 +19,7 @@ import { safeHref } from '../../../domain/url';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { CheckBox, StateMessage, TopBar, plural } from '../../components/common';
 import { SelectBar } from '../../components/SelectBar';
-import { useDb, useOrderLists, useSettings, useSnapshot, useThumbnail } from '../../data-hooks';
+import { useDb, useOnOrder, useOrderLists, useSettings, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -25,6 +27,10 @@ import { StorageError } from '../StorageError';
 import { ExportDialog } from './ExportDialog';
 import { AddManyDialog, DeleteListDialog, ListInfoDialog } from './ListDialogs';
 import { PriceRefreshDialog } from './PriceRefreshDialog';
+import { OrderForm } from './OrderForm';
+import { draftLines, type DraftLine } from '../../../domain/placed-orders';
+import { gate } from '../../../security/gate';
+import { PinMark } from '../../components/common';
 
 /** +/− and remove on a named list's lines (F27). */
 interface LineEdit {
@@ -55,6 +61,8 @@ export function OrderScreen({ listId }: { listId: string | null }) {
   const live = useSnapshot();
   const liveLists = useOrderLists();
   const settings = useSettings();
+  const onOrder = useOnOrder();
+  const [marking, setMarking] = useState<{ supplier: string; lines: DraftLine[] } | null>(null);
   const [exporting, setExporting] = useState<'all' | 'shown' | null>(null);
   const [query, setQuery] = useState('');
   const [refreshHelp, setRefreshHelp] = useState(false);
@@ -69,7 +77,7 @@ export function OrderScreen({ listId }: { listId: string | null }) {
   const lists = liveLists.state === 'ready' ? liveLists.value : null;
   const named: NamedOrderList | null = (listId !== null && lists?.find((l) => l.id === listId)) || null;
   const missing = listId !== null && lists !== null && !named;
-  const list = useMemo(() => (snap ? (named ? buildNamedOrder(named, snap.items) : listId === null ? buildOrderList(snap.items) : null) : null), [snap, named, listId]);
+  const list = useMemo(() => (snap ? (named ? buildNamedOrder(named, snap.items) : listId === null ? buildOrderList(snap.items, onOrder) : null) : null), [snap, named, listId, onOrder]);
   const shown = useMemo(() => (list ? filterOrderList(list, query) : null), [list, query]);
   const searching = !!list && !!shown && shown !== list;
   const alerts = useMemo(() => (snap && list ? orderAlerts(list, snap.items, today, settings.staleDays) : null), [snap, list, today, settings.staleDays]);
@@ -308,7 +316,21 @@ export function OrderScreen({ listId }: { listId: string | null }) {
               <p class="state-text">The search looks at item names, part numbers, suppliers and notes. Try fewer letters.</p>
             </StateMessage>
           ) : (
-            <Lines list={shown} whole={searching ? list : null} suppliers={snap.suppliers} today={today} staleDays={settings.staleDays} edit={edit} select={select} />
+            <Lines
+              list={shown}
+              whole={searching ? list : null}
+              suppliers={snap.suppliers}
+              today={today}
+              staleDays={settings.staleDays}
+              edit={edit}
+              select={select}
+              onOrder={onOrder}
+              onMark={(supplier) => {
+                // The whole group, not just the lines a search shows.
+                const g = list.groups.find((x) => nameKey(x.supplier) === nameKey(supplier));
+                if (g) void gate('Recording an order needs the PIN.').then((ok) => ok && setMarking({ supplier: g.supplier, lines: draftLines(g) }));
+              }}
+            />
           )}
         </>
       )}
@@ -333,13 +355,17 @@ export function OrderScreen({ listId }: { listId: string | null }) {
           }}
         />
       )}
+      {marking && <OrderForm mode="new" supplier={marking.supplier} lines={marking.lines} from={named ? { listId: named.id, name: named.name } : null} onClose={() => setMarking(null)} />}
       {dialogs}
     </>
   );
 }
 
-/** Automatic, then each named list A–Z, then "+ New list" (F27); `children` at the end (Select). */
-function ListTabs({ lists, current, onNew, children }: { lists: readonly NamedOrderList[]; current: string | null; onNew: () => void; children?: ComponentChildren }) {
+/**
+ * Automatic, then each named list A–Z, then Placed orders (§21), then "+ New list" (F27, when
+ * `onNew` is given); `children` at the end (Select). `current`: a list id, null (Automatic) or 'placed'.
+ */
+export function ListTabs({ lists, current, onNew, children }: { lists: readonly NamedOrderList[]; current: string | null; onNew?: () => void; children?: ComponentChildren }) {
   return (
     <nav class="ltabs" aria-label="Order lists">
       <a class={current === null ? 'ltab on' : 'ltab'} href={href.tab('order')} aria-current={current === null ? 'page' : undefined}>
@@ -352,10 +378,16 @@ function ListTabs({ lists, current, onNew, children }: { lists: readonly NamedOr
           <span class="ltab-n">{l.lines.length}</span>
         </a>
       ))}
-      <button type="button" class="ltab new" onClick={onNew}>
-        <Icon name="plus" />
-        New list
-      </button>
+      <a class={current === 'placed' ? 'ltab po on' : 'ltab po'} href={href.placed} aria-current={current === 'placed' ? 'page' : undefined}>
+        <Icon name="truck" />
+        Placed orders
+      </a>
+      {onNew && (
+        <button type="button" class="ltab new" onClick={onNew}>
+          <Icon name="plus" />
+          New list
+        </button>
+      )}
       {children}
     </nav>
   );
@@ -432,7 +464,17 @@ function Summary({ list, shown, staleLines, staleDays }: { list: OrderList; show
   );
 }
 
-function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Supplier[]; today: string; staleDays: number; edit: LineEdit | null; select: LineSelect | null }) {
+function Lines(props: {
+  list: OrderList;
+  whole: OrderList | null;
+  suppliers: Supplier[];
+  today: string;
+  staleDays: number;
+  edit: LineEdit | null;
+  select: LineSelect | null;
+  onOrder: ReadonlyMap<string, number>;
+  onMark: (supplier: string) => void;
+}) {
   const select = props.select;
   const sites = new Map(props.suppliers.map((s) => [nameKey(s.name), safeHref(s.website)]));
   const grid = props.edit ? 'ogrid ed' : 'ogrid';
@@ -471,9 +513,16 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
                 {g.noPriceCount > 0 && ` · ${g.noPriceCount} without price (not in subtotal)`}
               </span>
               <span class="subtotal">{formatCents(g.subtotalCents)}</span>
+              {!select && (
+                <button type="button" class="btn sm" onClick={() => props.onMark(g.supplier)}>
+                  <Icon name="truck" />
+                  Mark ordered…
+                  <PinMark />
+                </button>
+              )}
             </div>
             {g.lines.map((l) => (
-              <Line key={l.item.id} l={l} today={props.today} staleDays={props.staleDays} grid={grid} edit={props.edit} select={select} />
+              <Line key={l.item.id} l={l} today={props.today} staleDays={props.staleDays} grid={grid} edit={props.edit} select={select} onOrder={props.onOrder.get(l.item.id) ?? 0} />
             ))}
           </section>
         );
@@ -491,7 +540,8 @@ function Lines(props: { list: OrderList; whole: OrderList | null; suppliers: Sup
   );
 }
 
-function Line({ l, today, staleDays, grid, edit, select }: { l: OrderLine; today: string; staleDays: number; grid: string; edit: LineEdit | null; select: LineSelect | null }) {
+function Line(props: { l: OrderLine; today: string; staleDays: number; grid: string; edit: LineEdit | null; select: LineSelect | null; onOrder: number }) {
+  const { l, today, staleDays, grid, edit, select, onOrder } = props;
   const thumb = useThumbnail(l.item.id, l.item.hasPhoto);
   const v = l.vendor;
   const stale = staleLabel(priceAge(v, today, staleDays));
@@ -505,8 +555,14 @@ function Line({ l, today, staleDays, grid, edit, select }: { l: OrderLine; today
       {thumb ? <img src={thumb} alt="" /> : <span class="nophoto" />}
       <span class="lname-t">
         <span class="lt">{l.item.name}</span>
-        {(stale || v.packPriceCents === null) && (
+        {(stale || v.packPriceCents === null || onOrder > 0) && (
           <span class="lchips">
+            {onOrder > 0 && (
+              <span class="chip onord">
+                <Icon name="truck" />
+                On order {onOrder}
+              </span>
+            )}
             {stale && (
               <span class="chip stale">
                 <Icon name="clock" />

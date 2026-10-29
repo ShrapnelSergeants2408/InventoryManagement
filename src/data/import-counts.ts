@@ -4,7 +4,8 @@
 // setup forgets it.
 import { planImport, type CountFields, type CountsFile, type ImportChoices, type ImportPlan, type PlanInput } from '../domain/import-counts';
 import { nameKey } from '../domain/types';
-import { fromHelperRow, fromItemRow, toLocationRow, type InventoryDb } from './db';
+import { fromHelperRow, fromItemRow, fromOrderRow, toLocationRow, type InventoryDb } from './db';
+import { onOrderMap } from '../domain/placed-orders';
 import { addPendingRows, decidedPending } from './pending';
 
 const UNDO_ID = 'last';
@@ -48,10 +49,11 @@ async function planInput(db: InventoryDb, files: readonly CountsFile[]): Promise
     locations: (await db.locations.orderBy('order').toArray()).map(({ key: _k, ...l }) => l),
     helpers: (await db.helpers.toArray()).map(fromHelperRow),
     knownPending: known,
+    onOrder: onOrderMap((await db.orders.toArray()).map(fromOrderRow)),
   };
 }
 
-const READ = (db: InventoryDb) => [db.items, db.locations, db.helpers, db.pendingItems, db.settings];
+const READ = (db: InventoryDb) => [db.items, db.locations, db.helpers, db.pendingItems, db.settings, db.orders];
 
 /** The preview (§18.5 step 2) from the tablet as it is now. Nothing is saved. */
 export async function previewImport(db: InventoryDb, files: readonly CountsFile[], choices?: ImportChoices): Promise<ImportPlan> {

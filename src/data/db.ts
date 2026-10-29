@@ -3,6 +3,7 @@ import Dexie, { type Table } from 'dexie';
 import { isCountStamp, midnightLocalIso } from '../domain/dates';
 import type { Helper } from '../domain/helpers';
 import type { NamedOrderList } from '../domain/order-lists';
+import type { PlacedOrder } from '../domain/placed-orders';
 import { nameKey, type Category, type Item, type Location, type Supplier } from '../domain/types';
 
 /** Item as stored: adds derived index fields. */
@@ -70,8 +71,22 @@ export interface ImportUndoRow {
   [field: string]: unknown;
 }
 
+/** Placed order as stored (F30, §21): adds the supplier key and the item ids it holds. */
+export interface OrderRow extends PlacedOrder {
+  supplierKey: string;
+  /** Multi-entry index of the item lines' ids. */
+  itemIds: string[];
+}
+
+/** A receipt photo or PDF (§21.2), kept apart from the order so lists of orders stay small. */
+export interface ReceiptRow {
+  id: string;
+  orderId: string;
+  blob: Blob;
+}
+
 /** The schema this code was built for (stage6-plan §3). Stored as a setting so an older copy can tell. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const SCHEMA_KEY = 'schemaVersion';
 
 /**
@@ -96,6 +111,8 @@ export class InventoryDb extends Dexie {
   pendingItems!: Table<PendingItemRow, string>;
   pendingPhotos!: Table<PendingPhotoRow, string>;
   importUndo!: Table<ImportUndoRow, string>;
+  orders!: Table<OrderRow, string>;
+  receipts!: Table<ReceiptRow, string>;
 
   constructor(name = 'frc2408-inventory') {
     super(name);
@@ -121,7 +138,21 @@ export class InventoryDb extends Dexie {
         importUndo: 'id',
       })
       .upgrade((tx) => tx.table('items').toCollection().modify(upgradeItemToV3));
+    // v4 (M19): placed orders and their receipts (F30, §21.6). Two new empty tables; nothing else changes.
+    this.version(4).stores({
+      orders: 'id, supplierKey, placedOn, *itemIds',
+      receipts: 'id, orderId',
+    });
   }
+}
+
+export function toOrderRow(o: PlacedOrder): OrderRow {
+  return { ...o, supplierKey: nameKey(o.supplier), itemIds: [...new Set(o.lines.flatMap((l) => (l.itemId ? [l.itemId] : [])))] };
+}
+
+export function fromOrderRow(row: OrderRow): PlacedOrder {
+  const { supplierKey: _k, itemIds: _i, ...o } = row;
+  return o;
 }
 
 export function toHelperRow(h: Helper): HelperRow {

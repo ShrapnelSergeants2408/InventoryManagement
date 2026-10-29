@@ -32,8 +32,8 @@ export function activeFilterCount(f: Filters): number {
  * Every active filter must pass, except "Short" and "Low spares": with both on,
  * an item passes when it is either one (they are mutually exclusive states).
  */
-export function passesFilters(item: Item, f: Filters): boolean {
-  if (f.needsOrder && orderLineFor(item) === null) return false;
+export function passesFilters(item: Item, f: Filters, onOrder = 0): boolean {
+  if (f.needsOrder && orderLineFor(item, onOrder) === null) return false;
   if (f.short || f.low) {
     const kind = stockStatus(item.onHand, item.desired, item.spares).kind;
     if (!((f.short && kind === 'short') || (f.low && kind === 'low'))) return false;

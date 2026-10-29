@@ -29,6 +29,23 @@ export async function makeThumbnail(photo: Blob, longSide = THUMB_LONG_SIDE): Pr
   }
 }
 
+/** A receipt photo (§21.2): JPEG about 1600 px on the long side, upright, so the printing stays readable. */
+export async function prepareReceiptPhoto(file: Blob, longSide: number): Promise<Blob> {
+  const problem = pickedFileProblem(file);
+  if (problem) throw new Error(problem);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    throw new Error('This tablet can’t read that picture. Try a JPEG or PNG, or take a new photo.');
+  }
+  try {
+    return await encodeJpeg(bitmap, longSide, PHOTO_QUALITY);
+  } finally {
+    bitmap.close();
+  }
+}
+
 /**
  * A picked or camera file → the stored photo (JPEG, about 1024 px on the long side, §8) and
  * its thumbnail, decoded once. The camera's EXIF rotation is applied, so the photo is upright.

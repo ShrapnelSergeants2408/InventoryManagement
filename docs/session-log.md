@@ -775,3 +775,22 @@ High for the restore changes (byte-level unit tests, mutants, real IndexedDB in 
 **Next:** Dan reviews and approves SPEC v0.13 (§15 Q8 (a)–(g)), merges PR #27 then the M18 PR, and runs the tablet check in `docs/reviews/M18.md`. Then M19 (placed orders and receiving).
 
 **Later:** Dan merged PRs #27 and #28 and approved the v0.13 details (§15 Q8 (a)–(g)): "spec details approved". SPEC v0.13 marked approved on branch `v013-approved`. M19 is next.
+
+## 2026-10-28 (late evening) — M19: placed orders, receiving, on order
+
+**SESSION IDENTITY**
+Same session. Dan: "build m19". PR #29 (SPEC v0.13 approved) still open, so `m19-placed-orders` is stacked on `v013-approved`.
+
+**WORK COMPLETED**
+F30 Mark ordered and the order form, F31 receiving, on order in every order quantity (§4), the price copy (§21.3), receipts, edit / cancel / delete (§21.4), Placed orders list and order page, schema v4, orders and receipts in full backups and restore (§21.6). Fixed in passing: setup's restore dropped the backup's named order lists. `APP_VERSION` 0.6.0.
+
+**EVIDENCE**
+Unit 853 pass (1 skipped); tablet-backup test passes. Mutants 32/34 compiling caught (2 equivalent). Browser: M19 35/35; upgrade check against the real Oct 23 backup 22/22; regression M2–M18 696/696 (M15 updated for the new tab and v4). Clean consoles.
+
+**INCIDENT (local, fixed)**
+To build `main` for the upgrade check, a scratch worktree got a `node_modules` junction to the repo's own. `git worktree remove --force` followed it and deleted part of the real `node_modules`. Restored with `npm ci` (package files unchanged), then the type check, all unit tests, the build and the M19 check were re-run and pass. Nothing in the source or git was touched. Recorded in Claude's memory so it isn't repeated.
+
+**CONFIDENCE**
+High for the money and the data paths (unit tests to the cent, mutants, real IndexedDB, a byte-level upgrade on real data). Medium for the camera and PDF picker on the Tab S8 and the form's feel with gloves, until the tablet check. Recommended before merging: an independent fresh-session review (stage6-plan M19).
+
+**Next:** Dan merges PR #29, decides on the independent review, confirms details (a)–(g) in `docs/reviews/M19.md`, merges M19 with a merge commit, backs up the tablet and runs the tablet check. Then M20 (order history and spending summary).

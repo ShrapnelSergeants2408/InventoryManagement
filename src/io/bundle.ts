@@ -16,6 +16,8 @@ import { ORDER_LISTS_FILE, parseOrderListsCsv } from './order-lists-csv';
 import type { NamedOrderList } from '../domain/order-lists';
 import type { PendingRecord } from '../domain/helper-mode';
 import { PENDING_ITEMS_FILE, parsePendingCsv } from './pending-csv';
+import { ORDERS_FILE, ORDER_LINES_FILE, parseOrdersCsv } from './orders-csv';
+import type { PlacedOrder } from '../domain/placed-orders';
 
 export const MANIFEST_FILE = 'manifest.json';
 
@@ -45,6 +47,10 @@ export interface Bundle {
   pending: PendingRecord[] | null;
   /** Pending id → photo. */
   pendingPhotos: Map<string, Blob>;
+  /** Placed orders (§21.6): null when orders.csv isn't in the file (a CSV, older ZIPs). */
+  orders: PlacedOrder[] | null;
+  /** Receipt id → file, for receipts found in the ZIP. */
+  receipts: Map<string, Blob>;
   manifest: Manifest | null;
   /** Latest modification date among the ZIP entries, as a fallback "saved" date. */
   zipDate: Date | null;
@@ -85,6 +91,8 @@ export function readInventoryCsvBundle(text: string): BundleRead & { photoFiles:
       orderLists: null,
       pending: null,
       pendingPhotos: new Map(),
+      orders: null,
+      receipts: new Map(),
       manifest: null,
       zipDate: null,
       priceColumns: parsed.priceColumns,
@@ -159,7 +167,9 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   const orderLists = orderListsText === null ? null : parseOrderListsCsv(orderListsText);
   const pendingText = await text(PENDING_ITEMS_FILE);
   const pending = pendingText === null ? null : parsePendingCsv(pendingText, PENDING_ITEMS_FILE, null);
-  for (const p of [suppliers, locations, categories, orderLists, pending]) if (p) problems.push(...p.problems);
+  const ordersText = await text(ORDERS_FILE);
+  const orders = ordersText === null ? null : parseOrdersCsv(ordersText, (await text(ORDER_LINES_FILE)) ?? '');
+  for (const p of [suppliers, locations, categories, orderLists, pending, orders]) if (p) problems.push(...p.problems);
 
   let manifest: Manifest | null = null;
   const manifestText = await text(MANIFEST_FILE);
@@ -210,6 +220,18 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
     p.hasPhoto = true;
   }
   if (missing.length > 0) warnings.push(`Photos named in ${INVENTORY_FILE} but not in the ZIP: ${missing.join(', ')}`);
+  const receipts = new Map<string, Blob>();
+  const missingReceipts: string[] = [];
+  for (const [id, path] of orders?.receiptFiles ?? []) {
+    const f = entry(path);
+    if (!f) {
+      missingReceipts.push(path);
+      continue;
+    }
+    used.add(f.name);
+    receipts.set(id, new Blob([await f.async('arraybuffer')], { type: /\.pdf$/i.test(path) ? 'application/pdf' : 'image/jpeg' }));
+  }
+  if (missingReceipts.length > 0) warnings.push(`Receipts named in ${ORDERS_FILE} but not in the ZIP (left off their orders): ${missingReceipts.join(', ')}`);
   const unused = Object.values(zip.files).filter((f) => !f.dir && f.name.startsWith(`${prefix}photos/`) && !used.has(f.name));
   if (unused.length > 0) warnings.push(`${unused.length} photo file(s) in the ZIP aren't used by any item`);
 
@@ -228,6 +250,8 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
       orderLists: orderLists?.lists ?? [],
       pending: pending?.items ?? [],
       pendingPhotos,
+      orders: orders?.orders ?? null,
+      receipts,
       manifest,
       zipDate: dates.length ? new Date(Math.max(...dates)) : null,
     },

@@ -23,6 +23,7 @@ import { MoreScreen } from './screens/more/More';
 import { SettingsScreen } from './screens/more/Settings';
 import { SuppliersScreen } from './screens/more/Suppliers';
 import { OrderScreen } from './screens/order/Order';
+import { PlacedOrderScreen, PlacedScreen } from './screens/order/Placed';
 import { LabelsScreen } from './screens/labels/Labels';
 import { ScanScreen } from './screens/scan/Scan';
 import { FirstLaunch } from './screens/FirstLaunch';
@@ -117,6 +118,10 @@ function Screen({ route }: { route: Route }) {
       return <LabelsScreen key={route.ids.join(',')} ids={route.ids} />;
     case 'orderList':
       return <OrderScreen key={route.id} listId={route.id} />;
+    case 'placed':
+      return <PlacedScreen />;
+    case 'placedOrder':
+      return <PlacedOrderScreen key={route.id} id={route.id} />;
     case 'helpers':
       return <HelpersScreen />;
     case 'import':

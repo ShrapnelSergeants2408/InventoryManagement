@@ -1,4 +1,5 @@
 // Order quantity and order list (SPEC §4, F12), and the order-list search (F12).
+import { onOrderOf, type OnOrder } from './placed-orders';
 import { matchesTerms, normalize, queryTerms } from './search';
 import { OTHER_SUPPLIER, nameKey, preferredVendorOf, type Item, type Vendor } from './types';
 
@@ -9,12 +10,12 @@ export interface OrderQuantity {
 }
 
 /**
- * need = desired + spares − on_hand; nothing is ordered when need ≤ 0;
+ * need = desired + spares − on_hand − on_order; nothing is ordered when need ≤ 0;
  * packs = ceil(need ÷ pack_size); order_qty = packs × pack_size.
  */
-export function orderQuantity(desired: number, spares: number, onHand: number, packSize: number): OrderQuantity {
+export function orderQuantity(desired: number, spares: number, onHand: number, packSize: number, onOrder = 0): OrderQuantity {
   if (!Number.isInteger(packSize) || packSize < 1) throw new RangeError(`pack size must be a whole number ≥ 1 (got ${packSize})`);
-  const need = desired + spares - onHand;
+  const need = desired + spares - onHand - onOrder;
   if (need <= 0) return { need: 0, packs: 0, orderQty: 0 };
   const packs = Math.ceil(need / packSize);
   return { need, packs, orderQty: packs * packSize };
@@ -30,11 +31,14 @@ export interface OrderLine {
   lineTotalCents: number | null;
 }
 
-/** The item's order line via its preferred vendor, or null when nothing needs ordering. */
-export function orderLineFor(item: Item): OrderLine | null {
+/**
+ * The item's order line via its preferred vendor, or null when nothing needs ordering.
+ * `onOrder`: units of this item on open placed orders (§4, F30).
+ */
+export function orderLineFor(item: Item, onOrder = 0): OrderLine | null {
   const vendor = preferredVendorOf(item);
   if (!vendor) return null;
-  const q = orderQuantity(item.desired, item.spares, item.onHand, vendor.packSize);
+  const q = orderQuantity(item.desired, item.spares, item.onHand, vendor.packSize, onOrder);
   if (q.orderQty === 0) return null;
   const lineTotalCents = vendor.packPriceCents === null ? null : q.packs * vendor.packPriceCents;
   return { item, vendor, ...q, lineTotalCents };
@@ -70,8 +74,8 @@ export function compareSupplierNames(a: string, b: string): number {
  * names compared ignoring capitals, so "rev" and "REV" are one group), lines in catalog
  * order (by id: starter items, then team items), the same order as the Inventory list.
  */
-export function buildOrderList(items: readonly Item[]): OrderList {
-  return groupOrderLines(items.flatMap((item) => orderLineFor(item) ?? []));
+export function buildOrderList(items: readonly Item[], onOrder?: OnOrder): OrderList {
+  return groupOrderLines(items.flatMap((item) => orderLineFor(item, onOrderOf(onOrder, item.id)) ?? []));
 }
 
 /**

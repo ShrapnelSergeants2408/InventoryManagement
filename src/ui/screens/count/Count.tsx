@@ -39,7 +39,7 @@ import { Dialog, DialogActions } from '../../components/Dialog';
 import { Keypad } from '../../components/Keypad';
 import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Scanner, type CameraState } from '../../components/Scanner';
-import { useDb, useHelpers, usePending, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
+import { useDb, useHelpers, useOnOrder, usePending, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { useHelper } from '../../helper/session';
 import { href } from '../../shell/router';
@@ -89,6 +89,8 @@ export function CountScreen({ scanOnly = false }: { scanOnly?: boolean }) {
 function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean }) {
   const db = useDb();
   const helper = useHelper();
+  // Units on open placed orders (§4); none on a helper, which has no orders.
+  const onOrder = useOnOrder();
   const [options, setOptionsRaw] = useState<CountOptions>(loadCountOptions);
   const [view, setView] = useState<View>(scanOnly ? { kind: 'scan', current: null, history: [], saved: new Set() } : { kind: 'start' });
   const [recent, setRecent] = useState<string[]>([]);
@@ -124,7 +126,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
       group: g.name,
       ids: g.items.map((i) => i.id),
       index,
-      beforeCents: orderTotalCents(snap.items),
+      beforeCents: orderTotalCents(snap.items, onOrder),
       saved: new Set(),
       skipped: new Set(),
     };
@@ -257,7 +259,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
     return (
       <>
         {top}
-        <Summary walk={view.walk} snap={snap} since={since} helper={helper !== null} next={nextGroup(groups, view.walk.group)} onNext={(g) => openWalk(view.walk.mode, g)} onStart={() => setView({ kind: 'start' })} />
+        <Summary walk={view.walk} snap={snap} onOrder={onOrder} since={since} helper={helper !== null} next={nextGroup(groups, view.walk.group)} onNext={(g) => openWalk(view.walk.mode, g)} onStart={() => setView({ kind: 'start' })} />
       </>
     );
   }
@@ -366,7 +368,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
         <div class="card ctotal">
           <Icon name="order" class="ic xl" />
           <div class="grow">
-            <div class="ctotal-h">Order list right now: {formatCents(orderTotalCents(snap.items))}</div>
+            <div class="ctotal-h">Order list right now: {formatCents(orderTotalCents(snap.items, onOrder))}</div>
             <div class="small">
               {everCounted < progress.total
                 ? 'Every item not counted yet counts with the on-hand number it has now (starter items begin at 0). The total drops as you count what’s already in the shop. '
@@ -877,7 +879,7 @@ function LocationPick(props: { item: Item; loc: string | undefined; onLoc: (l: s
 }
 // ── Group summary (10d) ──
 
-function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; helper: boolean; next: CountGroup | null; onNext: (g: CountGroup) => void; onStart: () => void }) {
+function Summary(props: { walk: Walk; snap: InventorySnapshot; onOrder: ReadonlyMap<string, number>; since: string; helper: boolean; next: CountGroup | null; onNext: (g: CountGroup) => void; onStart: () => void }) {
   const w = props.walk;
   const s = summarize(w.ids, props.snap.items, w.saved, w.skipped, props.since);
   return (
@@ -915,7 +917,7 @@ function Summary(props: { walk: Walk; snap: InventorySnapshot; since: string; he
           <div class="tile">
             <span class="k">Order list</span>
             <span class="v sum-tot">
-              {formatCents(w.beforeCents)} → {formatCents(orderTotalCents(props.snap.items))}
+              {formatCents(w.beforeCents)} → {formatCents(orderTotalCents(props.snap.items, props.onOrder))}
             </span>
           </div>
         )}

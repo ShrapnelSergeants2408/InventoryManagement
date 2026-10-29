@@ -13,7 +13,7 @@ import { planPriceImport, type PricePlan, type PriceProblem } from '../../../io/
 import { readRestoreFile, type RestorePlan } from '../../../io/restore';
 import { gate } from '../../../security/gate';
 import { BackButton, TopBar, plural } from '../../components/common';
-import { useDb, useImportUndo, useNow, usePending, useOrderLists, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
+import { useDb, useImportUndo, useNow, usePending, useOrderLists, useOrders, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
@@ -74,6 +74,7 @@ type Dlg =
 export function BackupScreen() {
   const undo = useImportUndo();
   const pending = usePending();
+  const orders = useOrders();
   const [undoing, setUndoing] = useState(false);
   const db = useDb();
   const live = useSnapshot();
@@ -178,7 +179,7 @@ export function BackupScreen() {
   const fullSize = csvBytes !== null && photos ? formatBytes(csvBytes + photos.bytes) : '…';
   const tablet: TabletNow | null =
     snap && photos && lists.state === 'ready'
-      ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, suppliers: snap.suppliers.length, orderLists: lists.value, pending: pending.state === 'ready' ? pending.value.length : 0, lastChangeAt: settings.lastChangeAt }
+      ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, suppliers: snap.suppliers.length, orderLists: lists.value, pending: pending.state === 'ready' ? pending.value.length : 0, orders: orders.state === 'ready' ? orders.value.length : 0, lastChangeAt: settings.lastChangeAt }
       : null;
 
   return (

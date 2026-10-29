@@ -1,7 +1,15 @@
-# FRC 2408 Inventory Management — Specification v0.17
+# FRC 2408 Inventory Management — Specification v0.18
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-29 (v0.17) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT
+**Status:** Approved by Dan 2026-10-29 (v0.18) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT
+
+**Changes in v0.18:** Cleanup of the findings earlier reviews left open (Dan, 2026-10-29: "fix 1-5 as a cleanup milestone"), built as M23:
+- A CSV inside a backup ZIP that isn't UTF-8 is read as Windows-1252 (Excel's plain "CSV"), as a loose CSV already was, with a warning naming the file (§7; M5 review finding 3).
+- Links read from a file (vendor links and supplier websites) follow the editor's rule (F11): https:// is added to a bare address; anything else is left blank and named in the restore confirmation (F17; finding 4).
+- Blank lines before a CSV's header are skipped, and header problems name the header's real row (§7; finding 5).
+- A last backup dated more than an hour later than the tablet's clock shows the reminder, saying the clock was changed; a "Later" more than an hour in the future no longer counts (F16; finding 6).
+- A helper device's database version rises with the inventory's (100 + the schema version, now 104), so an upgrade adds new stores normally (§18.7). Found by the new helper upgrade check.
+- New browser checks: the PIN pad's answer (Cancel, wrong PIN, right PIN), the delete confirmation's text with a list and units on order, a helper device upgrading from before M19 (M6 review finding 7, M19 review finding 8).
 
 **Changes in v0.17:** Three suggestions from the independent mentor review (2026-10-29; Dan: "Add 7, 8, 9 to current build"), built as M22:
 - **Spending by funding and a budget** (F32, §21.5): a placed order has an optional **Paid from** (funding source, e.g. "School budget", "FIRST grant"), with names used before offered as you type. The spending summary adds **By funding** (orders and total per source; "Not recorded" last), also in Export CSV and the printed page. An optional **School-year budget** (setting, PIN) shows budget, spent this school year and what's left (or "Over budget by", in the attention style) on the summary. `orders.csv` gains a `funding` column; older files without it read as blank (§7, §21.6). This brings a simple budget into v1 (§13).
@@ -574,6 +582,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Independent mentor review (ease of use, layout, ten suggestions). Dan: fix layout issues 1, 2, 4, 5 and 6 (not 3 or 7) → v0.16, M21; suggestions 7 (spending by funding source and a budget), 8 (overdue deliveries and a shop status strip) and 9 (search by category, subcategory and barcode; recently viewed) go into the build (M22); 1–3 (part checkout, pit packing list, tool checkout) go to the team as `docs/proposals/2026-10-29-team-feature-ideas.md`; 4–6 and 10 dropped |
 | 2026-10-29 | v0.17 (M22): suggestions 7–9 as built: Paid from (funding) on orders, By funding summary, school-year budget, overdue deliveries with the Delivery overdue after setting, the Inventory shop status strip, search by category / subcategory / barcode, recently viewed. Details Claude filled in are listed in `docs/reviews/M22.md` for Dan to confirm |
 | 2026-10-29 | Dan merged PRs #35 (M21) and #36 (M22), accepted the M21 details (a)–(e) and the M22 details (a)–(h), and ran both tablet checks: "tablet checks pass" |
+| 2026-10-29 | Dan: "fix 1-5 as a cleanup milestone" (the low-severity findings earlier reviews left open). v0.18 (M23) |
 
 ## 17. UI conventions (from Stage 3)
 

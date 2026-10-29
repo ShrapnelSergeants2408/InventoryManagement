@@ -18,7 +18,7 @@ import {
 } from '../domain/helper-mode';
 import type { Item } from '../domain/types';
 import type { ReadKit } from '../io/count-kit';
-import { InventoryDb, fromItemRow, type ItemRow, type PendingItemRow } from './db';
+import { InventoryDb, SCHEMA_VERSION, fromItemRow, type ItemRow, type PendingItemRow } from './db';
 import { replaceAll } from './inventory';
 import type { PhotoChange } from './photos';
 
@@ -44,9 +44,14 @@ export interface SentState {
 
 /**
  * The helper's own schema, numbered far above the inventory's so the inventory's own
- * versions (1–3 today) can grow without clashing.
+ * versions can grow without clashing. 100 added the changes store (M16b). From M23 it is
+ * 100 + the inventory schema version, so when the inventory gains stores (v4: orders,
+ * receipts) the helper's version rises too and Dexie upgrades it like any other database.
+ * Before M23 an existing helper opened at 100 with the new stores patched in, and Dexie
+ * warned "Schema was extended without increasing the number passed to db.version()".
  */
 const HELPER_SCHEMA = 100;
+export const HELPER_DB_VERSION = HELPER_SCHEMA + SCHEMA_VERSION;
 
 export class HelperDb extends InventoryDb {
   changes!: Table<ChangeRow, string>;
@@ -54,6 +59,7 @@ export class HelperDb extends InventoryDb {
   constructor(name = HELPER_DB_NAME) {
     super(name);
     this.version(HELPER_SCHEMA).stores({ changes: 'key, changedAt' });
+    this.version(HELPER_DB_VERSION).stores({});
   }
 }
 

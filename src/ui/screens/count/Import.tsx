@@ -98,7 +98,9 @@ export function ImportScreen() {
     const undone = undo === null || undo.at !== done.at;
     return (
       <>
-        <TopBar title="Import counts" subtitle={undone ? 'Applied' : 'Applied · Undo is available until the next import or restore'} back={back} actions={<NoPin />} />
+        <TopBar title="Import counts" subtitle={undone ? 'Applied' : 'Applied · Undo is available until the next import or restore'} back={back}>
+          <NoPin />
+        </TopBar>
         <div class="cbody imp">
           <div class="done-h">
             <span class="done-ic">
@@ -158,7 +160,9 @@ export function ImportScreen() {
   if (!plan) {
     return (
       <>
-        <TopBar title="Import counts" subtitle="Counts files from helper devices" back={back} actions={<NoPin />} />
+        <TopBar title="Import counts" subtitle="Counts files from helper devices" back={back}>
+          <NoPin />
+        </TopBar>
         <div class="cbody imp">
           <div class="card imp-start">
             <Icon name="upload" class="ic xl" />
@@ -201,7 +205,9 @@ export function ImportScreen() {
   const applyCount = plan.counts.apply + plan.counts.conflicts;
   return (
     <>
-      <TopBar title="Import counts: check before saving" subtitle="Nothing has been saved yet" back={back} actions={<NoPin />} />
+      <TopBar title="Import counts: check before saving" subtitle="Nothing has been saved yet" back={back}>
+        <NoPin />
+      </TopBar>
       <div class="imp-grid">
         <div class="cbody imp">
           {files.map((f) => (

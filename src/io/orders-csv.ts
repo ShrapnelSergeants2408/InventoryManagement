@@ -105,8 +105,8 @@ export function parseOrdersCsv(ordersText: string, linesText: string, now = Date
   problems.push(...ot.problems, ...lt.problems);
   const oMissing = missingColumns(ot.columns, ['order_id', 'supplier', 'placed_on']);
   const lMissing = missingColumns(lt.columns, ['order_id', 'description', 'packs', 'pack_size', 'pack_price']);
-  if (oMissing.length) problems.push({ file: ORDERS_FILE, row: 1, message: `missing column${oMissing.length > 1 ? 's' : ''}: ${oMissing.join(', ')}` });
-  if (lMissing.length) problems.push({ file: ORDER_LINES_FILE, row: 1, message: `missing column${lMissing.length > 1 ? 's' : ''}: ${lMissing.join(', ')}` });
+  if (oMissing.length) problems.push({ file: ORDERS_FILE, row: ot.headerRow, message: `missing column${oMissing.length > 1 ? 's' : ''}: ${oMissing.join(', ')}` });
+  if (lMissing.length) problems.push({ file: ORDER_LINES_FILE, row: lt.headerRow, message: `missing column${lMissing.length > 1 ? 's' : ''}: ${lMissing.join(', ')}` });
   if (oMissing.length || lMissing.length) return { orders: [], receiptFiles, problems };
 
   const byId = new Map<string, { order: PlacedOrder; row: number }>();

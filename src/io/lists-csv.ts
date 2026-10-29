@@ -1,8 +1,9 @@
 // suppliers.csv, locations.csv (SPEC §7) and categories.csv (spec-questions Q3).
 import { compareSupplierNames } from '../domain/order';
 import { OTHER_SUPPLIER, nameKey, type Category, type Item, type Location, type Supplier } from '../domain/types';
+import { normalizeUrl } from '../domain/url';
 import { parseWholeNumber } from '../domain/validate';
-import { cellGetter, readCsv, writeCsv, type FileProblem } from './csv';
+import { cellGetter, readCsv, writeCsv, type CsvTable, type FileProblem } from './csv';
 
 export const SUPPLIERS_FILE = 'suppliers.csv';
 export const LOCATIONS_FILE = 'locations.csv';
@@ -15,20 +16,23 @@ export const CATEGORY_COLUMNS = ['category', 'subcategory', 'order'] as const;
 interface Parsed<T> {
   list: T[];
   problems: FileProblem[];
+  /** Suppliers' websites that weren't web addresses and were left blank (M23). */
+  clearedLinks?: string[];
 }
 
-function requireColumns(file: string, columns: Map<string, number>, need: readonly string[], problems: FileProblem[]): boolean {
-  const missing = need.filter((c) => !columns.has(c));
+function requireColumns(file: string, table: CsvTable, need: readonly string[], problems: FileProblem[]): boolean {
+  const missing = need.filter((c) => !table.columns.has(c));
   if (missing.length === 0) return true;
-  problems.push({ file, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
+  problems.push({ file, row: table.headerRow, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
   return false;
 }
 
 export function parseSuppliersCsv(text: string): Parsed<Supplier> {
   const table = readCsv(text, SUPPLIERS_FILE);
   const problems = [...table.problems];
-  if (!requireColumns(SUPPLIERS_FILE, table.columns, ['name'], problems)) return { list: [], problems };
+  if (!requireColumns(SUPPLIERS_FILE, table, ['name'], problems)) return { list: [], problems };
   const list: Supplier[] = [];
+  const clearedLinks: string[] = [];
   const seen = new Map<string, number>();
   for (const { row, cells } of table.rows) {
     const get = cellGetter(table, cells);
@@ -43,9 +47,11 @@ export function parseSuppliersCsv(text: string): Parsed<Supplier> {
       continue;
     }
     seen.set(nameKey(name), row);
-    list.push({ name, website: get('website').trim(), notes: get('notes').trim() });
+    const site = normalizeUrl(get('website'), 'website');
+    if (!site.ok) clearedLinks.push(`${name} website (${get('website').trim().slice(0, 40)})`);
+    list.push({ name, website: site.ok ? site.url : '', notes: get('notes').trim() });
   }
-  return { list, problems };
+  return { list, problems, clearedLinks };
 }
 
 export function serializeSuppliersCsv(suppliers: readonly Supplier[]): string {
@@ -56,7 +62,7 @@ export function serializeSuppliersCsv(suppliers: readonly Supplier[]): string {
 export function parseLocationsCsv(text: string): Parsed<Location> {
   const table = readCsv(text, LOCATIONS_FILE);
   const problems = [...table.problems];
-  if (!requireColumns(LOCATIONS_FILE, table.columns, ['name'], problems)) return { list: [], problems };
+  if (!requireColumns(LOCATIONS_FILE, table, ['name'], problems)) return { list: [], problems };
   const withOrder: { loc: Location; sortKey: number; pos: number }[] = [];
   const seen = new Map<string, number>();
   table.rows.forEach(({ row, cells }, pos) => {
@@ -100,7 +106,7 @@ export function serializeLocationsCsv(locations: readonly Location[]): string {
 export function parseCategoriesCsv(text: string): Parsed<Category> {
   const table = readCsv(text, CATEGORIES_FILE);
   const problems = [...table.problems];
-  if (!requireColumns(CATEGORIES_FILE, table.columns, ['category'], problems)) return { list: [], problems };
+  if (!requireColumns(CATEGORIES_FILE, table, ['category'], problems)) return { list: [], problems };
   const byKey = new Map<string, { cat: Category; sortKey: number; pos: number }>();
   table.rows.forEach(({ row, cells }, pos) => {
     const get = cellGetter(table, cells);

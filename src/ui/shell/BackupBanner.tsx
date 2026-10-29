@@ -1,7 +1,7 @@
 // Backup reminder banner (F16, S4): on Inventory and Backup only. "Later" hides it until the
 // app is reloaded or for 12 hours (Q10); the snooze lives in memory, so a reload clears it.
 import { useEffect, useState } from 'preact/hooks';
-import { daysSinceBackup, showBackupBanner } from '../../domain/backup-reminder';
+import { backupInFuture, daysSinceBackup, showBackupBanner } from '../../domain/backup-reminder';
 import { useNow, useSettings } from '../data-hooks';
 import { Icon } from '../icons';
 import { href } from './router';
@@ -26,7 +26,11 @@ export function BackupBanner({ onBackupScreen = false }: { onBackupScreen?: bool
   if (!showBackupBanner(settings, now, snoozedAt)) return null;
 
   const days = daysSinceBackup(settings.lastBackupAt, now);
-  const lead = days === null ? 'No backup yet.' : `No backup in the last ${settings.reminderDays} days (last one ${days} days ago).`;
+  const lead = backupInFuture(settings.lastBackupAt, now)
+    ? 'The last backup is dated later than this tablet’s clock, so the clock was changed since.'
+    : days === null
+      ? 'No backup yet.'
+      : `No backup in the last ${settings.reminderDays} days (last one ${days} days ago).`;
   return (
     <div class="banner" role="status">
       <Icon name="clock" />

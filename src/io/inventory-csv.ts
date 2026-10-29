@@ -2,6 +2,7 @@
 import { readCountStamp } from '../domain/dates';
 import { centsToPlain, parsePrice } from '../domain/money';
 import { VENDOR_SLOTS, type Item, type Vendor, type VendorSlot } from '../domain/types';
+import { normalizeUrl } from '../domain/url';
 import { isIsoDate, parseWholeNumber, validateItem } from '../domain/validate';
 import { cellGetter, normalizeDate, readCsv, writeCsv, type FileProblem } from './csv';
 
@@ -41,19 +42,28 @@ export interface ParsedInventory {
   ignoredColumns: string[];
   /** The file has a v1_pack_price column (a kit's inventory.csv has it, with every price blank). */
   priceColumns: boolean;
+  /** Links that weren't web addresses and were left blank (M23): "st-0001 option 1 (javascript:…)". */
+  clearedLinks: string[];
 }
 
 const EXCEL_SCIENTIFIC = /^\d(\.\d+)?e\+\d+$/i;
 
 export function parseInventoryCsv(text: string): ParsedInventory {
+  const clearedLinks: string[] = [];
+  const linkOf = (raw: string, what: string) => {
+    const u = normalizeUrl(raw, 'link');
+    if (u.ok) return u.url;
+    clearedLinks.push(`${what} (${raw.trim().slice(0, 40)})`);
+    return '';
+  };
   const table = readCsv(text, INVENTORY_FILE);
   const problems = [...table.problems];
   const known = new Set(INVENTORY_COLUMNS);
   const ignoredColumns = table.headers.filter((h) => h !== '' && !known.has(h.trim().toLowerCase()));
   const missing = REQUIRED_INVENTORY_COLUMNS.filter((c) => !table.columns.has(c));
   if (missing.length > 0) {
-    problems.push({ file: INVENTORY_FILE, row: 1, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
-    return { items: [], photoFiles: new Map(), problems, ignoredColumns, priceColumns: false };
+    problems.push({ file: INVENTORY_FILE, row: table.headerRow, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
+    return { items: [], photoFiles: new Map(), problems, ignoredColumns, priceColumns: false, clearedLinks };
   }
 
   const items: Item[] = [];
@@ -128,7 +138,7 @@ export function parseInventoryCsv(text: string): ParsedInventory {
       const vendor: Vendor = {
         supplier,
         partNo: v('part_no'),
-        url: v('url'),
+        url: linkOf(v('url'), `${id} option ${slot}`),
         packSize,
         packPriceCents: price.ok ? price.cents : null,
         priceChecked: date(`v${slot}_price_checked`, `${label} price checked`),
@@ -173,7 +183,7 @@ export function parseInventoryCsv(text: string): ParsedInventory {
     if (photoFile !== '') photoFiles.set(id, photoFile);
     items.push(item);
   }
-  return { items, photoFiles, problems, ignoredColumns, priceColumns: table.columns.has('v1_pack_price') };
+  return { items, photoFiles, problems, ignoredColumns, priceColumns: table.columns.has('v1_pack_price'), clearedLinks };
 }
 
 /** Photo path inside a full backup ZIP (§7); the extension follows the photo's type. */

@@ -117,7 +117,10 @@ export function InventoryScreen() {
 
   return (
     <>
-      <TopBar title="Inventory" subtitle={summary}>
+      <TopBar
+        title="Inventory"
+        subtitle={summary}
+        search={
         <div class="searchwrap">
           <Icon name="search" />
           <input
@@ -136,6 +139,8 @@ export function InventoryScreen() {
             </button>
           )}
         </div>
+        }
+      >
         <button type="button" class="btn" onClick={() => setPanelOpen(true)}>
           <Icon name="filter" />
           {nFilters ? `Filters (${nFilters})` : 'Filters'}

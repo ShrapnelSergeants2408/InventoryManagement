@@ -20,7 +20,10 @@
 .top-title { display: flex; flex-direction: column; gap: 4px; margin-right: auto; }
 .h1 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 34px; line-height: 1; letter-spacing: .01em; }
 .h2 { margin: 0; font-family: var(--font-display); font-weight: 700; font-size: 26px; line-height: 1.1; }
-.top > .searchwrap + .btn, .top > .lockpill { flex: none; }
+.top > .searchwrap + .btn, .top > .lockpill, .top-sl > .lockpill { flex: none; }
+.top-sl { display: contents; }
+.top > :first-child, .top > .top-title { order: -2; }
+.top-sl > .searchwrap { order: -1; }
 .muted { color: var(--ink-2); }
 .small { font-size: 15px; }
 .sp { flex: 1 1 auto; }
@@ -151,8 +154,9 @@
   .nav-logo { display: none; }
   .nav a { flex: 1 1 0; margin: 0; min-height: 0; }
   .top { padding: 10px 16px; flex-wrap: wrap; row-gap: 10px; }
-  .searchwrap { order: 9; flex: 1 1 calc(100% - 200px); }
-  .searchwrap ~ .lockpill { order: 10; }
+  .top-title { flex: 1 1 200px; min-width: 0; }
+  .top-sl { display: flex; order: 9; flex: 1 1 100%; gap: 10px; align-items: center; min-width: 0; }
+  .top-sl > .searchwrap { order: 0; flex: 1 1 auto; }
   .frow { padding: 10px 16px; }
   .cathdr { padding: 8px 16px; }
   .subhdr { padding-left: 44px; }

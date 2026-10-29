@@ -84,7 +84,12 @@ export function TopBar(props: {
   kicker?: string;
   /** Back or Cancel button before the title. */
   back?: ComponentChildren;
-  /** Between the title and the lock button (search, filters, exports, Reorder). */
+  /**
+   * The screen's search box (Inventory, Order). It sits right after the title in landscape; in
+   * portrait it shares a row with the lock button, so the lock never wraps onto a line alone (v0.16).
+   */
+  search?: ComponentChildren;
+  /** Between the title and the lock button (filters, exports, Reorder). */
   children?: ComponentChildren;
   /**
    * After the lock button: only the screen's one main button (Add, Save, Receive). Everything else
@@ -103,7 +108,14 @@ export function TopBar(props: {
         {props.subtitle !== undefined && <span class="small muted">{props.subtitle}</span>}
       </div>
       {props.children}
-      {!helper && <LockPill />}
+      {props.search !== undefined ? (
+        <div class="top-sl">
+          {props.search}
+          {!helper && <LockPill />}
+        </div>
+      ) : (
+        !helper && <LockPill />
+      )}
       {props.actions}
     </header>
   );

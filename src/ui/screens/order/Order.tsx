@@ -111,7 +111,10 @@ export function OrderScreen({ listId }: { listId: string | null }) {
 
   const empty = !!list && list.lineCount === 0;
   const top = (
-    <TopBar title={named ? named.name : 'Order list'} subtitle={`${named ? 'Named list · grouped' : 'Grouped'} by preferred supplier · ${formatIsoDate(today)}`}>
+    <TopBar
+      title={named ? named.name : 'Order list'}
+      subtitle={`${named ? 'Named list · grouped' : 'Grouped'} by preferred supplier · ${formatIsoDate(today)}`}
+      search={
       <div class="searchwrap">
         <Icon name="search" />
         <input
@@ -131,6 +134,8 @@ export function OrderScreen({ listId }: { listId: string | null }) {
           </button>
         )}
       </div>
+      }
+    >
       {searching && (
         <button type="button" class="btn" disabled={!shown || shown.lineCount === 0} onClick={() => setExporting('shown')}>
           <Icon name="upload" />

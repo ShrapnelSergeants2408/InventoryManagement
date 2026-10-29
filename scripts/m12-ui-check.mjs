@@ -84,7 +84,7 @@ try {
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
   await sleep(400);
   check('Inventory: the 11 §11 categories in order, empty ones included', await js(catNames), CATS);
-  check('header summary unchanged: 129 items · 124 short', await js(`return document.querySelector('.top .small').textContent`), '129 items · 124 short · 0 low spares');
+  check('header summary unchanged: 129 items, none counted yet', await js(`return document.querySelector('.top .small').textContent`), '129 items · 0 short · 0 low spares · 129 not counted');
   check('empty categories show 0 items (Public Relations, Programming)', await js(`return ['Public Relations', 'Programming'].map((n) => [...document.querySelectorAll('.cathdr')].find((b) => b.querySelector('.cn').textContent === n)?.querySelector('.hc').textContent)`), ['0 items · 0 counted', '0 items · 0 counted']);
   await shot('01-inventory-categories');
 

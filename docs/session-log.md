@@ -866,3 +866,5 @@ M5 review findings 3–6 (CSV in a ZIP read as Windows-1252; links cleaned on re
 Unit 902 pass; real tablet backup passes; mutants 15/15; M23 13/13; helper upgrade 9/9; regression M2–M22 807/807, clean consoles.
 
 **Next:** Dan confirms details (a)–(d) in `docs/reviews/M23.md`, merges, and runs the tablet check.
+
+**Later:** Dan, 2026-10-29: "details confirmed. merged. tablet checked." Recorded in `docs/reviews/M23.md` and SPEC v0.18. Nothing in the spec or the reviews is open; the team's answers on `docs/proposals/2026-10-29-team-feature-ideas.md` are next.

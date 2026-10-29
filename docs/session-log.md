@@ -876,3 +876,5 @@ Dan: "write the hand-off guide and clean up unnecessary files (old deprecated lo
 ## 2026-10-29 (evening) — Version 1.0.0
 
 Dan: "lets now set this as version 1.0.0", and asked how to start the tablet with a fresh database (no test data, helpers or orders). `APP_VERSION`, `package.json` and `package-lock.json` 1.0.0; the M16a and M17 checks expect it. `docs/HANDOFF.md` §8 gains "Starting completely fresh": clear the site's data in Chrome, then first-launch setup; a restore can't do it because it keeps the PIN, settings and helper list.
+
+**Later:** Dan, 2026-10-29: "merged. tablet reset and set up fresh." PR #41 merged; the Tab S8 runs 1.0.0, its test data cleared (site data), set up again with a new PIN and recovery code. From here the tablet holds the team's real inventory: test on a computer or a spare device, never on it.

@@ -773,3 +773,5 @@ Unit 813 pass (1 skipped). Type check and build clean. Mutants 12/12. Browser: M
 High for the restore changes (byte-level unit tests, mutants, real IndexedDB in the browser). Medium for the toast and setup line on the Tab S8 until the tablet check.
 
 **Next:** Dan reviews and approves SPEC v0.13 (§15 Q8 (a)–(g)), merges PR #27 then the M18 PR, and runs the tablet check in `docs/reviews/M18.md`. Then M19 (placed orders and receiving).
+
+**Later:** Dan merged PRs #27 and #28 and approved the v0.13 details (§15 Q8 (a)–(g)): "spec details approved". SPEC v0.13 marked approved on branch `v013-approved`. M19 is next.

@@ -50,10 +50,10 @@ describe('inventory view ids (F28: header checkboxes and "Select all shown")', (
     { name: 'Fasteners', order: 1, subcategories: [] },
   ];
   const items = [
-    item({ id: 'm1', category: 'Motors', subcategory: 'Brushless', name: 'NEO' }),
+    item({ id: 'm1', category: 'Motors', subcategory: 'Brushless', name: 'NEO zap' }),
     item({ id: 'm2', category: 'Motors', subcategory: '', name: 'CIM' }),
     item({ id: 'f1', category: 'Fasteners', name: 'Bolt' }),
-    item({ id: 'f2', category: 'Fasteners', name: 'Nut' }),
+    item({ id: 'f2', category: 'Fasteners', name: 'Zap nut' }),
   ];
   const view = (query = '', expanded: string[] = []) => buildInventoryView({ items, categories, query, filters: NO_FILTERS, expanded: new Set(expanded) });
 
@@ -69,7 +69,7 @@ describe('inventory view ids (F28: header checkboxes and "Select all shown")', (
   });
 
   it('with a search, a header holds only the matching items, and so does shownIds', () => {
-    const v = view('n');
+    const v = view('zap');
     const cats = v.lines.filter((l): l is CategoryLine => l.kind === 'category');
     expect(cats.map((c) => [c.name, c.ids])).toEqual([
       ['Motors', ['m1']],

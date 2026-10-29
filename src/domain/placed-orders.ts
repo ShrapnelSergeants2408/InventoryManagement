@@ -1,6 +1,7 @@
 // Placed orders (SPEC §3 "Placed order", F30, F31, §21): what was actually bought from one
 // supplier, with tax, shipping, fees and a discount, and how much of it has arrived. Money is
 // integer cents (spec-questions Q6); a percent discount is kept in hundredths of a percent.
+import { daysBetween } from './stale';
 import { isIsoDate } from './validate';
 import type { OrderLine, SupplierGroup } from './order';
 import { nameKey, VENDOR_SLOTS, type Item, type VendorSlot } from './types';
@@ -48,6 +49,8 @@ export interface PlacedOrder {
   placedOn: string;
   orderNo: string;
   payment: string;
+  /** Where the money came from (v0.17): "School budget", "FIRST grant", "Sponsor: …"; '' when not recorded. */
+  funding: string;
   cancelled: boolean;
   taxCents: number;
   shippingCents: number;
@@ -117,6 +120,19 @@ export const isOpen = (o: Pick<PlacedOrder, 'cancelled' | 'lines'>) => {
 };
 
 export const receivedAnything = (o: Pick<PlacedOrder, 'lines'>) => o.lines.some((l) => l.received > 0);
+
+/** Default for "Delivery overdue after" (v0.17), in days. */
+export const DEFAULT_OVERDUE_DAYS = 14;
+
+/**
+ * Days since an open order was placed when that is more than `overdueDays` (14 → day 15 is
+ * overdue), else null. Received and cancelled orders are never overdue (v0.17).
+ */
+export function overdueDays(o: Pick<PlacedOrder, 'cancelled' | 'lines' | 'placedOn'>, today: string, overdueAfter: number): number | null {
+  if (!isOpen(o)) return null;
+  const days = daysBetween(o.placedOn, today);
+  return days > overdueAfter ? days : null;
+}
 
 /** Units on order per item (§4): what open orders still have due, for item lines only. */
 export type OnOrder = ReadonlyMap<string, number>;

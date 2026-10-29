@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { setSettings } from '../../../data/settings';
 import { formatIsoDate } from '../../../domain/dates';
+import { centsToPlain, parsePrice } from '../../../domain/money';
 import { isMonthDay } from '../../../domain/order-history';
 import { SETTING_LIMITS, checkSettings, type NamedSettings, type SettingsDraft } from '../../../domain/settings-limits';
 import { gate } from '../../../security/gate';
@@ -20,27 +21,38 @@ const HELP: Record<keyof NamedSettings, string> = {
   reminderDays: 'The Inventory and Backup screens show a reminder when no backup has been made for this long.',
   staleDays: 'Order-list prices checked longer ago than this are marked “Price n days old”.',
   unlockMinutes: 'How long mentor tools stay unlocked after the PIN. Takes effect the next time the PIN is entered.',
+  overdueDays: 'An order not fully received this long after it was placed is marked “Overdue” in the order history and on the Inventory screen.',
 };
 
-const toDraft = (s: NamedSettings): SettingsDraft => ({ reminderDays: String(s.reminderDays), staleDays: String(s.staleDays), unlockMinutes: String(s.unlockMinutes) });
+const toDraft = (s: NamedSettings): SettingsDraft => ({ reminderDays: String(s.reminderDays), staleDays: String(s.staleDays), unlockMinutes: String(s.unlockMinutes), overdueDays: String(s.overdueDays) });
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 /** Days in a month, in a year that isn't a leap year (February 29 isn't offered). */
 const daysIn = (month: number) => new Date(Date.UTC(2025, month, 0)).getUTCDate();
 
-/** Season start and school year start as edited (§21.5). */
+/** Season start, school year start and the school-year budget as edited (§21.5, v0.17). */
 interface HistoryDraft {
   seasonStart: string;
   schoolMonth: number;
   schoolDay: number;
+  /** Dollars as typed; blank for no budget. */
+  budget: string;
 }
 
-const toHistory = (s: { seasonStart: string; schoolYearStart: string }): HistoryDraft => {
+const toHistory = (s: { seasonStart: string; schoolYearStart: string; budgetCents: number | null }): HistoryDraft => {
   const md = isMonthDay(s.schoolYearStart) ? s.schoolYearStart : '08-01';
-  return { seasonStart: s.seasonStart, schoolMonth: Number(md.slice(0, 2)), schoolDay: Number(md.slice(3)) };
+  return { seasonStart: s.seasonStart, schoolMonth: Number(md.slice(0, 2)), schoolDay: Number(md.slice(3)), budget: s.budgetCents === null ? '' : centsToPlain(s.budgetCents) };
 };
 const monthDay = (h: HistoryDraft) => `${String(h.schoolMonth).padStart(2, '0')}-${String(h.schoolDay).padStart(2, '0')}`;
-const sameHistory = (a: HistoryDraft, b: HistoryDraft) => a.seasonStart === b.seasonStart && a.schoolMonth === b.schoolMonth && a.schoolDay === b.schoolDay;
+const sameHistory = (a: HistoryDraft, b: HistoryDraft) => a.seasonStart === b.seasonStart && a.schoolMonth === b.schoolMonth && a.schoolDay === b.schoolDay && a.budget.trim() === b.budget.trim();
+
+/** The budget as typed: cents, null for none, or the problem. */
+function budgetOf(raw: string): { ok: true; cents: number | null } | { ok: false; error: string } {
+  const p = parsePrice(raw);
+  if (!p.ok) return { ok: false, error: `School-year budget: ${p.error}` };
+  if (p.cents !== null && !Number.isSafeInteger(p.cents)) return { ok: false, error: 'School-year budget is too large' };
+  return p;
+}
 
 export function SettingsScreen() {
   const db = useDb();
@@ -52,6 +64,7 @@ export function SettingsScreen() {
   const [hist, setHist] = useState<HistoryDraft | null>(null);
   const h = hist ?? savedHistory;
   const [errors, setErrors] = useState<Partial<Record<keyof NamedSettings, string>>>({});
+  const [budgetError, setBudgetError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const d = draft ?? saved;
   const dirty = (draft !== null && KEYS.some((k) => draft[k] !== saved[k])) || (hist !== null && !sameHistory(hist, savedHistory));
@@ -61,14 +74,14 @@ export function SettingsScreen() {
 
   const save = async () => {
     const r = checkSettings(d);
-    if (!r.ok) {
-      setErrors(r.errors);
-      return;
-    }
+    const b = budgetOf(h.budget);
+    setBudgetError(b.ok ? null : b.error);
+    if (!r.ok) setErrors(r.errors);
+    if (!r.ok || !b.ok) return;
     if (!(await gate('Changing settings needs the mentor PIN.'))) return;
     setBusy(true);
     try {
-      await setSettings(db, { ...r.value, seasonStart: h.seasonStart, schoolYearStart: monthDay(h) });
+      await setSettings(db, { ...r.value, seasonStart: h.seasonStart, schoolYearStart: monthDay(h), budgetCents: b.cents });
       setDraft(null);
       setHist(null);
       showToast('Settings saved.');
@@ -182,6 +195,34 @@ export function SettingsScreen() {
               </select>
             </div>
             <p class="small muted">“This school year” runs from this date to today; “Last school year” is the 12 months before it.</p>
+          </div>
+          <div class="setrow">
+            <label class="lbl" for="set-budget">
+              School-year budget <span class="lbl-opt">(optional)</span>
+              {!unlocked && <Icon name="lock" />}
+            </label>
+            <div class="setin">
+              <input
+                id="set-budget"
+                class={budgetError ? 'field setnum bad' : 'field setnum'}
+                inputMode="decimal"
+                value={h.budget}
+                placeholder="none"
+                disabled={!unlocked || busy}
+                aria-invalid={budgetError ? 'true' : undefined}
+                aria-describedby="set-budget-help"
+                onInput={(e) => setHist({ ...h, budget: (e.currentTarget as HTMLInputElement).value })}
+              />
+              <span class="setunit">dollars</span>
+            </div>
+            <p class="small muted" id="set-budget-help">
+              The spending summary shows what this school year’s orders have used of it and what’s left. Leave it blank for no budget.
+            </p>
+            {budgetError && (
+              <p class="set-err" role="alert">
+                {budgetError}
+              </p>
+            )}
           </div>
         </div>
       </div>

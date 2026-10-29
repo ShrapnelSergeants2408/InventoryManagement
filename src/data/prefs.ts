@@ -1,6 +1,6 @@
 // UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1), filters (F5),
-// the last label layout (§9), the count-in options and pause point (F24) and the order
-// history's range (§21.5).
+// the last label layout (§9), the count-in options and pause point (F24), the order
+// history's range (§21.5) and the recently viewed items (v0.17).
 // Never inventory data. Any read/write failure (private mode, blocked storage) falls back to defaults.
 import type { CountMode } from '../domain/count';
 import { NO_FILTERS, type Filters } from '../domain/filters';
@@ -148,4 +148,20 @@ export function loadHistoryRange(store = browserStore()): HistoryRangeChoice {
 
 export function saveHistoryRange(choice: HistoryRangeChoice, store = browserStore()): void {
   write(store, HISTORY_RANGE, choice);
+}
+
+const RECENT = 'frc2408.inventory.recent';
+
+/** How many recently viewed items the search box offers (v0.17). */
+export const RECENT_MAX = 8;
+
+/** Item ids whose detail card was opened, newest first. */
+export function loadRecent(store = browserStore()): string[] {
+  const v = read(store, RECENT);
+  return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string').slice(0, RECENT_MAX) : [];
+}
+
+/** Puts an item first in the recently viewed list. */
+export function noteViewed(itemId: string, store = browserStore()): void {
+  write(store, RECENT, [itemId, ...loadRecent(store).filter((id) => id !== itemId)].slice(0, RECENT_MAX));
 }

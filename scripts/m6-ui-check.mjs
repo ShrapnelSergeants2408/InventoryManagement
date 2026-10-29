@@ -299,7 +299,7 @@ try {
 
   // ── Settings (S9) ──
   await J(`await go('#/more/settings');`);
-  check('settings locked: values shown, fields dashed and disabled', await J(`return [$$('.setnum').map((i) => [i.value, i.disabled]), getComputedStyle($('.setnum')).borderStyle, !!$('.setform .lockbar')]`), [[['7', true], ['90', true], ['5', true]], 'dashed', true]);
+  check('settings locked: values shown (with delivery overdue after and the budget, v0.17), fields dashed and disabled', await J(`return [$$('.setnum').map((i) => [i.value, i.disabled]), getComputedStyle($('.setnum')).borderStyle, !!$('.setform .lockbar')]`), [[['7', true], ['90', true], ['5', true], ['14', true], ['', true]], 'dashed', true]);
   await shot('08-settings-locked');
   check('Unlock opens the fields', await J(`await click('.lockbar button', 'Unlock'); await enterPin('2408'); await settle(300); return [$$('.setnum').every((i) => !i.disabled), !$('.setform .lockbar')]`), [true, true]);
   check('out-of-range values are refused, by field', await J(`const [r, s, u] = $$('.setnum'); await type(r, '3'); await type(s, '6'); await type(u, '1'); await click('.top button', 'Save'); return [$$('.set-err').map((e) => norm(e.textContent)), (await idb('settings', 'staleDays'))?.value ?? null]`), [['Stale-price age must be a whole number of days from 7 to 365'], null]);

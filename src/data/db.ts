@@ -71,8 +71,12 @@ export interface ImportUndoRow {
   [field: string]: unknown;
 }
 
-/** Placed order as stored (F30, §21): adds the supplier key and the item ids it holds. */
-export interface OrderRow extends PlacedOrder {
+/**
+ * Placed order as stored (F30, §21): adds the supplier key and the item ids it holds. Rows saved
+ * before v0.17 have no funding (read as '').
+ */
+export interface OrderRow extends Omit<PlacedOrder, 'funding'> {
+  funding?: string;
   supplierKey: string;
   /** Multi-entry index of the item lines' ids. */
   itemIds: string[];
@@ -152,7 +156,8 @@ export function toOrderRow(o: PlacedOrder): OrderRow {
 
 export function fromOrderRow(row: OrderRow): PlacedOrder {
   const { supplierKey: _k, itemIds: _i, ...o } = row;
-  return o;
+  // Orders stored before v0.17 have no funding field.
+  return { ...o, funding: o.funding ?? '' };
 }
 
 export function toHelperRow(h: Helper): HelperRow {

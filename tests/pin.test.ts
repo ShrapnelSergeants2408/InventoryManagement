@@ -247,14 +247,16 @@ describe('PIN on the tablet', () => {
 
 describe('settings limits (§6, S9)', () => {
   it('accepts whole numbers in range', () => {
-    expect(checkSettings({ reminderDays: '7', staleDays: '90', unlockMinutes: '5' })).toEqual({ ok: true, value: { reminderDays: 7, staleDays: 90, unlockMinutes: 5 } });
-    expect(checkSettings({ reminderDays: ' 1 ', staleDays: '365', unlockMinutes: '30' }).ok).toBe(true);
+    expect(checkSettings({ reminderDays: '7', staleDays: '90', unlockMinutes: '5', overdueDays: '14' })).toEqual({ ok: true, value: { reminderDays: 7, staleDays: 90, unlockMinutes: 5, overdueDays: 14 } });
+    expect(checkSettings({ reminderDays: ' 1 ', staleDays: '365', unlockMinutes: '30', overdueDays: '120' }).ok).toBe(true);
   });
   it('names every bad field', () => {
-    const r = checkSettings({ reminderDays: '0', staleDays: '7.5', unlockMinutes: '31' });
+    const r = checkSettings({ reminderDays: '0', staleDays: '7.5', unlockMinutes: '31', overdueDays: '0' });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(['reminderDays', 'staleDays', 'unlockMinutes']);
-    for (const bad of ['', '-1', '1e1', 'abc', '61']) expect(checkSettings({ reminderDays: bad, staleDays: '90', unlockMinutes: '5' }).ok, bad).toBe(false);
-    expect(checkSettings({ reminderDays: '7', staleDays: '6', unlockMinutes: '5' }).ok).toBe(false);
+    if (!r.ok) expect(Object.keys(r.errors).sort()).toEqual(['overdueDays', 'reminderDays', 'staleDays', 'unlockMinutes']);
+    for (const bad of ['', '-1', '1e1', 'abc', '61']) expect(checkSettings({ reminderDays: bad, staleDays: '90', unlockMinutes: '5', overdueDays: '14' }).ok, bad).toBe(false);
+    expect(checkSettings({ reminderDays: '7', staleDays: '6', unlockMinutes: '5', overdueDays: '14' }).ok).toBe(false);
+    // Delivery overdue after (v0.16): 1 to 120 days.
+    for (const bad of ['0', '121', '2.5', '']) expect(checkSettings({ reminderDays: '7', staleDays: '90', unlockMinutes: '5', overdueDays: bad }).ok, bad).toBe(false);
   });
 });

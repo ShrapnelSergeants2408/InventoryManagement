@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { adjustOnHand, setOnHand } from '../../../data/inventory';
 import { moveItemsTo } from '../../../data/lists';
-import { loadExpanded, loadFilters, saveExpanded, saveFilters } from '../../../data/prefs';
+import { loadExpanded, loadFilters, loadRecent, saveExpanded, saveFilters } from '../../../data/prefs';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
 import { buildInventoryView, filterOptions, type InventoryView } from '../../../domain/inventory-view';
 import { placeLabel } from '../../../domain/lists';
@@ -21,6 +21,7 @@ import { ItemRow, Thumb } from './ItemRow';
 import { SelectBar } from '../../components/SelectBar';
 import { AddManyDialog } from '../order/ListDialogs';
 import { MoveDialog } from './MoveDialog';
+import { ShopStatusStrip } from './ShopStatus';
 import { StorageError } from '../StorageError';
 
 function Skeleton() {
@@ -56,6 +57,8 @@ export function InventoryScreen() {
   const [filters, setFilters] = useState<Filters>(() => loadFilters());
   const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded());
   const [panelOpen, setPanelOpen] = useState(false);
+  // Recently viewed (v0.17): offered while the search box is focused and empty.
+  const [searching, setSearching] = useState(false);
   // Select mode (F28): checkboxes on rows and group headers, then Move to… or Add to order list… (F27).
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -71,6 +74,11 @@ export function InventoryScreen() {
     [snap, query, filters, expanded, onOrder],
   );
   const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap.locations) : null), [snap]);
+  const recent = useMemo(() => {
+    if (!snap || !searching || query !== '') return [];
+    const byId = new Map(snap.items.map((i) => [i.id, i]));
+    return loadRecent().flatMap((id) => byId.get(id) ?? []);
+  }, [snap, searching, query]);
   // Items deleted while selecting drop out of the selection.
   const selected = useMemo(() => (snap ? keepExisting(picked, snap.items) : picked), [snap, picked]);
 
@@ -127,9 +135,11 @@ export function InventoryScreen() {
             class="field"
             type="search"
             aria-label="Search inventory"
-            placeholder="Search name, part #, supplier, location…"
+            placeholder="Search name, part #, category, location…"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
+            onFocus={() => setSearching(true)}
+            onBlur={() => setSearching(false)}
             autoComplete="off"
             spellcheck={false}
           />
@@ -137,6 +147,23 @@ export function InventoryScreen() {
             <button type="button" class="clr" aria-label="Clear search" onClick={() => setQuery('')}>
               <Icon name="close" />
             </button>
+          )}
+          {recent.length > 0 && (
+            // pointerdown keeps the box focused, so the tap reaches the link before the list closes.
+            <nav class="recent" aria-label="Recently viewed" onPointerDown={(e) => e.preventDefault()}>
+              <span class="lbl">Recently viewed</span>
+              {recent.map((i) => (
+                <a key={i.id} class="recent-i" href={href.item(i.id)}>
+                  <Thumb itemId={i.id} hasPhoto={i.hasPhoto} />
+                  <span class="recent-t">
+                    <strong>{i.name}</strong>
+                    <span class="small muted">
+                      {placeLabel(i)} · {i.location || 'No location'}
+                    </span>
+                  </span>
+                </a>
+              ))}
+            </nav>
           )}
         </div>
         }
@@ -164,6 +191,7 @@ export function InventoryScreen() {
       </TopBar>
 
       <BackupBanner />
+      {snap && <ShopStatusStrip items={snap.items} />}
       <QuickFilters view={view} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} />
       {selecting && view && (
         <SelectBar

@@ -38,11 +38,12 @@ describe('SPEC F4 search', () => {
     expect(matchesQuery(neo, '')).toBe(true);
   });
 
-  it('does not match on fields F4 leaves out (category, unit, barcode)', () => {
-    const it2 = item({ name: 'x', category: 'Motors', unit: 'each', barcode: '0123456789', vendors: [vendor({ supplier: 'REV', partNo: 'P' }), null, null] });
-    expect(matchesQuery(it2, 'motors')).toBe(false);
+  it('does not match on fields F4 leaves out (unit, id); category and barcode are searched since v0.17', () => {
+    const it2 = item({ id: 'st-0042', name: 'x', category: 'Motors', unit: 'each', barcode: '0123456789', vendors: [vendor({ supplier: 'REV', partNo: 'P' }), null, null] });
     expect(matchesQuery(it2, 'each')).toBe(false);
-    expect(matchesQuery(it2, '0123456789')).toBe(false);
+    expect(matchesQuery(it2, 'st-0042')).toBe(false);
+    expect(matchesQuery(it2, 'motors')).toBe(true);
+    expect(matchesQuery(it2, '0123456789')).toBe(true);
   });
 
   it('does not match across field boundaries', () => {
@@ -52,5 +53,18 @@ describe('SPEC F4 search', () => {
 
   it('normalize collapses whitespace', () => {
     expect(normalize('  a \t B\n c ')).toBe('a b c');
+  });
+});
+
+describe('search by category, subcategory and barcode (v0.17)', () => {
+  const bearing = item({ name: 'Flanged 1/2 in. hex, 1.125 OD', category: 'Mechanical', subcategory: 'Bearings', barcode: '0123456789012' });
+  it('finds an item by its category or subcategory even when the name does not say it', () => {
+    expect(matchesQuery(bearing, 'bearings')).toBe(true);
+    expect(matchesQuery(bearing, 'mechanical hex')).toBe(true);
+  });
+  it('finds an item by its barcode, whole or in part', () => {
+    expect(matchesQuery(bearing, '0123456789012')).toBe(true);
+    expect(matchesQuery(bearing, '56789')).toBe(true);
+    expect(matchesQuery(bearing, '99999')).toBe(false);
   });
 });

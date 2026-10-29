@@ -1,8 +1,9 @@
+import Papa from 'papaparse';
 import 'fake-indexeddb/auto';
 import JSZip from 'jszip';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyRestore, buildBackup } from '../src/data/backup';
-import { InventoryDb } from '../src/data/db';
+import { InventoryDb, fromOrderRow, toOrderRow } from '../src/data/db';
 import { loadSnapshot, replaceAll, type ReplaceAllInput } from '../src/data/inventory';
 import { deleteItem } from '../src/data/items';
 import { renameCategory, updateSupplier, removeSupplier } from '../src/data/lists';
@@ -87,6 +88,7 @@ const order = (over: Partial<PlacedOrder> = {}): PlacedOrder => ({
   placedOn: '2026-10-28',
   orderNo: '',
   payment: '',
+  funding: '',
   cancelled: false,
   taxCents: 0,
   shippingCents: 0,
@@ -478,6 +480,7 @@ describe('orders.csv and order-lines.csv (§21.6)', () => {
     taxCents: 412,
     shippingCents: 1095,
     feesCents: 0,
+    funding: 'FIRST grant, "rookie"',
     discount: { kind: '%', value: 750 },
     receipts: [
       { id: 'po-AAAAAA-1', type: 'image/jpeg' },
@@ -486,6 +489,23 @@ describe('orders.csv and order-lines.csv (§21.6)', () => {
     created: Date.UTC(2026, 9, 28, 17),
     updated: Date.UTC(2026, 9, 28, 18),
     lines: [line({ itemId: 'a', description: 'NEO, "2.0"', partNo: 'REV-21', received: 1, packs: 2 }), line({ itemId: '', description: 'Shirts', category: '', packs: 12, packPriceCents: 1500 })],
+  });
+
+  it('an order stored before v0.17 (no funding field) reads with funding blank', () => {
+    const { funding: _f, ...old } = toOrderRow(tricky);
+    expect(fromOrderRow(old)).toEqual({ ...tricky, funding: '' });
+    expect(fromOrderRow(toOrderRow(tricky)).funding).toBe('FIRST grant, "rookie"');
+  });
+
+  it('an older orders.csv without the funding column reads with funding blank (v0.17)', () => {
+    const text = serializeOrdersCsv([tricky]).split('\r\n').map((row) => {
+      const cells = Papa.parse<string[]>(row, { delimiter: ',' }).data[0] ?? [];
+      return cells.length ? Papa.unparse([cells.filter((_, i) => i !== 5)]) : row;
+    }).join('\r\n');
+    expect(text).not.toContain('funding');
+    const r = parseOrdersCsv(text, serializeOrderLinesCsv([tricky]));
+    expect(r.problems).toEqual([]);
+    expect(r.orders[0]).toEqual({ ...tricky, funding: '' });
   });
 
   it('round-trips every field', () => {

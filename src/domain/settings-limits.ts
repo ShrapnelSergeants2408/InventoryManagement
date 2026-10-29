@@ -4,12 +4,15 @@ export interface NamedSettings {
   reminderDays: number;
   staleDays: number;
   unlockMinutes: number;
+  /** An open order placed longer ago than this is overdue (v0.17). */
+  overdueDays: number;
 }
 
 export const SETTING_LIMITS: Readonly<Record<keyof NamedSettings, { min: number; max: number; label: string; unit: string }>> = {
   reminderDays: { min: 1, max: 60, label: 'Backup reminder', unit: 'days' },
   staleDays: { min: 7, max: 365, label: 'Stale-price age', unit: 'days' },
   unlockMinutes: { min: 1, max: 30, label: 'Unlock length', unit: 'minutes' },
+  overdueDays: { min: 1, max: 120, label: 'Delivery overdue after', unit: 'days' },
 };
 
 export type SettingsDraft = Record<keyof NamedSettings, string>;

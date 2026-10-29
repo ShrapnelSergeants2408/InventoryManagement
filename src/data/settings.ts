@@ -18,6 +18,10 @@ export interface Settings {
   seasonStart: string;
   /** School year starts (§21.5): MM-DD. */
   schoolYearStart: string;
+  /** Delivery overdue after (v0.17), in days. */
+  overdueDays: number;
+  /** School-year budget in cents (v0.17), or null for none. */
+  budgetCents: number | null;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -29,6 +33,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   lastChangeAt: null,
   seasonStart: '',
   schoolYearStart: '08-01',
+  overdueDays: 14,
+  budgetCents: null,
 };
 
 export async function getSettings(db: InventoryDb): Promise<Settings> {

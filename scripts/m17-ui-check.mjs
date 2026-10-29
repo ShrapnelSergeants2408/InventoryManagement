@@ -112,7 +112,7 @@ try {
 
   // ── App version (v0.9) ──
   await P(`await go('#/more');`);
-  check('More › About: the app version and when it was built', await P(`const r = byText('.mrow', 'App version'); return [norm(r.querySelector('.mt').textContent), /^Built [A-Z][a-z]{2} \\d{1,2}, \\d{4}, \\d{1,2}:\\d\\d [AP]M$/.test(norm(r.querySelector('.small').textContent))]`), ['App version 0.8.0', true]);
+  check('More › About: the app version and when it was built', await P(`const r = byText('.mrow', 'App version'); return [norm(r.querySelector('.mt').textContent), /^Built [A-Z][a-z]{2} \\d{1,2}, \\d{4}, \\d{1,2}:\\d\\d [AP]M$/.test(norm(r.querySelector('.small').textContent))]`), ['App version 0.9.0', true]);
   await shot('01-version');
 
   // ── Scan tab: an unknown bin code → Location not found → Add ──

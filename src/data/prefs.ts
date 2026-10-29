@@ -1,8 +1,10 @@
 // UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1), filters (F5),
-// the last label layout (§9) and the count-in options and pause point (F24).
+// the last label layout (§9), the count-in options and pause point (F24) and the order
+// history's range (§21.5).
 // Never inventory data. Any read/write failure (private mode, blocked storage) falls back to defaults.
 import type { CountMode } from '../domain/count';
 import { NO_FILTERS, type Filters } from '../domain/filters';
+import { DEFAULT_RANGE, RANGE_KINDS, type RangeKind } from '../domain/order-history';
 
 export type KeyValueStore = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -121,4 +123,29 @@ export function loadCountPause(store = browserStore()): CountPause | null {
 
 export function saveCountPause(pause: CountPause | null, store = browserStore()): void {
   write(store, COUNT_PAUSE, pause);
+}
+
+const HISTORY_RANGE = 'frc2408.order.historyRange';
+
+/** The order history's range (§21.5: remembered on the device), with the custom dates. */
+export interface HistoryRangeChoice {
+  kind: RangeKind;
+  from: string;
+  to: string;
+}
+
+const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+export function loadHistoryRange(store = browserStore()): HistoryRangeChoice {
+  const v = read(store, HISTORY_RANGE);
+  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
+  return {
+    kind: RANGE_KINDS.includes(o.kind as RangeKind) ? (o.kind as RangeKind) : DEFAULT_RANGE,
+    from: isDate(o.from) ? o.from : '',
+    to: isDate(o.to) ? o.to : '',
+  };
+}
+
+export function saveHistoryRange(choice: HistoryRangeChoice, store = browserStore()): void {
+  write(store, HISTORY_RANGE, choice);
 }

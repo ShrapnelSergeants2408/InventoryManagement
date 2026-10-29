@@ -176,7 +176,7 @@ try {
   check(`every photo byte-equal after the upgrade (${before.photos.length})`, [after.photos.length, photoDiffs], [before.photos.length, []]);
   check('settings unchanged apart from schemaVersion', after.settings.filter((s) => s.key !== 'schemaVersion'), before.settings.filter((s) => s.key !== 'schemaVersion'));
   check('order total unchanged (nothing on order yet)', await A.js(`${PAGE} ${orderTotal}`), totalBefore);
-  check('the Order screen has Placed orders and Mark ordered…', await A.js(`${PAGE} return [!!byText('.ltab', 'Placed orders'), !!byText('.shdr button', 'Mark ordered')]`), [true, true]);
+  check('the Order screen has Placed orders (History since M20) and Mark ordered…', await A.js(`${PAGE} return [!!(byText('.ltab', 'Placed orders') || byText('.ltab', 'History')), !!byText('.shdr button', 'Mark ordered')]`), [true, true]);
   await shot('01-upgraded');
 
   // An order saved on v4, so the rollback has v4 data to leave alone.

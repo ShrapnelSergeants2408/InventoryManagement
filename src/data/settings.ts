@@ -14,6 +14,10 @@ export interface Settings {
   setupDoneAt: number | null;
   /** ms since epoch of the last change to inventory data (restore comparison, F17). */
   lastChangeAt: number | null;
+  /** Season starts (§21.5): YYYY-MM-DD, or '' when not set ("This season" is hidden). */
+  seasonStart: string;
+  /** School year starts (§21.5): MM-DD. */
+  schoolYearStart: string;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -23,6 +27,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   lastBackupAt: null,
   setupDoneAt: null,
   lastChangeAt: null,
+  seasonStart: '',
+  schoolYearStart: '08-01',
 };
 
 export async function getSettings(db: InventoryDb): Promise<Settings> {

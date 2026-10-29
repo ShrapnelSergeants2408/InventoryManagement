@@ -65,6 +65,11 @@ export function writeCsv(fields: readonly string[], data: readonly (readonly str
   return BOM + Papa.unparse({ fields: [...fields], data: data.map((r) => [...r]) }, { newline: '\r\n' }) + '\r\n';
 }
 
+/** Rows of any length (a report with headings and sections), with a BOM and CRLF line ends. */
+export function writeRows(rows: readonly (readonly string[])[]): string {
+  return BOM + Papa.unparse(rows.map((r) => [...r]), { newline: '\r\n' }) + '\r\n';
+}
+
 /**
  * US spreadsheet dates (10/17/2026) become ISO (2026-10-17); ISO passes through.
  * Returns null when the text isn't a recognizable date.

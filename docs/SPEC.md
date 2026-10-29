@@ -1,7 +1,20 @@
-# FRC 2408 Inventory Management — Specification v0.14
+# FRC 2408 Inventory Management — Specification v0.15
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-29 (v0.14) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT
+**Status:** Approved by Dan 2026-10-29 (v0.15) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT
+
+**Changes in v0.15:** Eleven order-history details, filled in while building M20 and confirmed by Dan on 2026-10-29 (`docs/reviews/M20.md`, "Details I filled in"; Dan: "confirm a-k"):
+- (a) **History** takes the place of the Placed orders tab (same place, same address). Its status buttons are All / Open / Received / Cancelled, each with its count (§21.5).
+- (b) The range starts on **This school year** until one is chosen. Only the range is remembered; supplier and status start at Any and All.
+- (c) The range applies to every status: an open order placed before the range isn't listed under Open until a wider range is chosen.
+- (d) **Last 30 days** is today and the 29 days before it.
+- (e) **Custom** needs both dates; dates entered the wrong way round are swapped.
+- (f) A discount is shown as a minus on screen and written as a negative amount in both CSVs, so Parts + Discount + Tax + Shipping + Fees = Total across a row.
+- (g) The supplier summary lists suppliers A–Z, each named as on its newest order; names that differ only in capitals are one supplier.
+- (h) **Other** holds typed lines and any item line without a category, in the summary and in the lines CSV.
+- (i) Both exports go straight to the share sheet (or Downloads), with no preview.
+- (j) **Season starts** can be any date, including one ahead (This season then lists nothing until it arrives). **School year starts** is a month and day; February 29 isn't offered.
+- (k) The printed page lists the orders as filtered (range, supplier, status); its summaries follow the range and supplier, as on screen.
 
 **Changes in v0.14:** Seven placed-order details, filled in while building M19 and confirmed by Dan on 2026-10-29 (`docs/reviews/M19.md`, "Details I filled in"), (a)–(g) except (c), which Dan changed:
 - (a) The PIN is asked when the order form opens, and again on Save if mentor tools relocked in between; the form stays open, so nothing typed is lost (§21.1).
@@ -539,6 +552,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | Dan merged PRs #27 and #28 (M18) and approved the v0.13 details (§15 Q8 (a)–(g)): "spec details approved". v0.13 approved; M19 next |
 | 2026-10-29 | Dan merged PR #30 (M19) and confirmed its details: "approve a-g except for c - allow for different pack sizes and units on typed lines". v0.14: typed lines have their own pack size and unit. Independent review of M19 next |
 | 2026-10-29 | Independent review of M19: Dan asked for findings 1–8 fixed ("fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8", then "fix 4 and 6 too"). Undo this import leaves items received since the import alone. CSV files are always read as comma-separated (a separator-guessing bug found while fixing finding 6) |
+| 2026-10-29 | Dan merged PR #31 and checked M19 on the tablet (a PDF receipt opens in Chrome). M20 built; Dan confirmed its details (a)–(k): "confirm a-k". v0.15 |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -751,11 +765,11 @@ After an order is saved, the app lists every item line whose item has a vendor o
 - **Supplier renamed (F23):** orders follow the new name. **Supplier removed:** orders keep the name they were recorded with. **Category renamed (F9):** order lines with the old name follow it. Removing a category leaves order lines as they are.
 
 ### 21.5 Order history and spending summary (F32)
-- **Order › History** sits beside Automatic and the named lists.
-- **Ranges** by placed date, inclusive: This month; Last 30 days; This season (from the **Season starts** date to today; hidden until that setting is set); This school year (from the latest **School year starts** month and day, default August 1, to today); Last school year (the 12 months before that); Custom (From and To dates). The chosen range is remembered on the device.
+- **Order › History** sits beside Automatic and the named lists, in the place of the Placed orders list (v0.15). Status buttons: All / Open / Received / Cancelled with counts; the range applies to every status. Exports go straight to the share sheet.
+- **Ranges** by placed date, inclusive: This month; Last 30 days; This season (from the **Season starts** date to today; hidden until that setting is set); This school year (from the latest **School year starts** month and day, default August 1, to today); Last school year (the 12 months before that); Custom (From and To dates). The chosen range is remembered on the device; until one is chosen it's This school year (v0.15). Last 30 days is today and the 29 days before. Custom needs both dates and swaps them if entered the wrong way round. Season starts may be any date; School year starts is a month and day other than February 29.
 - **Filters:** supplier (any) and status (all, open, received, cancelled). The summary follows the range and supplier filter and always leaves cancelled orders out.
-- **Summary by supplier:** one row per supplier with orders, parts, discount, tax, shipping, fees and total, then a **Total** row.
-- **Summary by category:** parts cost of item lines by the category on the line, in §11 list order, then categories no longer in the list, then "Other" (typed lines); then rows for discount (negative), tax, shipping and fees; the last row is the same total as the supplier summary.
+- **Summary by supplier:** one row per supplier with orders, parts, discount, tax, shipping, fees and total, then a **Total** row. Suppliers A–Z, named as on their newest order; names differing only in capitals are one supplier. Discounts show as a minus (v0.15).
+- **Summary by category:** parts cost of item lines by the category on the line, in §11 list order, then categories no longer in the list, then "Other" (typed lines, and item lines without a category; v0.15); then rows for discount (negative), tax, shipping and fees; the last row is the same total as the supplier summary.
 - **Export CSV** (`order-history-<from>-to-<to>.csv`): a first row naming the range and filters; one row per order (Placed, Supplier, Order #, Payment, Status, Parts, Discount, Tax, Shipping, Fees, Total, Receipts, From list, Notes); then the supplier summary and the category summary, each under a heading row. **Export lines CSV**: one row per line (Placed, Supplier, Order #, Status, Item id, Item, Part #, Category, Unit, Packs, Pack size, Qty, Pack price, Line total, Received). Both use the F13 spreadsheet guards (formula-looking cells start with an apostrophe) and the F15 share sheet.
 - **Print summary:** a printable page (title, range, filters, printed date, both summaries, then the orders in the range); print it or save it as a PDF from the Android print dialog, as for labels (§9).
 

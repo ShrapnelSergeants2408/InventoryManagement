@@ -131,7 +131,7 @@ try {
   // ── The automatic list: Mark ordered on each group; a Placed orders tab ──
   await js(`await go('#/order');`);
   await waitFor(`document.querySelector('.shdr')`);
-  check('every supplier group has Mark ordered…, and there is a Placed orders tab', await js(`return [$$('.shdr').length > 3, $$('.shdr').every((s) => [...s.querySelectorAll('button')].some((b) => norm(b.textContent).startsWith('Mark ordered'))), !!byText('.ltab', 'Placed orders')]`), [true, true, true]);
+  check('every supplier group has Mark ordered…, and there is a History tab', await js(`return [$$('.shdr').length > 3, $$('.shdr').every((s) => [...s.querySelectorAll('button')].some((b) => norm(b.textContent).startsWith('Mark ordered'))), !!byText('.ltab', 'History')]`), [true, true, true]);
   const before = await js(`const g = group('REV'); return { total: norm($('.gt-v').textContent), lines: [...g.parentElement.querySelectorAll('.line')].length, subtotal: norm(g.querySelector('.subtotal').textContent) }`);
   const rev = await js(`
     // The first two REV lines on the list, as the database holds the items.
@@ -171,7 +171,7 @@ try {
   check('stored: supplier, date, order #, payment, amounts, discount, 3 lines, nothing received', [o1.supplier, o1.placedOn, o1.orderNo, o1.payment, o1.taxCents, o1.shippingCents, o1.feesCents, o1.discount, o1.lines.length, o1.lines.map((l) => l.received), o1.fromList, o1.cancelled], ['REV', today, 'INV-77', 'PO 2408-17', 410, 995, 100, { kind: '%', value: 1000 }, 3, [0, 0, 0], 'Automatic', false]);
   check('stored lines: item lines copied from the items, the typed line with no item', [o1.lines[0].itemId, o1.lines[0].packs, o1.lines[0].packPriceCents, o1.lines[2].itemId, o1.lines[2].description, o1.lines[2].packs, o1.lines[2].packSize, o1.lines[2].unit, o1.lines[2].packPriceCents], [rev[0].id, 2, 1234, '', 'Team shirts', 3, 2, 'shirt', 1500]);
   check('catalog: the changed price and both price_checked dates updated', await js(`const a = await idb('items', ${JSON.stringify(rev[0].id)}); const b = await idb('items', ${JSON.stringify(rev[1].id)}); const va = a.vendors[a.preferredVendor - 1]; const vb = b.vendors[b.preferredVendor - 1]; return [va.packPriceCents, va.priceChecked, vb.packPriceCents, vb.priceChecked]`), [1234, today, rev[1].price, today]);
-  check('toast names the order and its total', await js(`return toast()`), `Recorded the REV order: ${'$' + (total / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}. It’s in Order › Placed orders.`);
+  check('toast names the order and its total', await js(`return toast()`), `Recorded the REV order: ${'$' + (total / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}. It’s in Order › History.`);
 
   // ── On order: subtracted from the automatic list, shown on lines, rows and the detail card ──
   const units0 = 2 * rev[0].packSize;
@@ -185,7 +185,7 @@ try {
 
   // ── Placed orders and one order ──
   await js(`await go('#/placed');`);
-  check('Placed orders lists it: date, supplier, status Placed, total', await js(`const r = $('.po-row'); return [$$('.po-row').length, norm(r.querySelector('.po-main .lt').textContent), norm(r.querySelector('.chip').textContent), norm(r.querySelector('.po-total').textContent)]`), [1, 'REV', 'Placed', money0(total)]);
+  check('History lists it: date, supplier, status Placed, total', await js(`const r = $('.po-row'); return [$$('.po-row').length, norm(r.querySelector('.po-main .lt').textContent), norm(r.querySelector('.chip').textContent), norm(r.querySelector('.po-total').textContent)]`), [1, 'REV', 'Placed', money0(total)]);
   await shot('05-placed-list');
   await js(`$('.po-row').click(); await settle(800);`);
   check('order page: lines, the five amounts and the total', await js(`return [$$('.po-l:not(.po-lh)').length, [...document.querySelectorAll('.po-sum > div')].map((d) => norm(d.textContent))]`), [3, [`Parts${money0(parts)}`, `Discount (10%)−${money0(discount)}`, 'Tax$4.10', 'Shipping$9.95', 'Other fees$1.00', `Total${money0(total)}`]]);

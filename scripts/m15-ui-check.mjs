@@ -162,7 +162,7 @@ try {
   // ── The Order screen: tabs, the list, totals ──
   await P(`await go('#/order');`);
   await waitFor(`document.querySelectorAll('.ogrid.line').length > 0`);
-  check('order tabs: Automatic, the list with its count, New list; the automatic list is unchanged', await P(`return [tabs(), tiles().slice(0, 2)]`), [['Automatic', 'WCP order — Nov 2', 'Placed orders', 'New list'], ['Grand total $8,413.66', 'Lines 124']]);
+  check('order tabs: Automatic, the list with its count, New list; the automatic list is unchanged', await P(`return [tabs(), tiles().slice(0, 2)]`), [['Automatic', 'WCP order — Nov 2', 'History', 'New list'], ['Grand total $8,413.66', 'Lines 124']]);
   await P(`await click('.ltabs .ltab', 'WCP order — Nov');`);
   await waitFor(`location.hash.startsWith('#/order/ol-')`);
   await sleep(500);
@@ -206,14 +206,14 @@ try {
   await P(`await click('.lhead .btn', 'Rename'); await waitDlg('Edit list'); await type('#lname', 'wcp order — nov'); await type('#lnotes', 'Ask about\\nthe discount'); await click('.dlg .btn', 'Save'); await settle(400);`);
   check('rename (capitals only) and notes', await P(`return [norm($('.top h1').textContent), $('.lnotes').textContent]`), ['wcp order — nov', 'Ask about\nthe discount']);
   await P(`await click('.lhead .btn', 'Duplicate'); await settle(800);`);
-  check('duplicate: opens the copy, with the same line', await P(`return [norm($('.top h1').textContent), lineNames(), tabs()]`), ['wcp order — nov (copy)', [neo.name], ['Automatic', 'wcp order — nov 1', 'wcp order — nov (copy) 1', 'Placed orders', 'New list']]);
+  check('duplicate: opens the copy, with the same line', await P(`return [norm($('.top h1').textContent), lineNames(), tabs()]`), ['wcp order — nov (copy)', [neo.name], ['Automatic', 'wcp order — nov 1', 'wcp order — nov (copy) 1', 'History', 'New list']]);
   await P(`await click('.ltabs .ltab', 'New list'); await waitDlg('New order list'); await type('#lname', 'WCP ORDER — NOV');`);
   check('a name that clashes ignoring capitals is refused', await P(`return [norm($('.dlg .err').textContent), byText('.dlg .btn', 'Make list').disabled]`), ['There’s already a list called “wcp order — nov”.', true]);
   await P(`await type('#lname', 'Competition spares'); await click('.dlg .btn', 'Make list'); await settle(700);`);
   check('new list: opens empty, with how to add items', await P(`return [norm($('.top h1').textContent), norm($('.state .h2').textContent), $('.top .btn.pri').disabled]`), ['Competition spares', 'No items on this list yet', true]);
   await shot('04-empty-list');
   await P(`await click('.lhead .btn', 'Delete list'); await waitDlg('Delete list'); await click('.dlg .btn', 'Delete list'); await settle(700);`);
-  check('delete list: back to Automatic; the list is gone', await P(`return [location.hash, tabs()]`), ['#/order', ['Automatic', 'wcp order — nov 1', 'wcp order — nov (copy) 1', 'Placed orders', 'New list']]);
+  check('delete list: back to Automatic; the list is gone', await P(`return [location.hash, tabs()]`), ['#/order', ['Automatic', 'wcp order — nov 1', 'wcp order — nov (copy) 1', 'History', 'New list']]);
 
   // ── Full backup has order-lists.csv; restore the backup after changes ──
   await js(`window.__zip = null; navigator.canShare = () => true; navigator.share = async (d) => { window.__zip = new Uint8Array(await d.files[0].arrayBuffer()); };`);

@@ -16,8 +16,10 @@ import {
   type PriceChange,
   type ReceiptType,
 } from '../domain/placed-orders';
+import { localIsoDate } from '../domain/dates';
 import { nameKey } from '../domain/types';
 import { fromItemRow, fromOrderListRow, fromOrderRow, toItemRow, toOrderListRow, toOrderRow, type InventoryDb } from './db';
+import { noteReceivedSinceImport } from './import-counts';
 
 /** Every order, newest first (§21.5). */
 export async function loadOrders(db: InventoryDb): Promise<PlacedOrder[]> {
@@ -45,7 +47,7 @@ async function mustGet(db: InventoryDb, id: string): Promise<PlacedOrder> {
 }
 
 function check(order: OrderInput): void {
-  const problems = orderProblems(order);
+  const problems = orderProblems(order, localIsoDate());
   if (problems.length > 0) throw new Error(problems.map((p) => p.message).join(' '));
 }
 
@@ -134,7 +136,7 @@ export interface ReceiveResult {
  * inventory. last_counted isn't touched: receiving isn't a count.
  */
 export async function receiveOrder(db: InventoryDb, id: string, amounts: readonly number[], now = Date.now()): Promise<ReceiveResult> {
-  return db.transaction('rw', db.orders, db.items, db.settings, async () => {
+  return db.transaction('rw', [db.orders, db.items, db.settings, db.importUndo], async () => {
     const was = await mustGet(db, id);
     const problem = receiveProblem(was, amounts);
     if (problem) throw new Error(problem);
@@ -146,13 +148,16 @@ export async function receiveOrder(db: InventoryDb, id: string, amounts: readonl
     });
     let items = 0;
     let units = 0;
+    const stocked: string[] = [];
     for (const [itemId, n] of add) {
       const row = await db.items.get(itemId);
       if (!row) continue;
       await db.items.update(itemId, { onHand: row.onHand + n, updatedAt: now });
+      stocked.push(itemId);
       items++;
       units += n;
     }
+    await noteReceivedSinceImport(db, stocked);
     const order = { ...was, lines, updated: now };
     await db.orders.put(toOrderRow(order));
     await touch(db, now);

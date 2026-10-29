@@ -2,7 +2,7 @@
 // row per order line. Money in dollars with two decimals. Read back by restore, so every field
 // is checked and a problem names the file and row.
 import { centsToPlain, parsePrice } from '../domain/money';
-import { orderProblems, parsePercent, percentText, sortOrders, type DiscountKind, type PlacedLine, type PlacedOrder, type ReceiptRef } from '../domain/placed-orders';
+import { MAX_RECEIPTS, orderProblems, parsePercent, percentText, sortOrders, type DiscountKind, type PlacedLine, type PlacedOrder, type ReceiptRef } from '../domain/placed-orders';
 import { parseWholeNumber } from '../domain/validate';
 import { cellGetter, readCsv, writeCsv, type FileProblem } from './csv';
 
@@ -108,6 +108,8 @@ export function parseOrdersCsv(ordersText: string, linesText: string, now = Date
   if (oMissing.length || lMissing.length) return { orders: [], receiptFiles, problems };
 
   const byId = new Map<string, { order: PlacedOrder; row: number }>();
+  const lineNo = new Map<PlacedLine, number>();
+  const receiptRow = new Map<string, number>();
   for (const { row, cells } of ot.rows) {
     const get = cellGetter(ot, cells);
     const file = ORDERS_FILE;
@@ -163,8 +165,20 @@ export function parseOrdersCsv(ordersText: string, linesText: string, now = Date
         continue;
       }
       const r: ReceiptRef = { id: m[1]!, type: m[2]!.toLowerCase() === 'pdf' ? 'application/pdf' : 'image/jpeg' };
+      // Each receipt is stored under its name, so one name can't belong to two receipts.
+      const first = receiptRow.get(r.id);
+      if (first !== undefined) {
+        problems.push({ file, row, message: `receipt "${path}" is named twice (first on row ${first})` });
+        bad = true;
+        continue;
+      }
+      receiptRow.set(r.id, row);
       receipts.push(r);
       receiptFiles.set(r.id, path);
+    }
+    if (receipts.length > MAX_RECEIPTS) {
+      problems.push({ file, row, message: `an order can have at most ${MAX_RECEIPTS} receipts (this one names ${receipts.length})` });
+      bad = true;
     }
     if (bad) continue;
     const created = time(get('created')) ?? now;
@@ -223,7 +237,17 @@ export function parseOrdersCsv(ordersText: string, linesText: string, now = Date
       received: (received as { value: number }).value,
     };
     entry.order.lines.push(line);
+    const n = get('line').trim();
+    lineNo.set(line, /^\d+$/.test(n) ? Number(n) : Infinity);
   }
+  // Lines go back in their `line` order, so a file sorted in a spreadsheet keeps them; a blank
+  // or unreadable number keeps the file order (the sort is stable).
+  const by = (a: PlacedLine, b: PlacedLine) => {
+    const x = lineNo.get(a)!;
+    const y = lineNo.get(b)!;
+    return x === y ? 0 : x < y ? -1 : 1;
+  };
+  for (const { order } of byId.values()) order.lines.sort(by);
 
   const orders: PlacedOrder[] = [];
   for (const { order, row } of byId.values()) {

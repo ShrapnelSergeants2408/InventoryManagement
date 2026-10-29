@@ -80,7 +80,9 @@ const toRow = (d: DraftLine, added = false, on = true): Row => ({
 
 /** The line as the form has it: NaN where a number can't be read, so the checks name it. */
 function rowLine(r: Row): PlacedLine {
-  return { ...r.line, packs: whole(r.packs), packSize: whole(r.packSize), packPriceCents: cents(r.price), received: whole(r.received) };
+  const nums = { packs: whole(r.packs), packSize: whole(r.packSize), packPriceCents: cents(r.price), received: whole(r.received) };
+  if (r.line.itemId) return { ...r.line, ...nums };
+  return { ...typedLine(r.line.description, nums.packs, nums.packPriceCents, nums.packSize, r.line.unit), received: nums.received };
 }
 
 export type OrderFormProps =
@@ -111,6 +113,8 @@ export function OrderForm(props: OrderFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'form' });
   const [adding, setAdding] = useState(false);
+  /** Said in the "Recorded" toast when a receipt couldn't be saved after the order was. */
+  const receiptNote = useRef('');
 
   const ticked = rows.filter((r) => r.on);
   const input: OrderInput = {
@@ -126,7 +130,7 @@ export function OrderForm(props: OrderFormProps) {
     fromList: editing ? editing.fromList : ((props as { from: { name: string } | null }).from?.name ?? AUTOMATIC_LIST),
     lines: ticked.map(rowLine),
   };
-  const problems = orderProblems(input);
+  const problems = orderProblems(input, localIsoDate());
   const lineProblem = (r: Row, field: 'description' | 'packs' | 'packSize' | 'packPriceCents' | 'received') => {
     const at = ticked.indexOf(r);
     return problems.find((p) => typeof p.field === 'object' && p.field.line === at && p.field.field === field)?.message ?? null;
@@ -152,8 +156,20 @@ export function OrderForm(props: OrderFormProps) {
       }
       const from = (props as { from: { listId: string } | null }).from;
       const result = await recordOrder(db, input, from ? { listId: from.listId } : null);
+      // The order is saved: from here on, never go back to the form, or Record again would
+      // make a second order. A receipt that can't be saved is reported, to add on the order page.
       let order = result.order;
-      for (const r of receipts) order = await addReceipt(db, order.id, r.blob, r.type);
+      let failed = 0;
+      let why = '';
+      for (const r of receipts) {
+        try {
+          order = await addReceipt(db, order.id, r.blob, r.type);
+        } catch (e) {
+          failed++;
+          why = message(e);
+        }
+      }
+      receiptNote.current = failed > 0 ? ` ${failed === 1 ? 'A receipt' : `${failed} receipts`} couldn’t be saved (${why}): add ${failed === 1 ? 'it' : 'them'} on the order page.` : '';
       const done = { ...result, order };
       const pc = priceChanges(order, items);
       if (pc.changed.length > 0 || pc.unchanged.length > 0) setPhase({ kind: 'prices', result: done, ...pc });
@@ -166,7 +182,7 @@ export function OrderForm(props: OrderFormProps) {
   };
 
   const finish = (result: RecordResult) => {
-    showToast(`Recorded the ${supplier} order: ${formatCents(orderTotals(result.order).totalCents)}. It’s in Order › Placed orders.`);
+    showToast(`Recorded the ${supplier} order: ${formatCents(orderTotals(result.order).totalCents)}. It’s in Order › Placed orders.${receiptNote.current}`);
     if (result.list && result.list.linesLeft === 0) setPhase({ kind: 'emptyList', result });
     else props.onClose();
   };
@@ -218,6 +234,10 @@ export function OrderForm(props: OrderFormProps) {
                 ) : (
                   <>
                     <input class="field sm" aria-label="Description" placeholder="What was ordered, e.g. Team shirts" value={r.line.description} onInput={(e) => setRow(r.key, { line: { ...r.line, description: (e.currentTarget as HTMLInputElement).value } })} />
+                    <label class="of-unit">
+                      <span class="small muted">Unit</span>
+                      <input class="field sm" aria-label={`Unit of ${r.line.description || 'this line'}`} placeholder="e.g. each, ft, box" disabled={!r.on} value={r.line.unit} onInput={(e) => setRow(r.key, { line: { ...r.line, unit: (e.currentTarget as HTMLInputElement).value } })} />
+                    </label>
                     <span class="small muted">Typed line · doesn’t change inventory</span>
                   </>
                 )}
@@ -229,7 +249,7 @@ export function OrderForm(props: OrderFormProps) {
                 {r.on && show(lineProblem(r, 'packs'))}
               </span>
               <span data-l="Pack size">
-                <input class="field sm n" inputMode="numeric" aria-label={`Pack size of ${r.line.description}`} disabled={!r.on || !r.line.itemId} value={r.packSize} onInput={(e) => setRow(r.key, { packSize: (e.currentTarget as HTMLInputElement).value })} />
+                <input class="field sm n" inputMode="numeric" aria-label={`Pack size of ${r.line.description}`} disabled={!r.on} value={r.packSize} onInput={(e) => setRow(r.key, { packSize: (e.currentTarget as HTMLInputElement).value })} />
                 {r.on && show(lineProblem(r, 'packSize'))}
               </span>
               <span data-l="Pack price">
@@ -244,7 +264,7 @@ export function OrderForm(props: OrderFormProps) {
               )}
               <span class="n of-total">
                 {r.on ? total : <span class="small muted">not ordered</span>}
-                {r.on && Number.isFinite(lineUnits(l)) && l.packSize > 1 && <span class="small muted"> {lineUnits(l)} {r.line.unit}</span>}
+                {r.on && Number.isFinite(lineUnits(l)) && l.packSize > 1 && <span class="small muted"> {lineUnits(l)} {l.unit}</span>}
               </span>
             </div>
           );
@@ -476,7 +496,8 @@ export async function prepareReceipt(file: File, kind: 'photo' | 'pdf'): Promise
 function PriceCopy({ phase, onDone }: { phase: Extract<Phase, { kind: 'prices' }>; onDone: () => void }) {
   const db = useDb();
   const order = phase.result.order;
-  const [off, setOff] = useState<Set<string>>(new Set());
+  // A line charged $0 (free or a promo) isn't usually the catalog price: unticked to start.
+  const [off, setOff] = useState<Set<string>>(() => new Set(phase.changed.filter((c) => c.toPriceCents === 0).map((c) => c.itemId)));
   const [checkUnchanged, setCheckUnchanged] = useState(true);
   const [busy, setBusy] = useState(false);
   const done = useRef(false);

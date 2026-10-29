@@ -52,6 +52,11 @@ describe('inventory.csv columns (SPEC §7)', () => {
 });
 
 describe('quoting and round-trip', () => {
+  it('notes with many semicolons read back (the file isn’t taken for semicolon-separated)', () => {
+    const r = parseInventoryCsv(serializeInventoryCsv([item({ id: 'A', notes: 'use: M3; M4; M5; M6; M8; M10; M12' }), item({ id: 'B', name: 'B' })]));
+    expect([r.problems, r.items.map((i) => i.notes)]).toEqual([[], ['use: M3; M4; M5; M6; M8; M10; M12', '']]);
+  });
+
   const tricky = [
     item({ id: 'n1', name: 'Bolt, 10-32 x 3/4"', notes: 'use with Thrifty swerve, not tank\nask mentor before cutting\n  indented "quoted" line' }),
     item({ id: 'n2', name: 'Café ½" tube — ×4', notes: 'commas, "quotes", and\r\nCRLF inside', location: 'Bin F3' }),

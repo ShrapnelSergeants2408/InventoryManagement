@@ -794,3 +794,20 @@ To build `main` for the upgrade check, a scratch worktree got a `node_modules` j
 High for the money and the data paths (unit tests to the cent, mutants, real IndexedDB, a byte-level upgrade on real data). Medium for the camera and PDF picker on the Tab S8 and the form's feel with gloves, until the tablet check. Recommended before merging: an independent fresh-session review (stage6-plan M19).
 
 **Next:** Dan merges PR #29, decides on the independent review, confirms details (a)–(g) in `docs/reviews/M19.md`, merges M19 with a merge commit, backs up the tablet and runs the tablet check. Then M20 (order history and spending summary).
+
+## 2026-10-29 (morning) — M19 details confirmed; typed lines get pack size and unit
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session. Dan: "approve a-g except for c - allow for different pack sizes and units on typed lines; after approval of #1 run an independent review". PR #30 (M19) was already merged, so `m19-details-confirmed` starts from `main` (`4a9c659`).
+
+**WORK COMPLETED**
+SPEC v0.14: the seven M19 details written in, (c) as Dan changed it (§3 Order line, §21.1, decision log). Code: `typedLine` takes a pack size and unit (blank unit → "each"); the order form enables Pack size on typed lines and adds a labelled Unit box; the form's line total shows the typed line's own unit; typed lines are stored with the description and unit trimmed. `docs/reviews/M19.md` records the confirmation.
+
+**EVIDENCE**
+Type check and build clean. Unit 854 pass (1 skipped), +1 test (pack size, unit, blank unit, pack size 0 refused, not on order). `m19-ui-check` 37/37 (+2: the form's "$45.00 6 shirt", the order page's "3 × 2 = 6 shirt"; Receive now starts the typed line at 6), clean console; screenshots looked at in landscape and portrait.
+
+**Next:** the independent review of M19 (with this change), in a separate agent.
+
+**Later (independent review and fixes):** A separate review agent wrote `docs/reviews/M19-independent.md` (commit `a04f2f6`). Verdict: merge, after fixing findings 1, 2 and 5. Dan: "fix 1, fix 2, 3 undo skips items that have been received, fix 5, fix 7-8". Fixed on the same branch: the Receive confirmation for deleted items (1); no second order after a receipt fails (2); Undo leaves items received since the import alone (3, SPEC §18.5 v0.14); Cancel and Remove receipt close on relock (5); portrait labels on the order page (7); future dates, oversized totals, $0 price-copy lines, line order on restore, Setup's order total, plan v4 row, tablet-check steps (8). Unit 859 pass; `m19-ui-check` 45/45; regression M3 50, M5 39, M15b 26, M16c 25, M18 14. Findings 4 (the m15 check stops early and still exits 0) and 6 (a duplicate receipt name in a hand-edited backup) are still open.
+
+**Later (findings 4 and 6):** Dan: "fix 4 and 6 too". M15's guard check uses schemaVersion 5 (M15 40/40 again); every browser check script now exits 1 on a FAIL or ERROR. Orders files naming a receipt twice or more than 5 per order are refused at the check. While testing 6, found that the CSV reader guessed the separator: an order with 4+ receipts, or item notes with about 5 semicolons, made a backup unrestorable ("missing columns"). `readCsv` now always uses commas (SPEC §7, v0.14). The Oct 23 tablet backup was never affected. Unit 862 pass; browser regression M2–M19 744/744, clean consoles.

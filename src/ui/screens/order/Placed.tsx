@@ -27,6 +27,7 @@ import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../compone
 import { useDb, useOrderLists, useOrders, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href, replaceRoute } from '../../shell/router';
+import { useCloseOnRelock } from '../../shell/LockPill';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { ListTabs } from './Order';
@@ -273,16 +274,16 @@ export function PlacedOrderScreen({ id }: { id: string }) {
                     {[l.partNo, l.category || (l.itemId ? '' : 'Typed line'), gone && 'item deleted'].filter(Boolean).join(' · ')}
                   </span>
                 </span>
-                <span role="cell" class="n">
+                <span role="cell" class="n" data-l="Ordered">
                   {l.packSize > 1 ? `${l.packs} × ${l.packSize} = ${lineUnits(l)}` : lineUnits(l)} <span class="unit">{l.unit}</span>
                 </span>
-                <span role="cell" class="n">
+                <span role="cell" class="n" data-l="Pack price">
                   {formatCents(l.packPriceCents)}
                 </span>
-                <span role="cell" class="n">
+                <span role="cell" class="n" data-l="Line total">
                   {formatCents(lineTotalCents(l))}
                 </span>
-                <span role="cell" class="n">
+                <span role="cell" class="n" data-l="Received">
                   {l.received} of {lineUnits(l)}
                 </span>
               </div>
@@ -342,7 +343,7 @@ export function PlacedOrderScreen({ id }: { id: string }) {
         </section>
       </div>
 
-      {dlg === 'receive' && <ReceiveDialog order={order} onClose={() => setDlg(null)} />}
+      {dlg === 'receive' && <ReceiveDialog order={order} itemIds={snap.state === 'ready' ? itemIds : null} onClose={() => setDlg(null)} />}
       {dlg === 'edit' && <OrderForm mode="edit" order={order} onClose={() => setDlg(null)} />}
       {dlg === 'cancel' && <CancelDialog order={order} onClose={() => setDlg(null)} />}
       {dlg === 'delete' && <DeleteDialog order={order} onClose={() => setDlg(null)} />}
@@ -353,14 +354,16 @@ export function PlacedOrderScreen({ id }: { id: string }) {
 }
 
 /** F31: received now per line, defaulting to what's still due; Receive all; then a confirmation. */
-function ReceiveDialog({ order, onClose }: { order: PlacedOrder; onClose: () => void }) {
+function ReceiveDialog({ order, itemIds, onClose }: { order: PlacedOrder; itemIds: ReadonlySet<string> | null; onClose: () => void }) {
   const db = useDb();
   const [amounts, setAmounts] = useState(() => order.lines.map((l) => lineDue(l)));
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const problem = receiveProblem(order, amounts);
-  const toStock = order.lines.filter((l, i) => l.itemId !== '' && amounts[i]! > 0);
-  const units = toStock.reduce((n, l) => n + amounts[order.lines.indexOf(l)]!, 0);
+  // Only lines whose item still exists add to on hand; the rest are just marked received (F31).
+  const stocks = (i: number) => order.lines[i]!.itemId !== '' && (itemIds === null || itemIds.has(order.lines[i]!.itemId));
+  const toStock = order.lines.map((_, i) => i).filter((i) => stocks(i) && amounts[i]! > 0);
+  const units = toStock.reduce((n, i) => n + amounts[i]!, 0);
   const set = (i: number, v: number) => setAmounts((a) => a.map((x, j) => (j === i ? Math.max(0, Math.min(lineDue(order.lines[i]!), v)) : x)));
   const receive = async () => {
     setBusy(true);
@@ -376,12 +379,12 @@ function ReceiveDialog({ order, onClose }: { order: PlacedOrder; onClose: () => 
   if (confirming) {
     return (
       <Dialog label="Add to on hand?" role="alertdialog" onClose={() => !busy && setConfirming(false)}>
-        <h2 class="h2">{units > 0 ? `Add ${units} to on hand for ${plural(new Set(toStock.map((l) => l.itemId)).size, 'item')}?` : 'Mark these lines received?'}</h2>
+        <h2 class="h2">{units > 0 ? `Add ${units} to on hand for ${plural(new Set(toStock.map((i) => order.lines[i]!.itemId)).size, 'item')}?` : 'Mark these lines received?'}</h2>
         <ul class="notes-list">
           {order.lines.map((l, i) =>
             amounts[i]! > 0 ? (
               <li key={i}>
-                {l.description}: {l.itemId ? `+${amounts[i]} ${l.unit} on hand` : `${amounts[i]} received (typed line, no inventory change)`}
+                {l.description}: {stocks(i) ? `+${amounts[i]} ${l.unit} on hand` : `${amounts[i]} received (${l.itemId ? 'item deleted' : 'typed line'}, no inventory change)`}
               </li>
             ) : null,
           )}
@@ -412,7 +415,7 @@ function ReceiveDialog({ order, onClose }: { order: PlacedOrder; onClose: () => 
                 <span class="lt">{l.description}</span>
                 <span class="small muted">
                   Ordered {lineUnits(l)} · received {l.received} · due {due}
-                  {l.itemId ? '' : ' · typed line'}
+                  {l.itemId === '' ? ' · typed line' : stocks(i) ? '' : ' · item deleted'}
                 </span>
               </span>
               <div class="stepper-row" role="group" aria-label={`Received now: ${l.description}`}>
@@ -447,6 +450,7 @@ function ReceiveDialog({ order, onClose }: { order: PlacedOrder; onClose: () => 
 function CancelDialog({ order, onClose }: { order: PlacedOrder; onClose: () => void }) {
   const db = useDb();
   const [busy, setBusy] = useState(false);
+  useCloseOnRelock(!busy, onClose);
   return (
     <Dialog label="Cancel this order?" role="alertdialog" onClose={() => !busy && onClose()}>
       <h2 class="h2">Cancel the {order.supplier} order?</h2>
@@ -527,6 +531,7 @@ function DeleteDialog({ order, onClose }: { order: PlacedOrder; onClose: () => v
 function RemoveReceiptDialog({ order, receipt, onClose }: { order: PlacedOrder; receipt: ReceiptRef; onClose: () => void }) {
   const db = useDb();
   const [busy, setBusy] = useState(false);
+  useCloseOnRelock(!busy, onClose);
   return (
     <Dialog label="Remove this receipt?" role="alertdialog" onClose={() => !busy && onClose()}>
       <h2 class="h2">Remove receipt {order.receipts.indexOf(receipt) + 1}?</h2>

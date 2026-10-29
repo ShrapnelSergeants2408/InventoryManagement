@@ -33,6 +33,9 @@ import {
   draftLines,
   isOpen,
   itemLine,
+  lineDue,
+  lineTotalCents,
+  lineUnits,
   nextReceiptId,
   onOrderMap,
   orderProblems,
@@ -181,6 +184,17 @@ describe('totals (§21.1)', () => {
     expect(msgs({ discount: { kind: '$', value: 1000 } })).toEqual([]);
     expect(msgs({ lines: [line({ packPriceCents: 0 })] })).toEqual([]);
   });
+
+  it('with today, a placed date after it is refused; without (a restore), it reads', () => {
+    expect(orderProblems(input({ placedOn: '2026-10-30' }), '2026-10-29').map((p) => p.message)).toEqual(['The placed date can’t be after today.']);
+    expect(orderProblems(input({ placedOn: '2026-10-29' }), '2026-10-29')).toEqual([]);
+    expect(orderProblems(input({ placedOn: '2099-01-01' }))).toEqual([]);
+  });
+
+  it('amounts each valid but too large to add up exactly are refused', () => {
+    expect(orderProblems(input({ lines: [line({ packs: 2 ** 26, packPriceCents: 2 ** 28 })] })).map((p) => p.message)).toEqual(['These amounts are too large to add up exactly.']);
+    expect(orderProblems(input({ lines: [line({ packs: 1000, packSize: 100, packPriceCents: 9_999_999 })] }))).toEqual([]);
+  });
 });
 
 describe('status and on order (§3, §4)', () => {
@@ -242,6 +256,14 @@ describe('the order form’s lines (§21.1)', () => {
     expect(addedItemLine(b!, 'WCP')).toEqual({ line: itemLine(b!, 1, 10, 300, 'WCP-B'), storedPriceCents: 300 });
     expect(addedItemLine(a!, 'WCP')).toEqual({ line: itemLine(a!, 1, 1, 0, ''), storedPriceCents: null });
     expect(typedLine('  Team shirts ', 12, 1500)).toEqual({ itemId: '', description: 'Team shirts', partNo: '', unit: 'each', category: '', packs: 12, packSize: 1, packPriceCents: 1500, received: 0 });
+  });
+
+  it('a typed line keeps its own pack size and unit; a blank unit is "each" (M19 detail (c))', () => {
+    const l = typedLine('Zip ties', 3, 799, 100, ' bag ');
+    expect([l.packSize, l.unit, lineUnits(l), lineTotalCents(l), lineDue(l)]).toEqual([100, 'bag', 300, 2397, 300]);
+    expect(typedLine('Cord', 2, 500, 50, '  ').unit).toBe('each');
+    expect(orderProblems(input({ lines: [typedLine('Wire', 1, 100, 0, 'ft')] })).map((p) => p.field)).toEqual([{ line: 0, field: 'packSize' }]);
+    expect(onOrderMap([order({ lines: [typedLine('Wire', 2, 100, 25, 'ft')] })]).size).toBe(0);
   });
 });
 
@@ -477,6 +499,17 @@ describe('orders.csv and order-lines.csv (§21.6)', () => {
     ]);
   });
 
+  it('lines come back in their line-number order, even from a file sorted in a spreadsheet', () => {
+    const three = order({ lines: [line({ description: 'one' }), line({ description: 'two' }), line({ description: 'three' })] });
+    const [head, ...rows] = serializeOrderLinesCsv([three]).trim().split('\r\n');
+    const r = parseOrdersCsv(serializeOrdersCsv([three]), [head, ...rows.reverse()].join('\r\n'));
+    expect(r.orders[0]!.lines.map((l) => l.description)).toEqual(['one', 'two', 'three']);
+    // A blank line number keeps the file order, after the numbered lines.
+    const blank = [head, rows[2]!.replace(/^(po-[^,]+),1,/, '$1,,'), rows[0], rows[1]].join('\r\n');
+    expect(blank).not.toContain(',1,one');
+    expect(parseOrdersCsv(serializeOrdersCsv([three]), blank).orders[0]!.lines.map((l) => l.description)).toEqual(['two', 'three', 'one']);
+  });
+
   it('an empty history writes both headers', () => {
     expect(serializeOrdersCsv([]).trim().split('\r\n')).toHaveLength(1);
     expect(parseOrdersCsv(serializeOrdersCsv([]), serializeOrderLinesCsv([]))).toEqual({ orders: [], receiptFiles: new Map(), problems: [] });
@@ -492,6 +525,26 @@ describe('orders.csv and order-lines.csv (§21.6)', () => {
       ['order-lines.csv', 3, 'order po-AAAAAA isn\'t in orders.csv'],
       ['order-lines.csv', 4, 'order po-ZZZ isn\'t in orders.csv'],
     ]);
+  });
+
+  it('a receipt named twice, or more than 5 on an order, is a row problem (review finding 6)', () => {
+    const jpg = (id: string) => ({ id, type: 'image/jpeg' as const });
+    const twice = order({ id: 'po-BBBBBB', placedOn: '2026-09-01', receipts: [jpg('po-AAAAAA-1')] });
+    const six = order({ id: 'po-CCCCCC', placedOn: '2026-08-01', receipts: [1, 2, 3, 4, 5, 6].map((n) => jpg(`po-CCCCCC-${n}`)) });
+    const r = parseOrdersCsv(serializeOrdersCsv([tricky, twice, six]), serializeOrderLinesCsv([tricky, twice, six]));
+    expect(r.problems.map((p) => [p.file, p.row, p.message])).toEqual([
+      ['orders.csv', 3, 'receipt "receipts/po-AAAAAA-1.jpg" is named twice (first on row 2)'],
+      ['orders.csv', 4, 'an order can have at most 5 receipts (this one names 6)'],
+      ['order-lines.csv', 4, 'order po-BBBBBB isn\'t in orders.csv'],
+      ['order-lines.csv', 5, 'order po-CCCCCC isn\'t in orders.csv'],
+    ]);
+    expect(r.orders.map((o) => o.id)).toEqual(['po-AAAAAA']);
+  });
+
+  it('an order with 5 receipts reads back (the file isn’t taken for semicolon-separated)', () => {
+    const five = order({ id: 'po-DDDDDD', receipts: [1, 2, 3, 4, 5].map((n) => ({ id: `po-DDDDDD-${n}`, type: 'image/jpeg' as const })) });
+    const r = parseOrdersCsv(serializeOrdersCsv([five]), serializeOrderLinesCsv([five]));
+    expect([r.problems, r.orders[0]?.receipts.length]).toEqual([[], 5]);
   });
 });
 

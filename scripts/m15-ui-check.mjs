@@ -253,14 +253,15 @@ try {
 
   // ── Schema guard: a database from a newer version isn't touched (finding 6) ──
   const settingsBefore = await P(`return await idbAll('settings')`);
-  await P(`await idbPut('settings', { key: 'schemaVersion', value: 4 });`);
+  // One above the app's schema version (4 since M19), so this build is the older one.
+  await P(`await idbPut('settings', { key: 'schemaVersion', value: 5 });`);
   await send('Page.reload');
   await waitFor(`document.querySelector('.state h2')`, 30000);
   await sleep(800);
   check('newer database: "out of date" screen with Reload, no inventory shown', await P(`return [norm($('.state .h2').textContent), !!byText('.state .btn', 'Reload'), $$('.row').length]`), ['This app is out of date — reload to update', true, 0]);
   check('…and nothing was written', (await P(`return await idbAll('settings')`)).filter((s) => s.key !== 'schemaVersion'), settingsBefore.filter((s) => s.key !== 'schemaVersion'));
   await shot('10-outdated');
-  await P(`await idbPut('settings', { key: 'schemaVersion', value: 3 });`);
+  await P(`await idbPut('settings', { key: 'schemaVersion', value: 4 });`);
   await send('Page.reload');
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 30000);
   check('back to the current version: the inventory opens again', await P(`return $$('.cathdr').length >= 11`), true);
@@ -269,9 +270,10 @@ try {
   await shot('error').catch(() => {});
 } finally {
   console.log(results.join('\n'));
+  process.exitCode = results.some((r) => /^(FAIL|ERROR)/.test(r)) ? 1 : 0;
   console.log(problems.length ? 'Console problems:\n' + problems.join('\n') : 'No console errors or warnings');
   ws.close();
   proc.kill();
   preview.kill();
-  process.exit(0);
+  process.exit(process.exitCode);
 }

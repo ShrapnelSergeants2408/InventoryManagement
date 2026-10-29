@@ -22,9 +22,9 @@ export interface PlacedLine {
   unit: string;
   /** '' for a typed line ("Other" in the category summary, §21.5). */
   category: string;
-  /** Whole number ≥ 1. A typed line's quantity. */
+  /** Whole number ≥ 1. */
   packs: number;
-  /** Whole number ≥ 1; always 1 for a typed line. */
+  /** Whole number ≥ 1; a typed line has its own (§21.1, M19 detail (c)). */
   packSize: number;
   /** As charged, ≥ 0. */
   packPriceCents: number;
@@ -141,8 +141,9 @@ export function itemLine(item: Item, packs: number, packSize: number, packPriceC
   return { itemId: item.id, description: item.name, partNo, unit: item.unit, category: item.category, packs, packSize, packPriceCents, received: 0 };
 }
 
-export function typedLine(description: string, quantity: number, unitPriceCents: number): PlacedLine {
-  return { itemId: '', description: description.trim(), partNo: '', unit: 'each', category: '', packs: quantity, packSize: 1, packPriceCents: unitPriceCents, received: 0 };
+/** A line for something that isn't inventory (§21.1): its own pack size and unit; a blank unit is "each". */
+export function typedLine(description: string, packs: number, packPriceCents: number, packSize = 1, unit = 'each'): PlacedLine {
+  return { itemId: '', description: description.trim(), partNo: '', unit: unit.trim() || 'each', category: '', packs, packSize, packPriceCents, received: 0 };
 }
 
 /** The vendor option an item has for a supplier (names compared ignoring capitals), preferred first. */
@@ -184,11 +185,16 @@ export interface OrderProblem {
 
 const isCount = (n: number, min: number) => Number.isSafeInteger(n) && n >= min;
 
-/** Every reason the order can't be saved (§21.1, §21.4); empty when it can. */
-export function orderProblems(o: Omit<PlacedOrder, 'id' | 'created' | 'updated' | 'receipts' | 'cancelled'>): OrderProblem[] {
+/**
+ * Every reason the order can't be saved (§21.1, §21.4); empty when it can. With `today`
+ * (recording and editing), a placed date after it is refused; a restore passes none, so a
+ * backup from a tablet with another clock still reads.
+ */
+export function orderProblems(o: Omit<PlacedOrder, 'id' | 'created' | 'updated' | 'receipts' | 'cancelled'>, today?: string): OrderProblem[] {
   const out: OrderProblem[] = [];
   if (o.supplier.trim() === '') out.push({ field: 'supplier', message: 'Choose the supplier.' });
   if (!isIsoDate(o.placedOn)) out.push({ field: 'placedOn', message: 'Enter the date the order was placed.' });
+  else if (today !== undefined && o.placedOn > today) out.push({ field: 'placedOn', message: 'The placed date can’t be after today.' });
   if (o.lines.length === 0) out.push({ field: 'lines', message: 'Tick at least one line that was ordered.' });
   o.lines.forEach((l, line) => {
     if (l.description.trim() === '') out.push({ field: { line, field: 'description' }, message: 'Describe what was ordered.' });
@@ -208,6 +214,9 @@ export function orderProblems(o: Omit<PlacedOrder, 'id' | 'created' | 'updated' 
     const parts = o.lines.reduce((n, l) => n + lineTotalCents(l), 0);
     if (o.discount.value > parts) out.push({ field: 'discount', message: 'The discount can’t be more than the parts total.' });
   }
+  // Each amount is checked above; their products and sum must stay exact whole cents too.
+  const total = o.lines.reduce((n, l) => n + l.packs * l.packSize + lineTotalCents(l), 0) + o.taxCents + o.shippingCents + o.feesCents;
+  if (out.length === 0 && !Number.isSafeInteger(total)) out.push({ field: 'lines', message: 'These amounts are too large to add up exactly.' });
   return out;
 }
 

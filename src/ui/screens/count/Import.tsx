@@ -2,7 +2,7 @@
 // preview (nothing saved yet) with a choice for every conflict → Apply, saved together →
 // summary with Review new items, Back up now and Undo this import. No PIN (§6).
 import { useMemo, useRef, useState } from 'preact/hooks';
-import { applyImport, previewImport, undoImport, type ImportSummary } from '../../../data/import-counts';
+import { applyImport, previewImport, undoableItems, undoImport, type ImportSummary } from '../../../data/import-counts';
 import { formatDateTime } from '../../../domain/dates';
 import { newestChoices, noChoices, stampMs, type ConflictChoice, type CountsFile, type ImportChoices, type ImportPlan, type PlanRow } from '../../../domain/import-counts';
 import { formatCents } from '../../../domain/money';
@@ -467,12 +467,14 @@ export function UndoDialog({ onClose }: { onClose: () => void }) {
   const db = useDb();
   const undo = useImportUndo();
   const [busy, setBusy] = useState(false);
-  const what = useMemo(() => (undo ? `${plural(undo.items.length, 'item')}, ${plural(undo.pending.length, 'pending item')}, ${plural(undo.locations.length, 'new location')}` : ''), [undo]);
+  const back = undo ? undoableItems(undo).length : 0;
+  const kept = undo ? undo.items.length - back : 0;
+  const what = useMemo(() => (undo ? `${plural(back, 'item')}, ${plural(undo.pending.length, 'pending item')}, ${plural(undo.locations.length, 'new location')}` : ''), [undo, back]);
   const go = async () => {
     setBusy(true);
     try {
       const r = await undoImport(db);
-      showToast(`Import undone: ${plural(r.items, 'item')} put back${r.pending ? `, ${plural(r.pending, 'pending item')} removed` : ''}${r.locations ? `, ${plural(r.locations, 'location')} removed` : ''}.`);
+      showToast(`Import undone: ${plural(r.items, 'item')} put back${r.kept ? `, ${plural(r.kept, 'received item')} kept` : ''}${r.pending ? `, ${plural(r.pending, 'pending item')} removed` : ''}${r.locations ? `, ${plural(r.locations, 'location')} removed` : ''}.`);
       onClose();
     } catch (e) {
       setBusy(false);
@@ -486,6 +488,7 @@ export function UndoDialog({ onClose }: { onClose: () => void }) {
         {undo ? (
           <p class="dlg-p">
             The counts from {undo.helperNames.join(', ')} ({formatDateTime(new Date(undo.at))}) are taken back: {what}. Every item gets back the on-hand number, location, barcode and count date it had before. New locations an item now uses are kept, and pending items already accepted stay.
+            {kept > 0 && ` ${kept === 1 ? '1 item has' : `${kept} items have`} had parts received since the import, so ${kept === 1 ? 'it keeps' : 'they keep'} what ${kept === 1 ? 'it has' : 'they have'} now.`}
           </p>
         ) : (
           <p class="dlg-p">There is no import to undo.</p>

@@ -147,7 +147,8 @@ try {
   // Untick everything but the first two lines; the first was charged $12.34 for 2 packs.
   await js(`const rows = formRows(); for (const r of rows.slice(2)) { r.querySelector('input[type=checkbox]').click(); await settle(30); }
             await type(rowInput(formRows()[0], 'Packs of'), '2'); await type(rowInput(formRows()[0], 'Pack price of'), '12.34');`);
-  await js(`await click('.of-add button', 'Add a typed line'); const r = formRows().at(-1); await type(r.querySelector('input[aria-label=Description]'), 'Team shirts'); await type(rowInput(r, 'Packs of'), '3'); await type(rowInput(r, 'Pack price of'), '15');`);
+  await js(`await click('.of-add button', 'Add a typed line'); const r = formRows().at(-1); await type(r.querySelector('input[aria-label=Description]'), 'Team shirts'); await type(rowInput(r, 'Packs of'), '3'); await type(rowInput(r, 'Pack size of'), '2'); await type(rowInput(r, 'Unit of'), 'shirt'); await type(rowInput(r, 'Pack price of'), '15');`);
+  check('a typed line takes its own pack size and unit (M19 detail (c))', await js(`return norm(formRows().at(-1).querySelector('.of-total').textContent)`), '$45.00 6 shirt');
   await js(`await type(field('Order / invoice'), 'INV-77'); await type(field('Payment'), 'PO 2408-17'); await type(field('Tax'), '4.10'); await type(field('Shipping'), '9.95'); await type(field('Other fees'), '1');
             await click('.segb', '%'); await type('input[aria-label="Discount in percent"]', '10');`);
   const line2Packs = await js(`return Number(rowInput(formRows()[1], 'Packs of').value)`);
@@ -168,7 +169,7 @@ try {
   const today = await js(`const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')`);
   const o1 = await js(`return (await idb('orders'))[0]`);
   check('stored: supplier, date, order #, payment, amounts, discount, 3 lines, nothing received', [o1.supplier, o1.placedOn, o1.orderNo, o1.payment, o1.taxCents, o1.shippingCents, o1.feesCents, o1.discount, o1.lines.length, o1.lines.map((l) => l.received), o1.fromList, o1.cancelled], ['REV', today, 'INV-77', 'PO 2408-17', 410, 995, 100, { kind: '%', value: 1000 }, 3, [0, 0, 0], 'Automatic', false]);
-  check('stored lines: item lines copied from the items, the typed line with no item', [o1.lines[0].itemId, o1.lines[0].packs, o1.lines[0].packPriceCents, o1.lines[2].itemId, o1.lines[2].description, o1.lines[2].packs, o1.lines[2].packPriceCents], [rev[0].id, 2, 1234, '', 'Team shirts', 3, 1500]);
+  check('stored lines: item lines copied from the items, the typed line with no item', [o1.lines[0].itemId, o1.lines[0].packs, o1.lines[0].packPriceCents, o1.lines[2].itemId, o1.lines[2].description, o1.lines[2].packs, o1.lines[2].packSize, o1.lines[2].unit, o1.lines[2].packPriceCents], [rev[0].id, 2, 1234, '', 'Team shirts', 3, 2, 'shirt', 1500]);
   check('catalog: the changed price and both price_checked dates updated', await js(`const a = await idb('items', ${JSON.stringify(rev[0].id)}); const b = await idb('items', ${JSON.stringify(rev[1].id)}); const va = a.vendors[a.preferredVendor - 1]; const vb = b.vendors[b.preferredVendor - 1]; return [va.packPriceCents, va.priceChecked, vb.packPriceCents, vb.priceChecked]`), [1234, today, rev[1].price, today]);
   check('toast names the order and its total', await js(`return toast()`), `Recorded the REV order: ${'$' + (total / 100).toLocaleString('en-US', { minimumFractionDigits: 2 })}. It’s in Order › Placed orders.`);
 
@@ -188,6 +189,7 @@ try {
   await shot('05-placed-list');
   await js(`$('.po-row').click(); await settle(800);`);
   check('order page: lines, the five amounts and the total', await js(`return [$$('.po-l:not(.po-lh)').length, [...document.querySelectorAll('.po-sum > div')].map((d) => norm(d.textContent))]`), [3, [`Parts${money0(parts)}`, `Discount (10%)−${money0(discount)}`, 'Tax$4.10', 'Shipping$9.95', 'Other fees$1.00', `Total${money0(total)}`]]);
+  check('order page: the typed line in packs × pack size and its unit', await js(`return norm($$('.po-l:not(.po-lh)')[2].querySelectorAll('[role=cell]')[1].textContent)`), '3 × 2 = 6 shirt');
 
   // ── Receipts: a PDF and a big photo, shrunk to 1600 px ──
   await js(`await choose(document.querySelector('input[data-receipt=pdf]'), 'invoice.pdf', new TextEncoder().encode('%PDF-1.4 test'), 'application/pdf'); await settle(800);
@@ -200,14 +202,14 @@ try {
   // ── Receive: part, then the rest ──
   const onHand0 = await js(`return (await idb('items', ${JSON.stringify(rev[0].id)})).onHand`);
   await js(`await click('.top button', 'Receive…'); await waitDlg('Receive');`);
-  check('Receive starts each line at what is due', await js(`return $$('.rc-n').map((i) => Number(i.value))`), [units0, line2Packs * rev[1].packSize, 3]);
+  check('Receive starts each line at what is due', await js(`return $$('.rc-n').map((i) => Number(i.value))`), [units0, line2Packs * rev[1].packSize, 6]);
   await js(`const minus = $$('.rc-line')[0].querySelector('button[aria-label^="One fewer"]'); minus.click(); await settle(100); $$('.rc-n')[1].focus(); await type($$('.rc-n')[1], '0'); await type($$('.rc-n')[2], '0'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?');`);
   check('confirmation says exactly what is added', await js(`return norm(dlg('Add to on hand?').querySelector('h2').textContent)`), `Add ${units0 - 1} to on hand for 1 item?`);
   await shot('07-receive-confirm');
   await js(`await click('.dlg button', 'Add ${units0 - 1} to on hand'); await waitGone('Add to on hand?'); await settle(600);`);
   check('partly received: on hand up by exactly that, last_counted unchanged, status chip', await js(`const it = await idb('items', ${JSON.stringify(rev[0].id)}); return [it.onHand - ${onHand0}, it.lastCounted, norm($('.po-head .chip').textContent)]`), [units0 - 1, '', 'Partly received']);
   await js(`await click('.top button', 'Receive…'); await waitDlg('Receive'); await click('.dlg button', 'Receive all'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?'); await click('.dlg button', 'Add'); await waitGone('Add to on hand?'); await settle(600);`);
-  check('received: everything in, the typed line changed no item, no Receive button', await js(`const o = (await idb('orders'))[0]; return [o.lines.map((l) => l.received), norm($('.po-head .chip').textContent), !byText('.top button', 'Receive')]`), [[units0, line2Packs * rev[1].packSize, 3], 'Received', true]);
+  check('received: everything in, the typed line changed no item, no Receive button', await js(`const o = (await idb('orders'))[0]; return [o.lines.map((l) => l.received), norm($('.po-head .chip').textContent), !byText('.top button', 'Receive')]`), [[units0, line2Packs * rev[1].packSize, 6], 'Received', true]);
   check('no Cancel once received', await js(`return !byText('.po-head button', 'Cancel order')`), true);
 
   // ── Edit: received can be corrected without touching on hand ──

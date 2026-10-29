@@ -33,6 +33,9 @@ import {
   draftLines,
   isOpen,
   itemLine,
+  lineDue,
+  lineTotalCents,
+  lineUnits,
   nextReceiptId,
   onOrderMap,
   orderProblems,
@@ -242,6 +245,14 @@ describe('the order form’s lines (§21.1)', () => {
     expect(addedItemLine(b!, 'WCP')).toEqual({ line: itemLine(b!, 1, 10, 300, 'WCP-B'), storedPriceCents: 300 });
     expect(addedItemLine(a!, 'WCP')).toEqual({ line: itemLine(a!, 1, 1, 0, ''), storedPriceCents: null });
     expect(typedLine('  Team shirts ', 12, 1500)).toEqual({ itemId: '', description: 'Team shirts', partNo: '', unit: 'each', category: '', packs: 12, packSize: 1, packPriceCents: 1500, received: 0 });
+  });
+
+  it('a typed line keeps its own pack size and unit; a blank unit is "each" (M19 detail (c))', () => {
+    const l = typedLine('Zip ties', 3, 799, 100, ' bag ');
+    expect([l.packSize, l.unit, lineUnits(l), lineTotalCents(l), lineDue(l)]).toEqual([100, 'bag', 300, 2397, 300]);
+    expect(typedLine('Cord', 2, 500, 50, '  ').unit).toBe('each');
+    expect(orderProblems(input({ lines: [typedLine('Wire', 1, 100, 0, 'ft')] })).map((p) => p.field)).toEqual([{ line: 0, field: 'packSize' }]);
+    expect(onOrderMap([order({ lines: [typedLine('Wire', 2, 100, 25, 'ft')] })]).size).toBe(0);
   });
 });
 

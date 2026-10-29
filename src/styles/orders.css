@@ -21,6 +21,7 @@
 .of-tick { display: flex; align-items: center; justify-content: center; min-height: 48px; cursor: pointer; }
 .of-tick input { width: 28px; height: 28px; accent-color: var(--ink); }
 .of-name { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding-top: 6px; }
+.of-name .of-unit { display: flex; align-items: center; gap: 10px; max-width: 260px; }
 .of-name .chip { align-self: flex-start; height: auto; min-height: 30px; white-space: normal; }
 .of-total { padding-top: 12px; }
 .field.sm { min-height: 48px; padding: 0 10px; }

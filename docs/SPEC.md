@@ -1,7 +1,16 @@
-# FRC 2408 Inventory Management — Specification v0.13
+# FRC 2408 Inventory Management — Specification v0.14
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-28 (v0.13) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT
+**Status:** Approved by Dan 2026-10-29 (v0.14) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT
+
+**Changes in v0.14:** Seven placed-order details, filled in while building M19 and confirmed by Dan on 2026-10-29 (`docs/reviews/M19.md`, "Details I filled in"), (a)–(g) except (c), which Dan changed:
+- (a) The PIN is asked when the order form opens, and again on Save if mentor tools relocked in between; the form stays open, so nothing typed is lost (§21.1).
+- (b) The placed date can't be after today (§21.1).
+- (c) **Changed by Dan:** a typed line has its own pack size and unit, like an item line: packs, pack size, unit (blank means "each") and pack price. Received counts units (packs × pack size). It still never changes inventory (§3 Order line, §21.1).
+- (d) Receiving can't take more than is still due on a line. An over-delivery is added to on hand by hand (F3), with Edit to raise the packs (F31).
+- (e) Recording from a named list removes every ordered item from that list, including an item added with + Add line that was also on the list (§21.1).
+- (f) Placed orders has All / Open; date ranges and the spending summary come with F32 (M20).
+- (g) A PDF receipt opens in the browser's PDF viewer in a new tab (§21.2).
 
 **Changes in v0.13 (approved by Dan 2026-10-28, §15 Q8):**
 - **Stage 5 leftovers** (`docs/stage5-review.md` findings 3, 4, 5, 7, 8 and 9; Dan, 2026-10-28), built as M18:
@@ -213,7 +222,7 @@ Order lists are plans, not inventory: they never change on_hand, desired, spares
 | created / updated | yes | Date-time |
 | lines | 1+ | See below |
 
-**Order line:** item id (blank for a typed line); description, part #, unit and category copied from the item when the order is recorded (so the record stays the same if the item is later edited or deleted); packs, pack size and pack price as charged; received (units so far, default 0). Line total = packs × pack price. A typed line has packs = quantity and pack size 1, and never changes inventory.
+**Order line:** item id (blank for a typed line); description, part #, unit and category copied from the item when the order is recorded (so the record stays the same if the item is later edited or deleted); packs, pack size and pack price as charged; received (units so far, default 0). Line total = packs × pack price. A typed line has its own pack size and unit (blank means "each"), no part # or category, and never changes inventory (v0.14).
 
 ### Helper (main tablet only, §18)
 | Field | Required | Notes |
@@ -515,6 +524,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-28 | Dan: take care of the Stage 5 leftovers, and add a record of orders actually placed (tax, discounts, shipping, etc.) and an order history over a date range with a spending summary by vendor and in total. Answers to Claude Code's questions: start from an order list, split by supplier; order #, payment / PO, receipt photo or PDF; receiving adds to on hand; offer to update prices (PIN); PIN to record, edit and delete; order-level discount in $ or %; typed lines allowed; presets + custom range, CSV, printable summary, by category; subtract what's on order; ordered lines leave a named list; tax and shipping in dollars; finding 7: reset but warn |
 | 2026-10-28 | v0.13 draft: Stage 5 leftovers (findings 3, 4, 5, 7, 8, 9), F30 placed orders, F31 receiving, F32 order history and spending, §21, §22. Awaiting approval (§15 Q8) |
 | 2026-10-28 | Dan merged PRs #27 and #28 (M18) and approved the v0.13 details (§15 Q8 (a)–(g)): "spec details approved". v0.13 approved; M19 next |
+| 2026-10-29 | Dan merged PR #30 (M19) and confirmed its details: "approve a-g except for c - allow for different pack sizes and units on typed lines". v0.14: typed lines have their own pack size and unit. Independent review of M19 next |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -704,7 +714,7 @@ v0.7 is built (milestones 1–10) and verified in Stage 5. v0.8 is added to that
 
 ### 21.1 Mark ordered (F30)
 - **Where:** each supplier group on the Automatic list (F12) and on a named list (F27) has **Mark ordered…**. It opens the order form for that supplier, after the PIN.
-- **Lines:** every line of the group, ticked, with its packs (as the list works them out, §4), the vendor option's pack size and pack price. A line with no stored price must have one entered. Untick lines that weren't ordered; change packs, pack size or pack price to what was charged. **+ Add line** adds an inventory item (search by name, part # or barcode; it uses the item's vendor option for this supplier if it has one, otherwise its preferred vendor's pack size, with the price left blank) or a **typed line** (description, quantity, unit price; for things that aren't inventory, e.g. team shirts).
+- **Lines:** every line of the group, ticked, with its packs (as the list works them out, §4), the vendor option's pack size and pack price. A line with no stored price must have one entered. Untick lines that weren't ordered; change packs, pack size or pack price to what was charged. **+ Add line** adds an inventory item (search by name, part # or barcode; it uses the item's vendor option for this supplier if it has one, otherwise its preferred vendor's pack size, with the price left blank) or a **typed line** (description, unit, packs, pack size and pack price; for things that aren't inventory, e.g. team shirts; v0.14).
 - **Order fields:** placed date (default today), order or invoice number, payment / PO, tax, shipping, other fees (dollar amounts as charged, default 0), discount (a dollar amount or a percent of the parts total), notes, receipts (§21.2).
 - **Totals, shown as you type:** parts = Σ line totals; discount = the dollar amount, or parts × percent ÷ 100 rounded to the cent; **total = parts − discount + tax + shipping + fees**. All money is kept in whole cents.
 - **Checks before saving:** at least one ticked line; packs and pack size whole numbers ≥ 1; prices ≥ 0 in cents; tax, shipping and fees ≥ 0; a percent from 0 to 100; a dollar discount not more than the parts total. Errors are shown beside the field; nothing is saved until all pass.

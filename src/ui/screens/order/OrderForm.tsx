@@ -80,7 +80,9 @@ const toRow = (d: DraftLine, added = false, on = true): Row => ({
 
 /** The line as the form has it: NaN where a number can't be read, so the checks name it. */
 function rowLine(r: Row): PlacedLine {
-  return { ...r.line, packs: whole(r.packs), packSize: whole(r.packSize), packPriceCents: cents(r.price), received: whole(r.received) };
+  const nums = { packs: whole(r.packs), packSize: whole(r.packSize), packPriceCents: cents(r.price), received: whole(r.received) };
+  if (r.line.itemId) return { ...r.line, ...nums };
+  return { ...typedLine(r.line.description, nums.packs, nums.packPriceCents, nums.packSize, r.line.unit), received: nums.received };
 }
 
 export type OrderFormProps =
@@ -218,6 +220,10 @@ export function OrderForm(props: OrderFormProps) {
                 ) : (
                   <>
                     <input class="field sm" aria-label="Description" placeholder="What was ordered, e.g. Team shirts" value={r.line.description} onInput={(e) => setRow(r.key, { line: { ...r.line, description: (e.currentTarget as HTMLInputElement).value } })} />
+                    <label class="of-unit">
+                      <span class="small muted">Unit</span>
+                      <input class="field sm" aria-label={`Unit of ${r.line.description || 'this line'}`} placeholder="e.g. each, ft, box" disabled={!r.on} value={r.line.unit} onInput={(e) => setRow(r.key, { line: { ...r.line, unit: (e.currentTarget as HTMLInputElement).value } })} />
+                    </label>
                     <span class="small muted">Typed line · doesn’t change inventory</span>
                   </>
                 )}
@@ -229,7 +235,7 @@ export function OrderForm(props: OrderFormProps) {
                 {r.on && show(lineProblem(r, 'packs'))}
               </span>
               <span data-l="Pack size">
-                <input class="field sm n" inputMode="numeric" aria-label={`Pack size of ${r.line.description}`} disabled={!r.on || !r.line.itemId} value={r.packSize} onInput={(e) => setRow(r.key, { packSize: (e.currentTarget as HTMLInputElement).value })} />
+                <input class="field sm n" inputMode="numeric" aria-label={`Pack size of ${r.line.description}`} disabled={!r.on} value={r.packSize} onInput={(e) => setRow(r.key, { packSize: (e.currentTarget as HTMLInputElement).value })} />
                 {r.on && show(lineProblem(r, 'packSize'))}
               </span>
               <span data-l="Pack price">
@@ -244,7 +250,7 @@ export function OrderForm(props: OrderFormProps) {
               )}
               <span class="n of-total">
                 {r.on ? total : <span class="small muted">not ordered</span>}
-                {r.on && Number.isFinite(lineUnits(l)) && l.packSize > 1 && <span class="small muted"> {lineUnits(l)} {r.line.unit}</span>}
+                {r.on && Number.isFinite(lineUnits(l)) && l.packSize > 1 && <span class="small muted"> {lineUnits(l)} {l.unit}</span>}
               </span>
             </div>
           );

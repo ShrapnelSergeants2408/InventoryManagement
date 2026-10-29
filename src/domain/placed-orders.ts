@@ -22,9 +22,9 @@ export interface PlacedLine {
   unit: string;
   /** '' for a typed line ("Other" in the category summary, §21.5). */
   category: string;
-  /** Whole number ≥ 1. A typed line's quantity. */
+  /** Whole number ≥ 1. */
   packs: number;
-  /** Whole number ≥ 1; always 1 for a typed line. */
+  /** Whole number ≥ 1; a typed line has its own (§21.1, M19 detail (c)). */
   packSize: number;
   /** As charged, ≥ 0. */
   packPriceCents: number;
@@ -141,8 +141,9 @@ export function itemLine(item: Item, packs: number, packSize: number, packPriceC
   return { itemId: item.id, description: item.name, partNo, unit: item.unit, category: item.category, packs, packSize, packPriceCents, received: 0 };
 }
 
-export function typedLine(description: string, quantity: number, unitPriceCents: number): PlacedLine {
-  return { itemId: '', description: description.trim(), partNo: '', unit: 'each', category: '', packs: quantity, packSize: 1, packPriceCents: unitPriceCents, received: 0 };
+/** A line for something that isn't inventory (§21.1): its own pack size and unit; a blank unit is "each". */
+export function typedLine(description: string, packs: number, packPriceCents: number, packSize = 1, unit = 'each'): PlacedLine {
+  return { itemId: '', description: description.trim(), partNo: '', unit: unit.trim() || 'each', category: '', packs, packSize, packPriceCents, received: 0 };
 }
 
 /** The vendor option an item has for a supplier (names compared ignoring capitals), preferred first. */

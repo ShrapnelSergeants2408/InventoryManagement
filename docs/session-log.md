@@ -794,3 +794,16 @@ To build `main` for the upgrade check, a scratch worktree got a `node_modules` j
 High for the money and the data paths (unit tests to the cent, mutants, real IndexedDB, a byte-level upgrade on real data). Medium for the camera and PDF picker on the Tab S8 and the form's feel with gloves, until the tablet check. Recommended before merging: an independent fresh-session review (stage6-plan M19).
 
 **Next:** Dan merges PR #29, decides on the independent review, confirms details (a)–(g) in `docs/reviews/M19.md`, merges M19 with a merge commit, backs up the tablet and runs the tablet check. Then M20 (order history and spending summary).
+
+## 2026-10-29 (morning) — M19 details confirmed; typed lines get pack size and unit
+
+**SESSION IDENTITY**
+Claude Code (Opus 5.5), new session. Dan: "approve a-g except for c - allow for different pack sizes and units on typed lines; after approval of #1 run an independent review". PR #30 (M19) was already merged, so `m19-details-confirmed` starts from `main` (`4a9c659`).
+
+**WORK COMPLETED**
+SPEC v0.14: the seven M19 details written in, (c) as Dan changed it (§3 Order line, §21.1, decision log). Code: `typedLine` takes a pack size and unit (blank unit → "each"); the order form enables Pack size on typed lines and adds a labelled Unit box; the form's line total shows the typed line's own unit; typed lines are stored with the description and unit trimmed. `docs/reviews/M19.md` records the confirmation.
+
+**EVIDENCE**
+Type check and build clean. Unit 854 pass (1 skipped), +1 test (pack size, unit, blank unit, pack size 0 refused, not on order). `m19-ui-check` 37/37 (+2: the form's "$45.00 6 shirt", the order page's "3 × 2 = 6 shirt"; Receive now starts the typed line at 6), clean console; screenshots looked at in landscape and portrait.
+
+**Next:** the independent review of M19 (with this change), in a separate agent.

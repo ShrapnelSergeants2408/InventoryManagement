@@ -131,7 +131,7 @@ try {
 
   // ── More and Settings ──
   await js(`await go('#/more');`);
-  check('More: managed lists, backup, settings, about', await js(`return $$('.mrow .mt').map((e) => norm(e.textContent))`), ['Categories', 'Locations', 'Backup & restore', 'Settings', 'Hiebert Home Inventory', 'App version 2.0.0-h1']);
+  check('More: managed lists, backup, settings, about', await js(`return $$('.mrow .mt').map((e) => norm(e.textContent))`), ['Categories', 'Locations', 'Backup & restore', 'Settings', 'Hiebert Home Inventory', 'App version 0.1.0-h1']);
   await shot('07-more');
   await js(`await go('#/more/settings'); await type('#set-reminder', '0'); await click('.top .btn.pri', 'Save'); await settle(500);`);
   check('Settings: the reminder turns off with 0', await js(`const s = await idb('settings'); return s.find((r) => r.key === 'reminderDays')?.value`), 0);

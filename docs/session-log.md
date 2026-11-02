@@ -878,3 +878,27 @@ Dan: "write the hand-off guide and clean up unnecessary files (old deprecated lo
 Dan: "lets now set this as version 1.0.0", and asked how to start the tablet with a fresh database (no test data, helpers or orders). `APP_VERSION`, `package.json` and `package-lock.json` 1.0.0; the M16a and M17 checks expect it. `docs/HANDOFF.md` §8 gains "Starting completely fresh": clear the site's data in Chrome, then first-launch setup; a restore can't do it because it keeps the PIN, settings and helper list.
 
 **Later:** Dan, 2026-10-29: "merged. tablet reset and set up fresh." PR #41 merged; the Tab S8 runs 1.0.0, its test data cleared (site data), set up again with a new PIN and recovery code. From here the tablet holds the team's real inventory: test on a computer or a spare device, never on it.
+
+## 2026-11-02 (morning) — Household conversion: planning and interview
+
+**SESSION IDENTITY**
+Fork `dhiebert-whs/HouseholdInventory` (upstream `ShrapnelSergeants2408/InventoryManagement`), `main` at `925a75f`. Dan: modify the FRC inventory for household use (holiday decorations first; utility room, garage and tools, attic; later pantry, kitchen, laundry), phone-based, updatable from 2 phones (up to 5) through a lightweight free server. "Start with a planning phase … also interview me."
+
+**DATES & TIMES**
+2026-11-02, about 10:45–11:25 CST. Exact minutes for each interview round were not recorded.
+
+**WORK COMPLETED**
+Reviewed HANDOFF, SPEC v0.18 (§1–§6, §9, §13), the data model (`src/domain/types.ts`, `src/data/db.ts`) and the future-features proposals. Four interview rounds (16 answers). Wrote `docs/proposals/2026-11-02-household-conversion-plan.md`: what's kept, removed and reshaped; local-first plus Cloudflare sync; the household data model; features H-F1 to H-F19; milestones H0–H7; details D1–D10 and questions Q1–Q5.
+
+**DELIVERABLES PRODUCED**
+`docs/proposals/2026-11-02-household-conversion-plan.md`. Not committed.
+
+**PREDECESSORS/CONTEXT**
+FRC app 1.0.0 (2026-10-29). The pit-trips "containers" proposal and the tool-checkout proposal informed the bins and the lent-out feature.
+
+**CONFIDENCE**
+Plan: high for scope and the removals. Medium for Cloudflare Access sign-in in an iOS home-screen app (spike planned at H4 start, with a fallback). Free-tier figures are approximate and to be checked again at build time.
+
+**Next:** Dan answers D1–D10 and Q1–Q5. Then H0: write SPEC v2.0.
+
+**Later (about 11:30–11:45):** Dan: "1) yes; 2) confirmed; 3) only 2 people … items should only be in one season, keep value/insurance fields for all items". So H4 comes before H5, D1–D10 are confirmed, there are 2 users, the free `workers.dev` address is used for now (a custom domain only costs the registration, ~$10–12/yr), one season per item, and value and records fields go on every item. **H0:** `docs/SPEC.md` rewritten as SPEC v2.0 (household) on branch `h0-spec`. The FRC v0.18 spec stays in git history (`925a75f`). README and HANDOFF are left FRC until H1.

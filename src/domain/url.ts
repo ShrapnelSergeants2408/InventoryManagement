@@ -1,4 +1,4 @@
-// Product-page and supplier links (F11, F23). Only http(s) links are stored or opened, so an
+// Web links (manuals and product pages, H6). Only http(s) links are stored or opened, so an
 // imported "javascript:" value can never run when tapped.
 
 export type UrlParse = { ok: true; url: string } | { ok: false; error: string };

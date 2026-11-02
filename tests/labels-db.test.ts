@@ -16,10 +16,6 @@ async function setup() {
   await replaceAll(
     db,
     {
-      suppliers: [
-        { name: 'REV', website: '', notes: '' },
-        { name: 'other', website: '', notes: '' },
-      ],
       locations: [],
       categories: [{ name: 'Motors', order: 0, subcategories: [] }],
       items: [item({ id: 'a', name: 'Alpha' }), item({ id: 'b', name: 'Bravo', barcode: '722787604386' })],
@@ -75,7 +71,7 @@ describe('setBarcode (F21 attach; no PIN)', () => {
   it('refuses empty codes, team labels and unknown items', async () => {
     await setup();
     await expect(setBarcode(db, 'a', '  ', 9)).rejects.toThrow(/empty/);
-    await expect(setBarcode(db, 'a', '2408:st-0001', 9)).rejects.toThrow(/team QR label/);
+    await expect(setBarcode(db, 'a', 'hhi:st-0001', 9)).rejects.toThrow(/household QR label/);
     await expect(setBarcode(db, 'zz', '123', 9)).rejects.toThrow(/no item/);
   });
 });
@@ -87,7 +83,7 @@ describe('last label layout (localStorage)', () => {
     expect(loadLabelChoice(store)).toEqual({ layoutId: null, plainQr: null });
     saveLabelChoice({ layoutId: 'plain', plainQr: 1.5 }, store);
     expect(loadLabelChoice(store)).toEqual({ layoutId: 'plain', plainQr: 1.5 });
-    m.set('frc2408.labels.layout', '{bad');
+    m.set('hhi.labels.layout', '{bad');
     expect(loadLabelChoice(store)).toEqual({ layoutId: null, plainQr: null });
   });
 });

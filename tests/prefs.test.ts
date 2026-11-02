@@ -25,7 +25,7 @@ describe('remembered list state (F1 expanded groups, F5 filters)', () => {
 
   it('filters round-trip, including "No location"', () => {
     const s = memoryStore();
-    const f = { ...NO_FILTERS, short: true, location: '', supplier: 'WCP' };
+    const f = { ...NO_FILTERS, category: 'Lights', location: '' };
     saveFilters(f, s);
     expect(loadFilters(s)).toEqual(f);
   });
@@ -38,11 +38,11 @@ describe('remembered list state (F1 expanded groups, F5 filters)', () => {
 
   it('corrupt or wrong-shaped values → defaults', () => {
     const s = memoryStore();
-    s.data.set('frc2408.inventory.expanded', '{not json');
-    s.data.set('frc2408.inventory.filters', '{"short":"yes","category":5,"location":null}');
+    s.data.set('hhi.inventory.expanded', '{not json');
+    s.data.set('hhi.inventory.filters', '{"short":"yes","category":5,"location":null}');
     expect(loadExpanded(s)).toEqual(new Set());
     expect(loadFilters(s)).toEqual(NO_FILTERS);
-    s.data.set('frc2408.inventory.expanded', '["a",3,null]');
+    s.data.set('hhi.inventory.expanded', '["a",3,null]');
     expect(loadExpanded(s)).toEqual(new Set(['a']));
   });
 
@@ -67,7 +67,7 @@ describe('recently viewed items (v0.17)', () => {
   });
   it('bad or blocked storage gives an empty list and never throws', () => {
     const store = memoryStore();
-    store.setItem('frc2408.inventory.recent', '{"not":"a list"}');
+    store.setItem('hhi.inventory.recent', '{"not":"a list"}');
     expect(loadRecent(store)).toEqual([]);
     const blocked: KeyValueStore = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
     expect(loadRecent(blocked)).toEqual([]);

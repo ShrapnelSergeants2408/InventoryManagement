@@ -1,51 +1,44 @@
-// Restore confirmation (F17, S6, mockup 8c): "on this tablet now" vs "in the backup", an
-// optional backup first, and Replace everything only after the "I understand" tick.
+// Restore confirmation (F18): "on this phone now" vs "in the backup", an optional backup first,
+// and Replace everything only after the "I understand" tick.
 import { useState } from 'preact/hooks';
 import { applyRestore } from '../../../data/backup';
 import { formatBytes, formatDateTime, formatIsoDate, localIsoDate } from '../../../domain/dates';
-import type { NamedOrderList } from '../../../domain/order-lists';
 import type { RestorePlan } from '../../../io/restore';
-import { gate } from '../../../security/gate';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { PinMark, plural } from '../../components/common';
+import { plural } from '../../components/common';
 import { forgetAllThumbnails, useDb } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { showToast } from '../../shell/toast';
 import { exportBackup, exportMessage } from './export-backup';
 
-export interface TabletNow {
+export interface PhoneNow {
   items: number;
   photos: number;
   photoIds: ReadonlySet<string>;
-  suppliers: number;
-  orderLists: readonly NamedOrderList[];
-  /** Pending items from helpers (§18.5). */
-  pending: number;
-  /** Placed orders (§21.6). */
-  orders: number;
+  locations: number;
   lastChangeAt: number | null;
 }
 
-export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; tablet: TabletNow; onClose: () => void }) {
+export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; phone: PhoneNow; onClose: () => void }) {
   const db = useDb();
   const [understood, setUnderstood] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [backedUp, setBackedUp] = useState<string | null>(null);
   const now = new Date();
 
-  const keptPhotos = plan.kind === 'csv' ? plan.items.filter((i) => tablet.photoIds.has(i.id)).length : 0;
-  // Photos the ZIP names but doesn't have: the tablet keeps its own (Stage 5 finding 5).
+  const keptPhotos = plan.kind === 'csv' ? plan.items.filter((i) => phone.photoIds.has(i.id)).length : 0;
+  // Photos the ZIP names but doesn't have: the phone keeps its own.
   const missing = plan.missingPhotos.length;
-  const keptMissing = plan.missingPhotos.filter((id) => tablet.photoIds.has(id)).length;
+  const keptMissing = plan.missingPhotos.filter((id) => phone.photoIds.has(id)).length;
   const backupPhotos =
     plan.kind === 'csv'
-      ? `${keptPhotos} kept from this tablet`
+      ? `${keptPhotos} kept from this phone`
       : missing === 0
         ? String(plan.photos.size)
-        : `${plan.photos.size}, ${missing} missing${keptMissing > 0 ? ` (${keptMissing} kept from this tablet)` : ''}`;
+        : `${plan.photos.size}, ${missing} missing${keptMissing > 0 ? ` (${keptMissing} kept from this phone)` : ''}`;
   const empty = plan.items.length === 0;
   const saved = plan.savedAt ? formatDateTime(plan.savedAt, now) + (plan.savedAtSource === 'file name' ? ' (from the file name)' : '') : 'unknown';
-  const changed = tablet.lastChangeAt === null ? 'unknown' : `changed ${formatDateTime(new Date(tablet.lastChangeAt), now)}`;
+  const changed = phone.lastChangeAt === null ? 'unknown' : `changed ${formatDateTime(new Date(phone.lastChangeAt), now)}`;
   const since = plan.savedAt ? ` since ${formatIsoDate(localIsoDate(plan.savedAt))}` : ' since the backup was made';
 
   const backUpFirst = async () => {
@@ -65,7 +58,6 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
   };
 
   const replace = async () => {
-    if (!(await gate('Restoring replaces all inventory on this tablet.'))) return;
     setBusy('Replacing everything…');
     try {
       const withPhotos = await applyRestore(db, plan);
@@ -78,19 +70,10 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
     }
   };
 
-  const restoredIds = new Set(plan.items.map((i) => i.id));
-  const droppedLines = tablet.orderLists.reduce((n, l) => n + l.lines.filter((x) => !restoredIds.has(x.itemId)).length, 0);
-  const listsAfter =
-    plan.orderLists !== null
-      ? String(plan.orderLists.length)
-      : `${tablet.orderLists.length} kept${droppedLines > 0 ? `, ${plural(droppedLines, 'line')} for items not in the backup removed` : ''}`;
   const rows: [string, string, string][] = [
-    ['Items', String(tablet.items), String(plan.items.length)],
-    ['Photos', String(tablet.photos), backupPhotos],
-    ['Suppliers', String(tablet.suppliers), plan.kind === 'zip' ? String(plan.suppliers.length) : `${plan.suppliers.length} (this tablet’s list${plan.addedSuppliers.length ? ' + new names' : ''})`],
-    ['Order lists', String(tablet.orderLists.length), listsAfter],
-    ['Pending from helpers', String(tablet.pending), plan.pending === null ? `${tablet.pending} kept` : String(plan.pending.length)],
-    ['Placed orders', String(tablet.orders), plan.orders === null ? `${tablet.orders} kept` : String(plan.orders.length)],
+    ['Items', String(phone.items), String(plan.items.length)],
+    ['Photos', String(phone.photos), backupPhotos],
+    ['Locations', String(phone.locations), String(plan.locations.length)],
     ['Saved', changed, saved],
   ];
 
@@ -104,7 +87,7 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
         <thead>
           <tr>
             <th />
-            <th>On this tablet now</th>
+            <th>On this phone now</th>
             <th>In the backup</th>
           </tr>
         </thead>
@@ -126,15 +109,14 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
             {missing > 0 && (
               <p>
                 {plural(missing, 'photo')} named in the backup {missing === 1 ? 'is' : 'are'} missing from the ZIP.
-                {keptMissing === 0 ? '' : missing === 1 ? ' This tablet keeps its own photo for that item.' : ` This tablet keeps its own photo for ${keptMissing} of them.`}
+                {keptMissing === 0 ? '' : missing === 1 ? ' This phone keeps its own photo for that item.' : ` This phone keeps its own photo for ${keptMissing} of them.`}
               </p>
             )}
           </div>
         </div>
       )}
-      {(plan.addedSuppliers.length > 0 || plan.addedLocations.length > 0 || plan.warnings.length > 0) && (
+      {(plan.addedLocations.length > 0 || plan.warnings.length > 0) && (
         <ul class="small notes-list">
-          {plan.addedSuppliers.length > 0 && <li>Suppliers added to the list: {plan.addedSuppliers.join(', ')}</li>}
           {plan.addedLocations.length > 0 && <li>Locations added to the end of the walk order: {plan.addedLocations.join(', ')}</li>}
           {plan.warnings.map((w) => (
             <li key={w}>{w}</li>
@@ -142,7 +124,7 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
         </ul>
       )}
       <p class="dlg-p">
-        Everything on the tablet is replaced{plan.kind === 'csv' ? ' (photos are kept for matching item ids, and order lists are kept)' : ', order lists included'}. Counts and items added{since} will be lost unless you back up first.
+        Everything on the phone is replaced{plan.kind === 'csv' ? ' (photos are kept for matching item ids)' : ''}. Changes and items added{since} will be lost unless you back up first.
       </p>
       <label class="tick">
         <input type="checkbox" checked={understood} disabled={!!busy} onChange={(e) => setUnderstood((e.currentTarget as HTMLInputElement).checked)} />
@@ -155,7 +137,7 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
       )}
       <DialogActions>
         <button type="button" class="btn lg" disabled={!!busy} onClick={() => void backUpFirst()}>
-          Back up this tablet first
+          Back up this phone first
         </button>
         <button type="button" class="btn lg" data-autofocus disabled={!!busy} onClick={onClose}>
           Cancel
@@ -165,7 +147,6 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
         <button type="button" class="btn danger lg" disabled={!understood || !!busy} onClick={() => void replace()}>
           <Icon name="trash" />
           {busy ?? 'Replace everything'}
-          <PinMark />
         </button>
       </DialogActions>
     </Dialog>

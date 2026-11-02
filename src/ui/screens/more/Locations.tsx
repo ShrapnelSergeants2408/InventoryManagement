@@ -1,16 +1,13 @@
-// Locations (F25, mockups 7i–7j). Anyone can add and reorder (the order is the walk order
-// for count-in and labels by location); rename and remove need the mentor PIN.
+// Locations (F11): add, rename, reorder (walk order) and remove; removing one asks where its items go.
 import { useState } from 'preact/hooks';
 import { addLocation, moveLocation, removeLocation, updateLocation } from '../../../data/lists';
 import { locationUsage, takenLocationNames } from '../../../domain/lists';
 import { nameKey, type Location } from '../../../domain/types';
-import { gate } from '../../../security/gate';
-import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../components/common';
+import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
-import { useCloseOnRelock } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
@@ -20,7 +17,7 @@ type Open = { kind: 'add' } | { kind: 'scan' } | { kind: 'edit'; l: Location } |
 
 const fail = (e: unknown) => showToast(e instanceof Error ? e.message : String(e));
 
-/** "1 item: 10-32 x 3/4 in. …" or "3 items: A, B and 1 more" (mockups 7g, 7j). */
+/** "1 item: 10-32 x 3/4 in. …" or "3 items: A, B and 1 more". */
 export function heldText(names: readonly string[]): string {
   const shown = names.slice(0, 2).join(', ');
   return names.length > 2 ? `${shown} and ${names.length - 2} more` : shown;
@@ -30,8 +27,6 @@ export function LocationsScreen() {
   const db = useDb();
   const live = useSnapshot();
   const [open, setOpen] = useState<Open>(null);
-  // Dialogs opened behind the PIN close when mentor tools relock.
-  useCloseOnRelock(open?.kind === 'edit' || open?.kind === 'remove', () => setOpen(null));
   const [reorder, setReorder] = useState(false);
   const back = <BackButton label="More" fallback={href.tab('more')} />;
 
@@ -50,9 +45,6 @@ export function LocationsScreen() {
   const unplaced = usage.get('')?.length ?? 0;
   const placed = (snap?.items.length ?? 0) - unplaced;
 
-  const withPin = async (reason: string, next: Open) => {
-    if (await gate(reason)) setOpen(next);
-  };
 
   return (
     <>
@@ -78,9 +70,7 @@ export function LocationsScreen() {
       </TopBar>
       <div class="mlist">
         <p class="small muted lockline">
-          The list order is the <strong>walk order</strong> for count-in by location and labels by location. Anyone can add or reorder.{' '}
-          <Icon name="lock" />
-          Rename and remove need the mentor PIN.
+          The list order is the <strong>walk order</strong> used for labels by location.
         </p>
         {!snap ? (
           <StateMessage icon="pin" title="Loading locations…" />
@@ -113,14 +103,12 @@ export function LocationsScreen() {
                   </div>
                   {!reorder && (
                     <div class="acts">
-                      <button type="button" class="btn sm" onClick={() => void withPin('Renaming a location needs the mentor PIN.', { kind: 'edit', l })}>
+                      <button type="button" class="btn sm" onClick={() => setOpen({ kind: 'edit', l })}>
                         Rename
-                        <PinMark />
-                      </button>
-                      <button type="button" class="btn sm danger" onClick={() => void withPin('Removing a location needs the mentor PIN.', { kind: 'remove', l })}>
+                                      </button>
+                      <button type="button" class="btn sm danger" onClick={() => setOpen({ kind: 'remove', l })}>
                         Remove
-                        <PinMark />
-                      </button>
+                                      </button>
                     </div>
                   )}
                 </div>

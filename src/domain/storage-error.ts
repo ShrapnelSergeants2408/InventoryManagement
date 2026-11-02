@@ -1,4 +1,4 @@
-// When the storage-error screen may offer "Set up again" (Stage 5 finding 1). Deleting the
+// When the storage-error screen may offer "Set up again". Deleting the
 // database can't be protected by the PIN (the PIN is in it), so it's offered only when trying
 // again hasn't helped and the error isn't one that clears up by itself.
 

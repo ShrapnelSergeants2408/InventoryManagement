@@ -8,7 +8,7 @@
 // on it; the alignment nudge corrects small offsets.
 import type { Category, Item, Location } from './types';
 
-export type LabelContent = 'name-location' | 'name-location-part' | 'short-name' | 'name';
+export type LabelContent = 'name-location' | 'name-location-category' | 'short-name' | 'name';
 
 export interface LabelLayout {
   id: string;
@@ -41,7 +41,7 @@ export const PAGE = { w: 8.5, h: 11 } as const;
 
 export const SHEET_LAYOUTS: readonly LabelLayout[] = [
   { id: 'avery-5160', name: 'Avery 5160-compatible', short: 'Avery 5160', desc: '1 × 2⅝ in · 30 per sheet · small QR, name, location', cols: 3, rows: 10, w: 2.625, h: 1, left: 0.1875, top: 0.5, pitchX: 2.75, pitchY: 1, qr: 0.8, content: 'name-location', flow: 'row', plain: false, textPt: 8 },
-  { id: 'avery-5163', name: 'Avery 5163-compatible', short: 'Avery 5163', desc: '2 × 4 in · 10 per sheet · large QR, name, location, part #', cols: 2, rows: 5, w: 4, h: 2, left: 0.15625, top: 0.5, pitchX: 4.1875, pitchY: 2, qr: 1.7, content: 'name-location-part', flow: 'row', plain: false, textPt: 13 },
+  { id: 'avery-5163', name: 'Avery 5163-compatible', short: 'Avery 5163', desc: '2 × 4 in · 10 per sheet · large QR, name, location, category', cols: 2, rows: 5, w: 4, h: 2, left: 0.15625, top: 0.5, pitchX: 4.1875, pitchY: 2, qr: 1.7, content: 'name-location-category', flow: 'row', plain: false, textPt: 13 },
   { id: 'avery-22805', name: 'Avery 22805-compatible', short: 'Avery 22805', desc: '1½ in square · 24 per sheet · QR, short name', cols: 4, rows: 6, w: 1.5, h: 1.5, left: 0.6875, top: 0.6875, pitchX: 1.875, pitchY: 1.625, qr: 1.05, content: 'short-name', flow: 'column', plain: false, textPt: 8 },
 ];
 
@@ -181,12 +181,11 @@ export const sheetsNeeded = (l: LabelLayout, count: number, start = 0) => (count
 /** The text printed next to the QR: the name, then the extra lines the layout has room for. */
 export function labelText(item: Item, content: LabelContent): { name: string; extra: string[] } {
   const extra: string[] = [];
-  if (content === 'name-location' || content === 'name-location-part') {
+  if (content === 'name-location' || content === 'name-location-category') {
     if (item.location) extra.push(item.location);
   }
-  if (content === 'name-location-part') {
-    const v = item.vendors[item.preferredVendor - 1] ?? item.vendors.find((x) => x !== null) ?? null;
-    if (v?.partNo) extra.push(`${v.supplier} ${v.partNo}`);
+  if (content === 'name-location-category') {
+    extra.push(item.subcategory ? `${item.category} › ${item.subcategory}` : item.category);
   }
   return { name: item.name, extra };
 }

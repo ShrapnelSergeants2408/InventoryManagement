@@ -41,7 +41,7 @@ describe('matching a scanned location name (F29)', () => {
     expect(found('Tools 8')).toBeNull();
     expect(found('Tools')).toBeNull();
     expect(found('   ')).toBeNull();
-    expect(found('2408:Tools 7', [...locations, loc('2408:Tools 7', 3)])).toBeNull();
+    expect(found('hhi:Tools 7', [...locations, loc('hhi:Tools 7', 3)])).toBeNull();
   });
 });
 
@@ -58,7 +58,7 @@ describe('scan resolution with locations (F21, F29)', () => {
     expect(resolveScan('st-0063', items, clash).kind).toBe('item');
     expect(resolveScan('722787604386', items, clash).kind).toBe('item');
     expect(resolveScan('Tools7X', items, clash).kind).toBe('item');
-    expect(resolveScan('2408:st-0063', items, clash).kind).toBe('item');
+    expect(resolveScan('hhi:st-0063', items, clash).kind).toBe('item');
   });
 
   it('an unknown code keeps its spaced text, for a new location name', () => {
@@ -84,7 +84,7 @@ describe('which unknown codes offer Add and Rename (F29)', () => {
     expect(couldBeLocation('012345678905', null)).toBe(false);
     expect(couldBeLocation('https://www.revrobotics.com/rev-21-1650/', 'qr_code')).toBe(false);
     expect(couldBeLocation('HTTP://example.com', 'qr_code')).toBe(false);
-    expect(couldBeLocation('2408:st-9999', 'qr_code')).toBe(false);
+    expect(couldBeLocation('hhi:st-9999', 'qr_code')).toBe(false);
     expect(couldBeLocation('   ', null)).toBe(false);
     expect(couldBeLocation('B'.repeat(LOCATION_TEXT_MAX), 'qr_code')).toBe(true);
     expect(couldBeLocation('B'.repeat(LOCATION_TEXT_MAX + 1), 'qr_code')).toBe(false);
@@ -96,7 +96,6 @@ describe('adding and renaming by scan (F29 with F25)', () => {
     const db = new InventoryDb(`t-${Math.random()}`);
     await replaceAll(db, {
       items: [item({ id: 'a1', location: 'Bin F17' }), item({ id: 'a2', location: 'Bin F17' }), item({ id: 'a3', location: '' })],
-      suppliers: [{ name: 'REV', website: '', notes: '' }, { name: 'other', website: '', notes: '' }],
       locations: [loc('Bin F17', 0), loc('Shelf', 1)],
       categories: [],
       photos: new Map(),

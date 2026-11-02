@@ -902,3 +902,25 @@ Plan: high for scope and the removals. Medium for Cloudflare Access sign-in in a
 **Next:** Dan answers D1–D10 and Q1–Q5. Then H0: write SPEC v2.0.
 
 **Later (about 11:30–11:45):** Dan: "1) yes; 2) confirmed; 3) only 2 people … items should only be in one season, keep value/insurance fields for all items". So H4 comes before H5, D1–D10 are confirmed, there are 2 users, the free `workers.dev` address is used for now (a custom domain only costs the registration, ~$10–12/yr), one season per item, and value and records fields go on every item. **H0:** `docs/SPEC.md` rewritten as SPEC v2.0 (household) on branch `h0-spec`. The FRC v0.18 spec stays in git history (`925a75f`). README and HANDOFF are left FRC until H1.
+
+## 2026-11-02 (midday) — H1: strip and rebrand
+
+**SESSION IDENTITY**
+Same session. Dan: "pr is merged. continue to h1". Branch `h1-strip-rebrand` from `main` (`3ae9912`).
+
+**DATES & TIMES**
+2026-11-02, about 11:46–12:15 CST.
+
+**WORK COMPLETED**
+Removed purchasing, helpers, count-in, the PIN, the starter catalog, stock status, the FRC browser checks and the FRC docs (D9). The item became id, name, category, subcategory, location, quantity, barcode, notes and photo, in a new database `home-inventory` v1. Labels use `hhi:`. First launch offers Start fresh (household categories) or Restore. The app is rebranded as Hiebert Home Inventory (manifest, iPhone meta tags, placeholder icons). Tests were rewritten for the household model. New `scripts/h1-ui-check.mjs`. README and HANDOFF rewritten; SPEC v2.0 notes the interim model; `docs/reviews/H1.md`.
+
+**DELIVERABLES PRODUCED**
+Branch `h1-strip-rebrand`; `docs/reviews/H1.md`; `scripts/h1-ui-check.mjs`.
+
+**EVIDENCE**
+Unit tests 354/354 pass (27 files); build clean; H1 browser check 18/18 PASS, no console errors.
+
+**CONFIDENCE**
+High for the removals and the backup round trip (tested). Not tested on a real iPhone: nothing is published yet, because Actions and Pages aren't enabled on the fork.
+
+**Next:** Dan confirms details (a)–(h) in `docs/reviews/H1.md`, merges, and decides whether to turn on GitHub Pages for an iPhone check before H4. Then H2.

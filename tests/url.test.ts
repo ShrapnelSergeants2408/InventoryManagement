@@ -30,7 +30,7 @@ describe('normalizeUrl (F11, F23)', () => {
 });
 
 describe('dates', () => {
-  it('localIsoDate uses the tablet’s local day', () => {
+  it('localIsoDate uses the phone’s local day', () => {
     expect(localIsoDate(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05');
   });
 

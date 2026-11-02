@@ -1,4 +1,4 @@
-// Inventory search (SPEC F4; spec-questions D2).
+// Search (SPEC v2.0 F1).
 import type { Item } from './types';
 
 /** Lower-case, accents removed, runs of whitespace collapsed. */
@@ -11,15 +11,9 @@ export function normalize(s: string): string {
     .trim();
 }
 
-/**
- * Everything F4 searches: name, part numbers and suppliers of every vendor
- * option (D2: not just the preferred one), location and notes; and (v0.17) category,
- * subcategory and barcode, so "bearings" finds the Bearings even when the name doesn't say so.
- */
+/** Everything F1 searches on an item: name, location, notes, category, subcategory and barcode. */
 export function searchText(item: Item): string {
-  const parts = [item.name, item.location, item.notes, item.category, item.subcategory, item.barcode];
-  for (const v of item.vendors) if (v) parts.push(v.partNo, v.supplier);
-  return normalize(parts.join(' \n '));
+  return normalize([item.name, item.location, item.notes, item.category, item.subcategory, item.barcode].join(' \n '));
 }
 
 /** Search words; an item matches when it contains every one of them, in any order. */

@@ -1,8 +1,8 @@
 // QR label payloads and what a scanned or typed code means (SPEC §9, F21, F29).
 import { nameKey, type Item, type Location } from './types';
 
-/** Team labels encode `2408:<item id>`; the prefix tells them apart from vendor QR codes. */
-export const QR_PREFIX = '2408:';
+/** Household labels encode `hhi:<record id>` (§9); the prefix tells them apart from product barcodes. */
+export const QR_PREFIX = 'hhi:';
 
 export const qrPayload = (id: string) => QR_PREFIX + id;
 
@@ -62,7 +62,7 @@ export type ScanResult =
   | { kind: 'item'; item: Item; via: 'label' | 'id' | 'barcode' | 'location'; code: string }
   /** The same barcode on more than one item: the user picks. */
   | { kind: 'many'; items: Item[]; code: string }
-  /** A team label whose item isn't on this tablet (deleted, or an older backup). */
+  /** A household label whose item isn't on this phone (deleted, or an older backup). */
   | { kind: 'missing-label'; id: string; code: string }
   /** A bin's QR code naming a location (F29). */
   | { kind: 'location'; location: Location; code: string }

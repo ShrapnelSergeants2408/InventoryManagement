@@ -8,6 +8,12 @@
 - **Removed:** purchasing, helpers, the PIN and the starter catalog.
 - **Added:** areas, spots, bins and seasons; a phone-first layout; sync between phones through Cloudflare; the holiday workflow; garage records. The pantry follows in a later phase.
 
+**Built so far:** H1 (app 2.0.0-h1, `docs/reviews/H1.md`). The FRC features are gone and the app is rebranded, but it still uses an interim model until H2:
+- items have a flat location (no areas, spots or bins yet) and a quantity;
+- the backup holds `inventory.csv`, `locations.csv`, `categories.csv` and the photos, not the §7 files.
+
+H2 replaces both, and must still restore an H1 backup.
+
 ---
 
 ## 1. Purpose and users

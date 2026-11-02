@@ -1,4 +1,4 @@
-// Sending a file off the tablet (F13, F15, spec-questions Q1): Android's share sheet when the
+// Sending a file off the phone (F18): the share sheet when the
 // browser can share that file, otherwise a download to the Downloads folder.
 
 export type ShareResult = 'shared' | 'downloaded' | 'cancelled';

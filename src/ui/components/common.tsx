@@ -1,61 +1,7 @@
-// Small shared pieces: status chips (§17), empty/error states, top bar, lock pill.
+// Small shared pieces: empty/error states, top bar, back button, check box, toggle.
 import type { ComponentChildren } from 'preact';
-import { groupChips, type StatusCounts } from '../../domain/inventory-view';
-import { statusLabel, type StockStatus } from '../../domain/status';
 import { Icon, type IconName } from '../icons';
-import { useHelper } from '../helper/session';
-import { LockPill } from '../shell/LockPill';
 import { goBack } from '../shell/router';
-
-/** Color, icon and word together; never color alone (§17). */
-export function StatusChip({ status, prefix = '' }: { status: StockStatus; prefix?: string }) {
-  const [cls, icon]: [string, IconName] =
-    status.kind === 'short'
-      ? ['chip red', 'short']
-      : status.kind === 'low'
-        ? ['chip yel', 'low']
-        : status.kind === 'uncounted'
-          ? ['chip unc', 'help']
-          : ['chip ok', 'check'];
-  return (
-    <span class={cls}>
-      <Icon name={icon} />
-      {prefix}
-      {statusLabel(status)}
-    </span>
-  );
-}
-
-/** "n short" / "n low spares" / "All stocked" on group headers (§17). */
-export function GroupChips({ counts }: { counts: StatusCounts }) {
-  return (
-    <>
-      {groupChips(counts).map((k) =>
-        k === 'short' ? (
-          <span class="chip red" key={k}>
-            <Icon name="short" />
-            {counts.short} short
-          </span>
-        ) : k === 'low' ? (
-          <span class="chip yel" key={k}>
-            <Icon name="low" />
-            {counts.low} low spares
-          </span>
-        ) : k === 'uncounted' ? (
-          <span class="chip unc" key={k}>
-            <Icon name="help" />
-            {counts.uncounted} not counted
-          </span>
-        ) : (
-          <span class="chip ok" key={k}>
-            <Icon name="check" />
-            All stocked
-          </span>
-        ),
-      )}
-    </>
-  );
-}
 
 export function StateMessage(props: {
   icon: IconName;
@@ -84,21 +30,13 @@ export function TopBar(props: {
   kicker?: string;
   /** Back or Cancel button before the title. */
   back?: ComponentChildren;
-  /**
-   * The screen's search box (Inventory, Order). It sits right after the title in landscape; in
-   * portrait it shares a row with the lock button, so the lock never wraps onto a line alone (v0.16).
-   */
+  /** The screen's search box (Inventory). */
   search?: ComponentChildren;
-  /** Between the title and the lock button (filters, exports, Reorder). */
+  /** After the title (filters, Reorder). */
   children?: ComponentChildren;
-  /**
-   * After the lock button: only the screen's one main button (Add, Save, Receive). Everything else
-   * goes in children, so the lock is always at the right edge or just before that button (v0.16).
-   */
+  /** At the right end: only the screen's one main button (Add, Save). */
   actions?: ComponentChildren;
 }) {
-  // A helper device has no PIN (§6), so no lock button.
-  const helper = useHelper();
   return (
     <header class="top">
       {props.back}
@@ -108,14 +46,7 @@ export function TopBar(props: {
         {props.subtitle !== undefined && <span class="small muted">{props.subtitle}</span>}
       </div>
       {props.children}
-      {props.search !== undefined ? (
-        <div class="top-sl">
-          {props.search}
-          {!helper && <LockPill />}
-        </div>
-      ) : (
-        !helper && <LockPill />
-      )}
+      {props.search !== undefined && <div class="top-sl">{props.search}</div>}
       {props.actions}
     </header>
   );
@@ -130,19 +61,14 @@ export function BackButton(props: { label?: string; fallback: string }) {
   );
 }
 
-/** The lock shown on buttons for actions that need the mentor PIN (§17). */
-export function PinMark() {
-  return <Icon name="lock" class="ic pinmark" label="needs the mentor PIN" />;
-}
-
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
-/** The tick box inside a role="checkbox" button (Labels step 1, Inventory Select, F28). */
+/** The tick box inside a role="checkbox" button (Labels step 1, Inventory Select). */
 export function CheckBox({ state }: { state: 'on' | 'some' | 'off' }) {
   return <span class={state === 'off' ? 'cbox' : `cbox ${state}`}>{state === 'on' ? <Icon name="check" /> : state === 'some' ? <Icon name="minus" /> : null}</span>;
 }
 
-/** An on/off switch with its label (count-in options, F24; helper settings, §18.1). */
+/** An on/off switch with its label. */
 export function Toggle(props: { on: boolean; onClick: () => void; disabled?: boolean; children: ComponentChildren }) {
   return (
     <button type="button" class="tog" role="switch" aria-checked={props.on} disabled={props.disabled} onClick={props.onClick}>

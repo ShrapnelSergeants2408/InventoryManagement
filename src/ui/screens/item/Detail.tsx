@@ -1,27 +1,21 @@
-// Item detail card (F10): photo (tap to enlarge; take, replace or remove it, F19), +/− for
-// on hand, desired and spares,
-// the order line, location/category/barcode/notes, every vendor option with its link (F11).
+// Item detail card (F16): photo (tap to enlarge; take, replace or remove it), the quantity
+// stepper, and location, category, barcode and notes. H2 adds the carousel, path breadcrumbs
+// and status chips.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
-import { adjustCount, setCount, type CountField } from '../../../data/inventory';
+import { adjustQuantity, setQuantity } from '../../../data/inventory';
 import { setPhoto, type PhotoChange } from '../../../data/photos';
 import { noteViewed } from '../../../data/prefs';
-import { countedDate, formatIsoDate } from '../../../domain/dates';
-import { orderLines, packText, stockLines } from '../../../domain/item-text';
-import { formatCents } from '../../../domain/money';
-import { itemStatus } from '../../../domain/status';
 import type { Item } from '../../../domain/types';
-import { safeHref } from '../../../domain/url';
-import { BackButton, StateMessage, StatusChip, TopBar, plural } from '../../components/common';
+import { BackButton, StateMessage, TopBar } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { CountStepper, type StepperLabel } from '../../components/OnHandStepper';
+import { CountStepper } from '../../components/QuantityStepper';
 import { PhotoButtons } from '../../components/PhotoButtons';
-import { forgetThumbnail, useDb, useOnOrder, usePhoto, useSnapshot, type PhotoView } from '../../data-hooks';
+import { forgetThumbnail, useDb, usePhoto, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
-import { AddToListDialog } from '../order/ListDialogs';
 import { DeleteItemButton } from './DeleteItem';
 
 const crumb = (i: Item) => (i.subcategory ? `${i.category} › ${i.subcategory}` : i.category);
@@ -58,7 +52,7 @@ export function ItemMissing({ id, back }: { id: string; back: ComponentChildren 
       <TopBar title="Item not found" back={back} />
       <StateMessage
         icon="search"
-        title={`No item “${id}” on this tablet`}
+        title={`No item “${id}”`}
         actions={
           <a class="btn pri" href={href.tab('inventory')}>
             <Icon name="inventory" />
@@ -66,7 +60,7 @@ export function ItemMissing({ id, back }: { id: string; back: ComponentChildren 
           </a>
         }
       >
-        <p class="state-text">It may have been deleted, or this tablet was restored from an older backup.</p>
+        <p class="state-text">It may have been deleted, or this phone was restored from an older backup.</p>
       </StateMessage>
     </>
   );
@@ -77,14 +71,8 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
   const photo = usePhoto(item.id, item.hasPhoto);
   const [enlarged, setEnlarged] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [adding, setAdding] = useState(false);
   const camera = useRef<HTMLInputElement>(null);
-  const status = itemStatus(item);
-  const stock = stockLines(item);
-  const onOrder = useOnOrder().get(item.id) ?? 0;
-  const order = orderLines(item, onOrder);
-  const vendors = item.vendors.flatMap((v, i) => (v ? [{ v, slot: i + 1 }] : []));
-  // Offered under the Inventory search box (v0.16).
+  // Offered under the Inventory search box (F1).
   useEffect(() => noteViewed(item.id), [item.id]);
 
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
@@ -98,15 +86,14 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
       forgetThumbnail(item.id);
     }
   };
-  const stepper = (field: CountField, label: StepperLabel, size?: 'xl') => (
+  const stepper = (
     <CountStepper
-      label={label}
-      value={item[field]}
+      value={item.quantity}
       itemName={item.name}
-      size={size}
-      onStep={(d) => void adjustCount(db, item.id, field, d).catch(fail)}
+      size="xl"
+      onStep={(d) => void adjustQuantity(db, item.id, d).catch(fail)}
       onSet={(n) =>
-        setCount(db, item.id, field, n).catch((e: unknown) => {
+        setQuantity(db, item.id, n).catch((e: unknown) => {
           fail(e);
           throw e;
         })
@@ -129,7 +116,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
               <div class="photo nophoto">
                 <Icon name="photo" class="ic xxl" />
                 <span class="nophoto-t">{item.hasPhoto ? 'Loading photo…' : 'No photo yet'}</span>
-                {!item.hasPhoto && <span class="small muted">Add one so students can recognize the part.</span>}
+                {!item.hasPhoto && <span class="small muted">Add one so it’s easy to recognize.</span>}
               </div>
             )}
             <PhotoButtons
@@ -138,17 +125,13 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
               onPhoto={(p) => changePhoto(p)}
               onRemove={() => setRemoving(true)}
             />
-            <span class="small muted">{photoNote(item, photo)}</span>
+            <span class="small muted">{photoNote(item)}</span>
           </div>
           <div class="dacts">
             <a class="btn pri lg" href={href.edit(item.id)}>
               <Icon name="pencil" />
               Edit item
             </a>
-            <button type="button" class="btn" onClick={() => setAdding(true)}>
-              <Icon name="listAdd" />
-              Add to order list
-            </button>
             <a class="btn" href={href.labels([item.id])}>
               <Icon name="print" />
               Print QR label
@@ -159,48 +142,12 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
 
         <div class="dright">
           <div class="dchips">
-            <span class="bigchip">
-              <StatusChip status={status} />
-            </span>
-            <span class="chip mut">{item.source === 'starter' ? 'Starter item' : 'Team item'}</span>
             <span class="chip mut">ID {item.id}</span>
-            {item.lastCounted && <span class="chip mut">{`Counted ${formatIsoDate(countedDate(item.lastCounted))}${item.countedBy ? ` by ${item.countedBy}` : ''}`}</span>}
           </div>
 
           <div class="card box">
-            <span class="lbl">On hand ({item.unit})</span>
-            <div class="qty">
-              {stepper('onHand', 'On hand', 'xl')}
-              <div class="qty-text">
-                <div class="qty-title">{stock.title}</div>
-                <div class="small muted">{stock.sub}</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="two">
-            <div class="card box">
-              <span class="lbl">Desired</span>
-              {stepper('desired', 'Desired')}
-            </div>
-            <div class="card box">
-              <span class="lbl">Spares</span>
-              {stepper('spares', 'Spares')}
-            </div>
-          </div>
-
-          <div class="card box ordbox">
-            <Icon name="order" class="ic lg" />
-            <div>
-              <div class="qty-title">{order.title}</div>
-              <div class="small muted">{order.sub}</div>
-              {onOrder > 0 && (
-                <a class="chip onord" href={href.placed}>
-                  <Icon name="truck" />
-                  On order {onOrder} {item.unit}
-                </a>
-              )}
-            </div>
+            <span class="lbl">Quantity</span>
+            <div class="qty">{stepper}</div>
           </div>
 
           <div class="card box kv">
@@ -214,46 +161,6 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
             <span class={item.notes ? 'notes' : 'muted'}>{item.notes || 'No notes'}</span>
           </div>
 
-          <section>
-            <h2 class="h2 sec-h">Where to buy ({plural(vendors.length, 'vendor option')})</h2>
-            <div class="vends">
-              {vendors.map(({ v, slot }) => {
-                const link = safeHref(v.url);
-                return (
-                  <div class="card vend" key={slot}>
-                    <div class="vtext">
-                      <div class="vname">
-                        {v.supplier}
-                        {slot === item.preferredVendor && (
-                          <span class="chip pref">
-                            <Icon name="star" />
-                            Preferred
-                          </span>
-                        )}
-                      </div>
-                      <div>
-                        <span class="mono">{v.partNo || 'No part #'}</span> · {packText(v)} ·{' '}
-                        <strong>{v.packPriceCents === null ? 'No price' : `${formatCents(v.packPriceCents)}${v.packSize > 1 ? ' per pack' : ''}`}</strong>
-                      </div>
-                      <div class="small muted">{v.priceChecked ? `Price checked ${formatIsoDate(v.priceChecked)}` : 'Price date unknown'}</div>
-                    </div>
-                    {link ? (
-                      <a class="btn" href={link} target="_blank" rel="noopener noreferrer">
-                        Open product page
-                        <Icon name="external" />
-                      </a>
-                    ) : (
-                      <span class="small muted">No product link</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <p class="small muted lockline">
-              <Icon name="lock" />
-              Changing vendors, prices or the preferred vendor needs the mentor PIN (Edit item).
-            </p>
-          </section>
         </div>
       </div>
 
@@ -261,7 +168,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
         <Lightbox
           src={photo.url}
           name={item.name}
-          note={photoNote(item, photo)}
+          note={photoNote(item)}
           onReplace={() => camera.current?.click()}
           onClose={() => setEnlarged(false)}
         />
@@ -270,9 +177,7 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
         <Dialog label="Remove photo" role="alertdialog" onClose={() => setRemoving(false)}>
           <h2 class="h2">Remove this photo?</h2>
           <p class="dlg-p">
-            {isVendorPhoto(item, photo)
-              ? 'The starter-catalog photo only comes back by restoring a backup that has it.'
-              : 'The photo is deleted from this tablet. Backups made before now still have it.'}
+            The photo is deleted from this phone. Backups made before now still have it.
           </p>
           <DialogActions>
             <button type="button" class="btn lg" data-autofocus onClick={() => setRemoving(false)}>
@@ -292,21 +197,15 @@ function Detail({ item, back }: { item: Item; back: ComponentChildren }) {
           </DialogActions>
         </Dialog>
       )}
-      {adding && <AddToListDialog item={item} onClose={() => setAdding(false)} />}
     </>
   );
 }
 
-/** A starter item's photo that wasn't taken on this tablet: the vendor's image (§8). */
-const isVendorPhoto = (item: Item, photo: PhotoView | null) => item.source === 'starter' && photo !== null && !photo.taken;
-
-function photoNote(item: Item, photo: PhotoView | null): string {
-  if (!item.hasPhoto) return 'Photos are optional; one per item.';
-  if (isVendorPhoto(item, photo)) return 'Vendor product photo from the starter catalog. Replace it with a photo of your own part any time.';
-  return photo ? 'Team photo.' : '';
+function photoNote(item: Item): string {
+  return item.hasPhoto ? '' : 'Photos are optional.';
 }
 
-/** Tap-to-enlarge photo (F10, mockup 2b). A tap anywhere, Close or Escape closes it. */
+/** Tap-to-enlarge photo. A tap anywhere, Close or Escape closes it. */
 function Lightbox(props: { src: string; name: string; note: string; onReplace: () => void; onClose: () => void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && props.onClose();
@@ -324,7 +223,7 @@ function Lightbox(props: { src: string; name: string; note: string; onReplace: (
         {/* Opens the camera from this tap; the tap then reaches the backdrop and closes the view. */}
         <button type="button" class="btn lg" onClick={props.onReplace}>
           <Icon name="camera" />
-          Replace with my photo
+          Replace photo
         </button>
         <button type="button" class="btn pri lg" autoFocus onClick={props.onClose}>
           <Icon name="close" />

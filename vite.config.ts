@@ -3,29 +3,29 @@ import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  // Relative base so the build works under any GitHub Pages sub-path.
+  // Relative base so the build works under any hosting sub-path.
   base: './',
-  // When this copy was built, shown in More › About with the app version (SPEC v0.9), so a
-  // tablet check can tell whether an update arrived.
+  // When this copy was built, shown in More › About with the app version, so a phone check can
+  // tell whether an update arrived.
   define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
   plugins: [
     preact(),
-    // Installable and fully usable offline (SPEC §2): the service worker precaches the app,
-    // fonts, icons, the starter catalog ZIP (F22) and the scanner fallback's .wasm. A new
-    // version waits for "Reload" (ui/shell/UpdateBanner.tsx) so a count is never cut off.
+    // Installable and fully usable offline (SPEC v2.0 §2): the service worker precaches the app,
+    // fonts, icons and the scanner fallback's .wasm. A new version waits for "Reload"
+    // (ui/shell/UpdateBanner.tsx) so an edit in progress is never cut off.
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
       includeManifestIcons: false,
       manifest: {
-        name: 'FRC 2408 Inventory Management',
-        short_name: '2408 Inventory',
-        description: 'Shop inventory, order list and QR labels for FRC Team 2408, the Shrapnel Sergeants.',
+        name: 'Hiebert Home Inventory',
+        short_name: 'Home Inventory',
+        description: 'Household inventory: what is in each bin and on each shelf, with QR labels.',
         id: './',
         start_url: './',
         scope: './',
         display: 'standalone',
-        orientation: 'any',
+        orientation: 'portrait',
         background_color: '#F2EFEA',
         theme_color: '#2E1710',
         icons: [
@@ -34,9 +34,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{html,js,css,woff2,png,svg,wasm,zip}'],
-        // The starter catalog is about 5.4 MB and the zxing .wasm about 1.1 MB.
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        globPatterns: ['**/*.{html,js,css,woff2,png,svg,wasm}'],
+        // The zxing .wasm is about 1.1 MB.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },
@@ -45,7 +45,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    // The team's time zone, so local-time tests (count times, DST changes) give the same results on any machine.
+    // The household's time zone, so local-time tests (DST changes) give the same results on any machine.
     env: { TZ: 'America/Chicago' },
   },
 });

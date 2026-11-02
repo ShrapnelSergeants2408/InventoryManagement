@@ -1,13 +1,11 @@
-// Item add, edit and delete (F6, F7, F8). Each runs in one transaction with the list
-// updates it implies, so a failure leaves the tablet unchanged.
+// Item add, edit and delete. Each runs in one transaction with the list updates it implies,
+// so a failure leaves the phone unchanged.
 import { mergeEdit } from '../domain/item-form';
 import { pushRecent } from '../domain/lists';
 import { QR_PREFIX, barcodeKey, cleanCode } from '../domain/scan';
 import { nameKey, type Item } from '../domain/types';
 import { validateItem } from '../domain/validate';
-import { fromItemRow, fromOrderListRow, toItemRow, toLocationRow, toOrderListRow, type InventoryDb } from './db';
-import { isHelperDb, noteItemChange } from './helper-db';
-import { removePending } from './pending';
+import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
 import { applyPhotoChange, type PhotoChange } from './photos';
 
 export const RECENT_LOCATIONS = 'recentLocations';
@@ -18,14 +16,12 @@ export async function getRecentLocations(db: InventoryDb): Promise<string[]> {
 }
 
 /**
- * Checks the item against the lists and fills them in where the editor may add to them:
- * a new subcategory (F6) and a location typed in the editor (F25: anyone can add one).
- * Returns the item with its category, subcategory and location spelled as in the lists
- * (names match ignoring capitals, §3; Stage 5 finding 2).
+ * Checks the item and fills in the lists where the editor may add to them: a new subcategory
+ * and a location typed in the editor. Returns the item with its category, subcategory and
+ * location spelled as in the lists (names match ignoring capitals, §3).
  */
 async function fitToLists(db: InventoryDb, given: Item): Promise<Item> {
-  const suppliers = (await db.suppliers.toArray()).map((s) => s.name);
-  const errors = validateItem(given, suppliers);
+  const errors = validateItem(given);
   if (errors.length > 0) throw new Error(errors.map((e) => e.message).join('; '));
 
   const cat = (await db.categories.get(given.category)) ?? (await db.categories.toArray()).find((c) => nameKey(c.name) === nameKey(given.category));
@@ -52,24 +48,13 @@ async function touch(db: InventoryDb, item: Item, now: number): Promise<void> {
   }
 }
 
-const TABLES = (db: InventoryDb) => [db.items, db.photos, db.suppliers, db.categories, db.locations, db.settings];
+const TABLES = (db: InventoryDb) => [db.items, db.photos, db.categories, db.locations, db.settings];
 
-/**
- * Adds a new item (F6), with its photo if one was taken in the form. The id must be unused.
- * With `pendingId`, it accepts that pending item from a helper (§18.5): the item's count keeps
- * the helper's time and name, and the pending item is removed, in the same transaction.
- */
-export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photo?: PhotoChange, opts: { pendingId?: string } = {}): Promise<Item> {
-  return db.transaction('rw', [...TABLES(db), db.pendingItems, db.pendingPhotos], async () => {
+/** Adds a new item, with its photo if one was taken in the form. The id must be unused. */
+export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photo?: PhotoChange): Promise<Item> {
+  return db.transaction('rw', TABLES(db), async () => {
     if (await db.items.get(item.id)) throw new Error(`an item with id ${item.id} already exists`);
-    let given = item;
-    if (opts.pendingId) {
-      const p = await db.pendingItems.get(opts.pendingId);
-      if (!p) throw new Error('that pending item was already dealt with');
-      given = { ...item, lastCounted: String(p.countedAt), countedBy: String(p.helperName) };
-      await removePending(db, [opts.pendingId]);
-    }
-    const fitted = await fitToLists(db, { ...given, hasPhoto: false });
+    const fitted = await fitToLists(db, { ...item, hasPhoto: false });
     await db.items.add(toItemRow(fitted, now));
     await touch(db, fitted, now);
     if (!photo) return fitted;
@@ -79,9 +64,9 @@ export async function addItem(db: InventoryDb, item: Item, now = Date.now(), pho
 }
 
 /**
- * Saves an edit (F7). `base` is the item as the editor loaded it; only the fields that
- * differ from it are applied to the item as stored now (see mergeEdit). A photo change made
- * in the form is saved in the same transaction.
+ * Saves an edit. `base` is the item as the editor loaded it; only the fields that differ from
+ * it are applied to the item as stored now (see mergeEdit). A photo change made in the form is
+ * saved in the same transaction.
  */
 export async function updateItem(db: InventoryDb, base: Item, edited: Item, now = Date.now(), photo?: PhotoChange): Promise<Item> {
   if (base.id !== edited.id) throw new Error('an edit cannot change the item id');
@@ -97,36 +82,25 @@ export async function updateItem(db: InventoryDb, base: Item, edited: Item, now 
   });
 }
 
-/**
- * Deletes an item and its photo (F8), and takes it off every named order list (F27). No undo:
- * recovery is by restoring a backup. Returns how many lists it was on.
- */
-export async function deleteItem(db: InventoryDb, id: string, now = Date.now()): Promise<number> {
-  return db.transaction('rw', [db.items, db.photos, db.orderLists, db.settings], async () => {
+/** Deletes an item and its photo. No undo: recovery is by restoring a backup. */
+export async function deleteItem(db: InventoryDb, id: string, now = Date.now()): Promise<void> {
+  await db.transaction('rw', [db.items, db.photos, db.settings], async () => {
     if (!(await db.items.get(id))) throw new Error(`no item with id ${id}`);
     await db.items.delete(id);
     await db.photos.delete(id);
-    const lists = await db.orderLists.where('itemIds').equals(id).toArray();
-    for (const row of lists) {
-      const list = fromOrderListRow(row);
-      await db.orderLists.put(toOrderListRow({ ...list, lines: list.lines.filter((l) => l.itemId !== id) }));
-    }
     await db.settings.put({ key: 'lastChangeAt', value: now });
-    return lists.length;
   });
 }
 
 /**
- * Attaches a scanned manufacturer barcode to an item (F21; no PIN, §6). Refused when another
- * item already has the same code, so a scan never becomes ambiguous by accident. On a helper
- * device it is recorded for the next counts file (§18.3, §18.4).
+ * Attaches a scanned product barcode to an item (F3). Refused when another item already has
+ * the same code, so a scan never becomes ambiguous by accident.
  */
 export async function setBarcode(db: InventoryDb, id: string, code: string, now = Date.now()): Promise<Item> {
   const clean = cleanCode(code);
   if (clean === '') throw new Error('the barcode is empty');
-  if (clean.toLowerCase().startsWith(QR_PREFIX)) throw new Error('that is a team QR label, not a manufacturer barcode');
-  const tables = isHelperDb(db) ? [db.items, db.settings, db.changes] : [db.items, db.settings];
-  return db.transaction('rw', tables, async () => {
+  if (clean.toLowerCase().startsWith(QR_PREFIX)) throw new Error('that is a household QR label, not a product barcode');
+  return db.transaction('rw', [db.items, db.settings], async () => {
     const row = await db.items.get(id);
     if (!row) throw new Error(`no item with id ${id}`);
     const key = barcodeKey(clean);
@@ -134,7 +108,6 @@ export async function setBarcode(db: InventoryDb, id: string, code: string, now 
     if (other) throw new Error(`barcode ${clean} is already on “${other.name}”`);
     await db.items.put({ ...row, barcode: clean, updatedAt: now });
     await db.settings.put({ key: 'lastChangeAt', value: now });
-    if (isHelperDb(db)) await noteItemChange(db, row, { barcode: true }, now);
     return fromItemRow({ ...row, barcode: clean });
   });
 }

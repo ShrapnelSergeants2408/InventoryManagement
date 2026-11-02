@@ -1,8 +1,7 @@
-// Managed lists (F9 categories, F23 suppliers, F25 locations): name checks, usage counts,
+// Managed lists (categories and locations, SPEC v2.0 F11): name checks, usage counts,
 // reordering and the item rewrites that rename and remove apply. Pure; the data layer
 // runs each change in one transaction.
-import { compareSupplierNames } from './order';
-import { OTHER_SUPPLIER, nameKey, type Category, type Item } from './types';
+import { nameKey, type Category, type Item } from './types';
 
 export type NameCheck = { ok: true; name: string } | { ok: false; error: string };
 
@@ -23,13 +22,6 @@ export function checkName(raw: string, existing: readonly string[], what: string
   return { ok: true, name };
 }
 
-export const isOtherSupplier = (name: string) => nameKey(name) === OTHER_SUPPLIER;
-
-/** Supplier pickers: A–Z with `other` last (F23). */
-export function sortSupplierNames(names: readonly string[]): string[] {
-  return [...names].sort(compareSupplierNames);
-}
-
 /** Moves the entry at `index` by `delta` places (▲ = −1, ▼ = +1); out-of-range moves change nothing. */
 export function moveBy<T>(list: readonly T[], index: number, delta: number): T[] {
   const to = index + delta;
@@ -38,47 +30,6 @@ export function moveBy<T>(list: readonly T[], index: number, delta: number): T[]
   const [moved] = out.splice(index, 1);
   out.splice(to, 0, moved!);
   return out;
-}
-
-// ── Suppliers (F23) ──────────────────────────────────────────────────────────
-
-export interface SupplierUsage {
-  /** Vendor options that use the supplier. */
-  options: number;
-  /** Of those, how many are the item's preferred vendor. */
-  preferred: number;
-}
-
-/** Usage per supplier, keyed by nameKey. */
-export function supplierUsage(items: readonly Item[]): Map<string, SupplierUsage> {
-  const out = new Map<string, SupplierUsage>();
-  for (const item of items) {
-    item.vendors.forEach((v, i) => {
-      if (!v) return;
-      const key = nameKey(v.supplier);
-      const u = out.get(key) ?? { options: 0, preferred: 0 };
-      u.options++;
-      if (i + 1 === item.preferredVendor) u.preferred++;
-      out.set(key, u);
-    });
-  }
-  return out;
-}
-
-/**
- * Rename and remove-with-replacement (F23): every vendor option whose supplier is `from`
- * (ignoring capitals) now uses `to`. Part numbers, links and prices are kept.
- * Returns only the items that changed.
- */
-export function reassignSupplier(items: readonly Item[], from: string, to: string): Item[] {
-  const key = nameKey(from);
-  const changed: Item[] = [];
-  for (const item of items) {
-    if (!item.vendors.some((v) => v && nameKey(v.supplier) === key && v.supplier !== to)) continue;
-    const vendors = item.vendors.map((v) => (v && nameKey(v.supplier) === key ? { ...v, supplier: to } : v)) as Item['vendors'];
-    changed.push({ ...item, vendors });
-  }
-  return changed;
 }
 
 // ── Locations (F25) ──────────────────────────────────────────────────────────

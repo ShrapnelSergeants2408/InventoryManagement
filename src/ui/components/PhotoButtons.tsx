@@ -1,5 +1,5 @@
-// Take photo / Gallery / Remove (F19, mockups 2a, 2d, 3a). The camera button opens the
-// tablet camera; Gallery opens the photo picker. The picked picture is resized here
+// Take photo / Gallery / Remove (F16). The camera button opens the
+// phone camera; Gallery opens the photo picker. The picked picture is resized here
 // (io/image.ts) and handed on; no PIN (§6).
 import type { Ref } from 'preact';
 import { useState } from 'preact/hooks';

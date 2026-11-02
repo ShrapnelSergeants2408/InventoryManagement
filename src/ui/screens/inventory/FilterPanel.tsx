@@ -1,9 +1,9 @@
-// Filters panel (F5): side sheet in landscape, bottom sheet in portrait. The location can
-// also be set by scanning a bin's QR code (F29).
+// Filters panel (F2): side sheet in landscape, bottom sheet in portrait. The location can also
+// be set by scanning a QR code that holds its name.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Filters } from '../../../domain/filters';
 import { NO_LOCATION } from '../../../domain/lists';
-import type { FilterOptions, Totals } from '../../../domain/inventory-view';
+import type { FilterOptions } from '../../../domain/inventory-view';
 import { nameKey, type Location } from '../../../domain/types';
 import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Icon } from '../../icons';
@@ -24,7 +24,6 @@ export function FilterPanel(props: {
   options: FilterOptions;
   /** Every location, so a scanned name in the list but with no items can say so. */
   locations: readonly Location[];
-  totals: Totals;
   shown: number;
   onChange: (f: Filters) => void;
   onClear: () => void;
@@ -39,7 +38,7 @@ export function FilterPanel(props: {
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, []);
-  const pick = <K extends 'category' | 'supplier' | 'location'>(k: K, v: string) => onChange({ ...f, [k]: f[k] === v ? null : v });
+  const pick = <K extends 'category' | 'location'>(k: K, v: string) => onChange({ ...f, [k]: f[k] === v ? null : v });
 
   return (
     <>
@@ -52,14 +51,6 @@ export function FilterPanel(props: {
           </button>
         </div>
         <div class="fpanel-body">
-          <section class="fsec">
-            <h3>Stock</h3>
-            <div class="fgrid">
-              <Choice on={f.needsOrder} label={`Needs order · ${props.totals.needsOrder}`} onClick={() => onChange({ ...f, needsOrder: !f.needsOrder })} />
-              <Choice on={f.short} label={`Short · ${props.totals.short}`} onClick={() => onChange({ ...f, short: !f.short })} />
-              <Choice on={f.low} label={`Low spares · ${props.totals.low}`} onClick={() => onChange({ ...f, low: !f.low })} />
-            </div>
-          </section>
           <section class="fsec">
             <h3>Category</h3>
             <div class="fgrid">
@@ -79,15 +70,6 @@ export function FilterPanel(props: {
             <div class="fgrid">
               {props.options.locations.map((l) => (
                 <Choice key={l} on={f.location === l} label={l || NO_LOCATION_LABEL} onClick={() => pick('location', l)} />
-              ))}
-            </div>
-          </section>
-          {/* Supplier last (F5, SPEC v0.8). */}
-          <section class="fsec">
-            <h3>Preferred supplier</h3>
-            <div class="fgrid">
-              {props.options.suppliers.map((s) => (
-                <Choice key={s} on={f.supplier === s} label={s} onClick={() => pick('supplier', s)} />
               ))}
             </div>
           </section>

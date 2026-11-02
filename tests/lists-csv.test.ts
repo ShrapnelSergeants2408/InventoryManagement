@@ -2,34 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   completeCategories,
   completeLocations,
-  completeSuppliers,
   parseCategoriesCsv,
   parseLocationsCsv,
-  parseSuppliersCsv,
   serializeCategoriesCsv,
   serializeLocationsCsv,
-  serializeSuppliersCsv,
   spellLikeLists,
 } from '../src/io/lists-csv';
-import { item, vendor } from './helpers';
-
-describe('suppliers.csv', () => {
-  it('round-trips name, website and notes with commas and line breaks; sorted A–Z with other last', () => {
-    const list = [
-      { name: 'other', website: '', notes: 'Fallback, always present' },
-      { name: 'WCP', website: 'https://wcproducts.com', notes: 'acct # in\nthe binder' },
-      { name: 'AndyMark', website: 'https://www.andymark.com', notes: '' },
-    ];
-    const back = parseSuppliersCsv(serializeSuppliersCsv(list));
-    expect(back.problems).toEqual([]);
-    expect(back.list.map((s) => s.name)).toEqual(['AndyMark', 'WCP', 'other']);
-    expect(back.list).toEqual(expect.arrayContaining(list));
-  });
-  it('rejects duplicate names case-insensitively', () => {
-    const r = parseSuppliersCsv('name\r\nREV\r\nrev\r\n');
-    expect(r.problems[0]).toMatchObject({ row: 3 });
-  });
-});
+import { item } from './helpers';
 
 describe('locations.csv', () => {
   it('round-trips walk order and notes', () => {
@@ -111,7 +90,7 @@ describe('categories.csv (spec-questions Q3)', () => {
   });
 });
 
-describe('spellLikeLists (Stage 5 finding 2)', () => {
+describe('spellLikeLists', () => {
   const categories = [
     { name: 'Motors', order: 0, subcategories: ['Brushless'] },
     { name: 'Fasteners', order: 1, subcategories: [] },
@@ -137,17 +116,12 @@ describe('spellLikeLists (Stage 5 finding 2)', () => {
   });
 });
 
-describe('rebuilding lists from items (§7 CSV-only restore, seed)', () => {
+describe('rebuilding lists from items (§7 CSV-only restore)', () => {
   const items = [
-    item({ id: 'a', category: 'Motion', subcategory: 'Bearings', location: 'Bin 2', vendors: [vendor({ supplier: 'REV' }), vendor({ supplier: 'FIRST' }), null] }),
-    item({ id: 'b', category: 'Structure', subcategory: 'Tubing', location: 'bin 2', vendors: [vendor({ supplier: 'rev' }), null, null] }),
+    item({ id: 'a', category: 'Motion', subcategory: 'Bearings', location: 'Bin 2' }),
+    item({ id: 'b', category: 'Structure', subcategory: 'Tubing', location: 'bin 2' }),
     item({ id: 'c', category: 'Motion', subcategory: 'Collars', location: '' }),
   ];
-  it('adds missing suppliers (case-insensitive) and always keeps other', () => {
-    const r = completeSuppliers([{ name: 'REV', website: '', notes: '' }], items);
-    expect(r.list.map((s) => s.name)).toEqual(['REV', 'FIRST', 'other']);
-    expect(r.added).toEqual(['FIRST']);
-  });
   it('appends missing locations to the end of the walk order', () => {
     const r = completeLocations([{ name: 'Shelf', notes: '', order: 0 }], items);
     expect(r.list.map((l) => [l.name, l.order])).toEqual([['Shelf', 0], ['Bin 2', 1]]);

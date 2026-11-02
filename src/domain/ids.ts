@@ -1,15 +1,17 @@
-// Ids for team-added items (spec-questions D1): "tm-" + 5 characters from an
-// alphabet without look-alikes, random rather than sequential so a deleted item's
-// printed label can never point at a new item.
+// Record ids (SPEC v2.0 §3): a prefix + 8 characters from an alphabet without look-alikes,
+// random rather than sequential so a deleted record's printed label can never point at a new one.
 
-export const TEAM_ID_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-export const TEAM_ID_PATTERN = /^tm-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{5}$/;
+export const ID_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+export const ITEM_PREFIX = 'it-';
+export const ITEM_ID_PATTERN = /^it-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/;
 
-export function newTeamId(isTaken: (id: string) => boolean, random: () => number = Math.random): string {
+export function newId(prefix: string, isTaken: (id: string) => boolean, random: () => number = Math.random): string {
   for (let attempt = 0; attempt < 1000; attempt++) {
-    let s = 'tm-';
-    for (let i = 0; i < 5; i++) s += TEAM_ID_ALPHABET[Math.floor(random() * TEAM_ID_ALPHABET.length)];
+    let s = prefix;
+    for (let i = 0; i < 8; i++) s += ID_ALPHABET[Math.floor(random() * ID_ALPHABET.length)];
     if (!isTaken(s)) return s;
   }
-  throw new Error('could not find a free item id');
+  throw new Error('could not find a free id');
 }
+
+export const newItemId = (isTaken: (id: string) => boolean, random?: () => number) => newId(ITEM_PREFIX, isTaken, random);

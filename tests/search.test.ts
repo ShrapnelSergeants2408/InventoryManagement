@@ -1,21 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { matchesQuery, normalize, queryTerms } from '../src/domain/search';
-import { item, vendor } from './helpers';
+import { item } from './helpers';
 
 const neo = item({
-  name: 'NEO 2.0 Brushless Motor',
+  name: 'Inflatable Snowman Motor',
+  category: 'Decorations',
+  subcategory: 'Outdoor',
   location: 'Bin C4',
   notes: 'Spare for the arm, see Dan',
-  vendors: [vendor({ supplier: 'REV', partNo: 'REV-21-1653' }), vendor({ supplier: 'AndyMark', partNo: 'am-4927' }), null],
 });
 
-describe('SPEC F4 search', () => {
+describe('SPEC v2.0 F1 search', () => {
   it.each([
-    ['name', 'brushless'],
-    ['preferred part #', 'REV-21-1653'],
-    ['second vendor part # (D2)', 'AM-4927'],
-    ['preferred supplier', 'rev'],
-    ['second vendor supplier (D2)', 'andymark'],
+    ['name', 'snowman'],
+    ['category', 'decorations'],
+    ['subcategory', 'outdoor'],
     ['location', 'bin c4'],
     ['notes', 'the arm'],
   ])('matches on %s', (_field, q) => {
@@ -25,12 +24,12 @@ describe('SPEC F4 search', () => {
   it('is case- and accent-insensitive (D2)', () => {
     const it2 = item({ name: 'Câble d’alimentation Ø6' });
     expect(matchesQuery(it2, 'CABLE')).toBe(true);
-    expect(matchesQuery(neo, 'nÉo')).toBe(true);
+    expect(matchesQuery(neo, 'SNÖWMAN')).toBe(true);
   });
 
   it('every word must match, in any order', () => {
-    expect(matchesQuery(neo, 'motor neo')).toBe(true);
-    expect(matchesQuery(neo, 'neo falcon')).toBe(false);
+    expect(matchesQuery(neo, 'motor snowman')).toBe(true);
+    expect(matchesQuery(neo, 'snowman reindeer')).toBe(false);
   });
 
   it('a blank query matches everything', () => {
@@ -38,10 +37,9 @@ describe('SPEC F4 search', () => {
     expect(matchesQuery(neo, '')).toBe(true);
   });
 
-  it('does not match on fields F4 leaves out (unit, id); category and barcode are searched since v0.17', () => {
-    const it2 = item({ id: 'st-0042', name: 'x', category: 'Motors', unit: 'each', barcode: '0123456789', vendors: [vendor({ supplier: 'REV', partNo: 'P' }), null, null] });
-    expect(matchesQuery(it2, 'each')).toBe(false);
-    expect(matchesQuery(it2, 'st-0042')).toBe(false);
+  it('does not match on the id; category and barcode are searched', () => {
+    const it2 = item({ id: 'it-0042ABCD', name: 'x', category: 'Motors', barcode: '0123456789' });
+    expect(matchesQuery(it2, 'it-0042')).toBe(false);
     expect(matchesQuery(it2, 'motors')).toBe(true);
     expect(matchesQuery(it2, '0123456789')).toBe(true);
   });

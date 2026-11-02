@@ -1,4 +1,4 @@
-// Add / rename dialog for suppliers, locations, categories and subcategories (mockup 7b).
+// Add / rename dialog for locations, categories and subcategories.
 // Duplicate names show as you type and disable the button; anything the save rejects is
 // shown in the dialog.
 import { useState } from 'preact/hooks';
@@ -13,7 +13,7 @@ export interface EntryValues {
 
 export function EntryDialog(props: {
   title: string;
-  /** "Supplier", "Location", … for messages. */
+  /** "Location", "Category", … for messages. */
   what: string;
   existing: readonly string[];
   /** Current name when renaming. */
@@ -21,7 +21,7 @@ export function EntryDialog(props: {
   initial?: Partial<EntryValues>;
   website?: boolean;
   notes?: boolean;
-  /** False keeps the name as is (the `other` supplier). */
+  /** False keeps the name as is. */
   nameEditable?: boolean;
   placeholder?: string;
   notesPlaceholder?: string;

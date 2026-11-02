@@ -1,23 +1,17 @@
-// suppliers.csv, locations.csv (SPEC §7) and categories.csv (spec-questions Q3).
-import { compareSupplierNames } from '../domain/order';
-import { OTHER_SUPPLIER, nameKey, type Category, type Item, type Location, type Supplier } from '../domain/types';
-import { normalizeUrl } from '../domain/url';
+// locations.csv and categories.csv (SPEC v2.0 §7; H2 adds areas, spots, bins and seasons).
+import { nameKey, type Category, type Item, type Location } from '../domain/types';
 import { parseWholeNumber } from '../domain/validate';
 import { cellGetter, readCsv, writeCsv, type CsvTable, type FileProblem } from './csv';
 
-export const SUPPLIERS_FILE = 'suppliers.csv';
 export const LOCATIONS_FILE = 'locations.csv';
 export const CATEGORIES_FILE = 'categories.csv';
 
-export const SUPPLIER_COLUMNS = ['name', 'website', 'notes'] as const;
 export const LOCATION_COLUMNS = ['name', 'notes', 'order'] as const;
 export const CATEGORY_COLUMNS = ['category', 'subcategory', 'order'] as const;
 
 interface Parsed<T> {
   list: T[];
   problems: FileProblem[];
-  /** Suppliers' websites that weren't web addresses and were left blank (M23). */
-  clearedLinks?: string[];
 }
 
 function requireColumns(file: string, table: CsvTable, need: readonly string[], problems: FileProblem[]): boolean {
@@ -25,38 +19,6 @@ function requireColumns(file: string, table: CsvTable, need: readonly string[], 
   if (missing.length === 0) return true;
   problems.push({ file, row: table.headerRow, message: `missing column${missing.length > 1 ? 's' : ''}: ${missing.join(', ')}` });
   return false;
-}
-
-export function parseSuppliersCsv(text: string): Parsed<Supplier> {
-  const table = readCsv(text, SUPPLIERS_FILE);
-  const problems = [...table.problems];
-  if (!requireColumns(SUPPLIERS_FILE, table, ['name'], problems)) return { list: [], problems };
-  const list: Supplier[] = [];
-  const clearedLinks: string[] = [];
-  const seen = new Map<string, number>();
-  for (const { row, cells } of table.rows) {
-    const get = cellGetter(table, cells);
-    const name = get('name').trim();
-    if (name === '') {
-      problems.push({ file: SUPPLIERS_FILE, row, message: 'supplier name is required' });
-      continue;
-    }
-    const first = seen.get(nameKey(name));
-    if (first !== undefined) {
-      problems.push({ file: SUPPLIERS_FILE, row, message: `supplier "${name}" is listed twice (first on row ${first})` });
-      continue;
-    }
-    seen.set(nameKey(name), row);
-    const site = normalizeUrl(get('website'), 'website');
-    if (!site.ok) clearedLinks.push(`${name} website (${get('website').trim().slice(0, 40)})`);
-    list.push({ name, website: site.ok ? site.url : '', notes: get('notes').trim() });
-  }
-  return { list, problems, clearedLinks };
-}
-
-export function serializeSuppliersCsv(suppliers: readonly Supplier[]): string {
-  const sorted = [...suppliers].sort((a, b) => compareSupplierNames(a.name, b.name));
-  return writeCsv(SUPPLIER_COLUMNS, sorted.map((s) => [s.name, s.website, s.notes]));
 }
 
 export function parseLocationsCsv(text: string): Parsed<Location> {
@@ -148,26 +110,7 @@ export function serializeCategoriesCsv(categories: readonly Category[]): string 
   return writeCsv(CATEGORY_COLUMNS, rows);
 }
 
-// ── Rebuilding lists from item data (CSV-only restores and the seed, §7) ──
-
-/** Appends supplier names used by vendor options that aren't in the list; ensures `other` exists. */
-export function completeSuppliers(list: readonly Supplier[], items: readonly Item[]): { list: Supplier[]; added: string[] } {
-  const out = [...list];
-  const keys = new Set(out.map((s) => nameKey(s.name)));
-  const added: string[] = [];
-  const add = (name: string) => {
-    if (name === '' || keys.has(nameKey(name))) return;
-    keys.add(nameKey(name));
-    out.push({ name, website: '', notes: '' });
-    added.push(name);
-  };
-  for (const item of items) for (const v of item.vendors) if (v) add(v.supplier);
-  if (!keys.has(OTHER_SUPPLIER)) {
-    keys.add(OTHER_SUPPLIER);
-    out.push({ name: OTHER_SUPPLIER, website: '', notes: '' });
-  }
-  return { list: out, added };
-}
+// ── Rebuilding lists from item data (CSV-only restores, §7) ──
 
 /** Appends location names used by items to the end of the walk order (§7). */
 export function completeLocations(list: readonly Location[], items: readonly Item[]): { list: Location[]; added: string[] } {
@@ -186,7 +129,7 @@ export function completeLocations(list: readonly Location[], items: readonly Ite
 
 /**
  * Spells each item's category, subcategory and location the way the lists do. Names match
- * ignoring capitals (§3), so a hand-edited `motors` becomes `Motors` (Stage 5 finding 2).
+ * ignoring capitals (§3), so a hand-edited `lights` becomes `Lights`.
  * Run after the complete* functions, so every name the items use is in the lists.
  */
 export function spellLikeLists(items: readonly Item[], categories: readonly Category[], locations: readonly Location[]): Item[] {

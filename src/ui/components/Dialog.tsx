@@ -1,4 +1,4 @@
-// Centered modal dialog over the whole app (mockups 2c, 7b, 7c, 7g, 7j). Escape or a tap
+// Centered modal dialog over the whole app. Escape or a tap
 // outside closes it; focus goes to the first field (or the element marked data-autofocus)
 // and back where it was afterwards. With dialogs stacked (the PIN pad over a confirmation),
 // Escape closes only the top one.

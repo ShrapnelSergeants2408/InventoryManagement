@@ -1,21 +1,12 @@
-// IndexedDB schema (SPEC §2, §3; stage4-plan §3).
+// IndexedDB schema (SPEC v2.0 §2, §3). A new database, `home-inventory`, starting at v1: the
+// household app shares no data with the FRC app it was forked from (D1).
 import Dexie, { type Table } from 'dexie';
-import { isCountStamp, midnightLocalIso } from '../domain/dates';
-import type { Helper } from '../domain/helpers';
-import type { NamedOrderList } from '../domain/order-lists';
-import type { PlacedOrder } from '../domain/placed-orders';
-import { nameKey, type Category, type Item, type Location, type Supplier } from '../domain/types';
+import { nameKey, type Category, type Item, type Location } from '../domain/types';
 
-/** Item as stored: adds derived index fields. */
+/** Item as stored: adds when it was last saved. */
 export interface ItemRow extends Item {
-  /** nameKey of every vendor option's supplier, for "how many options use X?" (F23). */
-  supplierKeys: string[];
   /** ms since epoch of the last save. */
   updatedAt: number;
-}
-
-export interface SupplierRow extends Supplier {
-  key: string;
 }
 
 export interface LocationRow extends Location {
@@ -26,12 +17,12 @@ export type CategoryRow = Category;
 
 export interface PhotoRow {
   itemId: string;
-  /** JPEG, about 1024 px on the long side (§8). */
+  /** JPEG, about 1024 px on the long side (§8; H2 raises it to 1600 and allows several). */
   full: Blob;
   /** Small JPEG for list rows; null until generated (needs a browser canvas). */
   thumb: Blob | null;
   updatedAt: number;
-  /** Set when the photo was taken or chosen on this tablet; absent for imported photos. */
+  /** Set when the photo was taken or chosen on this phone; absent for restored photos. */
   taken?: number;
 }
 
@@ -40,139 +31,35 @@ export interface SettingRow {
   value: unknown;
 }
 
-/** Named order list as stored (F27): adds the name key (unique ignoring capitals) and the item ids it holds. */
-export interface OrderListRow extends NamedOrderList {
-  key: string;
-  /** Multi-entry index, so a deleted item can be found on every list. */
-  itemIds: string[];
-}
+export const DB_NAME = 'home-inventory';
 
-/** Helper as stored (§3, main tablet only): adds the name key (unique ignoring capitals). */
-export interface HelperRow extends Helper {
-  key: string;
-}
-
-/**
- * Stores for the counts import (§18.5), created in v3 and filled from M16c: a pending item a
- * helper added, its photo, and the record that undoes the last import.
- */
-export interface PendingItemRow {
-  id: string;
-  helperId: string;
-  barcode: string;
-  [field: string]: unknown;
-}
-export interface PendingPhotoRow {
-  pendingId: string;
-  full: Blob;
-}
-export interface ImportUndoRow {
-  id: string;
-  [field: string]: unknown;
-}
-
-/**
- * Placed order as stored (F30, §21): adds the supplier key and the item ids it holds. Rows saved
- * before v0.17 have no funding (read as '').
- */
-export interface OrderRow extends Omit<PlacedOrder, 'funding'> {
-  funding?: string;
-  supplierKey: string;
-  /** Multi-entry index of the item lines' ids. */
-  itemIds: string[];
-}
-
-/** A receipt photo or PDF (§21.2), kept apart from the order so lists of orders stay small. */
-export interface ReceiptRow {
-  id: string;
-  orderId: string;
-  blob: Blob;
-}
-
-/** The schema this code was built for (stage6-plan §3). Stored as a setting so an older copy can tell. */
-export const SCHEMA_VERSION = 4;
+/** The schema this code was built for. Stored as a setting so an older copy can tell. */
+export const SCHEMA_VERSION = 1;
 export const SCHEMA_KEY = 'schemaVersion';
-
-/**
- * The v3 change to one stored item (§18.7): a date-only last_counted becomes local midnight
- * with that date's UTC offset, and counted_by is added blank. Nothing else changes.
- */
-export function upgradeItemToV3(row: { lastCounted?: unknown; countedBy?: unknown }): void {
-  // Only a real date only: anything else (never written by the app) is left as it is rather than shifted.
-  if (typeof row.lastCounted === 'string' && row.lastCounted.length === 10 && isCountStamp(row.lastCounted)) row.lastCounted = midnightLocalIso(row.lastCounted);
-  if (row.countedBy === undefined) row.countedBy = '';
-}
 
 export class InventoryDb extends Dexie {
   items!: Table<ItemRow, string>;
   photos!: Table<PhotoRow, string>;
-  suppliers!: Table<SupplierRow, string>;
   locations!: Table<LocationRow, string>;
   categories!: Table<CategoryRow, string>;
   settings!: Table<SettingRow, string>;
-  orderLists!: Table<OrderListRow, string>;
-  helpers!: Table<HelperRow, string>;
-  pendingItems!: Table<PendingItemRow, string>;
-  pendingPhotos!: Table<PendingPhotoRow, string>;
-  importUndo!: Table<ImportUndoRow, string>;
-  orders!: Table<OrderRow, string>;
-  receipts!: Table<ReceiptRow, string>;
 
-  constructor(name = 'frc2408-inventory') {
+  constructor(name = DB_NAME) {
     super(name);
     this.version(1).stores({
-      items: 'id, category, location, barcode, *supplierKeys, lastCounted',
+      items: 'id, category, location, barcode',
       photos: 'itemId',
-      suppliers: 'key, name',
       locations: 'key, order',
       categories: 'name, order',
       settings: 'key',
     });
-    // v2 (M15): named order lists (F27). A new empty table; nothing else changes.
-    this.version(2).stores({
-      orderLists: 'id, &key, *itemIds',
-    });
-    // v3 (M16a): helper devices (§18) and count times (§3). Four new empty tables; every item
-    // gets a date-time last_counted and a blank counted_by, and nothing else changes.
-    this.version(3)
-      .stores({
-        helpers: 'id, &key',
-        pendingItems: 'id, helperId, barcode',
-        pendingPhotos: 'pendingId',
-        importUndo: 'id',
-      })
-      .upgrade((tx) => tx.table('items').toCollection().modify(upgradeItemToV3));
-    // v4 (M19): placed orders and their receipts (F30, §21.6). Two new empty tables; nothing else changes.
-    this.version(4).stores({
-      orders: 'id, supplierKey, placedOn, *itemIds',
-      receipts: 'id, orderId',
-    });
   }
 }
 
-export function toOrderRow(o: PlacedOrder): OrderRow {
-  return { ...o, supplierKey: nameKey(o.supplier), itemIds: [...new Set(o.lines.flatMap((l) => (l.itemId ? [l.itemId] : [])))] };
-}
-
-export function fromOrderRow(row: OrderRow): PlacedOrder {
-  const { supplierKey: _k, itemIds: _i, ...o } = row;
-  // Orders stored before v0.17 have no funding field.
-  return { ...o, funding: o.funding ?? '' };
-}
-
-export function toHelperRow(h: Helper): HelperRow {
-  return { ...h, key: nameKey(h.name) };
-}
-
-export function fromHelperRow(row: HelperRow): Helper {
-  const { key: _k, ...h } = row;
-  return h;
-}
-
 /**
- * Stage 5 finding 6: a copy of the app older than the database (a stale cached copy, or a
- * rolled-back deploy) must not read or write it. Dexie 4 opens a newer database without an
- * error, so the stored schema version and the browser's own version number are both checked.
+ * A copy of the app older than the database (a stale cached copy, or a rolled-back deploy)
+ * must not read or write it. Dexie 4 opens a newer database without an error, so the stored
+ * schema version and the browser's own version number are both checked.
  * Returns 'outdated' without writing anything; otherwise records this schema version.
  */
 export async function checkSchema(db: InventoryDb): Promise<'ok' | 'outdated'> {
@@ -184,28 +71,14 @@ export async function checkSchema(db: InventoryDb): Promise<'ok' | 'outdated'> {
   return 'ok';
 }
 
-export function toOrderListRow(list: NamedOrderList): OrderListRow {
-  return { ...list, key: nameKey(list.name), itemIds: [...new Set(list.lines.map((l) => l.itemId))] };
-}
-
-export function fromOrderListRow(row: OrderListRow): NamedOrderList {
-  const { key: _k, itemIds: _i, ...list } = row;
-  return list;
-}
-
 export function toItemRow(item: Item, updatedAt: number): ItemRow {
-  const supplierKeys = [...new Set(item.vendors.flatMap((v) => (v ? [nameKey(v.supplier)] : [])))];
-  return { ...item, supplierKeys, updatedAt };
+  return { ...item, updatedAt };
 }
 
 /** Strips the derived fields so callers work with the plain domain type. */
 export function fromItemRow(row: ItemRow): Item {
-  const { supplierKeys: _k, updatedAt: _u, ...item } = row;
+  const { updatedAt: _u, ...item } = row;
   return item;
-}
-
-export function toSupplierRow(s: Supplier): SupplierRow {
-  return { ...s, key: nameKey(s.name) };
 }
 
 export function toLocationRow(l: Location): LocationRow {

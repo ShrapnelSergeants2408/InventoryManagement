@@ -19,19 +19,19 @@ const kind = (raw: string) => {
 };
 
 describe('QR payload (SPEC §9)', () => {
-  it('is 2408:<id>', () => {
-    expect(qrPayload('st-0063')).toBe('2408:st-0063');
-    expect(QR_PREFIX).toBe('2408:');
+  it('is hhi:<id>', () => {
+    expect(qrPayload('st-0063')).toBe('hhi:st-0063');
+    expect(QR_PREFIX).toBe('hhi:');
   });
 });
 
 describe('scan resolution (F21)', () => {
   it('a team label opens its item', () => {
-    expect(kind('2408:st-0063')).toEqual(['item', 'st-0063', 'label']);
+    expect(kind('hhi:st-0063')).toEqual(['item', 'st-0063', 'label']);
   });
 
   it('case and whitespace around a label or typed id are ignored', () => {
-    expect(kind('  2408:ST-0063 \n')).toEqual(['item', 'st-0063', 'label']);
+    expect(kind('  HHI:ST-0063 \n')).toEqual(['item', 'st-0063', 'label']);
     expect(kind('tm-7k3qx')).toEqual(['item', 'tm-7K3QX', 'id']);
     expect(kind(' st-0063 ')).toEqual(['item', 'st-0063', 'id']);
   });
@@ -52,8 +52,8 @@ describe('scan resolution (F21)', () => {
     expect(kind('012345678905')).toEqual(['many', ['tm-AAAAA', 'tm-BBBBB']]);
   });
 
-  it('a team label for an item not on this tablet', () => {
-    expect(kind('2408:st-9999')).toEqual(['missing-label', 'st-9999']);
+  it('a household label for an item not on this phone', () => {
+    expect(kind('hhi:st-9999')).toEqual(['missing-label', 'st-9999']);
   });
 
   it('anything else is unknown (attach or add); blank is empty', () => {
@@ -94,7 +94,7 @@ describe('QR round trip: generated label codes decode back to the payload', () =
     return { data, width: px, height: px, colorSpace: 'srgb' as const };
   }
 
-  it.each(['2408:st-0063', '2408:st-0001', '2408:tm-7K3QX', '2408:tm-ZZZZZ'])('%s', async (text) => {
+  it.each(['hhi:st-0063', 'hhi:st-0001', 'hhi:tm-7K3QX', 'hhi:tm-ZZZZZ'])('%s', async (text) => {
     const found = await readBarcodes(render(text) as unknown as ImageData, { formats: ['QRCode'] });
     expect(found.map((f) => f.text)).toEqual([text]);
     expect(found[0]!.ecLevel).toBe('M'); // survives a scuffed label
@@ -102,7 +102,7 @@ describe('QR round trip: generated label codes decode back to the payload', () =
   });
 
   it('the path draws exactly the dark modules', () => {
-    const m = qrMatrix('2408:st-0063');
+    const m = qrMatrix('hhi:st-0063');
     const dark = m.flat().filter(Boolean).length;
     const area = [...qrPath(m).d.matchAll(/h(\d+)/g)].reduce((s, x) => s + Number(x[1]), 0);
     expect(area).toBe(dark);

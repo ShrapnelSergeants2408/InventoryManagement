@@ -1,5 +1,5 @@
 // Temporary folders a browser check makes (the Chrome profile, test files) are removed when the
-// check exits, so repeated runs don't fill %TEMP% (M13 review, finding 3). The check's own Chrome
+// check exits, so repeated runs don't fill %TEMP%. The check's own Chrome
 // is closed first, with its child processes, because Windows won't delete a profile in use.
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';

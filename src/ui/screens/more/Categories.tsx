@@ -1,5 +1,5 @@
-// Categories (F9, mockups 7f–7g). Anyone can add and reorder; rename and remove need the
-// mentor PIN, and a category or subcategory that still holds items must have them moved first.
+// Categories (F11): add, rename, reorder and remove. A category or subcategory that still holds
+// items must have them moved first.
 import { useState } from 'preact/hooks';
 import {
   addCategory,
@@ -13,12 +13,10 @@ import {
 } from '../../../data/lists';
 import { itemsIn, moveTargets, placeLabel, type CategoryPlace } from '../../../domain/lists';
 import type { Category, Item } from '../../../domain/types';
-import { gate } from '../../../security/gate';
-import { BackButton, PinMark, StateMessage, TopBar, plural } from '../../components/common';
+import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
-import { useCloseOnRelock } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
@@ -42,8 +40,6 @@ export function CategoriesScreen() {
   const db = useDb();
   const live = useSnapshot();
   const [open, setOpen] = useState<Open>(null);
-  // Dialogs opened behind the PIN close when mentor tools relock.
-  useCloseOnRelock(open?.kind === 'rename' || open?.kind === 'remove', () => setOpen(null));
   const [reorder, setReorder] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const back = <BackButton label="More" fallback={href.tab('more')} />;
@@ -67,9 +63,6 @@ export function CategoriesScreen() {
       if (!next.delete(name)) next.add(name);
       return next;
     });
-  const withPin = async (reason: string, next: Open) => {
-    if (await gate(reason)) setOpen(next);
-  };
 
   return (
     <>
@@ -91,9 +84,7 @@ export function CategoriesScreen() {
       </TopBar>
       <div class="mlist">
         <p class="small muted lockline">
-          Anyone can add or reorder.{' '}
-          <Icon name="lock" />
-          Rename and remove need the mentor PIN; a category must be empty (or its items moved) before it can be removed.
+          A category must be empty (or its items moved) before it can be removed.
         </p>
         {!snap ? (
           <StateMessage icon="folder" title="Loading categories…" />
@@ -117,8 +108,8 @@ export function CategoriesScreen() {
                   </div>
                   {!reorder && (
                     <Actions
-                      onRename={() => void withPin('Renaming a category needs the mentor PIN.', { kind: 'rename', t: { category: c.name } })}
-                      onRemove={() => void withPin('Removing a category needs the mentor PIN.', { kind: 'remove', t: { category: c.name } })}
+                      onRename={() => setOpen({ kind: 'rename', t: { category: c.name } })}
+                      onRemove={() => setOpen({ kind: 'remove', t: { category: c.name } })}
                     />
                   )}
                 </div>
@@ -134,8 +125,8 @@ export function CategoriesScreen() {
                         </div>
                         {!reorder && (
                           <Actions
-                            onRename={() => void withPin('Renaming a subcategory needs the mentor PIN.', { kind: 'rename', t: { category: c.name, subcategory: s } })}
-                            onRemove={() => void withPin('Removing a subcategory needs the mentor PIN.', { kind: 'remove', t: { category: c.name, subcategory: s } })}
+                            onRename={() => setOpen({ kind: 'rename', t: { category: c.name, subcategory: s } })}
+                            onRemove={() => setOpen({ kind: 'remove', t: { category: c.name, subcategory: s } })}
                           />
                         )}
                       </div>
@@ -244,11 +235,9 @@ function Actions(props: { onRename: () => void; onRemove: () => void }) {
     <div class="acts">
       <button type="button" class="btn sm" onClick={props.onRename}>
         Rename
-        <PinMark />
       </button>
       <button type="button" class="btn sm danger" onClick={props.onRemove}>
         Remove
-        <PinMark />
       </button>
     </div>
   );

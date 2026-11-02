@@ -1,24 +1,19 @@
-// Supplier, location and category list changes (F23, F25, F9). A rename or remove rewrites
-// every affected item in the same transaction as the list, so the two never disagree.
+// Location and category list changes (SPEC v2.0 F11). A rename or remove rewrites every
+// affected item in the same transaction as the list, so the two never disagree.
 import {
   checkName,
-  isOtherSupplier,
   itemsIn,
   moveBy,
   moveItems,
   reassignLocation,
-  reassignSupplier,
   renameCategoryItems,
   renameSubcategoryItems,
   renumber,
   takenLocationNames,
   type CategoryPlace,
 } from '../domain/lists';
-import { nameKey, type Item, type Location, type Supplier } from '../domain/types';
-import { normalizeUrl } from '../domain/url';
-import { renameGroup, type GroupKind } from '../domain/helpers';
-import { fromHelperRow, fromItemRow, fromOrderRow, toHelperRow, toItemRow, toLocationRow, toOrderRow, toSupplierRow, type InventoryDb } from './db';
-import { isHelperDb, noteLocationAdded } from './helper-db';
+import { nameKey, type Item, type Location } from '../domain/types';
+import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
 import { RECENT_LOCATIONS, getRecentLocations } from './items';
 
 function fail(message: string): never {
@@ -35,71 +30,7 @@ async function saveItems(db: InventoryDb, items: readonly Item[], now: number): 
 
 const touch = (db: InventoryDb, now: number) => db.settings.put({ key: 'lastChangeAt', value: now });
 
-// ── Suppliers (F23; PIN required for add, rename and remove — the UI asks first) ──
-
-/** A renamed supplier: orders follow the new name (§21.4). A removed one isn't followed. */
-async function renameOrderSupplier(db: InventoryDb, oldKey: string, name: string): Promise<void> {
-  const rows = await db.orders.where('supplierKey').equals(oldKey).toArray();
-  for (const r of rows) await db.orders.put(toOrderRow({ ...fromOrderRow(r), supplier: name }));
-}
-
-/** A renamed category: order lines that carry the old name follow it (§21.4). */
-async function renameOrderCategory(db: InventoryDb, from: string, to: string): Promise<void> {
-  for (const r of await db.orders.toArray()) {
-    if (!r.lines.some((l) => l.category === from)) continue;
-    const o = fromOrderRow(r);
-    await db.orders.put(toOrderRow({ ...o, lines: o.lines.map((l) => (l.category === from ? { ...l, category: to } : l)) }));
-  }
-}
-
-function cleanSupplier(s: Supplier, existing: readonly string[], self?: string): Supplier {
-  const name = checkName(s.name, existing, 'Supplier', self);
-  if (!name.ok) return fail(name.error);
-  const site = normalizeUrl(s.website, 'Website');
-  if (!site.ok) return fail(`${site.error}.`);
-  return { name: name.name, website: site.url, notes: s.notes.trim() };
-}
-
-export async function addSupplier(db: InventoryDb, s: Supplier, now = Date.now()): Promise<Supplier> {
-  return db.transaction('rw', db.suppliers, db.settings, async () => {
-    const clean = cleanSupplier(s, (await db.suppliers.toArray()).map((x) => x.name));
-    await db.suppliers.add(toSupplierRow(clean));
-    await touch(db, now);
-    return clean;
-  });
-}
-
-/** Changes a supplier's name, website and notes. A new name is written into every vendor option that used the old one. */
-export async function updateSupplier(db: InventoryDb, oldName: string, next: Supplier, now = Date.now()): Promise<Supplier> {
-  return db.transaction('rw', db.suppliers, db.items, db.settings, db.orders, async () => {
-    const row = (await db.suppliers.get(nameKey(oldName))) ?? fail(`supplier "${oldName}" isn't in the list`);
-    const clean = cleanSupplier(next, (await db.suppliers.toArray()).map((x) => x.name), row.name);
-    if (isOtherSupplier(row.name) && clean.name !== row.name) fail('“other” is the fallback supplier and keeps its name.');
-    await db.suppliers.delete(row.key);
-    await db.suppliers.add(toSupplierRow(clean));
-    await saveItems(db, reassignSupplier(await allItems(db), row.name, clean.name), now);
-    if (clean.name !== row.name) await renameOrderSupplier(db, row.key, clean.name);
-    await touch(db, now);
-    return clean;
-  });
-}
-
-/** Removes a supplier; vendor options that used it move to `replacement` (default `other`, F23). */
-export async function removeSupplier(db: InventoryDb, name: string, replacement: string, now = Date.now()): Promise<number> {
-  return db.transaction('rw', db.suppliers, db.items, db.settings, async () => {
-    const row = (await db.suppliers.get(nameKey(name))) ?? fail(`supplier "${name}" isn't in the list`);
-    if (isOtherSupplier(row.name)) fail('“other” is the fallback supplier and can’t be removed.');
-    const to = (await db.suppliers.get(nameKey(replacement))) ?? fail(`replacement supplier "${replacement}" isn't in the list`);
-    if (to.key === row.key) fail('Choose a different supplier to move its vendor options to.');
-    const changed = reassignSupplier(await allItems(db), row.name, to.name);
-    await saveItems(db, changed, now);
-    await db.suppliers.delete(row.key);
-    await touch(db, now);
-    return changed.length;
-  });
-}
-
-// ── Locations (F25; add and reorder for anyone, rename and remove with the PIN) ──
+// ── Locations  ──
 
 async function orderedLocations(db: InventoryDb): Promise<Location[]> {
   return (await db.locations.orderBy('order').toArray()).map(({ key: _k, ...l }) => l);
@@ -110,24 +41,22 @@ async function writeLocations(db: InventoryDb, list: readonly Location[]): Promi
   await db.locations.bulkAdd(renumber(list).map(toLocationRow));
 }
 
-/** Adds a location at the end of the walk order (a helper also records it for its counts file, §18.4). Returns it as stored. */
+/** Adds a location at the end of the walk order. Returns it as stored. */
 export async function addLocation(db: InventoryDb, name: string, notes = '', now = Date.now()): Promise<Location> {
-  const tables = isHelperDb(db) ? [db.locations, db.settings, db.changes] : [db.locations, db.settings];
-  return db.transaction('rw', tables, async () => {
+  return db.transaction('rw', db.locations, db.settings, async () => {
     const list = await orderedLocations(db);
     const checked = checkName(name, takenLocationNames(list.map((l) => l.name)), 'Location');
     if (!checked.ok) return fail(checked.error);
     const loc = { name: checked.name, notes: notes.trim(), order: list.length };
     await writeLocations(db, [...list, loc]);
     await touch(db, now);
-    if (isHelperDb(db)) await noteLocationAdded(db, loc.name, now);
     return loc;
   });
 }
 
 /** Renames a location and/or changes its notes; items that used the old name follow. */
 export async function updateLocation(db: InventoryDb, oldName: string, name: string, notes: string, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.locations, db.items, db.settings, db.helpers, async () => {
+  await db.transaction('rw', db.locations, db.items, db.settings, async () => {
     const list = await orderedLocations(db);
     const at = list.findIndex((l) => nameKey(l.name) === nameKey(oldName));
     if (at < 0) fail(`location "${oldName}" isn't in the list`);
@@ -137,7 +66,6 @@ export async function updateLocation(db: InventoryDb, oldName: string, name: str
     list[at] = { ...list[at]!, name: checked.name, notes: notes.trim() };
     await writeLocations(db, list);
     await saveItems(db, reassignLocation(await allItems(db), old, checked.name), now);
-    await followRename(db, 'location', old, checked.name);
     const recent = await getRecentLocations(db);
     await db.settings.put({ key: RECENT_LOCATIONS, value: recent.map((r) => (nameKey(r) === nameKey(old) ? checked.name : r)) });
     await touch(db, now);
@@ -176,7 +104,7 @@ export async function moveLocation(db: InventoryDb, name: string, delta: number,
   });
 }
 
-// ── Categories (F9; add and reorder for anyone, rename and remove with the PIN) ──
+// ── Categories  ──
 
 async function orderedCategories(db: InventoryDb) {
   return db.categories.orderBy('order').toArray();
@@ -203,7 +131,7 @@ export async function addCategory(db: InventoryDb, name: string, now = Date.now(
 }
 
 export async function renameCategory(db: InventoryDb, oldName: string, name: string, now = Date.now()): Promise<string> {
-  return db.transaction('rw', db.categories, db.items, db.settings, db.helpers, db.orders, async () => {
+  return db.transaction('rw', db.categories, db.items, db.settings, async () => {
     const list = await orderedCategories(db);
     const at = list.findIndex((c) => c.name === oldName);
     if (at < 0) fail(`category "${oldName}" isn't in the list`);
@@ -212,8 +140,6 @@ export async function renameCategory(db: InventoryDb, oldName: string, name: str
     list[at] = { ...list[at]!, name: checked.name };
     await writeCategories(db, list);
     await saveItems(db, renameCategoryItems(await allItems(db), oldName, checked.name), now);
-    await followRename(db, 'category', oldName, checked.name);
-    await renameOrderCategory(db, oldName, checked.name);
     await touch(db, now);
     return checked.name;
   });
@@ -316,8 +242,7 @@ export async function moveSubcategory(db: InventoryDb, category: string, name: s
  * Bulk move (F28): moves the chosen items to a category and subcategory in one transaction.
  * Only category and subcategory change. With `create`, a category or subcategory that isn't in
  * the list yet is added first ("+ New category…", "+ New subcategory…"); a typed name that
- * matches one already there (ignoring capitals) just uses it, as in the item editor. No PIN
- * (students can already change an item's category, F7). Returns how many items were chosen.
+ * matches one already there (ignoring capitals) just uses it, as in the item editor. Returns how many items were chosen.
  */
 export async function moveItemsTo(db: InventoryDb, ids: readonly string[], to: CategoryPlace, opts: { create?: boolean } = {}, now = Date.now()): Promise<number> {
   return db.transaction('rw', db.categories, db.items, db.settings, async () => {
@@ -356,10 +281,4 @@ export async function moveItemsTo(db: InventoryDb, ids: readonly string[], to: C
     await touch(db, now);
     return unique.length;
   });
-}
-
-/** Helpers counting a renamed category or location follow the new name (§18.1), in the rename's transaction. */
-async function followRename(db: InventoryDb, kind: GroupKind, from: string, to: string): Promise<void> {
-  const changed = renameGroup((await db.helpers.toArray()).map(fromHelperRow), kind, from, to);
-  if (changed.length > 0) await db.helpers.bulkPut(changed.map(toHelperRow));
 }

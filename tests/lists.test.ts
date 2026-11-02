@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkName,
-  isOtherSupplier,
   locationUsage,
   moveBy,
   moveItems,
@@ -9,17 +8,14 @@ import {
   placeLabel,
   pushRecent,
   reassignLocation,
-  reassignSupplier,
   renameCategoryItems,
   renameSubcategoryItems,
   renumber,
-  sortSupplierNames,
-  supplierUsage,
 } from '../src/domain/lists';
 import type { Category } from '../src/domain/types';
-import { item, vendor } from './helpers';
+import { item } from './helpers';
 
-describe('checkName (F23, F25, F9; D3)', () => {
+describe('checkName (F11)', () => {
   const list = ['AndyMark', 'REV', 'other'];
 
   it('trims and accepts a new name', () => {
@@ -43,46 +39,6 @@ describe('checkName (F23, F25, F9; D3)', () => {
 
   it('renaming an entry to itself with different capitals is allowed', () => {
     expect(checkName('Andymark', list, 'Supplier', 'AndyMark')).toEqual({ ok: true, name: 'Andymark' });
-  });
-});
-
-describe('suppliers (F23)', () => {
-  it('pickers list A–Z ignoring capitals with other last', () => {
-    expect(sortSupplierNames(['other', 'WCP', 'amazon', 'AndyMark', 'zip ties'])).toEqual(['amazon', 'AndyMark', 'WCP', 'zip ties', 'other']);
-  });
-
-  it('isOtherSupplier ignores capitals and spaces', () => {
-    expect(isOtherSupplier(' Other ')).toBe(true);
-    expect(isOtherSupplier('others')).toBe(false);
-  });
-
-  it('usage counts every vendor option and how many are preferred', () => {
-    const items = [
-      item({ vendors: [vendor({ supplier: 'WCP' }), vendor({ supplier: 'REV' }), null], preferredVendor: 1 }),
-      item({ vendors: [vendor({ supplier: 'REV' }), vendor({ supplier: 'wcp' }), null], preferredVendor: 1 }),
-      item({ vendors: [vendor({ supplier: 'REV' }), null, vendor({ supplier: 'WCP' })], preferredVendor: 3 }),
-    ];
-    const u = supplierUsage(items);
-    expect(u.get('wcp')).toEqual({ options: 3, preferred: 2 });
-    expect(u.get('rev')).toEqual({ options: 3, preferred: 1 });
-    expect(u.get('amazon')).toBeUndefined();
-  });
-
-  it('reassign rewrites every option using the supplier (any capitals), keeps part #, link and price, and returns only changed items', () => {
-    const a = item({ id: 'a', vendors: [vendor({ supplier: 'WCP', partNo: 'WCP-1', packPriceCents: 199 }), vendor({ supplier: 'wcp', partNo: 'X' }), null] });
-    const b = item({ id: 'b', vendors: [vendor({ supplier: 'REV' }), null, null] });
-    const changed = reassignSupplier([a, b], 'WCP', 'other');
-    expect(changed.map((i) => i.id)).toEqual(['a']);
-    expect(changed[0]!.vendors[0]).toEqual({ ...a.vendors[0], supplier: 'other' });
-    expect(changed[0]!.vendors[1]!.supplier).toBe('other');
-    expect(changed[0]!.vendors[2]).toBeNull();
-    expect(a.vendors[0]!.supplier).toBe('WCP'); // input not mutated
-  });
-
-  it('a rename that only changes capitals still rewrites the options', () => {
-    const a = item({ vendors: [vendor({ supplier: 'Wcp' }), null, null] });
-    expect(reassignSupplier([a], 'Wcp', 'WCP')[0]!.vendors[0]!.supplier).toBe('WCP');
-    expect(reassignSupplier([a], 'Wcp', 'Wcp')).toEqual([]);
   });
 });
 

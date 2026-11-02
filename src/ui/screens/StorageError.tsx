@@ -1,8 +1,8 @@
-// Storage-error state (SPEC §2, spec-questions Q2): the database can't be opened (storage
-// cleared or blocked). Try again first; if that fails too, and the error isn't one that clears
-// up by itself, "Set up again" deletes what's left of the app's storage and starts first-launch
-// setup, whose last step can restore a backup. It needs DELETE typed: the PIN can't protect it
-// (Stage 5 finding 1). Also the screens for a blocked upgrade and an out-of-date copy (§3 plan).
+// Storage-error state (SPEC v2.0 §2): the database can't be opened (storage cleared or blocked).
+// Try again first; if that fails too, and the error isn't one that clears up by itself, "Set up
+// again" deletes what's left of the app's storage and starts first-launch setup, which can
+// restore a backup. It needs DELETE typed. Also the screens for a blocked upgrade and an
+// out-of-date copy.
 import Dexie from 'dexie';
 import { useEffect, useState } from 'preact/hooks';
 import { InventoryDb } from '../../data/db';
@@ -40,7 +40,7 @@ export function StorageError({ error, onRetry, failures = 0 }: { error: unknown;
         icon="database"
         tone="alert"
         role="alert"
-        title="Can’t open the inventory on this tablet"
+        title="Can’t open the inventory on this phone"
         actions={
           <>
             <button type="button" class="btn" onClick={onRetry ?? (() => location.reload())}>
@@ -56,12 +56,12 @@ export function StorageError({ error, onRetry, failures = 0 }: { error: unknown;
         }
       >
         <p class="state-text">
-          The browser blocked or cleared this app’s storage. Nothing is lost if you have a backup: a mentor can restore the latest backup file (ZIP or CSV) from the Downloads
-          folder, Drive, or email.
+          The browser blocked or cleared this app’s storage. Nothing is lost if you have a backup: restore the latest backup file (ZIP or CSV) from Files, iCloud Drive or
+          email.
         </p>
         {canReset ? (
           <p class="state-text small muted">
-            If the inventory still can’t be opened, choose <strong>Set up again</strong>: you set a new mentor PIN, then choose <strong>Restore a backup file</strong>.
+            If the inventory still can’t be opened, choose <strong>Set up again</strong>, then <strong>Restore a backup file</strong>.
           </p>
         ) : (
           <p class="state-text small muted">Close other tabs of this app, then try again. This often clears up after a moment.</p>
@@ -93,13 +93,10 @@ function ResetDialog({ onClose }: { onClose: () => void }) {
   return (
     <Dialog label="Set up again" role="alertdialog" onClose={() => !busy && onClose()}>
       <div class="dlg-form">
-        <h2 class="h2">Set up this tablet again?</h2>
+        <h2 class="h2">Set up this phone again?</h2>
         <p class="dlg-p">
-          This deletes whatever is left of the app’s storage on this tablet (the inventory, photos, order lists, PIN and settings) and starts first-time setup. Have the
-          backup file ready to restore in the last step.
-        </p>
-        <p class="dlg-p">
-          <strong>The mentor PIN can’t protect this step</strong>, because the PIN is stored in what gets deleted. Only a mentor should do it.
+          This deletes whatever is left of the app’s storage on this phone (the inventory, photos and settings) and starts first-time setup. Have the backup file ready to
+          restore.
         </p>
         <div>
           <label class="lbl" for="rsword">
@@ -141,15 +138,15 @@ export function OpenBlocked() {
       }
     >
       <p class="state-text">
-        This version of the app needs to update how the inventory is stored, and another tab or window of the app is still using it. Close the other tabs (in Chrome and in
-        the installed app). The inventory opens by itself as soon as they’re closed.
+        This version of the app needs to update how the inventory is stored, and another tab or window of the app is still using it. Close the other tabs (in Safari and in
+        the home-screen app). The inventory opens by itself as soon as they’re closed.
       </p>
       <p class="state-text small muted">Nothing has been changed or lost.</p>
     </StateMessage>
   );
 }
 
-/** The database was saved by a newer version (Stage 5 finding 6). Nothing is read or written until the app updates. */
+/** The database was saved by a newer version. Nothing is read or written until the app updates. */
 export function AppOutdated() {
   const [busy, setBusy] = useState(false);
   return (
@@ -174,7 +171,7 @@ export function AppOutdated() {
       }
     >
       <p class="state-text">
-        The inventory on this tablet was saved by a newer version of the app. This copy is older, so it won’t open the inventory, to keep from damaging it. Connect to the
+        The inventory on this phone was saved by a newer version of the app. This copy is older, so it won’t open the inventory, to keep from damaging it. Connect to the
         internet and reload to get the newest version.
       </p>
       <p class="state-text small muted">Nothing has been changed or lost.</p>

@@ -1,4 +1,4 @@
-// Live camera with barcode/QR detection (F21; mockups 5a, 5e). Used by Scan and by the
+// Live camera with barcode/QR detection (F3). Used by Scan and by the
 // editor's barcode field. The camera is released when the screen closes or the app is hidden.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useRef, useState } from 'preact/hooks';
@@ -129,7 +129,7 @@ export function Scanner(props: {
               hold.current = null;
               showHold(false, 0);
               last.current = { code: fresh.rawValue, at: now };
-              // Scanning carries on after a report (count-in never pauses); pausing stops it.
+              // Scanning carries on after a report ; pausing stops it.
               latest.current.onDetect(fresh.rawValue, fresh.format);
             }
           }

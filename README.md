@@ -1,10 +1,10 @@
-# FRC 2408 Inventory Management
+# Hiebert Home Inventory
 
-Shop inventory, order list, order history and QR labels for FRC Team 2408, the Shrapnel Sergeants. It's an offline web app (PWA) installed on the shop tablet, with optional helper phones for counting.
+A household inventory for two iPhones: what's in each bin and on each shelf, holiday decorations first, then the garage, attic and utility room. It's a web app (PWA) added to the home screen from Safari, with QR labels for bins and shelves. Forked from the FRC 2408 shop inventory.
 
-- **Live app:** https://team2408.com/InventoryManagement/
-- **Looking after the app:** start with [`docs/HANDOFF.md`](docs/HANDOFF.md)
-- **What it does, in detail:** [`docs/SPEC.md`](docs/SPEC.md)
+- **What it does, in detail:** [`docs/SPEC.md`](docs/SPEC.md) (SPEC v2.0)
+- **Looking after the app:** [`docs/HANDOFF.md`](docs/HANDOFF.md)
+- **Where it's going:** SPEC §15, milestones H0–H7
 
 ```
 npm ci          # install
@@ -13,4 +13,4 @@ npm test        # unit tests
 npm run build   # type check and production build
 ```
 
-Every merge to `main` is tested, built and published to GitHub Pages (`.github/workflows/deploy.yml`).
+Every merge to `main` is tested and built by `.github/workflows/deploy.yml`. Hosting moves to Cloudflare with the sync milestone (H4).

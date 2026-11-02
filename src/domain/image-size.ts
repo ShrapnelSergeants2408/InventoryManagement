@@ -1,9 +1,9 @@
 // Resize math for photos (SPEC §8) and list thumbnails.
 
-/** Full photos are about 1024 px on the long side (§8). */
-export const PHOTO_LONG_SIDE = 1024;
-/** List thumbnails: shown at 64 CSS px, so 160 px covers a 2.5× screen. */
-export const THUMB_LONG_SIDE = 160;
+/** Full photos are about 1600 px on the long side (SPEC v2.0 §8, D10). */
+export const PHOTO_LONG_SIDE = 1600;
+/** Thumbnails are about 320 px (§3): rows and the bin and spot cards, sharp on a 3× iPhone screen. */
+export const THUMB_LONG_SIDE = 320;
 
 /** Scales to fit within `max` on the long side, keeping the aspect ratio. Never upscales; at least 1 px. */
 export function fitWithin(width: number, height: number, max: number): { width: number; height: number } {

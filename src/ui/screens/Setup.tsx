@@ -1,8 +1,9 @@
 // First launch (SPEC v2.0 §12.5): choose what the inventory starts with: a fresh start with the
-// default categories, or a backup file (a replacement phone, or storage that was cleared).
+// default categories and seasons, or a backup file (a replacement phone, or storage that was cleared).
 // The inventory and "setup done" are saved together, so closing the app part-way shows this
 // screen again. H4 adds sign-in and the first download from the server before this step.
 import { useRef, useState } from 'preact/hooks';
+import { planInput } from '../../data/backup';
 import type { ReplaceAllInput } from '../../data/inventory';
 import { emptyStart, requestPersistentStorage, startInventory, type StartChoice } from '../../data/setup';
 import { formatDateTime } from '../../domain/dates';
@@ -13,7 +14,7 @@ import { forgetAllThumbnails, useDb } from '../data-hooks';
 import { Icon } from '../icons';
 import { href } from '../shell/router';
 
-const BACKUP_ACCEPT = '.zip,.csv,application/zip,application/x-zip-compressed,text/csv,text/comma-separated-values';
+const BACKUP_ACCEPT = '.zip,application/zip,application/x-zip-compressed';
 
 type Stage =
   | { kind: 'choose' }
@@ -32,7 +33,7 @@ interface Result {
   persisted: boolean | null;
 }
 
-const EMPTY_SNAPSHOT = { items: [], locations: [], categories: [] };
+const EMPTY_LISTS = { categories: [], tags: [] };
 
 export function SetupScreen({ onDone }: { onDone: () => void }) {
   const db = useDb();
@@ -66,7 +67,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
     setError(null);
     setStage({ kind: 'checking', name: f.name });
     try {
-      const read = await readRestoreFile({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, EMPTY_SNAPSHOT);
+      const read = await readRestoreFile({ name: f.name, bytes: new Uint8Array(await f.arrayBuffer()) }, EMPTY_LISTS);
       if (read.ok) setStage({ kind: 'restore', plan: read.plan });
       else setStage({ kind: 'refused', name: f.name, problems: read.problems.map((p) => (p.row === null ? `${p.file}: ${p.message}` : `${p.file} row ${p.row}: ${p.message}`)) });
     } catch (e) {
@@ -108,7 +109,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
           <div class="card sfile">
             <strong class="mono">{p.fileName}</strong>
             <span>
-              {plural(p.items.length, 'item')} · {p.kind === 'zip' ? plural(p.photos.size, 'photo') : 'no photos (CSV only)'} · {plural(p.locations.length, 'location')}
+              {plural(p.data.items.length, 'item')} · {plural(p.images.size, 'photo')} · {plural(p.data.areas.length, 'area')} · {plural(p.data.spots.length, 'spot')} · {plural(p.data.bins.length, 'bin')}
             </span>
             <span class="small muted">Saved {p.savedAt ? formatDateTime(p.savedAt) : 'at an unknown time'}</span>
             {p.warnings.length > 0 && (
@@ -128,7 +129,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
                   <li key={m}>{m}</li>
                 ))}
             </ul>
-            <span class="small muted">Nothing was changed. Choose a full-backup ZIP or an inventory CSV made by this app.</span>
+            <span class="small muted">Nothing was changed. Choose a full-backup ZIP made by this app.</span>
           </div>
         )}
         <div class="setup-acts">
@@ -138,7 +139,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
               class="btn pri lg"
               onClick={() => {
                 setStage({ kind: 'saving' });
-                start('restore', p, p.fileName).catch(fail);
+                start('restore', planInput(p), p.fileName).catch(fail);
               }}
             >
               Restore this backup
@@ -157,8 +158,8 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
     );
   } else {
     const options: Array<{ k: StartChoice; title: string; desc: string }> = [
-      { k: 'empty', title: 'Start fresh', desc: 'Household categories (Decorations, Lights, Tools…), no items yet. Add things as you label bins and shelves.' },
-      { k: 'restore', title: 'Restore a backup file', desc: 'A full-backup ZIP or a CSV made by this app, e.g. from another phone' },
+      { k: 'empty', title: 'Start fresh', desc: 'Household categories (Decorations, Lights, Tools…) and seasons, no items yet. Then add your areas and spots.' },
+      { k: 'restore', title: 'Restore a backup file', desc: 'A full-backup ZIP made by this app, e.g. from another phone' },
     ];
     body = (
       <div class="setup-start">
@@ -215,7 +216,7 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
   const what =
     r.choice === 'restore'
       ? `${plural(r.items, 'item')} and ${plural(r.photos, 'photo')} from ${r.fileName ?? 'the backup'}`
-      : `${plural(r.categories, 'category', 'categories')}; no items yet`;
+      : `${plural(r.categories, 'category', 'categories')} and the default seasons; no items yet`;
   const storage =
     r.persisted === true
       ? 'Persistent storage granted: works offline'
@@ -237,8 +238,8 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
         </li>
       </ul>
       <div class="setup-acts">
-        <button type="button" class="btn pri lg" onClick={() => open(r.choice === 'restore' ? href.tab('inventory') : href.add())}>
-          {r.choice === 'restore' ? 'Go to inventory' : 'Add the first item'}
+        <button type="button" class="btn pri lg" onClick={() => open(r.choice === 'restore' ? href.tab('inventory') : href.list('places'))}>
+          {r.choice === 'restore' ? 'Go to inventory' : 'Add your areas and spots'}
         </button>
       </div>
     </div>

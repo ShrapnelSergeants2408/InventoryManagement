@@ -6,23 +6,14 @@ import { setBarcode } from '../src/data/items';
 import { getNudge, setNudge } from '../src/data/labels';
 import { loadLabelChoice, saveLabelChoice, type KeyValueStore } from '../src/data/prefs';
 import { getSettings } from '../src/data/settings';
-import { item } from './helpers';
+import { dataset, item } from './helpers';
 
 let db: InventoryDb;
 afterEach(() => db?.close());
 
 async function setup() {
   db = new InventoryDb(`l-${Math.random()}`);
-  await replaceAll(
-    db,
-    {
-      locations: [],
-      categories: [{ name: 'Motors', order: 0, subcategories: [] }],
-      items: [item({ id: 'a', name: 'Alpha' }), item({ id: 'b', name: 'Bravo', barcode: '722787604386' })],
-      photos: new Map(),
-    },
-    1,
-  );
+  await replaceAll(db, dataset({ items: [item({ id: 'a', name: 'Alpha' }), item({ id: 'b', name: 'Bravo', barcode: '722787604386' })] }), 1);
 }
 
 describe('label nudge storage (§9: saved per layout)', () => {

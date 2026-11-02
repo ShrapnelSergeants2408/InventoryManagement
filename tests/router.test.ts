@@ -9,7 +9,13 @@ describe('hash routes', () => {
     ['#/more', { tab: 'more', screen: 'tab' }],
     ['#/nonsense', { tab: 'inventory', screen: 'tab' }],
     ['#/item/st-0001', { tab: 'inventory', screen: 'item', id: 'st-0001' }],
-    ['#/add', { tab: 'inventory', screen: 'add', name: '', barcode: '' }],
+    ['#/add', { tab: 'inventory', screen: 'add', name: '', barcode: '', home: '' }],
+    ['#/add?home=bn-A1B2C3D4', { tab: 'inventory', screen: 'add', name: '', barcode: '', home: 'bn-A1B2C3D4' }],
+    ['#/bin/bn-A1B2C3D4', { tab: 'inventory', screen: 'bin', id: 'bn-A1B2C3D4' }],
+    ['#/bin/bn-A1B2C3D4/edit', { tab: 'inventory', screen: 'bin-edit', id: 'bn-A1B2C3D4' }],
+    ['#/new-bin?spot=sp-1', { tab: 'inventory', screen: 'bin-add', spot: 'sp-1', area: '' }],
+    ['#/new-bin', { tab: 'inventory', screen: 'bin-add', spot: '', area: '' }],
+    ['#/spot/sp-1', { tab: 'inventory', screen: 'spot', id: 'sp-1' }],
     ['#/count/import', { tab: 'inventory', screen: 'tab' }],
     ['#/labels', { tab: 'labels', screen: 'tab' }],
     ['#/labels?ids=st-0063', { tab: 'labels', screen: 'labels', ids: ['st-0063'] }],
@@ -20,7 +26,10 @@ describe('hash routes', () => {
     ['#/more/backup', { tab: 'more', screen: 'backup' }],
     ['#/more/settings', { tab: 'more', screen: 'settings' }],
     ['#/more/categories', { tab: 'more', screen: 'categories' }],
-    ['#/more/locations', { tab: 'more', screen: 'locations' }],
+    ['#/more/locations', { tab: 'more', screen: 'tab' }],
+    ['#/more/places', { tab: 'more', screen: 'places' }],
+    ['#/more/seasons', { tab: 'more', screen: 'seasons' }],
+    ['#/more/tags', { tab: 'more', screen: 'tags' }],
     ['#/more/nonsense', { tab: 'more', screen: 'tab' }],
   ])('%s', (hash, route) => {
     expect(parseHash(hash)).toEqual(route);
@@ -28,12 +37,14 @@ describe('hash routes', () => {
 
   it('round-trips item ids and add names with special characters', () => {
     expect(parseHash(href.item('tm-7K/3 x'))).toEqual({ tab: 'inventory', screen: 'item', id: 'tm-7K/3 x' });
-    expect(parseHash(href.add('wreath & “more”?'))).toEqual({ tab: 'inventory', screen: 'add', name: 'wreath & “more”?', barcode: '' });
-    expect(parseHash(href.add('', '012345678905'))).toEqual({ tab: 'inventory', screen: 'add', name: '', barcode: '012345678905' });
+    expect(parseHash(href.add('wreath & “more”?'))).toEqual({ tab: 'inventory', screen: 'add', name: 'wreath & “more”?', barcode: '', home: '' });
+    expect(parseHash(href.add('', '012345678905'))).toEqual({ tab: 'inventory', screen: 'add', name: '', barcode: '012345678905', home: '' });
     expect(href.add()).toBe('#/add');
     expect(parseHash(href.labels(['st-0063', 'tm-7K3QX']))).toEqual({ tab: 'labels', screen: 'labels', ids: ['st-0063', 'tm-7K3QX'] });
     expect(parseHash(href.edit('tm-7K/3 x'))).toEqual({ tab: 'inventory', screen: 'edit', id: 'tm-7K/3 x' });
-    expect(parseHash(href.list('locations'))).toEqual({ tab: 'more', screen: 'locations' });
+    expect(parseHash(href.list('places'))).toEqual({ tab: 'more', screen: 'places' });
+    expect(parseHash(href.binAdd({ area: 'ar-1' }))).toEqual({ tab: 'inventory', screen: 'bin-add', spot: '', area: 'ar-1' });
+    expect(parseHash(href.add('', '', 'sp-1'))).toMatchObject({ home: 'sp-1' });
   });
 
   it('a malformed escape does not throw', () => {

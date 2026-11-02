@@ -1,21 +1,26 @@
 // Inventory (home): grouped list, rows with a quantity stepper, search and recently viewed (F1),
-// filters (F2), Select and bulk move (F7).
+// filters (F2), Select and bulk Move to a bin or spot (F7) or Category…. H2b adds Find and the
+// By place and By season views.
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { adjustQuantity, setQuantity } from '../../../data/inventory';
-import { moveItemsTo } from '../../../data/lists';
+import { getRecentHomes, moveItemsHome } from '../../../data/items';
+import { changeItemsCategory } from '../../../data/lists';
 import { loadExpanded, loadFilters, loadRecent, saveExpanded, saveFilters } from '../../../data/prefs';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
 import { buildInventoryView, filterOptions, type InventoryView } from '../../../domain/inventory-view';
 import { placeLabel } from '../../../domain/lists';
+import { indexPlaces, itemPath, NO_HOME, pathText, type PlaceIndex } from '../../../domain/places';
 import { keepExisting, selectState, withIds } from '../../../domain/selection';
 import type { Item } from '../../../domain/types';
 import { CheckBox, StateMessage, TopBar, plural } from '../../components/common';
+import { HomePicker } from '../../components/HomePicker';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { BackupBanner } from '../../shell/BackupBanner';
-import { FilterPanel, NO_LOCATION_LABEL } from './FilterPanel';
+import { toHome } from '../item/Detail';
+import { FilterPanel, NO_HOME_LABEL } from './FilterPanel';
 import { ItemRow, Thumb } from './ItemRow';
 import { SelectBar } from '../../components/SelectBar';
 import { MoveDialog } from './MoveDialog';
@@ -58,17 +63,21 @@ export function InventoryScreen() {
   // Select mode: checkboxes on rows and group headers, then Move to….
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
-  const [moveOpen, setMoveOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState<'home' | 'category' | null>(null);
+  const [recentHomes, setRecentHomes] = useState<string[]>([]);
+  useEffect(() => void getRecentHomes(db).then(setRecentHomes), [db, moveOpen]);
 
   useEffect(() => saveFilters(filters), [filters]);
   useEffect(() => saveExpanded(expanded), [expanded]);
 
   const snap = live.state === 'ready' ? live.value : null;
   const view = useMemo(
-    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded }) : null),
+    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, places: snap, seasons: snap.seasons, query, filters, expanded }) : null),
     [snap, query, filters, expanded],
   );
-  const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap.locations) : null), [snap]);
+  const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap, snap.seasons, snap.tags) : null), [snap]);
+  const ix = useMemo(() => (snap ? indexPlaces(snap) : null), [snap]);
+  const where = (i: Item) => (ix ? pathText(itemPath(i, ix)) : '');
   const recent = useMemo(() => {
     if (!snap || !searching || query !== '') return [];
     const byId = new Map(snap.items.map((i) => [i.id, i]));
@@ -77,14 +86,14 @@ export function InventoryScreen() {
   // Items deleted while selecting drop out of the selection.
   const selected = useMemo(() => (snap ? keepExisting(picked, snap.items) : picked), [snap, picked]);
 
-  // A saved filter can name a category or location that was since renamed or removed; drop it
-  // rather than show an empty list.
+  // A saved filter can name a category, area, season or tag that was since renamed or removed;
+  // drop it rather than show an empty list.
   useEffect(() => {
     if (!options) return;
     setFilters((f) => {
-      const category = f.category !== null && !options.categories.includes(f.category) ? null : f.category;
-      const location = f.location !== null && f.location !== '' && !options.locations.includes(f.location) ? null : f.location;
-      return category === f.category && location === f.location ? f : { ...f, category, location };
+      const keep = (v: string | null, list: readonly string[]) => (v !== null && v !== '' && !list.includes(v) ? null : v);
+      const next = { ...f, category: keep(f.category, options.categories), area: keep(f.area, options.areas), season: keep(f.season, options.seasons), tag: keep(f.tag, options.tags) };
+      return JSON.stringify(next) === JSON.stringify(f) ? f : next;
     });
   }, [options]);
 
@@ -127,7 +136,7 @@ export function InventoryScreen() {
             class="field"
             type="search"
             aria-label="Search inventory"
-            placeholder="Search name, category, location, notes…"
+            placeholder="Search name, place, season, tags, notes…"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
             onFocus={() => setSearching(true)}
@@ -150,7 +159,7 @@ export function InventoryScreen() {
                   <span class="recent-t">
                     <strong>{i.name}</strong>
                     <span class="small muted">
-                      {placeLabel(i)} · {i.location || 'No location'}
+                      {placeLabel(i)} · {where(i)}
                     </span>
                   </span>
                 </a>
@@ -183,7 +192,7 @@ export function InventoryScreen() {
       </TopBar>
 
       <BackupBanner />
-      <QuickFilters view={view} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} />
+      <QuickFilters view={view} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} ix={ix} seasonName={(id) => snap?.seasons.find((s) => s.id === id)?.name} />
       {selecting && view && (
         <SelectBar
           count={selected.size}
@@ -194,9 +203,13 @@ export function InventoryScreen() {
           onAll={() => setPicked(withIds(selected, view.shownIds, true))}
           onClear={() => setPicked(new Set())}
         >
-          <button type="button" class="btn pri" disabled={selected.size === 0} onClick={() => setMoveOpen(true)}>
-            <Icon name="folder" />
+          <button type="button" class="btn pri" disabled={selected.size === 0} onClick={() => setMoveOpen('home')}>
+            <Icon name="pin" />
             Move to…
+          </button>
+          <button type="button" class="btn" disabled={selected.size === 0} onClick={() => setMoveOpen('category')}>
+            <Icon name="folder" />
+            Category…
           </button>
         </SelectBar>
       )}
@@ -233,21 +246,37 @@ export function InventoryScreen() {
           }
         >
           <p class="state-text">
-            Search looks at names, categories, locations, notes and barcodes. Try fewer letters.
+            Search looks at names, places, seasons, tags, categories, notes, barcodes and serials. Try fewer letters.
           </p>
         </StateMessage>
       ) : (
-        <List view={view} toggle={toggle} select={selecting ? { selected, set: (ids, on) => setPicked(withIds(selected, ids, on)) } : null} />
+        <List view={view} toggle={toggle} where={where} select={selecting ? { selected, set: (ids, on) => setPicked(withIds(selected, ids, on)) } : null} />
       )}
 
-      {moveOpen && snap && chosen.length > 0 && (
+      {moveOpen === 'home' && snap && ix && chosen.length > 0 && (
+        <HomePicker
+          snap={snap}
+          mode="item"
+          title={`Move ${plural(chosen.length, 'item')} to…`}
+          current={chosen.length === 1 ? chosen[0]!.binId || chosen[0]!.spotId : '\u0000'}
+          recent={recentHomes}
+          onClose={() => setMoveOpen(null)}
+          onPick={async (to) => {
+            const n = await moveItemsHome(db, chosen.map((i) => i.id), toHome(to));
+            setMoveOpen(null);
+            endSelect();
+            showToast(`Moved ${plural(n, 'item')} to ${to ? where({ ...chosen[0]!, binId: to.startsWith('bn-') ? to : '', spotId: to.startsWith('sp-') ? to : '' }) : NO_HOME}${n < chosen.length ? ` (${chosen.length - n} already there)` : ''}.`);
+          }}
+        />
+      )}
+      {moveOpen === 'category' && snap && chosen.length > 0 && (
         <MoveDialog
           chosen={chosen}
           categories={snap.categories}
-          onClose={() => setMoveOpen(false)}
+          onClose={() => setMoveOpen(null)}
           onMove={async (to, create) => {
-            const n = await moveItemsTo(db, chosen.map((i) => i.id), to, { create });
-            setMoveOpen(false);
+            const n = await changeItemsCategory(db, chosen.map((i) => i.id), to, { create });
+            setMoveOpen(null);
             endSelect();
             showToast(`Moved ${plural(n, 'item')} to ${placeLabel(to)}`);
           }}
@@ -258,7 +287,7 @@ export function InventoryScreen() {
         <FilterPanel
           filters={filters}
           options={options}
-          locations={snap?.locations ?? []}
+          snap={snap!}
           shown={view.shown}
           onChange={setFilters}
           onClear={clearAll}
@@ -276,18 +305,25 @@ function QuickFilters(props: {
   setFilters: (f: Filters) => void;
   openPanel: () => void;
   clearAll: () => void;
+  ix: PlaceIndex | null;
+  seasonName: (id: string) => string | undefined;
 }) {
   const { filters: f, setFilters } = props;
   const tog = (on: boolean) => (on ? 'fchip on' : 'fchip');
-  const loc = f.location === null ? 'All' : f.location || NO_LOCATION_LABEL;
+  const area = f.area === null ? 'All' : f.area === '' ? NO_HOME_LABEL : (props.ix?.area.get(f.area)?.name ?? '…');
+  const season = f.season === null ? 'All' : f.season === '' ? 'None' : (props.seasonName(f.season) ?? '…');
   return (
     <div class="frow" role="toolbar" aria-label="Quick filters">
       <button type="button" class={tog(f.category !== null)} onClick={props.openPanel}>
         Category: {f.category ?? 'All'}
         <Icon name="chevDown" />
       </button>
-      <button type="button" class={tog(f.location !== null)} onClick={props.openPanel}>
-        Location: {loc}
+      <button type="button" class={tog(f.area !== null)} onClick={props.openPanel}>
+        Area: {area}
+        <Icon name="chevDown" />
+      </button>
+      <button type="button" class={tog(f.season !== null)} onClick={props.openPanel}>
+        Season: {season}
         <Icon name="chevDown" />
       </button>
       {(props.query.trim() !== '' || activeFilterCount(f) > 0) && (
@@ -307,7 +343,7 @@ interface Selection {
   set: (ids: readonly string[], on: boolean) => void;
 }
 
-function List({ view, toggle, select }: { view: InventoryView; toggle: (key: string) => void; select: Selection | null }) {
+function List({ view, toggle, where, select }: { view: InventoryView; toggle: (key: string) => void; where: (i: Item) => string; select: Selection | null }) {
   const db = useDb();
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -324,8 +360,8 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
     <div class="list" ref={box} onScroll={(e) => (savedScroll = (e.currentTarget as HTMLDivElement).scrollTop)}>
       {view.lines.map((ln) => {
         if (ln.kind === 'item') {
-          if (select) return <SelectRow key={ln.item.id} item={ln.item} select={select} />;
-          return <ItemRow key={ln.item.id} item={ln.item} onStep={onStep} onSet={onSet} />;
+          if (select) return <SelectRow key={ln.item.id} item={ln.item} where={where(ln.item)} select={select} />;
+          return <ItemRow key={ln.item.id} item={ln.item} where={where(ln.item)} onStep={onStep} onSet={onSet} />;
         }
         const isCat = ln.kind === 'category';
         const sub = view.filtering ? `${ln.matching} of ${plural(ln.total, 'item')} match` : plural(ln.total, 'item');
@@ -380,7 +416,7 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
 }
 
 /** A row in Select mode: the whole row toggles it. No stepper, so a quantity can't change by accident. */
-function SelectRow({ item, select }: { item: Item; select: Selection }) {
+function SelectRow({ item, where, select }: { item: Item; where: string; select: Selection }) {
   const on = select.selected.has(item.id);
   return (
     <div class="irow selrow">
@@ -390,7 +426,7 @@ function SelectRow({ item, select }: { item: Item; select: Selection }) {
         <span class="irow-t">
           <strong>{item.name}</strong>{' '}
           <span class="small muted">
-            {placeLabel(item)} · {item.location || 'No location'}
+            {placeLabel(item)} · {where}
           </span>
         </span>
       </button>

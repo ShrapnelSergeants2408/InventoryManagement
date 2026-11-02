@@ -50,6 +50,15 @@ export const ICONS = {
   copy: 'M8 8h12v12H8z M4 16V4h12',
   phone: 'M7 2.5h10v19H7z M11 18.5h2',
   backspace: 'M9 5h11v14H9l-6-7z M12 9l6 6 M18 9l-6 6',
+  // H2a: status and condition chips (SPEC v2.0 §11), places and seasons.
+  arrowOut: 'M14 4h6v6 M20 4l-9 9 M18 14v6H4V6h6',
+  hand: 'M7 11V6.5a1.5 1.5 0 0 1 3 0V11 M10 10V4.5a1.5 1.5 0 0 1 3 0V10 M13 10V5.5a1.5 1.5 0 0 1 3 0V12 M16 9.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-1a6 6 0 0 1-5-2.7L3.5 14a1.5 1.5 0 0 1 2.5-1.7L7 14',
+  wrench: 'M14.5 3.5a5 5 0 0 0-5.6 6.7L3 16.1V21h4.9l5.9-5.9a5 5 0 0 0 6.7-5.6l-3.2 3.2-3-.8-.8-3z',
+  swap: 'M4 8h13 M14 5l3 3-3 3 M20 16H7 M10 13l-3 3 3 3',
+  area: 'M3 10l9-7 9 7v11H3z M9 21v-7h6v7',
+  season: 'M12 3v18 M4.2 7.5l15.6 9 M4.2 16.5l15.6-9 M9.5 4.5L12 7l2.5-2.5 M9.5 19.5L12 17l2.5 2.5',
+  tag: 'M3 3h8l10 10-8 8L3 11z M7.5 7.5v.01',
+  split: 'M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4 M18 3v6a4 4 0 0 1-4 4 M3 18l3 3 3-3 M15 18l3 3 3-3',
 } as const;
 
 export type IconName = keyof typeof ICONS;

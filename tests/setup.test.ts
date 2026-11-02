@@ -1,10 +1,12 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildBackup } from '../src/data/backup';
+import { buildBackup, planInput } from '../src/data/backup';
 import { InventoryDb } from '../src/data/db';
 import { addItem } from '../src/data/items';
+import { addArea, addSpot } from '../src/data/places';
 import { loadSnapshot, setQuantity } from '../src/data/inventory';
 import { DEFAULT_CATEGORIES, SETUP_DONE, emptyStart, ensurePersistentStorage, isSetUp, requestPersistentStorage, startInventory } from '../src/data/setup';
+import { DEFAULT_SEASONS } from '../src/domain/places';
 import { readRestoreFile } from '../src/io/restore';
 import { item } from './helpers';
 
@@ -17,17 +19,20 @@ const newDb = () => {
   dbs.push(d);
   return d;
 };
-const EMPTY = { items: [], locations: [], categories: [] };
+const EMPTY = { categories: [], tags: [] };
 
 describe('first launch: start fresh (SPEC v2.0 §12.5)', () => {
-  it('the default household categories, no items, locations or photos; setup marked done in the same step', async () => {
+  it('the default categories and seasons, no areas, items or photos; setup marked done in the same step', async () => {
     const db = newDb();
     expect(await isSetUp(db)).toBe(false);
     await startInventory(db, emptyStart(), 1234);
     const snap = await loadSnapshot(db);
     expect(snap.items).toEqual([]);
-    expect(snap.locations).toEqual([]);
-    expect(await db.photos.count()).toBe(0);
+    expect(snap.areas).toEqual([]);
+    expect(snap.spots).toEqual([]);
+    expect(await db.pictures.count()).toBe(0);
+    expect(snap.seasons.map((s) => [s.name, s.color, s.order])).toEqual(DEFAULT_SEASONS.map((s, i) => [s.name, s.color, i]));
+    expect(snap.seasons.every((s) => /^se-/.test(s.id))).toBe(true);
     expect(snap.categories.map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES]);
     expect(snap.categories[0]).toEqual({ name: 'Decorations', order: 0, subcategories: [] });
     expect(await isSetUp(db)).toBe(true);
@@ -47,23 +52,26 @@ describe('first launch: start fresh (SPEC v2.0 §12.5)', () => {
 });
 
 describe('first launch: restore a backup file', () => {
-  it('a full backup from another phone arrives whole: quantities, photos and lists', async () => {
+  it('a full backup from another phone arrives whole: quantities, places, photos and lists', async () => {
     const other = newDb();
     await startInventory(other, emptyStart(), 1);
-    await addItem(other, item({ id: 'it-SNOWMAN2', name: 'Snowman lights', category: 'Lights', location: 'Attic shelf B', quantity: 4 }), 2, {
-      full: new Blob([new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3])], { type: 'image/jpeg' }),
-      thumb: null,
+    const attic = await addArea(other, { name: 'Attic' });
+    const shelf = await addSpot(other, attic.id, { name: 'Shelf B' });
+    await addItem(other, item({ id: 'it-SNOWMAN2', name: 'Snowman lights', category: 'Lights', spotId: shelf.id, quantity: 4 }), 2, {
+      add: [{ full: new Blob([new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3])], { type: 'image/jpeg' }), thumb: null }],
+      remove: [],
     });
     const zip = await buildBackup(other, 'full', new Date(2026, 10, 2, 12, 0));
     const read = await readRestoreFile({ name: 'backup.zip', bytes: new Uint8Array(await zip.arrayBuffer()) }, EMPTY);
     if (!read.ok) throw new Error(JSON.stringify(read.problems));
 
     const fresh = newDb();
-    const photos = await startInventory(fresh, read.plan, 9);
+    const photos = await startInventory(fresh, planInput(read.plan), 9);
     const snap = await loadSnapshot(fresh);
     expect(photos).toBe(1);
-    expect(snap.items).toEqual([{ ...item({ id: 'it-SNOWMAN2', name: 'Snowman lights', category: 'Lights', location: 'Attic shelf B', quantity: 4 }), hasPhoto: true }]);
-    expect(snap.locations.map((l) => l.name)).toEqual(['Attic shelf B']);
+    expect(snap.items).toEqual([{ ...item({ id: 'it-SNOWMAN2', name: 'Snowman lights', category: 'Lights', spotId: shelf.id, quantity: 4 }), hasPhoto: true }]);
+    expect(snap.spots.map((l) => l.name)).toEqual(['Shelf B']);
+    expect(snap.seasons).toHaveLength(10);
     expect(snap.categories.map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES]);
     expect(await isSetUp(fresh)).toBe(true);
   });

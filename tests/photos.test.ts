@@ -1,187 +1,185 @@
+// Photos (SPEC v2.0 §8): several per item, bin, spot or season, in carousel order.
 import 'fake-indexeddb/auto';
-import { afterEach, describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
+import { afterEach, describe, expect, it } from 'vitest';
 import { buildBackup } from '../src/data/backup';
 import { InventoryDb } from '../src/data/db';
-import { loadSnapshot, replaceAll } from '../src/data/inventory';
-import { addItem, deleteItem, updateItem } from '../src/data/items';
-import { getThumbnail, setPhoto } from '../src/data/photos';
+import { replaceAll } from '../src/data/inventory';
+import { addItem, deleteItem, duplicateItem, updateItem } from '../src/data/items';
+import { addPhotos, deletePhoto, getThumbnail, movePhoto, photosOf, setCaption } from '../src/data/photos';
+import { deleteBin, removeSpot } from '../src/data/places';
 import { getSettings } from '../src/data/settings';
-import { item } from './helpers';
+import { dataset, household, item } from './helpers';
 
 let db: InventoryDb;
 afterEach(() => db?.close());
-const full = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' });
-const small = new Blob([new Uint8Array([9])], { type: 'image/jpeg' });
 
-describe('list thumbnails', () => {
-  it('no photo → null, and make is never called', async () => {
-    db = new InventoryDb(`p-${Math.random()}`);
-    let calls = 0;
-    expect(await getThumbnail(db, 'x', async () => (calls++, small))).toBeNull();
-    expect(calls).toBe(0);
-  });
-
-  it('made once from the full photo, then stored and reused', async () => {
-    db = new InventoryDb(`p-${Math.random()}`);
-    await db.photos.put({ itemId: 'a', full, thumb: null, updatedAt: 1 });
-    let calls = 0;
-    const make = async (b: Blob) => {
-      calls++;
-      expect(b.size).toBe(3);
-      return small;
-    };
-    expect((await getThumbnail(db, 'a', make))!.size).toBe(1);
-    expect((await getThumbnail(db, 'a', make))!.size).toBe(1);
-    expect(calls).toBe(1);
-    expect((await db.photos.get('a'))!.full.size).toBe(3); // full photo untouched
-    expect((await getSettings(db)).lastChangeAt).toBeNull(); // not an inventory change
-  });
-
-  it('a photo replaced while the thumbnail was being made does not get the stale thumbnail', async () => {
-    db = new InventoryDb(`p-${Math.random()}`);
-    await db.photos.put({ itemId: 'a', full, thumb: null, updatedAt: 1 });
-    const thumb = await getThumbnail(db, 'a', async () => {
-      await db.photos.put({ itemId: 'a', full: small, thumb: null, updatedAt: 2 });
-      return small;
-    });
-    expect(thumb).not.toBeNull();
-    expect((await db.photos.get('a'))!.thumb).toBeNull();
-  });
-});
-
-// Take, replace and remove (SPEC v2.0 §8).
-const lists = {
-  locations: [],
-  categories: [{ name: 'Decorations', order: 0, subcategories: [] }],
-};
 const jpeg = (...bytes: number[]) => new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
+const bytesOf = async (b: Blob) => [...new Uint8Array(await b.arrayBuffer())];
 
 async function setup() {
   db = new InventoryDb(`p-${Math.random()}`);
-  await replaceAll(db, { ...lists, items: [item({ id: 'a' }), item({ id: 'b' })], photos: new Map([['b', jpeg(7, 7)]]) }, 1);
+  const h = household();
+  await replaceAll(db, dataset({ ...h, items: [item({ id: 'a', name: 'Alpha', binId: 'bn-xmas4' }), item({ id: 'b', name: 'Bravo' })] }), 1);
 }
 
-/** Photo rows and hasPhoto flags must always name the same items. */
-async function expectConsistent() {
-  const items = await db.items.toArray();
-  const withFlag = items.filter((i) => i.hasPhoto).map((i) => i.id).sort();
-  const rows = (await db.photos.toCollection().primaryKeys()).sort();
-  expect(rows).toEqual(withFlag);
-}
-
-describe('setPhoto (F19)', () => {
-  it('adds a photo: row stored with its thumbnail, hasPhoto set, counts as a change', async () => {
+describe('photos on a record', () => {
+  it('several photos in carousel order; the item’s hasPhoto follows; each is a change', async () => {
     await setup();
-    await setPhoto(db, 'a', { full: jpeg(1, 2, 3), thumb: jpeg(9) }, 500);
-    const row = (await db.photos.get('a'))!;
-    expect([row.full.size, row.thumb!.size, row.updatedAt, row.taken]).toEqual([3, 1, 500, 500]);
-    const a = (await db.items.get('a'))!;
-    expect([a.hasPhoto, a.updatedAt]).toEqual([true, 500]);
-    expect((await getSettings(db)).lastChangeAt).toBe(500);
-    await expectConsistent();
-  });
-
-  it('replaces a photo (including an imported one): the new bytes win, the old thumbnail goes', async () => {
-    await setup();
-    await db.photos.update('b', { thumb: jpeg(5) });
-    await setPhoto(db, 'b', { full: jpeg(1, 2, 3, 4), thumb: null }, 600);
-    const row = (await db.photos.get('b'))!;
-    expect([row.full.size, row.thumb, row.taken]).toEqual([4, null, 600]);
-    await expectConsistent();
-  });
-
-  it('removes a photo: row gone, hasPhoto cleared; other items untouched', async () => {
-    await setup();
-    await setPhoto(db, 'a', { full: jpeg(1), thumb: null }, 2);
-    await setPhoto(db, 'b', 'remove', 700);
-    expect(await db.photos.get('b')).toBeUndefined();
-    expect((await db.items.get('b'))!.hasPhoto).toBe(false);
-    expect((await db.photos.get('a'))!.full.size).toBe(1);
-    expect((await getSettings(db)).lastChangeAt).toBe(700);
-    await expectConsistent();
-  });
-
-  it('removing when there is no photo is harmless', async () => {
-    await setup();
-    await setPhoto(db, 'a', 'remove', 3);
-    expect((await db.items.get('a'))!.hasPhoto).toBe(false);
-    await expectConsistent();
-  });
-
-  it('an unknown item or an empty photo changes nothing', async () => {
-    await setup();
-    await expect(setPhoto(db, 'zz', { full: jpeg(1), thumb: null }, 9)).rejects.toThrow(/no item/);
-    await expect(setPhoto(db, 'a', { full: jpeg(), thumb: null }, 9)).rejects.toThrow(/empty/);
-    expect(await db.photos.count()).toBe(1);
-    expect(await db.photos.get('zz')).toBeUndefined();
-    expect((await getSettings(db)).lastChangeAt).toBe(1);
-    await expectConsistent();
-  });
-
-  it('a quantity edit saved afterwards keeps the photo (hasPhoto is never taken from the form)', async () => {
-    await setup();
-    const before = (await loadSnapshot(db)).items.find((i) => i.id === 'a')!;
-    await setPhoto(db, 'a', { full: jpeg(1), thumb: null }, 5);
-    // The editor was opened before the photo was taken, so its base says no photo.
-    await updateItem(db, before, { ...before, quantity: 3 }, 6);
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: jpeg(11) }, { full: jpeg(2), thumb: null }], 5);
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(3), thumb: null }], 6);
+    const list = await photosOf(db, 'a');
+    expect(await Promise.all(list.map((p) => bytesOf(p.full)))).toEqual([[1], [2], [3]]);
+    expect(list.map((p) => [p.order, p.ownerType, p.kind, p.taken])).toEqual([
+      [0, 'item', 'photo', 5],
+      [1, 'item', 'photo', 5],
+      [2, 'item', 'photo', 6],
+    ]);
+    expect(list.every((p) => /^ph-/.test(p.id))).toBe(true);
     expect((await db.items.get('a'))!.hasPhoto).toBe(true);
-    await expectConsistent();
+    expect((await getSettings(db)).lastChangeAt).toBe(6);
   });
 
-  it('deleting the item removes its taken photo', async () => {
+  it('bins and spots have photos too (no hasPhoto flag needed)', async () => {
     await setup();
-    await setPhoto(db, 'a', { full: jpeg(1), thumb: null }, 5);
-    await deleteItem(db, 'a', 6);
-    expect(await db.photos.get('a')).toBeUndefined();
-    await expectConsistent();
+    await addPhotos(db, 'bin', 'bn-xmas4', [{ full: jpeg(4), thumb: null }]);
+    await addPhotos(db, 'spot', 'sp-peg', [{ full: jpeg(5), thumb: null }]);
+    expect((await photosOf(db, 'bn-xmas4')).map((p) => p.ownerType)).toEqual(['bin']);
+    expect((await photosOf(db, 'sp-peg')).map((p) => p.ownerType)).toEqual(['spot']);
   });
 
-  it('a taken photo goes into the full backup as photos/<id>.jpg, byte for byte', async () => {
+  it('reorder: the first is the thumbnail; moves past the ends change nothing', async () => {
     await setup();
-    await setPhoto(db, 'a', { full: jpeg(4, 5, 6), thumb: jpeg(1) }, 5);
-    const zip = await JSZip.loadAsync(await (await buildBackup(db, 'full', new Date(5))).arrayBuffer());
-    expect([...(await zip.file('photos/a.jpg')!.async('uint8array'))]).toEqual([4, 5, 6]);
-    expect(await zip.file('inventory.csv')!.async('string')).toContain('photos/a.jpg');
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: jpeg(11) }, { full: jpeg(2), thumb: jpeg(22) }]);
+    const [first, second] = await photosOf(db, 'a');
+    await movePhoto(db, second!.id, -1);
+    expect((await photosOf(db, 'a')).map((p) => p.id)).toEqual([second!.id, first!.id]);
+    expect(await bytesOf((await getThumbnail(db, 'a', async () => jpeg(0)))!)).toEqual([22]);
+    await movePhoto(db, second!.id, -1);
+    expect((await photosOf(db, 'a')).map((p) => [p.id, p.order])).toEqual([
+      [second!.id, 0],
+      [first!.id, 1],
+    ]);
+  });
+
+  it('delete one: the rest close up; deleting the last clears hasPhoto; other items untouched', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }, { full: jpeg(2), thumb: null }]);
+    await addPhotos(db, 'item', 'b', [{ full: jpeg(9), thumb: null }]);
+    const [p1, p2] = await photosOf(db, 'a');
+    await deletePhoto(db, p1!.id);
+    expect((await photosOf(db, 'a')).map((p) => [p.id, p.order])).toEqual([[p2!.id, 0]]);
+    expect((await db.items.get('a'))!.hasPhoto).toBe(true);
+    await deletePhoto(db, p2!.id);
+    expect((await db.items.get('a'))!.hasPhoto).toBe(false);
+    expect((await db.items.get('b'))!.hasPhoto).toBe(true);
+    await expect(deletePhoto(db, p2!.id)).rejects.toThrow(/no photo/);
+  });
+
+  it('captions are trimmed; an unknown record or an empty photo changes nothing', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }]);
+    const [p] = await photosOf(db, 'a');
+    await setCaption(db, p!.id, '  Mantel, left to right ');
+    expect((await db.pictures.get(p!.id))!.caption).toBe('Mantel, left to right');
+    await expect(addPhotos(db, 'item', 'zz', [{ full: jpeg(1), thumb: null }])).rejects.toThrow(/no item/);
+    await expect(addPhotos(db, 'item', 'b', [{ full: new Blob([]), thumb: null }])).rejects.toThrow(/empty/);
+    expect(await photosOf(db, 'b')).toEqual([]);
+    expect((await db.items.get('b'))!.hasPhoto).toBe(false);
   });
 });
 
-describe('photo saved with the editor (F6, F7)', () => {
-  it('Add item with a photo: item and photo in one save', async () => {
+describe('list thumbnails', () => {
+  it('no photo → null, and make is never called', async () => {
     await setup();
-    const saved = await addItem(db, item({ id: 'it-NEW00001' }), 10, { full: jpeg(1, 2), thumb: jpeg(3) });
+    expect(await getThumbnail(db, 'a', async () => { throw new Error('called'); })).toBeNull();
+  });
+
+  it('made once from the first photo, then stored and reused', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }], 4);
+    let calls = 0;
+    const make = async () => (calls++, jpeg(7));
+    expect(await bytesOf((await getThumbnail(db, 'a', make))!)).toEqual([7]);
+    expect(await bytesOf((await getThumbnail(db, 'a', make))!)).toEqual([7]);
+    expect(calls).toBe(1);
+    // Storing a thumbnail isn't an inventory change.
+    expect((await getSettings(db)).lastChangeAt).toBe(4);
+  });
+
+  it('a photo changed while the thumbnail was being made doesn’t get the stale thumbnail', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }], 2);
+    const [p] = await photosOf(db, 'a');
+    const thumb = await getThumbnail(db, 'a', async () => {
+      await db.pictures.update(p!.id, { full: jpeg(2), updatedAt: 3 });
+      return jpeg(8);
+    });
+    expect(await bytesOf(thumb!)).toEqual([8]);
+    expect((await db.pictures.get(p!.id))!.thumb).toBeNull();
+  });
+});
+
+describe('photos follow their records', () => {
+  it('deleting an item, a bin (with its items) or a spot deletes their photos', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }]);
+    await addPhotos(db, 'item', 'b', [{ full: jpeg(2), thumb: null }]);
+    await addPhotos(db, 'bin', 'bn-xmas4', [{ full: jpeg(3), thumb: null }]);
+    await addPhotos(db, 'spot', 'sp-peg', [{ full: jpeg(4), thumb: null }]);
+    await deleteItem(db, 'b');
+    expect(await photosOf(db, 'b')).toEqual([]);
+    await deleteBin(db, 'bn-xmas4', 'delete');
+    expect(await photosOf(db, 'bn-xmas4')).toEqual([]);
+    expect(await photosOf(db, 'a')).toEqual([]);
+    await removeSpot(db, 'sp-peg', '');
+    expect(await db.pictures.count()).toBe(0);
+  });
+
+  it('Duplicate copies the photos under new ids', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }, { full: jpeg(2), thumb: null }]);
+    const copy = await duplicateItem(db, 'a');
+    const mine = await photosOf(db, 'a');
+    const theirs = await photosOf(db, copy.id);
+    expect(await Promise.all(theirs.map((p) => bytesOf(p.full)))).toEqual([[1], [2]]);
+    expect(theirs.some((p) => mine.some((m) => m.id === p.id))).toBe(false);
+    expect((await db.items.get(copy.id))!.hasPhoto).toBe(true);
+  });
+
+  it('a photo goes into the full backup as photos/<photo id>.jpg, byte for byte, listed in files.csv', async () => {
+    await setup();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1, 2, 3), thumb: null }]);
+    const [p] = await photosOf(db, 'a');
+    const zip = await JSZip.loadAsync(await (await buildBackup(db, 'full', new Date(2026, 10, 2))).arrayBuffer());
+    expect([...(await zip.file(`photos/${p!.id}.jpg`)!.async('uint8array'))]).toEqual([1, 2, 3]);
+    expect(await zip.file('files.csv')!.async('string')).toContain(`${p!.id},item,a,photo,,0,photos/${p!.id}.jpg`);
+  });
+});
+
+describe('photos saved with the editor (F16)', () => {
+  it('Add item with photos: item and photos in one save', async () => {
+    await setup();
+    const saved = await addItem(db, item({ id: 'it-NEW00001', name: 'New' }), 5, { add: [{ full: jpeg(1), thumb: null }, { full: jpeg(2), thumb: null }], remove: [] });
     expect(saved.hasPhoto).toBe(true);
-    expect((await db.photos.get('it-NEW00001'))!.full.size).toBe(2);
-    await expectConsistent();
+    expect((await photosOf(db, 'it-NEW00001')).length).toBe(2);
   });
 
   it('Add item that fails validation stores no photo either', async () => {
     await setup();
-    const bad = item({ id: 'it-BAD00001', quantity: -1 });
-    await expect(addItem(db, bad, 10, { full: jpeg(1), thumb: null })).rejects.toThrow();
-    expect(await db.items.get('it-BAD00001')).toBeUndefined();
-    expect(await db.photos.get('it-BAD00001')).toBeUndefined();
-    expect((await getSettings(db)).lastChangeAt).toBe(1);
+    await expect(addItem(db, item({ id: 'it-NEW00001', name: ' ' }), 5, { add: [{ full: jpeg(1), thumb: null }], remove: [] })).rejects.toThrow();
+    expect(await db.pictures.count()).toBe(0);
   });
 
-  it('Edit with a new photo, and Edit with Remove', async () => {
+  it('Edit adds and removes photos with the save; a failed edit leaves them', async () => {
     await setup();
-    const snap = await loadSnapshot(db);
-    const a = snap.items.find((i) => i.id === 'a')!;
-    const b = snap.items.find((i) => i.id === 'b')!;
-    expect((await updateItem(db, a, { ...a, notes: 'n' }, 11, { full: jpeg(8), thumb: null })).hasPhoto).toBe(true);
-    expect((await updateItem(db, b, b, 12, 'remove')).hasPhoto).toBe(false);
-    expect((await db.items.get('a'))!.notes).toBe('n');
-    expect((await db.photos.get('a'))!.full.size).toBe(1);
-    expect(await db.photos.get('b')).toBeUndefined();
-    await expectConsistent();
-  });
-
-  it('Edit that fails leaves the old photo', async () => {
-    await setup();
-    const b = (await loadSnapshot(db)).items.find((i) => i.id === 'b')!;
-    await expect(updateItem(db, b, { ...b, name: '' }, 12, 'remove')).rejects.toThrow();
-    expect((await db.photos.get('b'))!.full.size).toBe(2);
-    await expectConsistent();
+    await addPhotos(db, 'item', 'a', [{ full: jpeg(1), thumb: null }]);
+    const [old] = await photosOf(db, 'a');
+    const base = (await db.items.get('a'))!;
+    await updateItem(db, base, { ...base, notes: 'x' }, 7, { add: [{ full: jpeg(2), thumb: null }], remove: [old!.id] });
+    expect(await Promise.all((await photosOf(db, 'a')).map((p) => bytesOf(p.full)))).toEqual([[2]]);
+    const now = (await db.items.get('a'))!;
+    await expect(updateItem(db, now, { ...now, name: '' }, 8, { add: [], remove: [(await photosOf(db, 'a'))[0]!.id] })).rejects.toThrow();
+    expect((await photosOf(db, 'a')).length).toBe(1);
   });
 });

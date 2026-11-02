@@ -10,8 +10,11 @@ import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
 import { BackupScreen } from './screens/more/Backup';
 import { CategoriesScreen } from './screens/more/Categories';
-import { LocationsScreen } from './screens/more/Locations';
 import { MoreScreen } from './screens/more/More';
+import { PlacesScreen } from './screens/more/Places';
+import { SeasonsScreen, TagsScreen } from './screens/more/Seasons';
+import { BinEditorScreen, BinScreen } from './screens/places/Bin';
+import { SpotScreen } from './screens/places/Spot';
 import { SettingsScreen } from './screens/more/Settings';
 import { LabelsScreen } from './screens/labels/Labels';
 import { ScanScreen } from './screens/scan/Scan';
@@ -55,13 +58,25 @@ function Screen({ route }: { route: Route }) {
     case 'edit':
       return <EditorScreen key={`edit-${route.id}`} mode="edit" id={route.id} />;
     case 'add':
-      return <EditorScreen key={`add-${route.name}-${route.barcode}`} mode="add" name={route.name} barcode={route.barcode} />;
+      return <EditorScreen key={`add-${route.name}-${route.barcode}-${route.home}`} mode="add" name={route.name} barcode={route.barcode} home={route.home} />;
+    case 'bin':
+      return <BinScreen key={route.id} id={route.id} />;
+    case 'bin-edit':
+      return <BinEditorScreen key={`bin-edit-${route.id}`} mode="edit" id={route.id} />;
+    case 'bin-add':
+      return <BinEditorScreen key={`bin-add-${route.spot}-${route.area}`} mode="add" spot={route.spot} area={route.area} />;
+    case 'spot':
+      return <SpotScreen key={route.id} id={route.id} />;
     case 'labels':
       return <LabelsScreen key={route.ids.join(',')} ids={route.ids} />;
     case 'categories':
       return <CategoriesScreen />;
-    case 'locations':
-      return <LocationsScreen />;
+    case 'places':
+      return <PlacesScreen />;
+    case 'seasons':
+      return <SeasonsScreen />;
+    case 'tags':
+      return <TagsScreen />;
     case 'backup':
       return <BackupScreen />;
     case 'settings':

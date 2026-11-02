@@ -1,6 +1,5 @@
-// Take photo / Gallery / Remove (F16). The camera button opens the
-// phone camera; Gallery opens the photo picker. The picked picture is resized here
-// (io/image.ts) and handed on; no PIN (§6).
+// Take photo / Gallery / Remove (F16). The camera button opens the phone camera; Gallery opens
+// the photo picker. The picked picture is resized here (io/image.ts) and handed on.
 import type { Ref } from 'preact';
 import { useState } from 'preact/hooks';
 import { preparePhoto } from '../../io/image';
@@ -13,6 +12,8 @@ export function PhotoButtons(props: {
   hasPhoto: boolean;
   /** Label of the camera button when there is a photo already. */
   retakeLabel?: string;
+  /** Label of the camera button when there is none (default "Take photo"). */
+  addLabel?: string;
   small?: boolean;
   /** Lets another button (the enlarged photo's "Replace") open the camera. */
   cameraRef?: Ref<HTMLInputElement>;
@@ -44,7 +45,7 @@ export function PhotoButtons(props: {
       <label class={busy ? `${btn} disabled` : btn} aria-disabled={busy}>
         <input ref={props.cameraRef} type="file" accept="image/*" capture="environment" class="vh" disabled={busy} onChange={onChange} data-photo="camera" />
         <Icon name="camera" />
-        {props.hasPhoto ? (props.retakeLabel ?? 'Retake') : 'Take photo'}
+        {props.hasPhoto ? (props.retakeLabel ?? 'Retake') : (props.addLabel ?? 'Take photo')}
       </label>
       <label class={busy ? `${btn} disabled` : btn} aria-disabled={busy}>
         <input type="file" accept="image/*" class="vh" disabled={busy} onChange={onChange} data-photo="gallery" />

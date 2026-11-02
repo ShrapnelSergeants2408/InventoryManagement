@@ -51,11 +51,13 @@ export function MoreScreen() {
             <h3>Manage</h3>
             <Row icon="folder" title="Categories" sub={snap ? `${plural(snap.categories.length, 'category', 'categories')} · add, rename, reorder` : 'Add, rename, reorder'} to={href.list('categories')} />
             <Row
-              icon="pin"
-              title="Locations"
-              sub={snap ? `${snap.locations.length ? plural(snap.locations.length, 'location') : 'No locations yet'} · shelves, cabinets, rooms` : 'Shelves, cabinets, rooms'}
-              to={href.list('locations')}
+              icon="area"
+              title="Areas & spots"
+              sub={snap ? (snap.areas.length ? `${plural(snap.areas.length, 'area')} · ${plural(snap.spots.length, 'spot')} · ${plural(snap.bins.length, 'bin')}` : 'No areas yet · rooms, shelves, bins') : 'Rooms, shelves, bins'}
+              to={href.list('places')}
             />
+            <Row icon="season" title="Seasons" sub={snap ? `${plural(snap.seasons.length, 'season')} · add, rename, reorder, colors` : 'Add, rename, reorder'} to={href.list('seasons')} />
+            <Row icon="tag" title="Tags" sub={snap ? `${snap.tags.length ? plural(snap.tags.length, 'tag') : 'No tags yet'} · Fragile, Outdoor…` : 'Fragile, Outdoor…'} to={href.list('tags')} />
             <Row icon="upload" title="Backup & restore" sub={backupSub} to={href.backup} />
             <Row icon="clock" title="Settings" sub={reminder} to={href.settings} />
           </div>

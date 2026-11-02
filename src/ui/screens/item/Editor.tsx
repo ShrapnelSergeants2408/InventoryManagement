@@ -1,21 +1,21 @@
-// Add and edit an item: one form. Nothing is stored until Save, including a photo taken or
-// removed here.
+// Add and edit an item (F16): one form. Nothing is stored until Save, including photos taken or
+// removed here. Status (out, lent) is changed by its own actions in later milestones (H5, H6).
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { addItem, getRecentLocations, updateItem } from '../../../data/items';
-import { addLocation } from '../../../data/lists';
-import type { PhotoChange } from '../../../data/photos';
-import { newItemId } from '../../../domain/ids';
-import { buildItem, draftFromItem, newDraft, type FormError, type ItemDraft } from '../../../domain/item-form';
-import { checkName, takenLocationNames } from '../../../domain/lists';
-import { nameKey, type Item } from '../../../domain/types';
+import { addItem, getRecentHomes, updateItem } from '../../../data/items';
 import type { InventorySnapshot } from '../../../data/inventory';
+import type { NewPhoto } from '../../../data/photos';
+import { ID_PREFIX, newId } from '../../../domain/ids';
+import { buildItem, draftFromItem, newDraft, type FormError, type ItemDraft } from '../../../domain/item-form';
+import { indexPlaces, itemPath, NO_HOME, pathText } from '../../../domain/places';
+import { CONDITIONS, nameKey, type Condition, type Item } from '../../../domain/types';
 import { TopBar } from '../../components/common';
+import { CONDITION_LABEL } from '../../components/chips';
 import { Dialog, DialogActions } from '../../components/Dialog';
+import { HomePicker } from '../../components/HomePicker';
 import { PhotoButtons } from '../../components/PhotoButtons';
-import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { ScanDialog } from '../../components/ScanDialog';
-import { forgetThumbnail, useDb, useSnapshot, useThumbnail } from '../../data-hooks';
+import { forgetThumbnail, useDb, usePhotos, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { goBack, href, openedFrom, replaceRoute } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -25,7 +25,7 @@ import { ItemMissing } from './Detail';
 
 const NEW = '__new';
 
-export function EditorScreen(props: { mode: 'add'; name: string; barcode?: string } | { mode: 'edit'; id: string }) {
+export function EditorScreen(props: { mode: 'add'; name: string; barcode?: string; home?: string } | { mode: 'edit'; id: string }) {
   const live = useSnapshot();
   const fallback = props.mode === 'edit' ? href.item(props.id) : href.tab('inventory');
   const cancel = (
@@ -57,7 +57,9 @@ export function EditorScreen(props: { mode: 'add'; name: string; barcode?: strin
     if (!item) return <ItemMissing id={props.id} back={cancel} />;
     return <Form snap={live.value} base={item} startName="" fallback={fallback} />;
   }
-  return <Form snap={live.value} base={null} startName={props.name} startBarcode={props.barcode ?? ''} fallback={fallback} />;
+  // "Add item here" names a bin or spot that may have gone meanwhile.
+  const home = props.home && (live.value.bins.some((b) => b.id === props.home) || live.value.spots.some((s) => s.id === props.home)) ? props.home : '';
+  return <Form snap={live.value} base={null} startName={props.name} startBarcode={props.barcode ?? ''} startHome={home} fallback={fallback} />;
 }
 
 /** Field-level message under an input. */
@@ -72,37 +74,36 @@ function FieldError({ errors, field }: { errors: FormError[]; field: string }) {
   );
 }
 
-function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; startBarcode?: string; fallback: string }) {
+interface PendingPhoto extends NewPhoto {
+  key: number;
+  url: string;
+}
+
+function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; startBarcode?: string; startHome?: string; fallback: string }) {
   const db = useDb();
   const { snap } = props;
   const adding = props.base === null;
   // The editor works on the item as it was when opened; later list changes don't reset the form.
   const [base] = useState(props.base);
   const [initial] = useState<ItemDraft>(() =>
-    base ? draftFromItem(base, snap.categories) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName), barcode: props.startBarcode ?? '' },
+    base ? draftFromItem(base, snap.categories) : { ...newDraft(snap.categories[0]?.name ?? '', props.startName, props.startHome ?? ''), barcode: props.startBarcode ?? '' },
   );
   const [d, setD] = useState<ItemDraft>(initial);
   const [errors, setErrors] = useState<FormError[]>([]);
   const [busy, setBusy] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
-  const [newLoc, setNewLoc] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [scanningLoc, setScanningLoc] = useState(false);
-  const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
-  // A photo taken or removed in the form; undefined keeps the stored one.
-  const [photo, setPhotoChange] = useState<PhotoChange | undefined>(undefined);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const url = photo && photo !== 'remove' ? URL.createObjectURL(photo.thumb ?? photo.full) : null;
-    setPhotoUrl(url);
-    return () => void (url && URL.revokeObjectURL(url));
-  }, [photo]);
-  const shownPhoto = photo === 'remove' ? null : photo ? photoUrl : base?.hasPhoto ? thumb : null;
-  const showsPhoto = photo === undefined ? (base?.hasPhoto ?? false) : photo !== 'remove';
+  const [tagText, setTagText] = useState('');
+  // Photos: stored ones (edit) can be marked for removal; new ones wait for Save.
+  const stored = usePhotos(base?.id ?? '');
+  const [removed, setRemoved] = useState<string[]>([]);
+  const [pending, setPending] = useState<PendingPhoto[]>([]);
+  useEffect(() => () => pending.forEach((p) => URL.revokeObjectURL(p.url)), []);
 
   useEffect(() => {
-    void getRecentLocations(db).then(setRecent);
+    void getRecentHomes(db).then(setRecent);
   }, [db]);
 
   const set = (patch: Partial<ItemDraft>) => setD((prev) => ({ ...prev, ...patch }));
@@ -111,30 +112,27 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const subs = cat?.subcategories ?? [];
   // An item's own subcategory is kept even if the list doesn't have it (e.g. restored).
   const subOptions = d.subcategory && !subs.some((s) => nameKey(s) === nameKey(d.subcategory)) ? [...subs, d.subcategory] : subs;
-  const locNames = snap.locations.map((l) => l.name);
-  const locOptions = d.location && !locNames.some((n) => n === d.location) ? [...locNames, d.location] : locNames;
-  const quickLocs = recent.filter((r) => locNames.includes(r)).slice(0, 5);
+  const ix = indexPlaces(snap);
+  const homeFields = { binId: d.home.startsWith(ID_PREFIX.bin) ? d.home : '', spotId: d.home.startsWith(ID_PREFIX.spot) ? d.home : '' };
+  const homeText = d.home ? pathText(itemPath(homeFields, ix)) : NO_HOME;
+  const binSeason = homeFields.binId ? snap.seasons.find((s) => s.id === ix.bin.get(homeFields.binId)?.seasonId) : undefined;
+  const tagSuggestions = snap.tags.filter((t) => !d.tags.some((x) => nameKey(x) === nameKey(t.name)) && (tagText.trim() === '' || nameKey(t.name).includes(nameKey(tagText))));
 
-  const dirty = JSON.stringify(d) !== JSON.stringify(initial) || photo !== undefined;
+  const dirty = JSON.stringify(d) !== JSON.stringify(initial) || pending.length > 0 || removed.length > 0;
 
-  const locCheck = newLoc === null || newLoc.trim() === '' ? null : checkName(newLoc, takenLocationNames(locNames), 'Location');
-  const saveNewLocation = async () => {
-    if (!locCheck || !locCheck.ok) return;
-    try {
-      const loc = await addLocation(db, locCheck.name);
-      set({ location: loc.name });
-      setNewLoc(null);
-      showToast(`Added location “${loc.name}”.`);
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e));
-    }
+  const addTag = (raw: string) => {
+    const t = raw.trim();
+    if (t === '' || d.tags.some((x) => nameKey(x) === nameKey(t))) return setTagText('');
+    const listed = snap.tags.find((x) => nameKey(x.name) === nameKey(t));
+    set({ tags: [...d.tags, listed?.name ?? t] });
+    setTagText('');
   };
 
   const save = async () => {
     if (busy) return;
     const taken = new Set(snap.items.map((i) => i.id));
-    const id = base ? base.id : newItemId((x) => taken.has(x));
-    const r = buildItem(d, { id, base, categories: snap.categories });
+    const id = base ? base.id : newId(ID_PREFIX.item, (x) => taken.has(x));
+    const r = buildItem(tagText.trim() ? { ...d, tags: [...d.tags, tagText] } : d, { id, base, categories: snap.categories });
     if (!r.ok) {
       setErrors(r.errors);
       document.querySelector('.fbody')?.scrollTo({ top: 0 });
@@ -143,8 +141,9 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     setErrors([]);
     setBusy(true);
     try {
-      const saved = base ? await updateItem(db, base, r.item, undefined, photo) : await addItem(db, r.item, undefined, photo);
-      if (photo) forgetThumbnail(saved.id);
+      const photos = { add: pending.map(({ full, thumb }) => ({ full, thumb })), remove: removed };
+      const saved = base ? await updateItem(db, base, r.item, undefined, photos) : await addItem(db, r.item, undefined, photos);
+      if (pending.length || removed.length) forgetThumbnail(saved.id);
       showToast(base ? 'Saved.' : `Added “${saved.name}”.`);
       // Opened from this item's card: go back to it. Otherwise (a new item, or the editor
       // opened directly) the card replaces the form, so Back never returns to the form.
@@ -157,6 +156,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   };
 
   const cancel = () => (dirty ? setDiscarding(true) : goBack(props.fallback));
+  const shownStored = stored.filter((p) => !removed.includes(p.id));
 
   return (
     <>
@@ -179,9 +179,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
       <div class="fbody">
         {errors.length > 0 && (
           <div class="errsum" role="alert">
-            <strong>
-              Fix {errors.length === 1 ? '1 thing' : `${errors.length} things`} before saving
-            </strong>
+            <strong>Fix {errors.length === 1 ? '1 thing' : `${errors.length} things`} before saving</strong>
             <ul>
               {errors.map((e) => (
                 <li key={e.field + e.message}>{e.message}</li>
@@ -192,28 +190,47 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
         <div class="egrid">
           <div class="card sec">
             <h2 class="h2">Item</h2>
-            <div class="photo-row">
-              {shownPhoto ? (
-                <img class="thumbL" src={shownPhoto} alt={photo ? 'New photo' : 'Current photo'} />
-              ) : (
+            <div class="photo-strip" aria-label="Photos">
+              {shownStored.map((p) => (
+                <span class="pthumb" key={p.id}>
+                  <img src={p.url} alt="" />
+                  <button type="button" class="ib" aria-label="Remove this photo when saving" onClick={() => setRemoved([...removed, p.id])}>
+                    <Icon name="close" />
+                  </button>
+                </span>
+              ))}
+              {pending.map((p) => (
+                <span class="pthumb new" key={p.key}>
+                  <img src={p.url} alt="" />
+                  <button
+                    type="button"
+                    class="ib"
+                    aria-label="Drop this new photo"
+                    onClick={() => {
+                      URL.revokeObjectURL(p.url);
+                      setPending(pending.filter((x) => x !== p));
+                    }}
+                  >
+                    <Icon name="close" />
+                  </button>
+                </span>
+              ))}
+              {shownStored.length + pending.length === 0 && (
                 <span class="thumbL nophoto">
                   <Icon name="photo" class="ic xl" />
                 </span>
               )}
-              <div class="photo-side">
-                <PhotoButtons
-                  small
-                  hasPhoto={showsPhoto}
-                  retakeLabel="Take photo"
-                  onPhoto={(p) => setPhotoChange(p)}
-                  // Removing a photo taken in this form just drops it; a stored one is removed on Save.
-                  onRemove={() => setPhotoChange(base?.hasPhoto ? 'remove' : undefined)}
-                />
-                <span class="small muted">
-                  {photo === 'remove' ? 'The photo is removed when you save.' : photo ? 'New photo: saved with the item.' : 'Optional; one per item.'}
-                </span>
-              </div>
             </div>
+            <PhotoButtons
+              small
+              hasPhoto={false}
+              addLabel={shownStored.length + pending.length ? 'Add photo' : 'Take photo'}
+              onPhoto={(p) => setPending([...pending, { ...p, key: Date.now(), url: URL.createObjectURL(p.thumb ?? p.full) }])}
+              onRemove={() => undefined}
+            />
+            <span class="small muted">
+              {removed.length || pending.length ? 'Photo changes are saved with the item.' : 'Optional. The first photo is the thumbnail; reorder and caption them on the item screen.'}
+            </span>
             <Field id="nm" label="Name" required>
               <input
                 id="nm"
@@ -269,72 +286,13 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
                 <FieldError errors={errors} field="newSubcategory" />
               </Field>
             )}
-            <Field id="loc" label="Location" optional>
-              <div class="inline-add">
-                <select
-                  id="loc"
-                  class="field"
-                  value={newLoc !== null ? NEW : d.location}
-                  onChange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value;
-                    if (v === NEW) setNewLoc('');
-                    else {
-                      setNewLoc(null);
-                      set({ location: v });
-                    }
-                  }}
-                >
-                  <option value="">No location</option>
-                  {locOptions.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                  <option value={NEW}>+ New location…</option>
-                </select>
-                {/* F29: the bin's QR code holds the location's name. */}
-                <button type="button" class="btn" aria-label="Scan a location" onClick={() => setScanningLoc(true)}>
-                  <Icon name="scan" />
-                  Scan
-                </button>
-              </div>
-              {newLoc !== null && (
-                <>
-                  <div class="inline-add">
-                    <input
-                      class={locCheck && !locCheck.ok ? 'field bad' : 'field'}
-                      aria-label="New location name"
-                      value={newLoc}
-                      onInput={(e) => setNewLoc((e.currentTarget as HTMLInputElement).value)}
-                      onKeyDown={(e) => e.key === 'Enter' && void saveNewLocation()}
-                      placeholder="New location name — e.g. Attic shelf B"
-                      autoComplete="off"
-                    />
-                    <button type="button" class="btn" disabled={!locCheck?.ok} onClick={() => void saveNewLocation()}>
-                      Add
-                    </button>
-                  </div>
-                  {locCheck && !locCheck.ok && (
-                    <div class="err" role="alert">
-                      {locCheck.error}
-                    </div>
-                  )}
-                  <div class="small muted hint">Renaming, removing and walk order are in More › Locations.</div>
-                </>
-              )}
-              {quickLocs.length > 0 && (
-                <div class="chips-row">
-                  <span class="small muted">Recent:</span>
-                  {quickLocs.map((l) => (
-                    <button key={l} type="button" class={d.location === l ? 'fchip on' : 'fchip'} aria-pressed={d.location === l} onClick={() => {
-                        setNewLoc(null);
-                        set({ location: l });
-                      }}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <Field id="home" label="Home" optional>
+              <button id="home" type="button" class="btn field-btn" onClick={() => setPicking(true)}>
+                <Icon name="pin" />
+                <span class="grow">{homeText}</span>
+                <Icon name="chevRight" />
+              </button>
+              <FieldError errors={errors} field="home" />
             </Field>
             <Field id="bc" label="Product barcode" optional>
               <div class="inline-add">
@@ -357,19 +315,114 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
 
           <div class="ecol">
             <div class="card sec">
-              <h2 class="h2">Quantity and notes</h2>
+              <h2 class="h2">Quantity and condition</h2>
               <div class="counts">
                 <DraftCount label="Quantity" value={d.quantity} onChange={(v) => set({ quantity: v })} errors={errors} field="quantity" />
               </div>
-              <Field id="nt" label="Notes">
-                <textarea
-                  id="nt"
-                  class="field"
-                  value={d.notes}
-                  onInput={(e) => set({ notes: (e.currentTarget as HTMLTextAreaElement).value })}
-                  placeholder="e.g. left strand is dim · goes on the mantel"
-                />
+              <label class="tick">
+                <input type="checkbox" checked={d.approx} onChange={(e) => set({ approx: (e.currentTarget as HTMLInputElement).checked })} />
+                <span>About this many (a bulk line, shown as “~{d.quantity || 0}”)</span>
+              </label>
+              <Field id="cond" label="Condition">
+                <select id="cond" class="field" value={d.condition} onChange={(e) => set({ condition: (e.currentTarget as HTMLSelectElement).value as Condition })}>
+                  {CONDITIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {CONDITION_LABEL[c]}
+                    </option>
+                  ))}
+                </select>
               </Field>
+              {d.condition !== 'ok' && (
+                <Field id="cn" label="What’s wrong" optional>
+                  <input id="cn" class="field" value={d.conditionNote} placeholder="e.g. left strand dead" autoComplete="off" onInput={(e) => set({ conditionNote: (e.currentTarget as HTMLInputElement).value })} />
+                </Field>
+              )}
+            </div>
+
+            <div class="card sec">
+              <h2 class="h2">Season, tags and notes</h2>
+              <Field id="sea" label="Season" optional>
+                <select id="sea" class="field" value={d.seasonId} onChange={(e) => set({ seasonId: (e.currentTarget as HTMLSelectElement).value })}>
+                  <option value="">{binSeason ? `Same as its bin (${binSeason.name})` : 'None'}</option>
+                  {snap.seasons.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field id="tg" label="Tags" optional>
+                <div class="chips-row">
+                  {d.tags.map((t) => (
+                    <button key={t} type="button" class="fchip on" aria-label={`Remove tag ${t}`} onClick={() => set({ tags: d.tags.filter((x) => x !== t) })}>
+                      {t}
+                      <Icon name="close" />
+                    </button>
+                  ))}
+                </div>
+                <div class="inline-add">
+                  <input
+                    id="tg"
+                    class={errors.some((e) => e.field === 'tags') ? 'field bad' : 'field'}
+                    value={tagText}
+                    placeholder="Add a tag — e.g. Fragile"
+                    autoComplete="off"
+                    onInput={(e) => setTagText((e.currentTarget as HTMLInputElement).value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addTag(tagText);
+                      }
+                    }}
+                  />
+                  <button type="button" class="btn" disabled={tagText.trim() === ''} onClick={() => addTag(tagText)}>
+                    Add
+                  </button>
+                </div>
+                {tagSuggestions.length > 0 && (
+                  <div class="chips-row">
+                    {tagSuggestions.slice(0, 8).map((t) => (
+                      <button key={t.name} type="button" class="fchip" onClick={() => addTag(t.name)}>
+                        <Icon name="plus" />
+                        {t.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <FieldError errors={errors} field="tags" />
+              </Field>
+              <Field id="nt" label="Notes">
+                <textarea id="nt" class="field" value={d.notes} onInput={(e) => set({ notes: (e.currentTarget as HTMLTextAreaElement).value })} placeholder="e.g. goes on the mantel" />
+              </Field>
+            </div>
+
+            <div class="card sec">
+              <h2 class="h2">Value and records</h2>
+              <Field id="val" label="Value ($)" optional>
+                <input id="val" class={errors.some((e) => e.field === 'value') ? 'field bad' : 'field'} inputMode="decimal" value={d.value} placeholder="e.g. 129.00" autoComplete="off" onInput={(e) => set({ value: (e.currentTarget as HTMLInputElement).value })} />
+                <FieldError errors={errors} field="value" />
+              </Field>
+              <details class="records" open={[d.purchaseDate, d.model, d.serial, d.warrantyUntil].some((x) => x !== '')}>
+                <summary class="lbl">Records</summary>
+                <div class="row2">
+                  <Field id="pd" label="Purchase date" optional>
+                    <input id="pd" type="date" class="field" value={d.purchaseDate} onInput={(e) => set({ purchaseDate: (e.currentTarget as HTMLInputElement).value })} />
+                    <FieldError errors={errors} field="purchaseDate" />
+                  </Field>
+                  <Field id="wu" label="Warranty until" optional>
+                    <input id="wu" type="date" class="field" value={d.warrantyUntil} onInput={(e) => set({ warrantyUntil: (e.currentTarget as HTMLInputElement).value })} />
+                    <FieldError errors={errors} field="warrantyUntil" />
+                  </Field>
+                </div>
+                <div class="row2">
+                  <Field id="md" label="Model" optional>
+                    <input id="md" class="field" value={d.model} autoComplete="off" onInput={(e) => set({ model: (e.currentTarget as HTMLInputElement).value })} />
+                  </Field>
+                  <Field id="sn" label="Serial" optional>
+                    <input id="sn" class="field" value={d.serial} autoComplete="off" onInput={(e) => set({ serial: (e.currentTarget as HTMLInputElement).value })} />
+                  </Field>
+                </div>
+              </details>
             </div>
 
             {base && <DeleteItemButton item={base} label="Delete this item…" />}
@@ -377,6 +430,21 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
         </div>
       </div>
 
+      {picking && (
+        <HomePicker
+          snap={snap}
+          mode="item"
+          title="Where does it live?"
+          current={d.home}
+          recent={recent}
+          submitLabel="Choose"
+          onClose={() => setPicking(false)}
+          onPick={(id) => {
+            set({ home: id });
+            setPicking(false);
+          }}
+        />
+      )}
       {scanning && (
         <ScanDialog
           onClose={() => setScanning(false)}
@@ -384,19 +452,6 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
             set({ barcode: code });
             setScanning(false);
             showToast(`Barcode ${code} filled in. Save to keep it.`);
-          }}
-        />
-      )}
-      {scanningLoc && (
-        <LocationScanDialog
-          locations={snap.locations}
-          notFound="offer"
-          onClose={() => setScanningLoc(false)}
-          onPicked={(l, how) => {
-            setNewLoc(null);
-            set({ location: l.name });
-            setScanningLoc(false);
-            if (how === 'found') showToast(`Location set to ${l.name}. Save to keep it.`);
           }}
         />
       )}

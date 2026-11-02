@@ -1,7 +1,10 @@
 // First launch (SPEC v2.0 §12.5): what the inventory starts with (the default categories, or a
 // backup file) and the end of setup. Each choice replaces the (empty) inventory and marks
 // setup done in one transaction, so a phone closed part-way simply shows the choice again.
-import type { Category } from '../domain/types';
+import { ID_PREFIX, newId } from '../domain/ids';
+import { emptyData } from '../domain/integrity';
+import { DEFAULT_SEASONS } from '../domain/places';
+import type { Category, Season } from '../domain/types';
 import type { InventoryDb } from './db';
 import { replaceAll, type ReplaceAllInput } from './inventory';
 
@@ -16,10 +19,10 @@ export async function isSetUp(db: InventoryDb): Promise<boolean> {
 
 /**
  * Fills the inventory for the first time. Refused once setup is done, so this can never
- * replace the household's data (restoring later is F18). Returns how many items have a photo.
+ * replace the household's data (restoring later is F18). Returns how many photos are stored.
  */
 export async function startInventory(db: InventoryDb, data: ReplaceAllInput, now = Date.now()): Promise<number> {
-  return db.transaction('rw', [db.items, db.photos, db.locations, db.categories, db.settings], async () => {
+  return db.transaction('rw', [db.items, db.areas, db.spots, db.bins, db.seasons, db.tags, db.pictures, db.categories, db.settings], async () => {
     if (await isSetUp(db)) throw new Error('this phone is already set up; use Restore in More › Backup instead');
     const photos = await replaceAll(db, data, now);
     await db.settings.put({ key: SETUP_DONE, value: now });
@@ -44,11 +47,20 @@ export const DEFAULT_CATEGORIES: readonly string[] = [
   'Other',
 ];
 
-/** "Start fresh": the default categories, no items or locations. */
-export function emptyStart(): ReplaceAllInput {
+/** "Start fresh" (§12.5): the default categories and seasons; no areas or items yet. */
+export function emptyStart(random: () => number = Math.random): ReplaceAllInput {
   const categories: Category[] = DEFAULT_CATEGORIES.map((name, order) => ({ name, order, subcategories: [] }));
-  return { items: [], photos: new Map(), locations: [], categories };
+  const taken = new Set<string>();
+  const seasons: Season[] = DEFAULT_SEASONS.map((s, order) => {
+    const id = newId(ID_PREFIX.season, (x) => taken.has(x), random);
+    taken.add(id);
+    return { id, name: s.name, color: s.color, order, setupNotes: '' };
+  });
+  return { ...emptyData(), categories, seasons, images: new Map() };
 }
+
+/** Area names offered on Areas & spots while there are none yet (§12.5). */
+export const SUGGESTED_AREAS: readonly string[] = ['Attic', 'Garage', 'Utility room', 'Kitchen', 'Pantry', 'Laundry', 'Basement'];
 
 /**
  * Asks the browser to keep this app's data (SPEC v2.0 §2). true: granted; false: refused;

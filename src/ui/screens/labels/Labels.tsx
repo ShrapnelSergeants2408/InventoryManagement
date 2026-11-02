@@ -1,12 +1,13 @@
-// QR labels (F10, SPEC v2.0 §9): 1 choose items (by category, or by location in
-// walk order) → 2 layout, start position, nudge, preview → print or test print through the
-// browser's print dialog. No PIN.
+// QR labels (F10, SPEC v2.0 §9): 1 choose items (by category, or by area in walk order) →
+// 2 layout, start position, nudge, preview → print or test print through the browser's print
+// dialog. Item labels show the item's path; H2b adds bin and spot labels.
 import { createPortal } from 'preact/compat';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { getNudge, setNudge } from '../../../data/labels';
 import { loadLabelChoice, saveLabelChoice } from '../../../data/prefs';
 import {
+  labelPath,
   NO_NUDGE,
   PLAIN_ID,
   PLAIN_QR_SIZES,
@@ -66,9 +67,13 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
     remembered = s;
     setSelectedState(s);
   };
-  // Grouping chosen in step 1; labels print in that order (by location: the walk order, F25).
-  const [by, setBy] = useState<'category' | 'location'>('category');
-  const groups = useMemo(() => labelGroups(snap.items, snap.categories, snap.locations, by), [snap, by]);
+  // Grouping chosen in step 1; labels print in that order (by area: the walk order).
+  const [by, setBy] = useState<'category' | 'area'>('category');
+  const groups = useMemo(() => labelGroups(snap.items, snap.categories, snap, by), [snap, by]);
+  const pathOf = useMemo(() => {
+    const paths = new Map(snap.items.map((i) => [i.id, labelPath(i, snap)]));
+    return (i: Item) => paths.get(i.id) ?? '';
+  }, [snap]);
   // Deleted items drop out of the selection.
   const chosen = groups.flatMap((g) => g.items).filter((i) => selected.has(i.id));
   const step = chosen.length === 0 ? 'select' : chosenStep;
@@ -91,9 +96,9 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
         {steps}
       </TopBar>
       {step === 'select' ? (
-        <Choose groups={groups} by={by} onBy={setBy} selected={selected} chosen={chosen} onChange={setSelected} onNext={() => setStep('layout')} />
+        <Choose groups={groups} by={by} onBy={setBy} pathOf={pathOf} selected={selected} chosen={chosen} onChange={setSelected} onNext={() => setStep('layout')} />
       ) : (
-        <Layout chosen={chosen} onBack={() => setStep('select')} />
+        <Layout chosen={chosen} pathOf={pathOf} onBack={() => setStep('select')} />
       )}
     </>
   );
@@ -103,8 +108,9 @@ function Labels({ snap, ids }: { snap: InventorySnapshot; ids: string[] | null }
 
 function Choose(props: {
   groups: LabelGroup[];
-  by: 'category' | 'location';
-  onBy: (by: 'category' | 'location') => void;
+  by: 'category' | 'area';
+  onBy: (by: 'category' | 'area') => void;
+  pathOf: (i: Item) => string;
   selected: Set<string>;
   chosen: Item[];
   onChange: (s: Set<string>) => void;
@@ -129,7 +135,7 @@ function Choose(props: {
     <div class="lbody">
       <div class="lpane">
         <div class="chips-row" role="tablist" aria-label="Group items">
-          {(['category', 'location'] as const).map((b) => (
+          {(['category', 'area'] as const).map((b) => (
             <button
               key={b}
               type="button"
@@ -141,7 +147,7 @@ function Choose(props: {
                 setOpen(new Set());
               }}
             >
-              {b === 'category' ? 'By category' : 'By location'}
+              {b === 'category' ? 'By category' : 'By area'}
             </button>
           ))}
         </div>
@@ -169,7 +175,7 @@ function Choose(props: {
                       <CheckBox state={selected.has(i.id) ? 'on' : 'off'} />
                       <RowThumb item={i} />
                       <span class="irow-t">
-                        <strong>{i.name}</strong> <span class="small muted">{by === 'category' ? i.location : i.category}</span>
+                        <strong>{i.name}</strong> <span class="small muted">{by === 'category' ? props.pathOf(i) || 'No home yet' : i.category}</span>
                       </span>
                     </button>
                   </div>
@@ -212,7 +218,7 @@ function RowThumb({ item }: { item: Item }) {
 
 // ── Step 2: layout, start position, nudge, preview, print ──
 
-function Layout({ chosen, onBack }: { chosen: Item[]; onBack: () => void }) {
+function Layout({ chosen, pathOf, onBack }: { chosen: Item[]; pathOf: (i: Item) => string; onBack: () => void }) {
   const db = useDb();
   const [choice, setChoice] = useState(() => {
     const c = loadLabelChoice();
@@ -251,7 +257,7 @@ function Layout({ chosen, onBack }: { chosen: Item[]; onBack: () => void }) {
   const sheets = plan.pages.length;
   const shown = Math.min(page, sheets - 1);
   const offsets = plan.pages.map((p, k) => plan.pages.slice(0, k).reduce((n, q) => n + q.labels.length, 0));
-  const pageLabels = (k: number) => plan.pages[k]!.labels.map((box, j) => ({ box, item: chosen[offsets[k]! + j]! }));
+  const pageLabels = (k: number) => plan.pages[k]!.labels.map((box, j) => ({ box, item: chosen[offsets[k]! + j]!, path: pathOf(chosen[offsets[k]! + j]!) }));
 
   const nudgeBy = (field: keyof Nudge, dir: 1 | -1) => {
     const cur = nudgeNow.current;

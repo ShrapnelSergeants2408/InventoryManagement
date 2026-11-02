@@ -1,29 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import {
-  completeCategories,
-  completeLocations,
-  parseCategoriesCsv,
-  parseLocationsCsv,
-  serializeCategoriesCsv,
-  serializeLocationsCsv,
-  spellLikeLists,
-} from '../src/io/lists-csv';
+import { parseH1Locations } from '../src/io/h1-backup';
+import { completeCategories, parseCategoriesCsv, serializeCategoriesCsv, spellLikeLists } from '../src/io/lists-csv';
 import { item } from './helpers';
 
-describe('locations.csv', () => {
-  it('round-trips walk order and notes', () => {
-    const list = [
-      { name: 'Shelf C1', notes: '', order: 1 },
-      { name: 'Bin F3', notes: 'blue tote, under the bench', order: 0 },
-      { name: 'Pit cart', notes: '', order: 2 },
-    ];
-    const back = parseLocationsCsv(serializeLocationsCsv(list));
-    expect(back.problems).toEqual([]);
-    expect(back.list).toEqual([...list].sort((a, b) => a.order - b.order));
+describe('H1 locations.csv (read only, for restoring an H1 backup)', () => {
+  it('sorts by order, then file position for blank orders, and renumbers from 0; keeps notes', () => {
+    const r = parseH1Locations('name,notes,order\r\nB,,5\r\nC,blue tote,\r\nA,,2\r\n');
+    expect(r.list).toEqual([
+      { name: 'A', notes: '', order: 0 },
+      { name: 'B', notes: '', order: 1 },
+      { name: 'C', notes: 'blue tote', order: 2 },
+    ]);
   });
-  it('sorts by order, then file position for blank orders, and renumbers from 0', () => {
-    const r = parseLocationsCsv('name,notes,order\r\nB,,5\r\nC,,\r\nA,,2\r\n');
-    expect(r.list.map((l) => [l.name, l.order])).toEqual([['A', 0], ['B', 1], ['C', 2]]);
+  it('a name listed twice (ignoring capitals) is a problem', () => {
+    expect(parseH1Locations('name\r\nShelf\r\nshelf\r\n').problems.map((p) => p.message)).toEqual(['location "shelf" is listed twice (first on row 2)']);
   });
 });
 
@@ -95,37 +85,32 @@ describe('spellLikeLists', () => {
     { name: 'Motors', order: 0, subcategories: ['Brushless'] },
     { name: 'Fasteners', order: 1, subcategories: [] },
   ];
-  const locations = [{ name: 'Bin F3', notes: '', order: 0 }];
 
-  it("rewrites category, subcategory and location to the lists' spelling, ignoring capitals", () => {
-    const [a] = spellLikeLists([item({ id: 'a', category: 'motors', subcategory: 'BRUSHLESS', location: 'bin f3' })], categories, locations);
-    expect(a).toMatchObject({ category: 'Motors', subcategory: 'Brushless', location: 'Bin F3' });
+  it("rewrites category and subcategory to the list's spelling, ignoring capitals", () => {
+    const [a] = spellLikeLists([item({ id: 'a', category: 'motors', subcategory: 'BRUSHLESS' })], categories);
+    expect(a).toMatchObject({ category: 'Motors', subcategory: 'Brushless' });
   });
 
   it('leaves matching items as they are (same object) and keeps blank and unlisted names', () => {
-    const ok = item({ id: 'b', category: 'Fasteners', subcategory: '', location: '' });
-    const odd = item({ id: 'c', category: 'Motors', subcategory: 'Brushed', location: 'Shelf Z' });
-    const out = spellLikeLists([ok, odd], categories, locations);
+    const ok = item({ id: 'b', category: 'Fasteners', subcategory: '' });
+    const odd = item({ id: 'c', category: 'Motors', subcategory: 'Brushed' });
+    const out = spellLikeLists([ok, odd], categories);
     expect(out[0]).toBe(ok);
-    expect(out[1]).toMatchObject({ category: 'Motors', subcategory: 'Brushed', location: 'Shelf Z' });
+    expect(out[1]).toMatchObject({ category: 'Motors', subcategory: 'Brushed' });
   });
 
   it("never matches a subcategory from another category", () => {
-    const [a] = spellLikeLists([item({ id: 'd', category: 'Fasteners', subcategory: 'brushless' })], categories, locations);
+    const [a] = spellLikeLists([item({ id: 'd', category: 'Fasteners', subcategory: 'brushless' })], categories);
     expect(a!.subcategory).toBe('brushless');
   });
 });
 
-describe('rebuilding lists from items (§7 CSV-only restore)', () => {
+describe('completing the category list from items (§7)', () => {
   const items = [
-    item({ id: 'a', category: 'Motion', subcategory: 'Bearings', location: 'Bin 2' }),
-    item({ id: 'b', category: 'Structure', subcategory: 'Tubing', location: 'bin 2' }),
-    item({ id: 'c', category: 'Motion', subcategory: 'Collars', location: '' }),
+    item({ id: 'a', category: 'Motion', subcategory: 'Bearings' }),
+    item({ id: 'b', category: 'Structure', subcategory: 'Tubing' }),
+    item({ id: 'c', category: 'Motion', subcategory: 'Collars' }),
   ];
-  it('appends missing locations to the end of the walk order', () => {
-    const r = completeLocations([{ name: 'Shelf', notes: '', order: 0 }], items);
-    expect(r.list.map((l) => [l.name, l.order])).toEqual([['Shelf', 0], ['Bin 2', 1]]);
-  });
   it('appends categories and subcategories in first-appearance order', () => {
     const r = completeCategories([], items);
     expect(r.list).toEqual([

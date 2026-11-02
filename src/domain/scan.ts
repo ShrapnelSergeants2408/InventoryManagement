@@ -1,5 +1,6 @@
-// QR label payloads and what a scanned or typed code means (SPEC §9, F21, F29).
-import { nameKey, type Item, type Location } from './types';
+// QR label payloads and what a scanned or typed code means (SPEC v2.0 §9, F3). H2b adds bin
+// and spot labels and typed bin codes.
+import type { Item } from './types';
 
 /** Household labels encode `hhi:<record id>` (§9); the prefix tells them apart from product barcodes. */
 export const QR_PREFIX = 'hhi:';
@@ -20,57 +21,19 @@ export function barcodeKey(code: string): string {
   return c.toUpperCase();
 }
 
-/**
- * A scanned or typed location name (F29): trimmed, runs of spaces made one. Unlike
- * `cleanCode` the inner spaces stay, since bin codes read "Electrical 15".
- */
-export const locationText = (raw: string) => raw.trim().replace(/\s+/g, ' ');
-
-const spaceless = (s: string) => nameKey(s).replace(/\s+/g, '');
-
-/**
- * The location a bin's QR code names (F29): the name ignoring capitals, or else the one name
- * that matches with spaces ignored ("Tools7" for "Tools 7"). Null when none, or when several
- * match that way. A team item label is never a location.
- */
-export function findLocation(raw: string, locations: readonly Location[]): Location | null {
-  const text = locationText(raw);
-  if (text === '' || text.toLowerCase().startsWith(QR_PREFIX)) return null;
-  const exact = locations.find((l) => nameKey(l.name) === nameKey(text));
-  if (exact) return exact;
-  const loose = locations.filter((l) => spaceless(l.name) === spaceless(text));
-  return loose.length === 1 ? loose[0]! : null;
-}
-
-/** Longest scanned text offered as a new location name (F29); bin codes are short. */
-export const LOCATION_TEXT_MAX = 60;
-
-/**
- * Whether an unknown code could be a bin's location QR code (F29), so "Location not found"
- * offers Add and Rename: a QR code or typed text with a letter, not a web address or team
- * label, and short. Manufacturer barcodes (UPC, Code 128…) never are.
- */
-export function couldBeLocation(raw: string, format: string | null): boolean {
-  if (format !== null && format !== 'qr_code') return false;
-  const text = locationText(raw);
-  return text !== '' && text.length <= LOCATION_TEXT_MAX && /\p{L}/u.test(text) && !/^[a-z][a-z0-9+.-]*:\/\//i.test(text) && !text.toLowerCase().startsWith(QR_PREFIX);
-}
-
 export type ScanResult =
   | { kind: 'empty' }
-  /** One item: by its team label, its typed id, its barcode, or picked from a scanned location (F29). */
-  | { kind: 'item'; item: Item; via: 'label' | 'id' | 'barcode' | 'location'; code: string }
+  /** One item: by its household label, its typed id or its barcode. */
+  | { kind: 'item'; item: Item; via: 'label' | 'id' | 'barcode'; code: string }
   /** The same barcode on more than one item: the user picks. */
   | { kind: 'many'; items: Item[]; code: string }
-  /** A household label whose item isn't on this phone (deleted, or an older backup). */
+  /** A household label whose record isn't on this phone (deleted, or an older backup). */
   | { kind: 'missing-label'; id: string; code: string }
-  /** A bin's QR code naming a location (F29). */
-  | { kind: 'location'; location: Location; code: string }
-  /** Not a team label, id, known barcode or location: offer attach or add (F21, F29). `text` keeps the spaces, for a location name. */
-  | { kind: 'unknown'; code: string; text: string };
+  /** Not a household label, id or known barcode: offer attach or add (F3). */
+  | { kind: 'unknown'; code: string };
 
-/** Team labels, item ids and barcodes come first, so item scans work as before; location names last (F29). */
-export function resolveScan(raw: string, items: readonly Item[], locations: readonly Location[] = []): ScanResult {
+/** Household labels first, then typed item ids, then product barcodes. */
+export function resolveScan(raw: string, items: readonly Item[]): ScanResult {
   const code = cleanCode(raw);
   if (code === '') return { kind: 'empty' };
   const byId = (id: string) => items.find((i) => i.id.toLowerCase() === id.toLowerCase());
@@ -87,9 +50,7 @@ export function resolveScan(raw: string, items: readonly Item[], locations: read
   const matches = items.filter((i) => i.barcode !== '' && barcodeKey(i.barcode) === key);
   if (matches.length === 1) return { kind: 'item', item: matches[0]!, via: 'barcode', code };
   if (matches.length > 1) return { kind: 'many', items: matches, code };
-  const location = findLocation(raw, locations);
-  if (location) return { kind: 'location', location, code: locationText(raw) };
-  return { kind: 'unknown', code, text: locationText(raw) };
+  return { kind: 'unknown', code };
 }
 
 const FORMAT_NAMES: Record<string, string> = {
@@ -114,5 +75,5 @@ export function formatName(format: string | null): string {
   return FORMAT_NAMES[format] ?? 'Code';
 }
 
-/** Formats the camera looks for: team QR labels and common manufacturer barcodes. */
+/** Formats the camera looks for: household QR labels and common manufacturer barcodes. */
 export const SCAN_FORMATS = ['qr_code', 'upc_a', 'upc_e', 'ean_13', 'ean_8', 'code_128', 'code_39'] as const;

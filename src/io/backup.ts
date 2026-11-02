@@ -2,12 +2,33 @@
 // Settings are never included.
 import JSZip from 'jszip';
 import type { InventorySnapshot } from '../data/inventory';
+import type { HouseholdData } from '../domain/integrity';
+import { indexPlaces, itemPath, itemSeasonId, pathText } from '../domain/places';
 import { MANIFEST_FILE, type Manifest } from './bundle';
-import { INVENTORY_FILE, photoPathFor, serializeInventoryCsv } from './inventory-csv';
-import { CATEGORIES_FILE, LOCATIONS_FILE, serializeCategoriesCsv, serializeLocationsCsv } from './lists-csv';
+import { writeCsv } from './csv';
+import {
+  AREAS_FILE,
+  BINS_FILE,
+  FILES_FILE,
+  ITEMS_FILE,
+  ITEM_COLUMNS,
+  SEASONS_FILE,
+  SPOTS_FILE,
+  TAGS_FILE,
+  itemCells,
+  photoPathFor,
+  serializeAreas,
+  serializeBins,
+  serializeFiles,
+  serializeItems,
+  serializeSeasons,
+  serializeSpots,
+  serializeTags,
+} from './household-csv';
+import { CATEGORIES_FILE, serializeCategoriesCsv } from './lists-csv';
 
 export const APP_NAME = 'Hiebert Home Inventory';
-export const APP_VERSION = '0.1.1';
+export const APP_VERSION = '0.1.2';
 
 export type BackupKind = 'full' | 'data';
 
@@ -32,36 +53,54 @@ export function dateFromFileName(name: string): Date | null {
   return date;
 }
 
+/** Data only (§7): items.csv with the readable path and season added first, for a spreadsheet. Not restorable. */
+export const DATA_COLUMNS = ['path', 'season', ...ITEM_COLUMNS] as const;
+
 export function buildDataCsv(snapshot: InventorySnapshot): string {
-  return serializeInventoryCsv(snapshot.items);
+  const ix = indexPlaces(snapshot);
+  const seasons = new Map(snapshot.seasons.map((s) => [s.id, s.name]));
+  return writeCsv(
+    DATA_COLUMNS,
+    snapshot.items.map((i) => [pathText(itemPath(i, ix)), seasons.get(itemSeasonId(i, ix)) ?? '', ...itemCells(i)]),
+  );
 }
 
 /**
- * Full backup: inventory.csv + locations.csv + categories.csv + manifest.json + photos/<id>.jpg.
- * Photos are stored as they are (already compressed).
+ * Full backup (§7): the record files, categories.csv, files.csv, manifest.json, and
+ * photos/<photo id>.jpg for each photo with an image. Photos are stored as they are (already
+ * compressed).
  */
-export async function buildFullBackup(snapshot: InventorySnapshot, photos: ReadonlyMap<string, Blob>, now: Date): Promise<Blob> {
+export async function buildFullBackup(data: HouseholdData, images: ReadonlyMap<string, Blob>, now: Date): Promise<Blob> {
   const zip = new JSZip();
   const date = now;
-  const ids = new Set(snapshot.items.map((i) => i.id));
-  const paths = new Map<string, string>();
-  for (const [id, blob] of photos) if (ids.has(id)) paths.set(id, photoPathFor(id, blob.type));
-  // photo_file follows the photos actually written, so the CSV never names a missing file.
-  const items = snapshot.items.map((i) => ({ ...i, hasPhoto: paths.has(i.id) }));
-
-  zip.file(INVENTORY_FILE, serializeInventoryCsv(items, (id) => paths.get(id) ?? ''), { date });
-  zip.file(LOCATIONS_FILE, serializeLocationsCsv(snapshot.locations), { date });
-  zip.file(CATEGORIES_FILE, serializeCategoriesCsv(snapshot.categories), { date });
+  // files.csv lists only photos actually written, so it never names a missing file.
+  const photos = data.photos.filter((p) => images.has(p.id));
+  const paths = new Map(photos.map((p) => [p.id, photoPathFor(p.id, images.get(p.id)!.type)]));
+  const files: Array<[string, string]> = [
+    [AREAS_FILE, serializeAreas(data.areas)],
+    [SPOTS_FILE, serializeSpots(data.spots)],
+    [BINS_FILE, serializeBins(data.bins)],
+    [ITEMS_FILE, serializeItems(data.items)],
+    [SEASONS_FILE, serializeSeasons(data.seasons)],
+    [TAGS_FILE, serializeTags(data.tags)],
+    [CATEGORIES_FILE, serializeCategoriesCsv(data.categories)],
+    [FILES_FILE, serializeFiles(photos, (p) => paths.get(p.id)!)],
+  ];
+  for (const [name, text] of files) zip.file(name, text, { date });
   const manifest: Manifest = {
     app: APP_NAME,
     appVersion: APP_VERSION,
     savedAt: now.toISOString(),
-    itemCount: items.length,
-    photoCount: paths.size,
+    itemCount: data.items.length,
+    photoCount: photos.length,
+    areaCount: data.areas.length,
+    spotCount: data.spots.length,
+    binCount: data.bins.length,
+    seasonCount: data.seasons.length,
   };
   zip.file(MANIFEST_FILE, JSON.stringify(manifest, null, 2) + '\n', { date });
   // Bytes rather than Blobs: JSZip reads a Blob through FileReader, which Node (tests) lacks.
-  for (const [id, path] of paths) zip.file(path, new Uint8Array(await photos.get(id)!.arrayBuffer()), { date, compression: 'STORE' });
+  for (const p of photos) zip.file(paths.get(p.id)!, new Uint8Array(await images.get(p.id)!.arrayBuffer()), { date, compression: 'STORE' });
   const bytes = await zip.generateAsync({ type: 'arraybuffer', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   return new Blob([bytes], { type: 'application/zip' });
 }

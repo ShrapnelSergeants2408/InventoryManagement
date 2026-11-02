@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { NO_FILTERS, type Filters } from '../src/domain/filters';
 import { buildInventoryView, categoryKey, filterOptions, listOrder, subcategoryKey, type CategoryLine, type ListLine } from '../src/domain/inventory-view';
 import type { Category } from '../src/domain/types';
-import { item } from './helpers';
+import { household, item } from './helpers';
+
+const h = household();
 
 const categories: Category[] = [
   { name: 'Decorations', order: 0, subcategories: ['Ornaments', 'Garland'] },
@@ -11,15 +13,15 @@ const categories: Category[] = [
 ];
 
 const items = [
-  item({ id: 'd1', name: 'Glass ornaments', category: 'Decorations', subcategory: 'Ornaments', location: 'Attic shelf B', quantity: 40 }),
-  item({ id: 'd2', name: 'Felt ornaments', category: 'Decorations', subcategory: 'Ornaments', location: 'Attic shelf B', quantity: 12 }),
-  item({ id: 'd3', name: 'Pine garland', category: 'Decorations', subcategory: 'Garland', location: 'Attic shelf A', quantity: 3 }),
-  item({ id: 't1', name: 'Cordless drill', category: 'Tools', subcategory: 'Power', location: 'Garage pegboard', quantity: 1 }),
-  item({ id: 't2', name: 'Tool bag', category: 'Tools', subcategory: '', location: '', quantity: 1 }),
+  item({ id: 'd1', name: 'Glass ornaments', category: 'Decorations', subcategory: 'Ornaments', binId: 'bn-xmas4', quantity: 40 }),
+  item({ id: 'd2', name: 'Felt ornaments', category: 'Decorations', subcategory: 'Ornaments', binId: 'bn-xmas4', quantity: 12 }),
+  item({ id: 'd3', name: 'Pine garland', category: 'Decorations', subcategory: 'Garland', spotId: 'sp-shelfA', quantity: 3 }),
+  item({ id: 't1', name: 'Cordless drill', category: 'Tools', subcategory: 'Power', spotId: 'sp-peg', quantity: 1 }),
+  item({ id: 't2', name: 'Tool bag', category: 'Tools', subcategory: '', seasonId: 'se-hall', quantity: 1 }),
 ];
 
 const view = (over: { query?: string; filters?: Partial<Filters>; expanded?: string[] } = {}) =>
-  buildInventoryView({ items, categories, query: over.query ?? '', filters: { ...NO_FILTERS, ...over.filters }, expanded: new Set(over.expanded ?? []) });
+  buildInventoryView({ items, categories, places: h, seasons: h.seasons, query: over.query ?? '', filters: { ...NO_FILTERS, ...over.filters }, expanded: new Set(over.expanded ?? []) });
 
 const shape = (lines: ListLine[]) => lines.map((l) => (l.kind === 'item' ? `  ${l.item.id}` : l.kind === 'subcategory' ? ` [${l.name}]` : `[${l.name}]`));
 
@@ -49,7 +51,7 @@ describe('SPEC v2.0 F2 grouping by category', () => {
   });
 
   it('categories only items use are appended after the list', () => {
-    const v = buildInventoryView({ items: [...items, item({ id: 'x', category: 'New one' })], categories, query: '', filters: NO_FILTERS, expanded: new Set() });
+    const v = buildInventoryView({ items: [...items, item({ id: 'x', category: 'New one' })], categories, places: h, seasons: h.seasons, query: '', filters: NO_FILTERS, expanded: new Set() });
     expect(shape(v.lines)).toEqual(['[Decorations]', '[Tools]', '[Empty]', '[New one]']);
   });
 });
@@ -63,16 +65,17 @@ describe('search and filters in the grouped list (F1, F2)', () => {
     expect(v.lines[0]).toMatchObject({ matching: 1, total: 2 });
   });
 
-  it('search matches location and category too', () => {
+  it('search matches the path and category too', () => {
     expect(shape(view({ query: 'shelf b' }).lines)).toEqual(['[Decorations]', ' [Ornaments]', '  d1', '  d2']);
+    expect(shape(view({ query: 'a-04 christmas' }).lines)).toEqual(['[Decorations]', ' [Ornaments]', '  d1', '  d2']);
   });
 
   it('a filter with no search', () => {
-    expect(shape(view({ filters: { location: 'Attic shelf A' } }).lines)).toEqual(['[Decorations]', ' [Garland]', '  d3']);
+    expect(shape(view({ filters: { area: 'ar-garage' } }).lines)).toEqual(['[Tools]', ' [Power]', '  t1']);
   });
 
   it('search and filter combine', () => {
-    expect(shape(view({ query: 'felt', filters: { location: 'Attic shelf A' } }).lines)).toEqual([]);
+    expect(shape(view({ query: 'felt', filters: { area: 'ar-garage' } }).lines)).toEqual([]);
   });
 
   it('no matches → no lines and shown 0 (empty state)', () => {
@@ -91,15 +94,12 @@ describe('search and filters in the grouped list (F1, F2)', () => {
 });
 
 describe('filter options', () => {
-  it('locations in use in walk order with No location last; categories in list order', () => {
-    const locs = [
-      { name: 'Garage pegboard', notes: '', order: 0 },
-      { name: 'Unused', notes: '', order: 1 },
-      { name: 'Attic shelf A', notes: '', order: 2 },
-      { name: 'Attic shelf B', notes: '', order: 3 },
-    ];
-    const o = filterOptions(items, categories, locs);
-    expect(o.locations).toEqual(['Garage pegboard', 'Attic shelf A', 'Attic shelf B', '']);
+  it('areas and seasons in use in their order, with none last; tags in list order then unlisted', () => {
+    const tagged = [...items, item({ id: 'x', tags: ['Outdoor', 'kids'] }), item({ id: 'y', tags: ['Fragile'] })];
+    const o = filterOptions(tagged, categories, h, h.seasons, [{ name: 'Fragile', order: 0 }, { name: 'Outdoor', order: 1 }, { name: 'Unused', order: 2 }]);
+    expect(o.areas).toEqual(['ar-attic', 'ar-garage', '']);
+    expect(o.seasons).toEqual(['se-hall', 'se-xmas', '']);
+    expect(o.tags).toEqual(['Fragile', 'Outdoor', 'kids']);
     expect(o.categories).toEqual(['Decorations', 'Tools', 'Empty']);
   });
 });

@@ -17,8 +17,8 @@ export function QrSvg({ text, size }: { text: string; size: number }) {
   );
 }
 
-function Label({ layout, box, item }: { layout: LabelLayout; box: LabelBox; item: Item }) {
-  const t = labelText(item, layout.content);
+function Label({ layout, box, item, path }: { layout: LabelLayout; box: LabelBox; item: Item; path: string }) {
+  const t = labelText(item, layout.content, path);
   return (
     <div
       class={`lab ${layout.flow}${layout.plain ? ' cut' : ''}`}
@@ -42,7 +42,8 @@ function Label({ layout, box, item }: { layout: LabelLayout; box: LabelBox; item
 /** A printed page: labels, or (test print) the outline and number of every label position. */
 export function SheetPage(props: {
   layout: LabelLayout;
-  labels: { box: LabelBox; item: Item }[];
+  /** `path`: the item's home as one line (§4), '' for none. */
+  labels: { box: LabelBox; item: Item; path: string }[];
   /** Used labels at the start of the first sheet (preview only: shown hatched). */
   skipped?: LabelBox[];
   outlines?: LabelBox[];
@@ -53,8 +54,8 @@ export function SheetPage(props: {
       {props.skipped?.map((b) => (
         <div key={`s${b.slot}`} class="lab used" style={{ left: inch(b.x), top: inch(b.y), width: inch(b.w), height: inch(b.h) }} />
       ))}
-      {props.labels.map(({ box, item }) => (
-        <Label key={box.slot} layout={props.layout} box={box} item={item} />
+      {props.labels.map(({ box, item, path }) => (
+        <Label key={box.slot} layout={props.layout} box={box} item={item} path={path} />
       ))}
       {props.outlines?.map((b) => (
         <div key={`o${b.slot}`} class="lab outline" data-slot={b.slot} style={{ left: inch(b.x), top: inch(b.y), width: inch(b.w), height: inch(b.h) }}>

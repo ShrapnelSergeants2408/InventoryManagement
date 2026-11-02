@@ -1,15 +1,17 @@
-// Filters panel (F2): side sheet in landscape, bottom sheet in portrait. The location can also
-// be set by scanning a QR code that holds its name.
-import { useEffect, useRef, useState } from 'preact/hooks';
+// Filters panel (F2): side sheet in landscape, bottom sheet in portrait. Category, area, season,
+// status, needs attention (condition not OK) and tag.
+import type { ComponentChildren } from 'preact';
+import { useEffect, useRef } from 'preact/hooks';
+import type { InventorySnapshot } from '../../../data/inventory';
 import type { Filters } from '../../../domain/filters';
-import { NO_LOCATION } from '../../../domain/lists';
 import type { FilterOptions } from '../../../domain/inventory-view';
-import { nameKey, type Location } from '../../../domain/types';
-import { LocationScanDialog } from '../../components/LocationScanDialog';
+import { NO_HOME } from '../../../domain/places';
+import { ITEM_STATUSES, type ItemStatus } from '../../../domain/types';
 import { Icon } from '../../icons';
-import { showToast } from '../../shell/toast';
 
-export const NO_LOCATION_LABEL = NO_LOCATION;
+export const NO_HOME_LABEL = NO_HOME;
+
+const STATUS_LABEL: Record<ItemStatus, string> = { stored: 'Stored', out: 'Out', lent: 'Lent' };
 
 function Choice(props: { on: boolean; label: string; onClick: () => void }) {
   return (
@@ -19,11 +21,20 @@ function Choice(props: { on: boolean; label: string; onClick: () => void }) {
   );
 }
 
+function Section(props: { title: string; children: ComponentChildren }) {
+  return (
+    <section class="fsec">
+      <h3>{props.title}</h3>
+      <div class="fgrid">{props.children}</div>
+    </section>
+  );
+}
+
 export function FilterPanel(props: {
   filters: Filters;
   options: FilterOptions;
-  /** Every location, so a scanned name in the list but with no items can say so. */
-  locations: readonly Location[];
+  /** For area and season names. */
+  snap: Pick<InventorySnapshot, 'areas' | 'seasons'>;
   shown: number;
   onChange: (f: Filters) => void;
   onClear: () => void;
@@ -31,14 +42,15 @@ export function FilterPanel(props: {
 }) {
   const { filters: f, onChange } = props;
   const closeBtn = useRef<HTMLButtonElement>(null);
-  const [scanning, setScanning] = useState(false);
   useEffect(() => {
     closeBtn.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && props.onClose();
     addEventListener('keydown', onKey);
     return () => removeEventListener('keydown', onKey);
   }, []);
-  const pick = <K extends 'category' | 'location'>(k: K, v: string) => onChange({ ...f, [k]: f[k] === v ? null : v });
+  const pick = <K extends 'category' | 'area' | 'season' | 'tag'>(k: K, v: string) => onChange({ ...f, [k]: f[k] === v ? null : v });
+  const areaName = (id: string) => (id === '' ? NO_HOME_LABEL : (props.snap.areas.find((a) => a.id === id)?.name ?? id));
+  const seasonName = (id: string) => (id === '' ? 'No season' : (props.snap.seasons.find((s) => s.id === id)?.name ?? id));
 
   return (
     <>
@@ -51,28 +63,36 @@ export function FilterPanel(props: {
           </button>
         </div>
         <div class="fpanel-body">
-          <section class="fsec">
-            <h3>Category</h3>
-            <div class="fgrid">
-              {props.options.categories.map((c) => (
-                <Choice key={c} on={f.category === c} label={c} onClick={() => pick('category', c)} />
+          <Section title="Category">
+            {props.options.categories.map((c) => (
+              <Choice key={c} on={f.category === c} label={c} onClick={() => pick('category', c)} />
+            ))}
+          </Section>
+          <Section title="Area">
+            {props.options.areas.map((a) => (
+              <Choice key={a} on={f.area === a} label={areaName(a)} onClick={() => pick('area', a)} />
+            ))}
+          </Section>
+          {props.options.seasons.length > 0 && (
+            <Section title="Season">
+              {props.options.seasons.map((s) => (
+                <Choice key={s} on={f.season === s} label={seasonName(s)} onClick={() => pick('season', s)} />
               ))}
-            </div>
-          </section>
-          <section class="fsec">
-            <div class="fsec-h">
-              <h3>Location</h3>
-              <button type="button" class="btn sm" onClick={() => setScanning(true)}>
-                <Icon name="scan" />
-                Scan a location
-              </button>
-            </div>
-            <div class="fgrid">
-              {props.options.locations.map((l) => (
-                <Choice key={l} on={f.location === l} label={l || NO_LOCATION_LABEL} onClick={() => pick('location', l)} />
+            </Section>
+          )}
+          <Section title="Status">
+            {ITEM_STATUSES.map((s) => (
+              <Choice key={s} on={f.status === s} label={STATUS_LABEL[s]} onClick={() => onChange({ ...f, status: f.status === s ? null : s })} />
+            ))}
+            <Choice on={f.attention} label="Needs attention" onClick={() => onChange({ ...f, attention: !f.attention })} />
+          </Section>
+          {props.options.tags.length > 0 && (
+            <Section title="Tag">
+              {props.options.tags.map((t) => (
+                <Choice key={t} on={f.tag === t} label={t} onClick={() => pick('tag', t)} />
               ))}
-            </div>
-          </section>
+            </Section>
+          )}
         </div>
         <div class="fpanel-foot">
           <button type="button" class="btn" onClick={props.onClear}>
@@ -83,20 +103,6 @@ export function FilterPanel(props: {
           </button>
         </div>
       </div>
-      {scanning && (
-        <LocationScanDialog
-          locations={props.locations}
-          notFound="report"
-          title="Filter by a location"
-          onClose={() => setScanning(false)}
-          onPicked={(l) => {
-            setScanning(false);
-            const name = props.options.locations.find((o) => o !== '' && nameKey(o) === nameKey(l.name));
-            if (name === undefined) showToast(`No items are in ${l.name} yet.`);
-            else onChange({ ...f, location: name });
-          }}
-        />
-      )}
     </>
   );
 }

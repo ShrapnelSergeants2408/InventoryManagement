@@ -4,7 +4,7 @@ import { createContext } from 'preact';
 import { useContext, useEffect, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
-import { getThumbnail } from '../data/photos';
+import { getThumbnail, photosOf } from '../data/photos';
 import { STORAGE_PERSISTED_EVENT } from '../data/setup';
 import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
 import { makeThumbnail } from '../io/image';
@@ -48,30 +48,30 @@ export function useSettings(): Settings {
 const thumbUrls = new Map<string, Promise<string | null>>();
 let queue: Promise<unknown> = Promise.resolve();
 
-function thumbUrl(db: InventoryDb, itemId: string): Promise<string | null> {
-  let p = thumbUrls.get(itemId);
+function thumbUrl(db: InventoryDb, ownerId: string): Promise<string | null> {
+  let p = thumbUrls.get(ownerId);
   if (!p) {
-    p = queue.then(() => getThumbnail(db, itemId, (full) => makeThumbnail(full))).then((b) => (b ? URL.createObjectURL(b) : null));
+    p = queue.then(() => getThumbnail(db, ownerId, (full) => makeThumbnail(full))).then((b) => (b ? URL.createObjectURL(b) : null));
     queue = p.catch(() => null);
     // A failure isn't cached, so the next mount tries again.
-    p.catch(() => thumbUrls.delete(itemId));
-    thumbUrls.set(itemId, p);
+    p.catch(() => thumbUrls.delete(ownerId));
+    thumbUrls.set(ownerId, p);
   }
   return p;
 }
 
 // Mounted thumbnails listen here, so a replaced photo shows without leaving the screen.
-const thumbListeners = new Set<(itemId: string | null) => void>();
+const thumbListeners = new Set<(ownerId: string | null) => void>();
 
-/** Drops a cached thumbnail after its photo changes; mounted thumbnails reload. */
-export function forgetThumbnail(itemId: string): void {
-  dropThumbnail(itemId);
-  for (const l of thumbListeners) l(itemId);
+/** Drops a cached thumbnail after its record's photos change; mounted thumbnails reload. */
+export function forgetThumbnail(ownerId: string): void {
+  dropThumbnail(ownerId);
+  for (const l of thumbListeners) l(ownerId);
 }
 
-function dropThumbnail(itemId: string): void {
-  const p = thumbUrls.get(itemId);
-  thumbUrls.delete(itemId);
+function dropThumbnail(ownerId: string): void {
+  const p = thumbUrls.get(ownerId);
+  thumbUrls.delete(ownerId);
   void p?.then((url) => url && URL.revokeObjectURL(url));
 }
 
@@ -111,60 +111,61 @@ export function useStorageStatus(): StorageStatus | null {
   return s;
 }
 
-/** The full-size photo (detail card, §8) while the screen is open. */
+/** One photo of a record's carousel (§8), with its full-size image while the screen is open. */
 export type PhotoView = {
+  id: string;
   url: string;
+  caption: string;
   /** Taken or chosen on this phone (not a restored backup photo). */
   taken: boolean;
 };
 
-export function usePhoto(itemId: string, hasPhoto: boolean): PhotoView | null {
+/** A record's photos in carousel order, live; [] while loading or when it has none. */
+export function usePhotos(ownerId: string): PhotoView[] {
   const db = useDb();
-  const [view, setView] = useState<PhotoView | null>(null);
+  const [views, setViews] = useState<PhotoView[]>([]);
   useEffect(() => {
-    if (!hasPhoto) {
-      setView(null);
-      return;
-    }
-    let current: string | null = null;
-    const sub = liveQuery(() => db.photos.get(itemId)).subscribe({
-      next: (row) => {
-        if (current) URL.revokeObjectURL(current);
-        current = row ? URL.createObjectURL(row.full) : null;
-        setView(row && current ? { url: current, taken: row.taken !== undefined } : null);
+    let urls: string[] = [];
+    const sub = liveQuery(() => photosOf(db, ownerId)).subscribe({
+      next: (rows) => {
+        for (const u of urls) URL.revokeObjectURL(u);
+        const next = rows.map((r) => ({ id: r.id, url: URL.createObjectURL(r.full), caption: r.caption, taken: r.taken !== undefined }));
+        urls = next.map((v) => v.url);
+        setViews(next);
       },
-      error: () => setView(null),
+      error: () => setViews([]),
     });
     return () => {
       sub.unsubscribe();
-      if (current) URL.revokeObjectURL(current);
+      for (const u of urls) URL.revokeObjectURL(u);
     };
-  }, [db, itemId, hasPhoto]);
-  return view;
+  }, [db, ownerId]);
+  return views;
 }
 
-export function useThumbnail(itemId: string, hasPhoto: boolean): string | null {
+/** The record's list thumbnail (its first photo). `hasPhoto` false skips the lookup (items know). */
+export function useThumbnail(ownerId: string, hasPhoto = true): string | null {
   const db = useDb();
   const [url, setUrl] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   useEffect(() => {
-    const l = (id: string | null) => (id === null || id === itemId) && setVersion((v) => v + 1);
+    const l = (id: string | null) => (id === null || id === ownerId) && setVersion((v) => v + 1);
     thumbListeners.add(l);
     return () => void thumbListeners.delete(l);
-  }, [itemId]);
+  }, [ownerId]);
   useEffect(() => {
     if (!hasPhoto) {
       setUrl(null);
       return;
     }
     let alive = true;
-    thumbUrl(db, itemId).then(
+    thumbUrl(db, ownerId).then(
       (u) => alive && setUrl(u),
       () => alive && setUrl(null),
     );
     return () => {
       alive = false;
     };
-  }, [db, itemId, hasPhoto, version]);
+  }, [db, ownerId, hasPhoto, version]);
   return url;
 }

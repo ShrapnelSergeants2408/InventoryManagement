@@ -14,8 +14,11 @@ import { exportBackup, exportMessage } from './export-backup';
 export interface PhoneNow {
   items: number;
   photos: number;
+  /** Photo ids on this phone (a photo the backup lacks is kept from here). */
   photoIds: ReadonlySet<string>;
-  locations: number;
+  areas: number;
+  spots: number;
+  bins: number;
   lastChangeAt: number | null;
 }
 
@@ -26,17 +29,13 @@ export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; pho
   const [backedUp, setBackedUp] = useState<string | null>(null);
   const now = new Date();
 
-  const keptPhotos = plan.kind === 'csv' ? plan.items.filter((i) => phone.photoIds.has(i.id)).length : 0;
+  const d = plan.data;
   // Photos the ZIP names but doesn't have: the phone keeps its own.
-  const missing = plan.missingPhotos.length;
-  const keptMissing = plan.missingPhotos.filter((id) => phone.photoIds.has(id)).length;
-  const backupPhotos =
-    plan.kind === 'csv'
-      ? `${keptPhotos} kept from this phone`
-      : missing === 0
-        ? String(plan.photos.size)
-        : `${plan.photos.size}, ${missing} missing${keptMissing > 0 ? ` (${keptMissing} kept from this phone)` : ''}`;
-  const empty = plan.items.length === 0;
+  const missing = plan.missingImages.length;
+  const keptMissing = plan.missingImages.filter((id) => phone.photoIds.has(id)).length;
+  const backupPhotos = missing === 0 ? String(plan.images.size) : `${plan.images.size}, ${missing} missing${keptMissing > 0 ? ` (${keptMissing} kept from this phone)` : ''}`;
+  const empty = d.items.length === 0;
+  const added = [...plan.addedCategories.map((c) => `category ${c}`), ...plan.addedTags.map((t) => `tag ${t}`)];
   const saved = plan.savedAt ? formatDateTime(plan.savedAt, now) + (plan.savedAtSource === 'file name' ? ' (from the file name)' : '') : 'unknown';
   const changed = phone.lastChangeAt === null ? 'unknown' : `changed ${formatDateTime(new Date(phone.lastChangeAt), now)}`;
   const since = plan.savedAt ? ` since ${formatIsoDate(localIsoDate(plan.savedAt))}` : ' since the backup was made';
@@ -62,7 +61,7 @@ export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; pho
     try {
       const withPhotos = await applyRestore(db, plan);
       forgetAllThumbnails();
-      showToast(`Restored ${plural(plan.items.length, 'item')} and ${plural(withPhotos, 'photo')} from ${plan.fileName}.`);
+      showToast(`Restored ${plural(d.items.length, 'item')} and ${plural(withPhotos, 'photo')} from ${plan.fileName}.`);
       onClose();
     } catch (e) {
       setBusy(null);
@@ -71,9 +70,11 @@ export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; pho
   };
 
   const rows: [string, string, string][] = [
-    ['Items', String(phone.items), String(plan.items.length)],
+    ['Items', String(phone.items), String(d.items.length)],
     ['Photos', String(phone.photos), backupPhotos],
-    ['Locations', String(phone.locations), String(plan.locations.length)],
+    ['Areas', String(phone.areas), String(d.areas.length)],
+    ['Spots', String(phone.spots), String(d.spots.length)],
+    ['Bins', String(phone.bins), String(d.bins.length)],
     ['Saved', changed, saved],
   ];
 
@@ -81,7 +82,7 @@ export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; pho
     <Dialog label="Replace all inventory with this backup?" role="alertdialog" onClose={() => !busy && onClose()}>
       <h2 class="h2">Replace all inventory with this backup?</h2>
       <div class="mono small">
-        {plan.fileName} · {formatBytes(plan.fileSize)} · {plan.kind === 'zip' ? 'full backup' : 'data-only CSV'}
+        {plan.fileName} · {formatBytes(plan.fileSize)} · {plan.format === 'h1' ? 'full backup from version 0.1.1' : 'full backup'}
       </div>
       <table class="cmp">
         <thead>
@@ -115,16 +116,16 @@ export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; pho
           </div>
         </div>
       )}
-      {(plan.addedLocations.length > 0 || plan.warnings.length > 0) && (
+      {(added.length > 0 || plan.warnings.length > 0) && (
         <ul class="small notes-list">
-          {plan.addedLocations.length > 0 && <li>Locations added to the end of the walk order: {plan.addedLocations.join(', ')}</li>}
+          {added.length > 0 && <li>Added to the lists because the items use them: {added.join(', ')}</li>}
           {plan.warnings.map((w) => (
             <li key={w}>{w}</li>
           ))}
         </ul>
       )}
       <p class="dlg-p">
-        Everything on the phone is replaced{plan.kind === 'csv' ? ' (photos are kept for matching item ids)' : ''}. Changes and items added{since} will be lost unless you back up first.
+        Everything on the phone is replaced. Changes and items added{since} will be lost unless you back up first.
       </p>
       <label class="tick">
         <input type="checkbox" checked={understood} disabled={!!busy} onChange={(e) => setUnderstood((e.currentTarget as HTMLInputElement).checked)} />

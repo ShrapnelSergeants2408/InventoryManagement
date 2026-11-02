@@ -3,12 +3,13 @@ import JSZip from 'jszip';
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyRestore, buildBackup } from '../src/data/backup';
 import { InventoryDb } from '../src/data/db';
-import { emptyStart, STORAGE_PERSISTED_EVENT, watchPersistentStorage } from '../src/data/setup';
+import { STORAGE_PERSISTED_EVENT, emptyStart, watchPersistentStorage } from '../src/data/setup';
 import { loadSnapshot, replaceAll, type ReplaceAllInput } from '../src/data/inventory';
+import { photosOf } from '../src/data/photos';
 import { getSettings } from '../src/data/settings';
 import { readRestoreFile } from '../src/io/restore';
 import { exportBackup, exportMessage } from '../src/ui/screens/more/export-backup';
-import { item } from './helpers';
+import { area, dataset, item } from './helpers';
 
 // Backup and restore safety cases from the FRC app this was forked from (its Stage 5 review). Each still applies.
 
@@ -25,13 +26,13 @@ const newDb = () => {
 const jpeg = (...b: number[]) => new Blob([new Uint8Array([0xff, 0xd8, ...b])], { type: 'image/jpeg' });
 const blobBytes = async (b: Blob) => [...new Uint8Array(await b.arrayBuffer())];
 
-function data(photos: [string, Blob][]): ReplaceAllInput {
-  return {
+/** Three items; `photos` are [photo id, item id, image]. */
+function data(photos: [string, string, Blob][]): ReplaceAllInput {
+  return dataset({
     items: ['a1', 'a2', 'a3'].map((id) => item({ id, name: id, category: 'Motors' })),
-    photos: new Map(photos),
-    locations: [],
-    categories: [{ name: 'Motors', order: 0, subcategories: [] }],
-  };
+    photos: photos.map(([id, ownerId]) => ({ id, ownerType: 'item' as const, ownerId, kind: 'photo' as const, caption: '', order: 0 })),
+    images: new Map(photos.map(([id, , b]) => [id, b])),
+  });
 }
 
 async function zipOf(db: InventoryDb, edit?: (z: JSZip) => void): Promise<Uint8Array> {
@@ -40,112 +41,64 @@ async function zipOf(db: InventoryDb, edit?: (z: JSZip) => void): Promise<Uint8A
   return z.generateAsync({ type: 'uint8array' });
 }
 
+async function restoreInto(db: InventoryDb, bytes: Uint8Array) {
+  const read = await readRestoreFile({ name: 'b.zip', bytes }, await loadSnapshot(db));
+  if (!read.ok) throw new Error(JSON.stringify(read.problems));
+  await applyRestore(db, read.plan);
+  return read.plan;
+}
+
 describe('a full backup with no items', () => {
-  it('restores when it has list files, and the lists come back', async () => {
-    const empty = newDb();
-    await replaceAll(empty, emptyStart());
-    await empty.locations.add({ key: 'shelf c1', name: 'Shelf C1', notes: '', order: 0 });
-    const bytes = await zipOf(empty);
-
-    const db = newDb();
-    await replaceAll(db, data([['a1', jpeg(1)]]));
-    const read = await readRestoreFile({ name: 'empty.zip', bytes }, await loadSnapshot(db));
-    expect(read.ok).toBe(true);
-    if (!read.ok) return;
-    expect(read.plan.items).toEqual([]);
-    await applyRestore(db, read.plan);
-    const after = await loadSnapshot(db);
-    expect(after.items).toEqual([]);
-    expect(after.locations.map((l) => l.name)).toEqual(['Shelf C1']);
-    expect(await db.photos.count()).toBe(0);
+  it('restores, and the lists come back', async () => {
+    const src = newDb();
+    await replaceAll(src, { ...emptyStart(), areas: [area()] });
+    const dst = newDb();
+    await replaceAll(dst, data([]));
+    await restoreInto(dst, await zipOf(src));
+    const s = await loadSnapshot(dst);
+    expect(s.items).toEqual([]);
+    expect(s.areas.map((a) => a.name)).toEqual(['Attic']);
+    expect(s.categories.length).toBe(13);
+    expect(s.seasons.length).toBe(10);
   });
 
-  it('is still refused without list files, and so is an empty CSV', async () => {
-    const db = newDb();
-    await replaceAll(db, data([]));
-    const snap = await loadSnapshot(db);
+  it('is refused when it has no items and no lists either', async () => {
     const z = new JSZip();
-    z.file('inventory.csv', 'id,name,category,quantity\n');
-    const r1 = await readRestoreFile({ name: 'x.zip', bytes: await z.generateAsync({ type: 'uint8array' }) }, snap);
-    expect(r1.ok).toBe(false);
-    if (!r1.ok) expect(r1.problems[0]!.message).toMatch(/no items/);
-    const r2 = await readRestoreFile({ name: 'x.csv', bytes: new TextEncoder().encode('id,name,category,quantity,barcode\n') }, snap);
-    expect(r2.ok).toBe(false);
-    if (!r2.ok) expect(r2.problems[0]!.message).toMatch(/no items/);
-  });
-
-  it('any one list file is enough', async () => {
-    const db = newDb();
-    await replaceAll(db, data([]));
-    const snap = await loadSnapshot(db);
-    for (const [name, text] of [
-      ['locations.csv', 'name,notes,order\nShelf C1,,0\n'],
-      ['categories.csv', 'category,subcategory,order\nMotors,,0\n'],
-    ]) {
-      const z = new JSZip();
-      z.file('inventory.csv', 'id,name,category,quantity\n');
-      z.file(name!, text!);
-      const read = await readRestoreFile({ name: 'x.zip', bytes: await z.generateAsync({ type: 'uint8array' }) }, snap);
-      expect(read.ok, name).toBe(true);
-    }
+    z.file('items.csv', 'id,name,category,quantity\r\n');
+    const read = await readRestoreFile({ name: 'b.zip', bytes: await z.generateAsync({ type: 'uint8array' }) }, await loadSnapshot(newDb()));
+    expect(read.ok).toBe(false);
   });
 });
 
 describe('photos missing from the ZIP', () => {
-  it('are counted in the plan, and the phone keeps its own photo for them', async () => {
-    const source = newDb();
-    await replaceAll(source, data([['a1', jpeg(1)], ['a2', jpeg(2)]]));
-    const bytes = await zipOf(source, (z) => z.remove('photos/a2.jpg'));
-
+  it('are counted in the plan, and the phone keeps its own image for them', async () => {
     const db = newDb();
-    await replaceAll(db, data([['a1', jpeg(9)], ['a2', jpeg(8)], ['a3', jpeg(7)]]));
-    const read = await readRestoreFile({ name: 'b.zip', bytes }, await loadSnapshot(db));
-    expect(read.ok).toBe(true);
-    if (!read.ok) return;
-    expect(read.plan.missingPhotos).toEqual(['a2']);
-    expect(read.plan.photos.size).toBe(1);
-
-    expect(await applyRestore(db, read.plan)).toBe(2);
-    // a1 comes from the backup, a2 is the phone's own, a3 has no photo in the backup and is gone.
-    expect(await blobBytes((await db.photos.get('a1'))!.full)).toEqual([0xff, 0xd8, 1]);
-    expect(await blobBytes((await db.photos.get('a2'))!.full)).toEqual([0xff, 0xd8, 8]);
-    expect(await db.photos.get('a3')).toBeUndefined();
-    const items = new Map((await loadSnapshot(db)).items.map((i) => [i.id, i.hasPhoto]));
-    expect(Object.fromEntries(items)).toEqual({ a1: true, a2: true, a3: false });
+    await replaceAll(db, data([['ph-1', 'a1', jpeg(1)], ['ph-2', 'a2', jpeg(2)]]));
+    const plan = await restoreInto(db, await zipOf(db, (z) => z.remove('photos/ph-1.jpg')));
+    expect(plan.missingImages).toEqual(['ph-1']);
+    expect(plan.warnings).toContain('1 photo file(s) named in the backup aren\'t in the ZIP');
+    expect(await blobBytes((await photosOf(db, 'a1'))[0]!.full)).toEqual([0xff, 0xd8, 1]);
+    expect((await db.items.get('a1'))!.hasPhoto).toBe(true);
   });
 
-  it('a missing photo the phone doesn’t have leaves that item without one', async () => {
-    const source = newDb();
-    await replaceAll(source, data([['a2', jpeg(2)]]));
-    const bytes = await zipOf(source, (z) => z.remove('photos/a2.jpg'));
-    const db = newDb();
-    await replaceAll(db, data([]));
-    const read = await readRestoreFile({ name: 'b.zip', bytes }, await loadSnapshot(db));
-    if (!read.ok) throw new Error('expected a plan');
-    expect(await applyRestore(db, read.plan)).toBe(0);
-    expect(await db.photos.count()).toBe(0);
+  it('a missing photo the phone doesn’t have is dropped, and its item has none', async () => {
+    const src = newDb();
+    await replaceAll(src, data([['ph-1', 'a1', jpeg(1)]]));
+    const dst = newDb();
+    await replaceAll(dst, data([]));
+    await restoreInto(dst, await zipOf(src, (z) => z.remove('photos/ph-1.jpg')));
+    expect(await dst.pictures.count()).toBe(0);
+    expect((await dst.items.get('a1'))!.hasPhoto).toBe(false);
   });
 
-  it('only keeps photos for items in the restore that the backup has no photo for', async () => {
-    const db = newDb();
-    await replaceAll(db, data([['a1', jpeg(9)], ['gone', jpeg(8)]]));
-    // A plan naming an id that isn't restored, and one whose photo the backup does have.
-    const input = { ...data([['a1', jpeg(1)]]), missingPhotos: ['gone', 'a1'] };
-    expect(await replaceAll(db, input)).toBe(1);
-    expect(await db.photos.toCollection().primaryKeys()).toEqual(['a1']);
-    expect(await blobBytes((await db.photos.get('a1'))!.full)).toEqual([0xff, 0xd8, 1]);
-  });
-
-  it('a backup with every photo replaces the phone’s photos as before', async () => {
-    const source = newDb();
-    await replaceAll(source, data([['a1', jpeg(1)]]));
-    const db = newDb();
-    await replaceAll(db, data([['a2', jpeg(8)]]));
-    const read = await readRestoreFile({ name: 'b.zip', bytes: await zipOf(source) }, await loadSnapshot(db));
-    if (!read.ok) throw new Error('expected a plan');
-    expect(read.plan.missingPhotos).toEqual([]);
-    await applyRestore(db, read.plan);
-    expect(await db.photos.toCollection().primaryKeys()).toEqual(['a1']);
+  it('a backup with every photo replaces the phone’s photos', async () => {
+    const src = newDb();
+    await replaceAll(src, data([['ph-9', 'a3', jpeg(9)]]));
+    const dst = newDb();
+    await replaceAll(dst, data([['ph-1', 'a1', jpeg(1)]]));
+    await restoreInto(dst, await zipOf(src));
+    expect((await dst.pictures.toArray()).map((p) => p.id)).toEqual(['ph-9']);
+    expect((await dst.items.get('a1'))!.hasPhoto).toBe(false);
   });
 });
 

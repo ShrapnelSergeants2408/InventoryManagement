@@ -14,6 +14,26 @@
 
 H2 replaces both, and must still restore an H1 backup.
 
+**H2 is delivered in two parts** (Dan, 2026-11-02):
+- **H2a** (app 0.1.2): the §3 data model with every item field stored, the in-place upgrade from H1, the §7 backup, F11 lists (areas and spots, seasons, tags, categories), bin and spot screens, F16 item editing and F7 move.
+- **H2b** (app 0.1.3): F1 Find, F2 Browse, F3 Scan for bins and spots, F10 labels for bins and spots with contents.
+
+**Upgrading an H1 phone** (Dan, 2026-11-02: upgrade in place). Schema v2 converts the H1 data the first time H2a opens:
+- every H1 location becomes a spot in one area called **Unsorted** (letter U), in the same walk order. **Move spot to another area** (F11) sorts them later;
+- items keep their location as their spot;
+- the default seasons are added;
+- photos are kept.
+
+A Full backup before installing is still advised (HANDOFF §5). Restore also reads an H1 backup ZIP, converting it the same way.
+
+**Item fields in H2a** (Dan, 2026-11-02: store all, show most). Every §3 item field is stored and backed up now, so later milestones need no schema change for them. The editor shows:
+- name, category, home, quantity and approx, season, tags, condition and its note;
+- barcode, notes and value;
+- a collapsed **Records** section (purchase date, model, serial, warranty until);
+- several photos.
+
+Status (out, lent) is shown but changed only by H5 and H6 actions. Attachments come with H6, and keepAtLeast with H7.
+
 ---
 
 ## 1. Purpose and users
@@ -30,7 +50,7 @@ A household inventory that answers "where is it?" and "what's in this bin?". Hol
 |---|---|---|
 | App type | PWA, added to the home screen from **iPhone Safari** | No App Store; the FRC app's code base |
 | Language/build | TypeScript, Preact, Vite (unchanged) | Existing code and tooling |
-| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v1 | **Local-first:** works with no signal in the attic or garage |
+| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v2 (H2a; v1 was H1) | **Local-first:** works with no signal in the attic or garage |
 | Server | One Cloudflare **Worker** (API + static app), **D1** (data), **R2** (photos and files) | Free tier, never sleeps, ~$0 for 2 people (§14) |
 | Sign-in | Cloudflare Access, one-time email code, a policy allowing the two email addresses. **Fallback** (§12.4) if it misbehaves in an iOS home-screen app | Real identity without passwords |
 | Address | `https://<name>.workers.dev`. A custom domain (~$10–12/yr) can be added later with no code change (Dan, 2026-11-02: free address for now) | |
@@ -210,9 +230,10 @@ Deleting a bin asks whether its items move to the bin's spot (the default) or ar
 |---|---|
 | `areas.csv` | id, name, letter, order, notes |
 | `spots.csv` | id, area_id, name, order, notes |
-| `bins.csv` | id, code, name, spot_id, season_id, tags, state, notes, label_printed_at |
+| `bins.csv` | id, code, name, spot_id, season_id, tags, state, notes, label_printed_at, label_contents |
 | `items.csv` | id, name, category, subcategory, bin_id, spot_id, quantity, approx, season_id, tags, status, out_where, out_since, lent_to, lent_on, condition, condition_note, barcode, notes, value, purchase_date, model, serial, warranty_until, keep_at_least |
 | `seasons.csv` | id, name, order, color, setup_notes |
+| `tags.csv` | name, order (the Tags list, F11) |
 | `categories.csv` | As FRC §7 |
 | `files.csv` | id, owner_type, owner_id, kind, caption, order, path |
 | `photos/`, `files/` | Every photo and attachment at full size |
@@ -370,7 +391,8 @@ Same routine as HANDOFF §5: spec first, a branch per milestone, tests, a review
 |---|---|---|
 | H0 | Spec | This document |
 | H1 | Strip and rebrand | Remove purchasing, helpers, PIN, starter catalog, FRC docs (D9) and their tests and checks. New name, manifest, icon placeholder, DB name, `hhi:` prefix |
-| H2 | Places, bins, seasons | §3, F1–F3, F7, F10, F11, F16 (local only) |
+| H2a | Places, bins, seasons: model | §3, §7, F7, F11, F16 (local only); upgrade from H1 |
+| H2b | Places, bins, seasons: find and labels | F1–F3, F10 (local only) |
 | H3 | Phone UI | Mockups (Dan approves), then §10 and §11 on every screen, iPhone checks |
 | H4 | Sync and sign-in | Sign-in spike, then §12, F15, F17, F18, Cloudflare deploy. **Independent review in a fresh session** |
 | H5 | Holiday workflow | F4–F6, F8, F9 |
@@ -391,6 +413,8 @@ Order: H4 comes before H5, because both phones must be updating when this season
 | 2026-11-02 | Sync before the holiday workflow (Christmas packing); 2 users only; free `workers.dev` address for now; one season per item; value and records fields on every item | Dan |
 | 2026-11-02 | H1 details (a)–(h) accepted (`docs/reviews/H1.md`); app version numbering restarts at 0.1 for the new build | Dan |
 | 2026-11-02 | Version scheme: no milestone suffix; the milestone number is the third position (H1 = 0.1.1, H2 = 0.1.2, …) | Dan |
+| 2026-11-02 | H2 in two PRs: H2a 0.1.2 and H2b 0.1.3, so each installed build has its own number; later milestones follow on (H3 = 0.1.4) | Dan |
+| 2026-11-02 | H1 data is upgraded in place; H1 locations become spots in an "Unsorted" area; every §3 item field is stored from H2a | Dan |
 
 ## 17. Open questions
 

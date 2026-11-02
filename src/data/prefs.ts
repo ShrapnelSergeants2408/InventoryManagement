@@ -50,7 +50,11 @@ export function loadFilters(store = browserStore()): Filters {
   const o = v as Record<string, unknown>;
   return {
     category: strOrNull(o.category),
-    location: strOrNull(o.location),
+    area: strOrNull(o.area),
+    season: strOrNull(o.season),
+    status: o.status === 'stored' || o.status === 'out' || o.status === 'lent' ? o.status : null,
+    attention: o.attention === true,
+    tag: strOrNull(o.tag),
   };
 }
 
@@ -76,13 +80,13 @@ const RECENT = 'hhi.inventory.recent';
 /** How many recently viewed items the search box offers (F1). */
 export const RECENT_MAX = 8;
 
-/** Item ids whose detail card was opened, newest first. */
+/** Record ids (items, bins, spots) whose detail screen was opened, newest first. */
 export function loadRecent(store = browserStore()): string[] {
   const v = read(store, RECENT);
   return Array.isArray(v) ? v.filter((k): k is string => typeof k === 'string').slice(0, RECENT_MAX) : [];
 }
 
-/** Puts an item first in the recently viewed list. */
-export function noteViewed(itemId: string, store = browserStore()): void {
-  write(store, RECENT, [itemId, ...loadRecent(store).filter((id) => id !== itemId)].slice(0, RECENT_MAX));
+/** Puts a record first in the recently viewed list. */
+export function noteViewed(id: string, store = browserStore()): void {
+  write(store, RECENT, [id, ...loadRecent(store).filter((x) => x !== id)].slice(0, RECENT_MAX));
 }

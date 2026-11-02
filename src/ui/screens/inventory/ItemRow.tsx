@@ -1,7 +1,8 @@
-// One item row: thumbnail, name, note icon, category · location, the quantity stepper, and the
-// row menu (⋮): details, QR label.
+// One item row: thumbnail, name, note icon, category · path, the quantity stepper, and the row
+// menu (⋮): details, QR label.
 import { useState } from 'preact/hooks';
 import { placeLabel } from '../../../domain/lists';
+import { NO_HOME } from '../../../domain/places';
 import type { Item } from '../../../domain/types';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { QuantityStepper } from '../../components/QuantityStepper';
@@ -21,6 +22,8 @@ export function Thumb({ itemId, hasPhoto }: { itemId: string; hasPhoto: boolean 
 
 export function ItemRow(props: {
   item: Item;
+  /** Its path (§4), or "No home yet". */
+  where: string;
   onStep: (id: string, delta: number) => void;
   onSet: (id: string, value: number) => Promise<unknown>;
 }) {
@@ -37,8 +40,8 @@ export function ItemRow(props: {
           </span>
           <span class="rmeta">
             <span>{placeLabel(item)}</span>
-            <span class={item.location ? '' : 'noloc'}>
-              <Icon name="pin" /> {item.location || 'No location'}
+            <span class={props.where === NO_HOME ? 'noloc' : ''}>
+              <Icon name="pin" /> {props.where}
             </span>
           </span>
         </span>

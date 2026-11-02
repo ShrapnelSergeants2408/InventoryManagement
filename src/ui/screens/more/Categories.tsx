@@ -21,7 +21,6 @@ import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { EntryDialog } from './EntryDialog';
-import { heldText } from './Locations';
 
 /** A category, or one subcategory in it. */
 type Target = { category: string; subcategory?: string };
@@ -35,6 +34,12 @@ type Open =
 
 const fail = (e: unknown) => showToast(e instanceof Error ? e.message : String(e));
 const label = (t: Target) => (t.subcategory === undefined ? t.category : `${t.category} › ${t.subcategory}`);
+
+/** "A, B and 1 more": the first two names, then how many others. */
+function heldText(names: readonly string[]): string {
+  const shown = names.slice(0, 2).join(', ');
+  return names.length > 2 ? `${shown} and ${names.length - 2} more` : shown;
+}
 
 export function CategoriesScreen() {
   const db = useDb();

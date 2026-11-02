@@ -47,7 +47,7 @@ export async function prepareReceiptPhoto(file: Blob, longSide: number): Promise
 }
 
 /**
- * A picked or camera file → the stored photo (JPEG, about 1024 px on the long side, §8) and
+ * A picked or camera file → the stored photo (JPEG, about 1600 px on the long side, §8) and
  * its thumbnail, decoded once. The camera's EXIF rotation is applied, so the photo is upright.
  * Throws an Error with a message for the user when the file can't be used.
  */

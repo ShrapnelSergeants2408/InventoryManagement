@@ -7,7 +7,7 @@ import { INVENTORY_FILE, photoPathFor, serializeInventoryCsv } from './inventory
 import { CATEGORIES_FILE, LOCATIONS_FILE, serializeCategoriesCsv, serializeLocationsCsv } from './lists-csv';
 
 export const APP_NAME = 'Hiebert Home Inventory';
-export const APP_VERSION = '2.0.0-h1';
+export const APP_VERSION = '0.1.0-h1';
 
 export type BackupKind = 'full' | 'data';
 

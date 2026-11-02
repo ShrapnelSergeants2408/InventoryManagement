@@ -8,7 +8,7 @@
 - **Removed:** purchasing, helpers, the PIN and the starter catalog.
 - **Added:** areas, spots, bins and seasons; a phone-first layout; sync between phones through Cloudflare; the holiday workflow; garage records. The pantry follows in a later phase.
 
-**Built so far:** H1 (app 0.1.0-h1, `docs/reviews/H1.md`). The FRC features are gone and the app is rebranded, but it still uses an interim model until H2:
+**Built so far:** H1 (app 0.1.1, `docs/reviews/H1.md`). The FRC features are gone and the app is rebranded, but it still uses an interim model until H2:
 - items have a flat location (no areas, spots or bins yet) and a quantity;
 - the backup holds `inventory.csv`, `locations.csv`, `categories.csv` and the photos, not the §7 files.
 
@@ -389,7 +389,8 @@ Order: H4 comes before H5, because both phones must be updating when this season
 | 2026-11-02 | Several photos; pack by scanning the bin then adding items; start fresh; name "Hiebert Home Inventory" | Dan |
 | 2026-11-02 | D1–D10 confirmed (plan §8) | Dan |
 | 2026-11-02 | Sync before the holiday workflow (Christmas packing); 2 users only; free `workers.dev` address for now; one season per item; value and records fields on every item | Dan |
-| 2026-11-02 | H1 details (a)–(h) accepted (`docs/reviews/H1.md`); app version numbering restarts at 0.1.0 (`0.1.0-h1`) for the new build | Dan |
+| 2026-11-02 | H1 details (a)–(h) accepted (`docs/reviews/H1.md`); app version numbering restarts at 0.1 for the new build | Dan |
+| 2026-11-02 | Version scheme: no milestone suffix; the milestone number is the third position (H1 = 0.1.1, H2 = 0.1.2, …) | Dan |
 
 ## 17. Open questions
 

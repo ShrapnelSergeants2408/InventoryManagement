@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: Dan, or a future Claude Code session. It covers what the app is, where everything lives and how to change it safely.
 
-Written 2026-11-02, at app version 0.1.0-h1 (SPEC v2.0, milestone H1 of H0–H7).
+Written 2026-11-02, at app version 0.1.1 (SPEC v2.0, milestone H1 of H0–H7).
 
 ---
 

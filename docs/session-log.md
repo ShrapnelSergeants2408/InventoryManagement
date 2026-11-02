@@ -926,3 +926,5 @@ High for the removals and the backup round trip (tested). Not tested on a real i
 **Next:** Dan confirms details (a)–(h) in `docs/reviews/H1.md`, merges, and decides whether to turn on GitHub Pages for an iPhone check before H4. Then H2.
 
 **Later (about 12:40–13:05):** Dan turned on Actions and Pages after merging PR #2, so no run had started; the deploy was started by hand (`gh workflow run`) and passed. The app is live at https://dhiebert-whs.github.io/HouseholdInventory/. Dan: "installed and tested successfully on iphone. since this is a new build lets reset the version number to 0.1-h1. decisions a-h accepted." The version is now `0.1.0-h1` (npm needs three numbers) in `APP_VERSION`, `package.json`, the H1 browser check and the docs. Branch `h1-version-0.1`.
+
+**Later (H2 start):** Dan: "for version numbers, remove the h value and use its number as the 3rd position. so 0.1.0-h1 becomes 0.1.1, h2 would be 0.1.2 and so on". H1 is now `0.1.1` in `APP_VERSION`, `package.json`, `package-lock.json`, the H1 browser check, SPEC, HANDOFF and `docs/reviews/H1.md` (same branch, PR #3).

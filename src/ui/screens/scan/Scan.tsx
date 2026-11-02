@@ -1,29 +1,24 @@
-// Scan (F21; mockups 5a–5f): the camera reads a team QR label (2408:<id>) or a stored
-// manufacturer barcode and opens that item with the On-hand stepper. A code can be typed
-// instead (torn label, no camera). An unknown code can be attached to an item or used for a
-// new one. A bin's QR code names a location and shows its items (F29). No PIN here (§6),
-// except renaming a location to a scanned name (F25).
+// Scan (F3): the camera reads a household QR label (hhi:<id>) or a stored product barcode and
+// opens that item with the quantity stepper. A code can be typed instead (torn label, no
+// camera). An unknown code can be attached to an item or used for a new one. A QR code whose
+// text is a location's name shows that location's items (H2 replaces this with spot and bin labels).
 import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
-import { adjustCount, setCount, type InventorySnapshot } from '../../../data/inventory';
+import { adjustQuantity, setQuantity, type InventorySnapshot } from '../../../data/inventory';
 import { setBarcode } from '../../../data/items';
 import { addLocation, updateLocation } from '../../../data/lists';
 import { saveFilters } from '../../../data/prefs';
 import { NO_FILTERS } from '../../../domain/filters';
 import { couldBeLocation, resolveScan, formatName, type ScanResult } from '../../../domain/scan';
 import { matchesQuery } from '../../../domain/search';
-import { itemStatus } from '../../../domain/status';
 import { nameKey, type Item, type Location } from '../../../domain/types';
-import { gate } from '../../../security/gate';
-import { PinMark, StatusChip, plural } from '../../components/common';
-import { CountStepper } from '../../components/OnHandStepper';
+import { plural } from '../../components/common';
+import { CountStepper } from '../../components/QuantityStepper';
 import { Scanner, type CameraState } from '../../components/Scanner';
 import { useDb, usePhoto, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
-import { LockPill, useCloseOnRelock } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
-import { AddToListDialog } from '../order/ListDialogs';
 import { StorageError } from '../StorageError';
 
 type Panel =
@@ -31,7 +26,7 @@ type Panel =
   | { kind: 'typing' }
   | { kind: 'result'; result: ScanResult; format: string | null }
   | { kind: 'attach'; code: string; format: string | null; back: ScanResult }
-  /** Rename an existing location to a scanned name (F29; the PIN was given). */
+  /** Rename an existing location to a scanned name. */
   | { kind: 'rename'; text: string; format: string | null };
 
 export function ScanScreen() {
@@ -101,7 +96,6 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
             Type a code
           </button>
         )}
-        <LockPill />
       </header>
 
       {panel.kind === 'typing' && <TypePanel onFind={(c) => handle(c, null)} onClose={close} />}
@@ -160,10 +154,10 @@ function CameraBlocked(props: { state: CameraState; onRetry: () => void; onCode:
             <p class="m0">Scanning needs camera permission for this app. To turn it on:</p>
             <ol class="denied-steps">
               <li>
-                Open Chrome’s <strong>⋮ menu › Settings › Site settings › Camera</strong>.
+                Open the iPhone <strong>Settings › Safari › Camera</strong> (or <strong>Settings › Apps › Safari</strong>).
               </li>
               <li>
-                Find this app in the <strong>Blocked</strong> list and choose <strong>Allow</strong>.
+                Choose <strong>Ask</strong> or <strong>Allow</strong>.
               </li>
               <li>
                 Come back here and tap <strong>Try again</strong>.
@@ -189,7 +183,7 @@ function CameraBlocked(props: { state: CameraState; onRetry: () => void; onCode:
             <strong>No camera? Type the code on the label or barcode</strong>
           </label>
           <div class="inline-add">
-            <input id="mc" class="field mono" autoComplete="off" placeholder="e.g. st-0063 or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
+            <input id="mc" class="field mono" autoComplete="off" placeholder="e.g. hhi:it-7K2M9QXP or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
             <button type="submit" class="btn" disabled={code.trim() === ''}>
               Find
             </button>
@@ -222,8 +216,8 @@ function TypePanel(props: { onFind: (code: string) => void; onClose: () => void 
       >
         <div class="sp-body">
           <h2 class="h2">Type a code</h2>
-          <p class="m0">For a torn label or a barcode the camera can’t read. Type the item ID from the label (e.g. st-0063) or the barcode digits.</p>
-          <input class="field mono" aria-label="Code" autoFocus autoComplete="off" placeholder="e.g. st-0063 or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
+          <p class="m0">For a torn label or a barcode the camera can’t read. Type the code from the label (e.g. hhi:it-7K2M9QXP) or the barcode digits.</p>
+          <input class="field mono" aria-label="Code" autoFocus autoComplete="off" placeholder="e.g. hhi:it-7K2M9QXP or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
         </div>
         <div class="sp-foot">
           <button type="submit" class="btn pri lg" disabled={code.trim() === ''}>
@@ -334,17 +328,15 @@ function MissingPanel({ id, onDone }: { id: string; onDone: () => void }) {
         <h2 class="h2">This label’s item isn’t here</h2>
       </div>
       <div class="mono code-big">{id}</div>
-      <p class="m0">The item may have been deleted, or this tablet was restored from an older backup. Print a new label from the item’s card if it still exists.</p>
+      <p class="m0">The item may have been deleted, or this phone was restored from an older backup. Print a new label from the item’s card if it still exists.</p>
     </Panel>
   );
 }
 
 function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () => void }) {
   const db = useDb();
-  const [adding, setAdding] = useState(false);
   const photo = usePhoto(item.id, item.hasPhoto);
-  const vendor = item.vendors[item.preferredVendor - 1];
-  const meta = [item.location || 'No location', vendor ? `${vendor.supplier} ${vendor.partNo}`.trim() : ''].filter(Boolean).join(' · ');
+  const meta = [item.location || 'No location', item.subcategory ? `${item.category} › ${item.subcategory}` : item.category].join(' · ');
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
   return (
     <Panel
@@ -357,10 +349,6 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
           <a class="btn" href={href.item(item.id)}>
             Open full details
           </a>
-          <button type="button" class="btn" onClick={() => setAdding(true)}>
-            <Icon name="listAdd" />
-            Add to order list
-          </button>
         </>
       }
     >
@@ -381,30 +369,21 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
           <div class="small muted">{meta}</div>
         </div>
       </div>
-      <div class="found-st">
-        <StatusChip status={itemStatus(item)} />
-        <span class="small muted">
-          Desired {item.desired} · spares {item.spares}
-        </span>
-      </div>
       <div class="found-oh">
-        <span class="lbl">On hand ({item.unit})</span>
-        <span class="small muted">Took some? Tap − once for each one you took.</span>
+        <span class="lbl">Quantity</span>
         <CountStepper
-          label="On hand"
           size="xl"
-          value={item.onHand}
+          value={item.quantity}
           itemName={item.name}
-          onStep={(d) => void adjustCount(db, item.id, 'onHand', d).catch(fail)}
+          onStep={(d) => void adjustQuantity(db, item.id, d).catch(fail)}
           onSet={(n) =>
-            setCount(db, item.id, 'onHand', n).catch((e: unknown) => {
+            setQuantity(db, item.id, n).catch((e: unknown) => {
               fail(e);
               throw e;
             })
           }
         />
       </div>
-      {adding && <AddToListDialog item={item} onClose={() => setAdding(false)} />}
     </Panel>
   );
 }
@@ -422,7 +401,7 @@ function PickRow({ item, on, onClick, sub }: { item: Item; on: boolean; onClick:
   );
 }
 
-/** A bin's QR code (F29): the items in that location, and the inventory filtered to it. */
+/** A QR code naming a location: the items in it, and the inventory filtered to it. */
 function LocationPanel(props: { snap: InventorySnapshot; location: Location; onPick: (item: Item) => void; onDone: () => void }) {
   const key = nameKey(props.location.name);
   const items = props.snap.items.filter((i) => nameKey(i.location) === key).sort((a, b) => a.name.localeCompare(b.name));
@@ -459,10 +438,10 @@ function LocationPanel(props: { snap: InventorySnapshot; location: Location; onP
       </div>
       {items.length > 0 && (
         <div class="loc-res">
-          <p class="m0">Tap an item to change its on-hand amount.</p>
+          <p class="m0">Tap an item to change its quantity.</p>
           <div class="picks">
             {items.map((i) => (
-              <PickRow key={i.id} item={i} on={false} sub={`On hand ${i.onHand} ${i.unit} · desired ${i.desired}`} onClick={() => props.onPick(i)} />
+              <PickRow key={i.id} item={i} on={false} sub={`Quantity ${i.quantity}`} onClick={() => props.onPick(i)} />
             ))}
           </div>
         </div>
@@ -471,7 +450,7 @@ function LocationPanel(props: { snap: InventorySnapshot; location: Location; onP
   );
 }
 
-/** "Location not found" (F29): add the scanned name, rename a location to it, or treat it as an item code. */
+/** "Location not found": add the scanned name, rename a location to it, or treat it as an item code. */
 function NoLocationPanel(props: {
   text: string;
   code: string;
@@ -495,9 +474,6 @@ function NoLocationPanel(props: {
       showToast(e instanceof Error ? e.message : String(e));
     }
   };
-  const rename = async () => {
-    if (await gate('Renaming a location needs the mentor PIN.')) props.onRename(props.text);
-  };
   return (
     <Panel
       label="Location not found"
@@ -508,9 +484,8 @@ function NoLocationPanel(props: {
             Add “{props.text}” as a location
           </button>
           {props.snap.locations.length > 0 && (
-            <button type="button" class="btn" disabled={busy} onClick={() => void rename()}>
+            <button type="button" class="btn" disabled={busy} onClick={() => props.onRename(props.text)}>
               Rename a location to “{props.text}”…
-              <PinMark />
             </button>
           )}
           <button type="button" class="btn" disabled={busy} onClick={() => props.onAttach(props.code)}>
@@ -537,12 +512,11 @@ function NoLocationPanel(props: {
   );
 }
 
-/** Rename an existing location to the scanned name (F29; F25 rename, the PIN was given). */
+/** Rename an existing location to the scanned name. */
 function RenamePanel(props: { text: string; locations: readonly Location[]; onBack: () => void; onRenamed: (location: Location) => void }) {
   const db = useDb();
   const [from, setFrom] = useState(props.locations[0]?.name ?? '');
   const [busy, setBusy] = useState(false);
-  useCloseOnRelock(true, props.onBack);
   const chosen = props.locations.find((l) => l.name === from) ?? null;
   const rename = async () => {
     if (!chosen || busy) return;
@@ -624,7 +598,7 @@ function AttachPanel(props: { snap: InventorySnapshot; code: string; onBack: () 
       }
     >
       <h2 class="h2">Attach {props.code} to…</h2>
-      <input class="field" type="search" aria-label="Find the item" autoFocus autoComplete="off" placeholder="Find the item — name, part #, supplier" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
+      <input class="field" type="search" aria-label="Find the item" autoFocus autoComplete="off" placeholder="Find the item — name, category, location" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
       <div class="picks">
         {matches.map((i) => (
           <PickRow key={i.id} item={i} on={i.id === chosen} onClick={() => setChosen(i.id)} />

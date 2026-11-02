@@ -23,7 +23,7 @@ export function ScanDialog(props: { onCode: (code: string) => void; onClose: () 
         <h2 class="h2">Scan the barcode</h2>
         {camera === 'denied' || camera === 'nocamera' || camera === 'error' ? (
           <p class="dlg-p" role="alert">
-            {camera === 'denied' ? 'The camera is blocked for this app. Allow it in Chrome’s Site settings › Camera, or type the barcode instead.' : 'The camera isn’t available. Type the barcode instead.'}
+            {camera === 'denied' ? 'The camera is blocked for this app. Allow it in Settings › Safari › Camera, or type the barcode instead.' : 'The camera isn’t available. Type the barcode instead.'}
           </p>
         ) : (
           <Scanner paused={false} onDetect={detect} onState={setCamera}>

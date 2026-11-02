@@ -20,7 +20,7 @@ export function startServiceWorker(): void {
 }
 
 /**
- * Gets the newest copy of the app now (the out-of-date screen, Stage 5 finding 6): checks for
+ * Gets the newest copy of the app now (the out-of-date screen): checks for
  * a new version, lets a waiting one take over, then reloads. Falls back to a plain reload.
  */
 export async function updateAndReload(): Promise<void> {

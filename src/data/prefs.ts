@@ -1,15 +1,12 @@
-// UI-only state kept in localStorage (stage4-plan §3): expanded groups (F1), filters (F5),
-// the last label layout (§9), the count-in options and pause point (F24), the order
-// history's range (§21.5) and the recently viewed items (v0.17).
-// Never inventory data. Any read/write failure (private mode, blocked storage) falls back to defaults.
-import type { CountMode } from '../domain/count';
+// UI-only state kept in localStorage: expanded groups and filters (F2), the last label layout
+// (§9) and the recently viewed items (F1). Never inventory data. Any read/write failure
+// (private mode, blocked storage) falls back to defaults.
 import { NO_FILTERS, type Filters } from '../domain/filters';
-import { DEFAULT_RANGE, RANGE_KINDS, type RangeKind } from '../domain/order-history';
 
 export type KeyValueStore = Pick<Storage, 'getItem' | 'setItem'>;
 
-const EXPANDED = 'frc2408.inventory.expanded';
-const FILTERS = 'frc2408.inventory.filters';
+const EXPANDED = 'hhi.inventory.expanded';
+const FILTERS = 'hhi.inventory.filters';
 
 function browserStore(): KeyValueStore | null {
   try {
@@ -52,11 +49,7 @@ export function loadFilters(store = browserStore()): Filters {
   if (typeof v !== 'object' || v === null) return { ...NO_FILTERS };
   const o = v as Record<string, unknown>;
   return {
-    needsOrder: o.needsOrder === true,
-    short: o.short === true,
-    low: o.low === true,
     category: strOrNull(o.category),
-    supplier: strOrNull(o.supplier),
     location: strOrNull(o.location),
   };
 }
@@ -65,7 +58,7 @@ export function saveFilters(filters: Filters, store = browserStore()): void {
   write(store, FILTERS, filters);
 }
 
-const LABEL_LAYOUT = 'frc2408.labels.layout';
+const LABEL_LAYOUT = 'hhi.labels.layout';
 
 /** The label layout and plain-paper QR size used last; checked by the caller. */
 export function loadLabelChoice(store = browserStore()): { layoutId: string | null; plainQr: number | null } {
@@ -78,81 +71,9 @@ export function saveLabelChoice(choice: { layoutId: string; plainQr: number }, s
   write(store, LABEL_LAYOUT, choice);
 }
 
-const COUNT_OPTIONS = 'frc2408.count.options';
+const RECENT = 'hhi.inventory.recent';
 
-export interface CountOptions {
-  mode: CountMode;
-  /** Ask for a location while counting (F24: on by default). */
-  askLocation: boolean;
-  skipZero: boolean;
-}
-
-export const DEFAULT_COUNT_OPTIONS: CountOptions = { mode: 'category', askLocation: true, skipZero: false };
-
-export function loadCountOptions(store = browserStore()): CountOptions {
-  const v = read(store, COUNT_OPTIONS);
-  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
-  const d = DEFAULT_COUNT_OPTIONS;
-  return {
-    mode: o.mode === 'category' || o.mode === 'location' || o.mode === 'scan' ? o.mode : d.mode,
-    askLocation: typeof o.askLocation === 'boolean' ? o.askLocation : d.askLocation,
-    skipZero: typeof o.skipZero === 'boolean' ? o.skipZero : d.skipZero,
-  };
-}
-
-export function saveCountOptions(options: CountOptions, store = browserStore()): void {
-  write(store, COUNT_OPTIONS, options);
-}
-
-const COUNT_PAUSE = 'frc2408.count.paused';
-
-/** Where a walk was paused, so the start screen can offer to pick it up (F24 resume). */
-export interface CountPause {
-  mode: 'category' | 'location';
-  group: string;
-  /** The item that was on screen. */
-  itemId: string;
-}
-
-export function loadCountPause(store = browserStore()): CountPause | null {
-  const v = read(store, COUNT_PAUSE);
-  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
-  if ((o.mode !== 'category' && o.mode !== 'location') || typeof o.group !== 'string' || typeof o.itemId !== 'string') return null;
-  return { mode: o.mode, group: o.group, itemId: o.itemId };
-}
-
-export function saveCountPause(pause: CountPause | null, store = browserStore()): void {
-  write(store, COUNT_PAUSE, pause);
-}
-
-const HISTORY_RANGE = 'frc2408.order.historyRange';
-
-/** The order history's range (§21.5: remembered on the device), with the custom dates. */
-export interface HistoryRangeChoice {
-  kind: RangeKind;
-  from: string;
-  to: string;
-}
-
-const isDate = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v);
-
-export function loadHistoryRange(store = browserStore()): HistoryRangeChoice {
-  const v = read(store, HISTORY_RANGE);
-  const o = (typeof v === 'object' && v !== null ? v : {}) as Record<string, unknown>;
-  return {
-    kind: RANGE_KINDS.includes(o.kind as RangeKind) ? (o.kind as RangeKind) : DEFAULT_RANGE,
-    from: isDate(o.from) ? o.from : '',
-    to: isDate(o.to) ? o.to : '',
-  };
-}
-
-export function saveHistoryRange(choice: HistoryRangeChoice, store = browserStore()): void {
-  write(store, HISTORY_RANGE, choice);
-}
-
-const RECENT = 'frc2408.inventory.recent';
-
-/** How many recently viewed items the search box offers (v0.17). */
+/** How many recently viewed items the search box offers (F1). */
 export const RECENT_MAX = 8;
 
 /** Item ids whose detail card was opened, newest first. */

@@ -1,44 +1,24 @@
-// Restore (F17, SPEC §7, spec-questions Q5/Q8): read a backup file, then plan what replaces
-// what. Nothing here touches the database; data/restore.ts applies a plan in one transaction.
+// Restore (F18, SPEC v2.0 §7): read a backup file, then plan what replaces what. Nothing here
+// touches the database; data/backup.ts applies a plan in one transaction.
 import type { InventorySnapshot } from '../data/inventory';
-import { withoutMissingItems, type NamedOrderList } from '../domain/order-lists';
-import type { PendingRecord } from '../domain/helper-mode';
-import type { PlacedOrder } from '../domain/placed-orders';
-import type { Category, Item, Location, Supplier } from '../domain/types';
+import type { Category, Item, Location } from '../domain/types';
 import { dateFromFileName } from './backup';
 import { readBackupZip, readInventoryCsvBundle, type Bundle } from './bundle';
 import { decodeCsvBytes, type FileProblem } from './csv';
-import { completeCategories, completeLocations, completeSuppliers, spellLikeLists } from './lists-csv';
+import { completeCategories, completeLocations, spellLikeLists } from './lists-csv';
 
 export interface RestorePlan {
   kind: 'zip' | 'csv';
   fileName: string;
   fileSize: number;
   items: Item[];
-  /** ZIP: the backup's photos. CSV: empty; photos on the tablet are kept for matching ids. */
+  /** ZIP: the backup's photos. CSV: empty; photos on the phone are kept for matching ids. */
   photos: Map<string, Blob>;
-  /**
-   * ZIP: item ids whose photo the ZIP names but doesn't have. The tablet keeps its own photo
-   * for these (Stage 5 finding 5). CSV: empty.
-   */
+  /** ZIP: item ids whose photo the ZIP names but doesn't have; the phone keeps its own. CSV: empty. */
   missingPhotos: string[];
-  suppliers: Supplier[];
   locations: Location[];
   categories: Category[];
-  /**
-   * Named order lists (F27). ZIP: the backup's lists, which replace the tablet's. CSV: null,
-   * the tablet keeps its lists and drops lines for items that aren't in the backup (§15 Q7d).
-   */
-  orderLists: NamedOrderList[] | null;
-  /** Pending items from helpers: ZIP replaces the tablet's; CSV: null, the tablet keeps them (§15 Q7d). */
-  pending: PendingRecord[] | null;
-  pendingPhotos: Map<string, Blob>;
-  /** Placed orders (§21.6): a ZIP with orders.csv replaces the tablet's; null keeps them (CSV, older ZIPs). */
-  orders: PlacedOrder[] | null;
-  /** Receipt id → file. */
-  receipts: Map<string, Blob>;
-  /** Names that weren't in the lists and were added from the item data. */
-  addedSuppliers: string[];
+  /** Location names that weren't in the list and were added from the item data. */
   addedLocations: string[];
   /** When the backup was saved: manifest, else file name, else ZIP entry dates; null = unknown. */
   savedAt: Date | null;
@@ -63,44 +43,19 @@ function savedDate(bundle: Bundle, fileName: string): Pick<RestorePlan, 'savedAt
 }
 
 /**
- * Q5: a list file in the backup replaces that list; a list the backup doesn't have (any CSV
- * restore, older ZIPs) keeps the tablet's list. The starter catalog has suppliers.csv and
- * categories.csv but no locations.csv. Either way, names the items use that aren't in a list
- * are added (§7): suppliers and locations at the end, and `other` always exists. Items then
- * take the lists' spelling (Stage 5 finding 2).
+ * A list file in the backup replaces that list; a list the backup doesn't have (any CSV
+ * restore) keeps the phone's list. Either way, locations and categories the items use that
+ * aren't in a list are added at the end (§7), and items take the lists' spelling.
  */
 export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { name: string; size: number }, warnings: string[] = []): RestoreRead {
-  const problems: FileProblem[] = [];
-  // A full backup of a tablet set up with Start empty has no items but does have its lists
-  // (Stage 5 finding 4). A file with neither (any CSV) is refused: it would only empty the tablet.
-  const hasLists = bundle.suppliers !== null || bundle.locations !== null || bundle.categories !== null;
+  // A full backup of a phone with no items still has its lists. A file with neither (any CSV)
+  // is refused: it would only empty the phone.
+  const hasLists = bundle.locations !== null || bundle.categories !== null;
   if (bundle.items.length === 0 && !hasLists) {
-    problems.push({ file: file.name, row: null, message: 'the backup has no items, so restoring it would empty the tablet' });
-    return { ok: false, problems, warnings };
+    return { ok: false, problems: [{ file: file.name, row: null, message: 'the backup has no items, so restoring it would empty this phone' }], warnings };
   }
-  // A count kit's inventory.csv (§18.2), taken out of the kit, is a valid §7 file whose price
-  // columns are all blank: restoring it would wipe the tablet's prices (independent M16a review,
-  // finding 1). Hand-made files without price columns still load (§7).
-  const priced = (items: readonly Item[]) => items.some((i) => i.vendors.some((v) => v !== null && (v.packPriceCents !== null || v.priceChecked !== '')));
-  if (bundle.items.length > 0 && bundle.priceColumns && !priced(bundle.items) && priced(current.items)) {
-    problems.push({
-      file: file.name,
-      row: null,
-      message:
-        "this file has no prices at all, but this tablet has prices, so restoring it would remove every price. It looks like the inventory from a helper's count kit, which isn't a backup. Choose an inventory-backup file",
-    });
-    return { ok: false, problems, warnings };
-  }
-  // Items were checked while the file was read, and every supplier they use is now in the
-  // list, so the plan always passes replaceAll's check.
-  const suppliers = completeSuppliers(bundle.suppliers ?? current.suppliers, bundle.items);
   const locations = completeLocations(bundle.locations ?? current.locations, bundle.items);
   const categories = completeCategories(bundle.categories ?? current.categories, bundle.items);
-  const ids = new Set(bundle.items.map((i) => i.id));
-  const orderLists = bundle.orderLists?.map((l) => withoutMissingItems(l, ids)) ?? null;
-  const dropped = (bundle.orderLists ?? []).reduce((n, l) => n + l.lines.length, 0) - (orderLists ?? []).reduce((n, l) => n + l.lines.length, 0);
-  if (dropped > 0) warnings = [...warnings, `${dropped} order-list line(s) name items that aren't in the backup and were left out`];
-
   return {
     ok: true,
     plan: {
@@ -110,15 +65,8 @@ export function planRestore(bundle: Bundle, current: InventorySnapshot, file: { 
       items: spellLikeLists(bundle.items, categories.list, locations.list),
       photos: bundle.photos,
       missingPhotos: bundle.missingPhotos,
-      suppliers: suppliers.list,
       locations: locations.list,
       categories: categories.list,
-      orderLists,
-      pending: bundle.pending,
-      pendingPhotos: bundle.pendingPhotos,
-      orders: bundle.orders,
-      receipts: bundle.receipts,
-      addedSuppliers: suppliers.added,
       addedLocations: locations.added,
       ...savedDate(bundle, file.name),
       warnings,

@@ -1,5 +1,5 @@
-// Barcode/QR detection for Scan (SPEC §2, F21). Chrome on Android has BarcodeDetector built
-// in. Where it's missing (desktop Chrome on Windows, used while building), a zxing-based
+// Barcode/QR detection for Scan (SPEC v2.0 §2, F3). Some browsers have BarcodeDetector built
+// in. Where it's missing (iPhone Safari, desktop Chrome on Windows), a zxing-based
 // stand-in is loaded on demand, with its .wasm bundled in the app: the library's default is
 // to fetch it from a CDN, which would break offline use.
 import { SCAN_FORMATS } from '../domain/scan';

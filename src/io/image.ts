@@ -37,7 +37,7 @@ export async function prepareReceiptPhoto(file: Blob, longSide: number): Promise
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   } catch {
-    throw new Error('This tablet can’t read that picture. Try a JPEG or PNG, or take a new photo.');
+    throw new Error('This phone can’t read that picture. Try a JPEG or PNG, or take a new photo.');
   }
   try {
     return await encodeJpeg(bitmap, longSide, PHOTO_QUALITY);
@@ -58,7 +58,7 @@ export async function preparePhoto(file: Blob): Promise<{ full: Blob; thumb: Blo
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
   } catch {
-    throw new Error('This tablet can’t read that picture. Try a JPEG or PNG, or take a new photo.');
+    throw new Error('This phone can’t read that picture. Try a JPEG or PNG, or take a new photo.');
   }
   try {
     return { full: await encodeJpeg(bitmap, PHOTO_LONG_SIDE, PHOTO_QUALITY), thumb: await encodeJpeg(bitmap, THUMB_LONG_SIDE, THUMB_QUALITY) };

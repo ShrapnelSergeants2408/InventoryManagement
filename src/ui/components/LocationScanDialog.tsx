@@ -1,17 +1,13 @@
-// Scan a bin's QR code to pick a location (F29). The code's text is the location name
-// ("Electrical 15"). An unknown name shows "Location not found" and, where it makes sense,
-// offers to add it (anyone) or rename an existing location to it (PIN, as F25).
+// Scan a QR code whose text is a location's name to pick that location ("Attic shelf B"). An
+// unknown name shows "Location not found" and, where it makes sense, offers to add it or rename
+// an existing location to it. H2 replaces this with spot labels (hhi:sp-…).
 import { useState } from 'preact/hooks';
 import { addLocation, updateLocation } from '../../data/lists';
 import { couldBeLocation, findLocation, locationText, QR_PREFIX } from '../../domain/scan';
 import type { Location } from '../../domain/types';
-import { gate } from '../../security/gate';
 import { useDb } from '../data-hooks';
-import { useHelper } from '../helper/session';
 import { Icon } from '../icons';
-import { useCloseOnRelock } from '../shell/LockPill';
 import { showToast } from '../shell/toast';
-import { PinMark } from './common';
 import { Dialog, DialogActions } from './Dialog';
 import { Scanner, type CameraState } from './Scanner';
 
@@ -28,16 +24,12 @@ export function LocationScanDialog(props: {
   onClose: () => void;
 }) {
   const db = useDb();
-  // A helper has no PIN and can't rename locations (§18.3); adding one is allowed.
-  const canRename = useHelper() === null;
   const [phase, setPhase] = useState<Phase>({ kind: 'scan' });
   const [camera, setCamera] = useState<CameraState>('starting');
   const [typed, setTyped] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The rename step was opened behind the PIN: it closes when mentor tools relock.
-  useCloseOnRelock(phase.kind === 'rename', () => phase.kind === 'rename' && setPhase({ kind: 'missing', text: phase.text, offer: true }));
 
   const find = (raw: string, format: string | null) => {
     const text = locationText(raw);
@@ -48,7 +40,7 @@ export function LocationScanDialog(props: {
       return;
     }
     if (text.toLowerCase().startsWith(QR_PREFIX)) {
-      setNote('That’s a team item label, not a location. Scan the code on the bin or shelf.');
+      setNote('That’s an item label, not a location. Scan the code on the shelf.');
       return;
     }
     setNote(null);
@@ -73,9 +65,6 @@ export function LocationScanDialog(props: {
       showToast(`Added location “${l.name}”.`);
       props.onPicked(l, 'added');
     });
-  const startRename = async (text: string) => {
-    if (await gate('Renaming a location needs the mentor PIN.')) setPhase({ kind: 'rename', text });
-  };
 
   const blocked = camera === 'denied' || camera === 'nocamera' || camera === 'error';
   return (
@@ -86,7 +75,7 @@ export function LocationScanDialog(props: {
             <h2 class="h2">{props.title ?? 'Scan a location'}</h2>
             {blocked ? (
               <p class="dlg-p" role="alert">
-                {camera === 'denied' ? 'The camera is blocked for this app. Allow it in Chrome’s Site settings › Camera, or type the location instead.' : 'The camera isn’t available. Type the location instead.'}
+                {camera === 'denied' ? 'The camera is blocked for this app. Allow it in Settings › Safari › Camera, or type the location instead.' : 'The camera isn’t available. Type the location instead.'}
               </p>
             ) : (
               <Scanner paused={false} onDetect={find} onState={setCamera}>
@@ -99,7 +88,7 @@ export function LocationScanDialog(props: {
                 </div>
               </Scanner>
             )}
-            <p class="small muted m0">Hold the bin or shelf’s QR code in the square for a moment. Its text is the location’s name, e.g. Electrical 15.</p>
+            <p class="small muted m0">Hold the shelf’s QR code in the square for a moment. Its text is the location’s name, e.g. Attic shelf B.</p>
             {note && (
               <p class="small err" role="alert">
                 <Icon name="short" />
@@ -131,11 +120,9 @@ export function LocationScanDialog(props: {
             <div class="code-big loc-text">{phase.text}</div>
             <p class="dlg-p">
               {phase.offer
-                ? canRename
-                  ? 'No location has this name yet. Add it, or rename an existing location to match the code on the bin.'
-                  : 'No location has this name yet. Add it as a new location; the shop tablet sees it when your counts arrive.'
+                ? 'No location has this name yet. Add it, or rename an existing location to match the code on the shelf.'
                 : props.notFound === 'offer'
-                  ? 'This doesn’t look like a location name. Scan the QR code on the bin or shelf.'
+                  ? 'This doesn’t look like a location name. Scan the QR code on the shelf.'
                   : 'No location has this name. Add it in More › Locations first.'}
             </p>
           </>
@@ -173,10 +160,9 @@ export function LocationScanDialog(props: {
           <button type="button" class="btn lg" disabled={busy} onClick={() => setPhase({ kind: 'scan' })}>
             Scan again
           </button>
-          {phase.offer && canRename && props.locations.length > 0 && (
-            <button type="button" class="btn lg" disabled={busy} onClick={() => void startRename(phase.text)}>
+          {phase.offer && props.locations.length > 0 && (
+            <button type="button" class="btn lg" disabled={busy} onClick={() => setPhase({ kind: 'rename', text: phase.text })}>
               Rename a location to “{phase.text}”…
-              <PinMark />
             </button>
           )}
           {phase.offer && (

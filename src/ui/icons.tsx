@@ -1,4 +1,4 @@
-// Line icons from the Stage 3 mockup sources (24×24, stroke = currentColor).
+// Line icons from the FRC app's design (24×24, stroke = currentColor).
 
 export const ICONS = {
   inventory: 'M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10',

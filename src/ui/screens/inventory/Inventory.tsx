@@ -1,7 +1,7 @@
-// Inventory (home): grouped list (F1), rows (F2), quick adjust (F3), search (F4), filters (F5),
-// Select and bulk move (F28), and add the selection to an order list (F27).
+// Inventory (home): grouped list, rows with a quantity stepper, search and recently viewed (F1),
+// filters (F2), Select and bulk move (F7).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { adjustOnHand, setOnHand } from '../../../data/inventory';
+import { adjustQuantity, setQuantity } from '../../../data/inventory';
 import { moveItemsTo } from '../../../data/lists';
 import { loadExpanded, loadFilters, loadRecent, saveExpanded, saveFilters } from '../../../data/prefs';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
@@ -9,9 +9,8 @@ import { buildInventoryView, filterOptions, type InventoryView } from '../../../
 import { placeLabel } from '../../../domain/lists';
 import { keepExisting, selectState, withIds } from '../../../domain/selection';
 import type { Item } from '../../../domain/types';
-import type { ItemInfo } from '../../../domain/inventory-view';
-import { CheckBox, GroupChips, StateMessage, StatusChip, TopBar, plural } from '../../components/common';
-import { useDb, useOnOrder, useSnapshot } from '../../data-hooks';
+import { CheckBox, StateMessage, TopBar, plural } from '../../components/common';
+import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -19,9 +18,7 @@ import { BackupBanner } from '../../shell/BackupBanner';
 import { FilterPanel, NO_LOCATION_LABEL } from './FilterPanel';
 import { ItemRow, Thumb } from './ItemRow';
 import { SelectBar } from '../../components/SelectBar';
-import { AddManyDialog } from '../order/ListDialogs';
 import { MoveDialog } from './MoveDialog';
-import { ShopStatusStrip } from './ShopStatus';
 import { StorageError } from '../StorageError';
 
 function Skeleton() {
@@ -29,7 +26,7 @@ function Skeleton() {
     <div class="list" aria-busy="true" aria-label="Loading inventory">
       <div class="cathdr static">
         <div class="skel" style={{ width: 220, height: 24 }} />
-        <span class="hc">Loading inventory from this tablet…</span>
+        <span class="hc">Loading inventory…</span>
       </div>
       {[1, 2, 3, 4, 5, 6, 7].map((k) => (
         <div class="row" key={k}>
@@ -52,26 +49,24 @@ function Skeleton() {
 export function InventoryScreen() {
   const db = useDb();
   const live = useSnapshot();
-  const onOrder = useOnOrder();
   const [query, setQuery] = useState('');
   const [filters, setFilters] = useState<Filters>(() => loadFilters());
   const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded());
   const [panelOpen, setPanelOpen] = useState(false);
-  // Recently viewed (v0.17): offered while the search box is focused and empty.
+  // Recently viewed: offered while the search box is focused and empty.
   const [searching, setSearching] = useState(false);
-  // Select mode (F28): checkboxes on rows and group headers, then Move to… or Add to order list… (F27).
+  // Select mode: checkboxes on rows and group headers, then Move to….
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [moveOpen, setMoveOpen] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => saveFilters(filters), [filters]);
   useEffect(() => saveExpanded(expanded), [expanded]);
 
   const snap = live.state === 'ready' ? live.value : null;
   const view = useMemo(
-    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded, onOrder }) : null),
-    [snap, query, filters, expanded, onOrder],
+    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded }) : null),
+    [snap, query, filters, expanded],
   );
   const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap.locations) : null), [snap]);
   const recent = useMemo(() => {
@@ -82,15 +77,14 @@ export function InventoryScreen() {
   // Items deleted while selecting drop out of the selection.
   const selected = useMemo(() => (snap ? keepExisting(picked, snap.items) : picked), [snap, picked]);
 
-  // A saved filter can name a category, supplier or location that was since renamed or
-  // removed (M3); drop it rather than show an empty list.
+  // A saved filter can name a category or location that was since renamed or removed; drop it
+  // rather than show an empty list.
   useEffect(() => {
     if (!options) return;
     setFilters((f) => {
       const category = f.category !== null && !options.categories.includes(f.category) ? null : f.category;
-      const supplier = f.supplier !== null && !options.suppliers.includes(f.supplier) ? null : f.supplier;
       const location = f.location !== null && f.location !== '' && !options.locations.includes(f.location) ? null : f.location;
-      return category === f.category && supplier === f.supplier && location === f.location ? f : { ...f, category, supplier, location };
+      return category === f.category && location === f.location ? f : { ...f, category, location };
     });
   }, [options]);
 
@@ -119,9 +113,7 @@ export function InventoryScreen() {
     setPicked(new Set());
   };
   const chosen: Item[] = snap ? snap.items.filter((i) => selected.has(i.id)) : [];
-  const summary = view
-    ? `${plural(view.totals.items, 'item')} · ${view.totals.short} short · ${view.totals.low} low spares${view.totals.uncounted > 0 ? ` · ${view.totals.uncounted} not counted` : ''}`
-    : 'Loading…';
+  const summary = view ? plural(view.total, 'item') : 'Loading…';
 
   return (
     <>
@@ -135,7 +127,7 @@ export function InventoryScreen() {
             class="field"
             type="search"
             aria-label="Search inventory"
-            placeholder="Search name, part #, category, location…"
+            placeholder="Search name, category, location, notes…"
             value={query}
             onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
             onFocus={() => setSearching(true)}
@@ -191,7 +183,6 @@ export function InventoryScreen() {
       </TopBar>
 
       <BackupBanner />
-      {snap && <ShopStatusStrip items={snap.items} />}
       <QuickFilters view={view} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} />
       {selecting && view && (
         <SelectBar
@@ -203,10 +194,6 @@ export function InventoryScreen() {
           onAll={() => setPicked(withIds(selected, view.shownIds, true))}
           onClear={() => setPicked(new Set())}
         >
-          <button type="button" class="btn" disabled={selected.size === 0} onClick={() => setAddOpen(true)}>
-            <Icon name="listAdd" />
-            Add to order list…
-          </button>
           <button type="button" class="btn pri" disabled={selected.size === 0} onClick={() => setMoveOpen(true)}>
             <Icon name="folder" />
             Move to…
@@ -219,7 +206,7 @@ export function InventoryScreen() {
       ) : snap.items.length === 0 ? (
         <StateMessage
           icon="inventory"
-          title="No items on this tablet yet"
+          title="No items yet"
           actions={
             <a class="btn pri" href={href.add()}>
               <Icon name="plus" />
@@ -227,7 +214,7 @@ export function InventoryScreen() {
             </a>
           }
         >
-          <p class="state-text">Add the first item, or a mentor can load the starter catalog or restore a backup.</p>
+          <p class="state-text">Add the first item, or restore a backup in More › Backup & restore.</p>
         </StateMessage>
       ) : view.filtering && view.shown === 0 ? (
         <StateMessage
@@ -246,7 +233,7 @@ export function InventoryScreen() {
           }
         >
           <p class="state-text">
-            Search looks at names, part numbers, suppliers, locations and notes. Try fewer letters, or a part number like REV-21-1653.
+            Search looks at names, categories, locations, notes and barcodes. Try fewer letters.
           </p>
         </StateMessage>
       ) : (
@@ -267,23 +254,11 @@ export function InventoryScreen() {
         />
       )}
 
-      {addOpen && chosen.length > 0 && (
-        <AddManyDialog
-          chosen={chosen}
-          onClose={() => setAddOpen(false)}
-          onDone={() => {
-            setAddOpen(false);
-            endSelect();
-          }}
-        />
-      )}
-
       {panelOpen && view && options && (
         <FilterPanel
           filters={filters}
           options={options}
           locations={snap?.locations ?? []}
-          totals={view.totals}
           shown={view.shown}
           onChange={setFilters}
           onClear={clearAll}
@@ -303,32 +278,16 @@ function QuickFilters(props: {
   clearAll: () => void;
 }) {
   const { filters: f, setFilters } = props;
-  const t = props.view?.totals ?? { needsOrder: 0, short: 0, low: 0, items: 0 };
   const tog = (on: boolean) => (on ? 'fchip on' : 'fchip');
   const loc = f.location === null ? 'All' : f.location || NO_LOCATION_LABEL;
   return (
     <div class="frow" role="toolbar" aria-label="Quick filters">
-      <button type="button" class={tog(f.needsOrder)} aria-pressed={f.needsOrder} onClick={() => setFilters({ ...f, needsOrder: !f.needsOrder })}>
-        Needs order · {t.needsOrder}
-      </button>
-      <button type="button" class={tog(f.short)} aria-pressed={f.short} onClick={() => setFilters({ ...f, short: !f.short })}>
-        <Icon name="short" />
-        Short only · {t.short}
-      </button>
-      <button type="button" class={tog(f.low)} aria-pressed={f.low} onClick={() => setFilters({ ...f, low: !f.low })}>
-        <Icon name="low" />
-        Low spares only · {t.low}
-      </button>
       <button type="button" class={tog(f.category !== null)} onClick={props.openPanel}>
         Category: {f.category ?? 'All'}
         <Icon name="chevDown" />
       </button>
       <button type="button" class={tog(f.location !== null)} onClick={props.openPanel}>
         Location: {loc}
-        <Icon name="chevDown" />
-      </button>
-      <button type="button" class={tog(f.supplier !== null)} onClick={props.openPanel}>
-        Supplier: {f.supplier ?? 'All'}
         <Icon name="chevDown" />
       </button>
       {(props.query.trim() !== '' || activeFilterCount(f) > 0) && (
@@ -354,10 +313,10 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
   useLayoutEffect(() => {
     if (box.current) box.current.scrollTop = savedScroll;
   }, []);
-  const fail = (e: unknown) => showToast(`Couldn't save the count: ${e instanceof Error ? e.message : String(e)}`);
-  const onStep = (id: string, d: number) => void adjustOnHand(db, id, d).catch(fail);
+  const fail = (e: unknown) => showToast(`Couldn't save the quantity: ${e instanceof Error ? e.message : String(e)}`);
+  const onStep = (id: string, d: number) => void adjustQuantity(db, id, d).catch(fail);
   const onSet = (id: string, n: number) =>
-    setOnHand(db, id, n).catch((e: unknown) => {
+    setQuantity(db, id, n).catch((e: unknown) => {
       fail(e);
       throw e;
     });
@@ -365,15 +324,11 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
     <div class="list" ref={box} onScroll={(e) => (savedScroll = (e.currentTarget as HTMLDivElement).scrollTop)}>
       {view.lines.map((ln) => {
         if (ln.kind === 'item') {
-          if (select) return <SelectRow key={ln.info.item.id} item={ln.info.item} info={ln.info} select={select} />;
-          return <ItemRow key={ln.info.item.id} info={ln.info} onStep={onStep} onSet={onSet} />;
+          if (select) return <SelectRow key={ln.item.id} item={ln.item} select={select} />;
+          return <ItemRow key={ln.item.id} item={ln.item} onStep={onStep} onSet={onSet} />;
         }
         const isCat = ln.kind === 'category';
-        const sub = isCat
-          ? view.filtering
-            ? `${ln.matching} of ${plural(ln.total, 'item')} match`
-            : `${plural(ln.total, 'item')} · ${ln.counted} counted`
-          : plural(ln.total, 'item');
+        const sub = view.filtering ? `${ln.matching} of ${plural(ln.total, 'item')} match` : plural(ln.total, 'item');
         if (select) {
           // Select mode: the checkbox takes every item shown under the header, collapsed or not.
           const state = selectState(ln.ids, select.selected);
@@ -412,8 +367,6 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
             <Icon name={ln.expanded ? 'chevDown' : 'chevRight'} />
             <span class={isCat ? 'cn' : undefined}>{ln.name}</span>
             <span class="hc">{sub}</span>
-            <span class="sp" />
-            <GroupChips counts={ln} />
           </button>
         );
       })}
@@ -426,8 +379,8 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
   );
 }
 
-/** A row in Select mode: the whole row toggles it. No stepper, so a count can't change by accident. */
-function SelectRow({ item, info, select }: { item: Item; info: ItemInfo; select: Selection }) {
+/** A row in Select mode: the whole row toggles it. No stepper, so a quantity can't change by accident. */
+function SelectRow({ item, select }: { item: Item; select: Selection }) {
   const on = select.selected.has(item.id);
   return (
     <div class="irow selrow">
@@ -441,9 +394,6 @@ function SelectRow({ item, info, select }: { item: Item; info: ItemInfo; select:
           </span>
         </span>
       </button>
-      <span class="rchip">
-        <StatusChip status={info.status} />
-      </span>
     </div>
   );
 }

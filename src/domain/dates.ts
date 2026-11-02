@@ -1,9 +1,9 @@
-// Calendar dates as stored (YYYY-MM-DD, the tablet's local day) and as shown, and count
+// Calendar dates as stored (YYYY-MM-DD, the phone's local day) and as shown, and count
 // times (last_counted, §3): the device's local date and time with its UTC offset.
 
 const p2 = (n: number) => String(n).padStart(2, '0');
 
-/** Today's date on this tablet, YYYY-MM-DD. */
+/** Today's date on this phone, YYYY-MM-DD. */
 export function localIsoDate(d: Date = new Date()): string {
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 }
@@ -15,7 +15,7 @@ export function localIsoDateTime(d: Date): string {
   return `${localIsoDate(d)}T${p2(d.getHours())}:${p2(d.getMinutes())}:${p2(d.getSeconds())}${off < 0 ? '-' : '+'}${p2(Math.floor(a / 60))}:${p2(a % 60)}`;
 }
 
-/** The time a count is saved (count-in, adding an item): now, as a local date-time with offset. */
+/** The time a count is saved (adding an item): now, as a local date-time with offset. */
 export const nowLocalIso = (): string => localIsoDateTime(new Date());
 
 /** A date-only last_counted (v0.4–v0.7 files and databases) as midnight local time that day, with that day's offset (§7, §18.7). */

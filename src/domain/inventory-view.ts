@@ -1,40 +1,9 @@
-// The Inventory screen's grouped list (SPEC F1, F2, F4, F5): pure, so it is unit-tested.
+// The Inventory screen's grouped list (SPEC v2.0 F1, F2): pure, so it is unit-tested.
 import { passesFilters, activeFilterCount, type Filters } from './filters';
-import { compareSupplierNames, orderLineFor, type OrderLine } from './order';
-import { onOrderOf, type OnOrder } from './placed-orders';
 import { matchesTerms, queryTerms, searchText } from './search';
-import { itemStatus, type StockStatus } from './status';
-import { nameKey, preferredVendorOf, type Category, type Item, type Location, type Vendor } from './types';
+import { nameKey, type Category, type Item, type Location } from './types';
 
-export interface ItemInfo {
-  item: Item;
-  status: StockStatus;
-  /** Preferred vendor option (shown in the row), or null if it is missing. */
-  vendor: Vendor | null;
-  /** Order line when order_qty > 0, else null. */
-  order: OrderLine | null;
-  /** Units on open placed orders (§4, F2). */
-  onOrder: number;
-}
-
-export function itemInfo(item: Item, onOrder = 0): ItemInfo {
-  return {
-    item,
-    status: itemStatus(item),
-    vendor: preferredVendorOf(item),
-    order: orderLineFor(item, onOrder),
-    onOrder,
-  };
-}
-
-export interface StatusCounts {
-  short: number;
-  low: number;
-  /** Items never counted (blank last_counted, v0.16): neither short nor low until counted. */
-  uncounted: number;
-}
-
-export interface CategoryLine extends StatusCounts {
+export interface CategoryLine {
   kind: 'category';
   key: string;
   name: string;
@@ -42,12 +11,11 @@ export interface CategoryLine extends StatusCounts {
   total: number;
   /** Items passing search and filters. */
   matching: number;
-  counted: number;
-  /** Ids of the items passing search and filters, collapsed or not (F28 group checkbox). */
+  /** Ids of the items passing search and filters, collapsed or not (group checkbox). */
   ids: string[];
 }
 
-export interface SubcategoryLine extends StatusCounts {
+export interface SubcategoryLine {
   kind: 'subcategory';
   key: string;
   category: string;
@@ -55,21 +23,16 @@ export interface SubcategoryLine extends StatusCounts {
   expanded: boolean;
   total: number;
   matching: number;
-  /** Ids of the items passing search and filters (F28). */
+  /** Ids of the items passing search and filters. */
   ids: string[];
 }
 
 export interface ItemLine {
   kind: 'item';
-  info: ItemInfo;
+  item: Item;
 }
 
 export type ListLine = CategoryLine | SubcategoryLine | ItemLine;
-
-export interface Totals extends StatusCounts {
-  items: number;
-  needsOrder: number;
-}
 
 export interface InventoryView {
   lines: ListLine[];
@@ -77,9 +40,10 @@ export interface InventoryView {
   filtering: boolean;
   /** Items passing search and filters (all items when not filtering). */
   shown: number;
-  /** Their ids, in list order ("Select all shown", F28). */
+  /** Their ids, in list order ("Select all shown"). */
   shownIds: string[];
-  totals: Totals;
+  /** Every item. */
+  total: number;
 }
 
 /** Storage key for a category's expanded state. */
@@ -90,18 +54,6 @@ export function categoryKey(category: string): string {
 /** Storage key for a subcategory's expanded state. */
 export function subcategoryKey(category: string, subcategory: string): string {
   return JSON.stringify([category, subcategory]);
-}
-
-function countStatus(infos: readonly ItemInfo[]): StatusCounts {
-  let short = 0;
-  let low = 0;
-  let uncounted = 0;
-  for (const i of infos) {
-    if (i.status.kind === 'short') short++;
-    else if (i.status.kind === 'low') low++;
-    else if (i.status.kind === 'uncounted') uncounted++;
-  }
-  return { short, low, uncounted };
 }
 
 /** Category order: the Category list, then any category only items use (first appearance). */
@@ -142,104 +94,59 @@ export function listOrder(items: readonly Item[], categories: readonly Category[
 }
 
 export interface ViewInput {
-  /** In list order (the order they are stored in: starter catalog order, then team items). */
+  /** In the order they are stored in. */
   items: readonly Item[];
   categories: readonly Category[];
   query: string;
   filters: Filters;
   /** Keys (categoryKey / subcategoryKey) of expanded groups. */
   expanded: ReadonlySet<string>;
-  /** Units on open placed orders, by item id (§4). */
-  onOrder?: OnOrder;
 }
 
 export function buildInventoryView(input: ViewInput): InventoryView {
   const terms = queryTerms(input.query);
   const filtering = terms.length > 0 || activeFilterCount(input.filters) > 0;
-  const infos = input.items.map((item) => itemInfo(item, onOrderOf(input.onOrder, item.id)));
-  const passes = (i: ItemInfo) => passesFilters(i.item, input.filters, i.onOrder) && matchesTerms(searchText(i.item), terms);
+  const passes = (i: Item) => passesFilters(i, input.filters) && matchesTerms(searchText(i), terms);
 
   const lines: ListLine[] = [];
   let shown = 0;
   const shownIds: string[] = [];
   for (const cat of categoryOrder(input.categories, input.items)) {
-    const all = infos.filter((i) => i.item.category === cat.name);
+    const all = input.items.filter((i) => i.category === cat.name);
     const visible = all.filter(passes);
     if (filtering && visible.length === 0) continue;
     const ckey = categoryKey(cat.name);
     const expanded = filtering || input.expanded.has(ckey);
-    lines.push({
-      kind: 'category',
-      key: ckey,
-      name: cat.name,
-      expanded,
-      total: all.length,
-      matching: visible.length,
-      counted: all.filter((i) => i.item.lastCounted !== '').length,
-      ids: visible.map((i) => i.item.id),
-      ...countStatus(all),
-    });
+    lines.push({ kind: 'category', key: ckey, name: cat.name, expanded, total: all.length, matching: visible.length, ids: visible.map((i) => i.id) });
     shown += visible.length;
-    for (const sub of subcategoryOrder(cat, all.map((i) => i.item))) shownIds.push(...visible.filter((i) => i.item.subcategory === sub).map((i) => i.item.id));
+    const subs = subcategoryOrder(cat, all);
+    for (const sub of subs) shownIds.push(...visible.filter((i) => i.subcategory === sub).map((i) => i.id));
     if (!expanded) continue;
-    for (const sub of subcategoryOrder(cat, all.map((i) => i.item))) {
-      const sAll = all.filter((i) => i.item.subcategory === sub);
-      const sVisible = visible.filter((i) => i.item.subcategory === sub);
+    for (const sub of subs) {
+      const sAll = all.filter((i) => i.subcategory === sub);
+      const sVisible = visible.filter((i) => i.subcategory === sub);
       if (sAll.length === 0 || (filtering && sVisible.length === 0)) continue;
       // Items without a subcategory sit directly under the category header.
       let sExpanded = true;
       if (sub !== '') {
         const skey = subcategoryKey(cat.name, sub);
         sExpanded = filtering || input.expanded.has(skey);
-        lines.push({
-          kind: 'subcategory',
-          key: skey,
-          category: cat.name,
-          name: sub,
-          expanded: sExpanded,
-          total: sAll.length,
-          matching: sVisible.length,
-          ids: sVisible.map((i) => i.item.id),
-          ...countStatus(sAll),
-        });
+        lines.push({ kind: 'subcategory', key: skey, category: cat.name, name: sub, expanded: sExpanded, total: sAll.length, matching: sVisible.length, ids: sVisible.map((i) => i.id) });
       }
-      if (sExpanded) for (const info of sVisible) lines.push({ kind: 'item', info });
+      if (sExpanded) for (const item of sVisible) lines.push({ kind: 'item', item });
     }
   }
 
-  return {
-    lines,
-    filtering,
-    shown: filtering ? shown : infos.length,
-    shownIds,
-    totals: { items: infos.length, needsOrder: infos.filter((i) => i.order !== null).length, ...countStatus(infos) },
-  };
-}
-
-/** "12 short", "2 low spares", "5 not counted" or "All stocked" chips for a group header (§17, v0.16). */
-export function groupChips(c: StatusCounts): Array<'short' | 'low' | 'uncounted' | 'ok'> {
-  const out: Array<'short' | 'low' | 'uncounted' | 'ok'> = [];
-  if (c.short > 0) out.push('short');
-  if (c.low > 0) out.push('low');
-  if (c.uncounted > 0) out.push('uncounted');
-  if (out.length === 0) out.push('ok');
-  return out;
+  return { lines, filtering, shown: filtering ? shown : input.items.length, shownIds, total: input.items.length };
 }
 
 export interface FilterOptions {
   categories: string[];
-  /** Preferred suppliers in use, A–Z with `other` last (F23). */
-  suppliers: string[];
   /** Locations in use, in walk order; '' ("No location") last when any item has none. */
   locations: string[];
 }
 
 export function filterOptions(items: readonly Item[], categories: readonly Category[], locations: readonly Location[]): FilterOptions {
-  const sup = new Map<string, string>();
-  for (const it of items) {
-    const v = preferredVendorOf(it);
-    if (v && !sup.has(nameKey(v.supplier))) sup.set(nameKey(v.supplier), v.supplier);
-  }
   const usedLoc = new Set(items.map((i) => nameKey(i.location)));
   const locs = [...locations].sort((a, b) => a.order - b.order).filter((l) => usedLoc.has(nameKey(l.name))).map((l) => l.name);
   // A location an item uses that isn't in the list (shouldn't happen; lists are completed on import).
@@ -251,9 +158,5 @@ export function filterOptions(items: readonly Item[], categories: readonly Categ
     }
   }
   if (usedLoc.has('')) locs.push('');
-  return {
-    categories: categoryOrder(categories, items).map((c) => c.name),
-    suppliers: [...sup.values()].sort(compareSupplierNames),
-    locations: locs,
-  };
+  return { categories: categoryOrder(categories, items).map((c) => c.name), locations: locs };
 }

@@ -17,7 +17,7 @@ import {
   stepNudge,
   type LabelLayout,
 } from '../src/domain/labels';
-import { item, vendor } from './helpers';
+import { item } from './helpers';
 
 const L = (id: string) => layoutById(id)!;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);
@@ -163,16 +163,16 @@ describe('alignment nudge (0.5 mm steps, per layout)', () => {
 });
 
 describe('label text (§9 label content)', () => {
-  const it1 = item({ name: 'NEO 2.0', location: 'Cabinet E1', preferredVendor: 2, vendors: [vendor({ supplier: 'WCP', partNo: 'W-1' }), vendor({ supplier: 'REV', partNo: 'REV-21-1653' }), null] });
-  it('5160: name and location', () => expect(labelText(it1, 'name-location')).toEqual({ name: 'NEO 2.0', extra: ['Cabinet E1'] }));
-  it('5163: name, location and the preferred vendor’s part #', () => expect(labelText(it1, 'name-location-part')).toEqual({ name: 'NEO 2.0', extra: ['Cabinet E1', 'REV REV-21-1653'] }));
+  const it1 = item({ name: 'Snowman lights', location: 'Attic shelf B', category: 'Lights', subcategory: 'Outdoor' });
+  it('5160: name and location', () => expect(labelText(it1, 'name-location')).toEqual({ name: 'Snowman lights', extra: ['Attic shelf B'] }));
+  it('5163: name, location and category', () => expect(labelText(it1, 'name-location-category')).toEqual({ name: 'Snowman lights', extra: ['Attic shelf B', 'Lights › Outdoor'] }));
   it('22805 and plain: the name only', () => {
-    expect(labelText(it1, 'short-name')).toEqual({ name: 'NEO 2.0', extra: [] });
-    expect(labelText(it1, 'name')).toEqual({ name: 'NEO 2.0', extra: [] });
+    expect(labelText(it1, 'short-name')).toEqual({ name: 'Snowman lights', extra: [] });
+    expect(labelText(it1, 'name')).toEqual({ name: 'Snowman lights', extra: [] });
   });
-  it('blank location and part # are left out', () => {
-    const bare = item({ location: '', vendors: [vendor({ partNo: '' }), null, null] });
-    expect(labelText(bare, 'name-location-part').extra).toEqual([]);
+  it('a blank location is left out; a category without a subcategory is shown alone', () => {
+    const bare = item({ location: '', category: 'Tools' });
+    expect(labelText(bare, 'name-location-category').extra).toEqual(['Tools']);
   });
 });
 

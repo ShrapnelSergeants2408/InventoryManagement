@@ -1,4 +1,4 @@
-// QR labels (F20, SPEC §9; mockups 6a–6d): 1 choose items (by category, or by location in
+// QR labels (F10, SPEC v2.0 §9): 1 choose items (by category, or by location in
 // walk order) → 2 layout, start position, nudge, preview → print or test print through the
 // browser's print dialog. No PIN.
 import { createPortal } from 'preact/compat';
@@ -421,7 +421,7 @@ function Layout({ chosen, onBack }: { chosen: Item[]; onBack: () => void }) {
           <p class="small muted">
             {asking === 'test'
               ? 'Prints only the label outlines, numbered. Hold the page against a label sheet up to a light; if the boxes are off, adjust the nudge and test again.'
-              : 'Labels encode the item ID (e.g. 2408:st-0063), so they keep working if the item is renamed.'}
+              : 'Labels encode the item ID (e.g. hhi:it-7K2M9QXP), so they keep working if the item is renamed.'}
           </p>
           <DialogActions>
             <button type="button" class="btn lg" onClick={() => setAsking(null)}>

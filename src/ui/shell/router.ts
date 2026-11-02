@@ -1,28 +1,22 @@
-// Hash routes, so a reload under the GitHub Pages sub-path never 404s (M1 review, finding 4).
+// Hash routes, so a reload under any hosting sub-path never 404s.
 import { useEffect, useState } from 'preact/hooks';
 
-export type Tab = 'inventory' | 'order' | 'scan' | 'count' | 'labels' | 'more';
+export type Tab = 'inventory' | 'scan' | 'labels' | 'more';
 
-export type ManagedList = 'suppliers' | 'categories' | 'locations';
+export type ManagedList = 'categories' | 'locations';
 
 export type Route =
   | { tab: Tab; screen: 'tab' }
   | { tab: 'inventory'; screen: 'item'; id: string }
   | { tab: 'inventory'; screen: 'edit'; id: string }
-  | { tab: 'inventory'; screen: 'add'; name: string; barcode: string; pending: string }
+  | { tab: 'inventory'; screen: 'add'; name: string; barcode: string }
   | { tab: 'labels'; screen: 'labels'; ids: string[] }
-  | { tab: 'order'; screen: 'orderList'; id: string }
-  | { tab: 'order'; screen: 'placed' }
-  | { tab: 'order'; screen: 'placedOrder'; id: string }
-  | { tab: 'count'; screen: 'helpers' }
-  | { tab: 'count'; screen: 'import' }
-  | { tab: 'count'; screen: 'pending' }
   | { tab: 'more'; screen: ManagedList }
   | { tab: 'more'; screen: 'backup' }
   | { tab: 'more'; screen: 'settings' };
 
-const TABS: readonly Tab[] = ['inventory', 'order', 'scan', 'count', 'labels', 'more'];
-const LISTS: readonly ManagedList[] = ['suppliers', 'categories', 'locations'];
+const TABS: readonly Tab[] = ['inventory', 'scan', 'labels', 'more'];
+const LISTS: readonly ManagedList[] = ['categories', 'locations'];
 
 export function parseHash(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#\/?/, '').split('?');
@@ -36,14 +30,9 @@ export function parseHash(hash: string): Route {
   if (parts[0] === 'item' && parts[1]) {
     return parts[2] === 'edit' ? { tab: 'inventory', screen: 'edit', id: parts[1] } : { tab: 'inventory', screen: 'item', id: parts[1] };
   }
-  if (parts[0] === 'order' && parts[1]) return { tab: 'order', screen: 'orderList', id: parts[1] };
-  if (parts[0] === 'placed') return parts[1] ? { tab: 'order', screen: 'placedOrder', id: parts[1] } : { tab: 'order', screen: 'placed' };
-  if (parts[0] === 'count' && parts[1] === 'helpers') return { tab: 'count', screen: 'helpers' };
-  if (parts[0] === 'count' && parts[1] === 'import') return { tab: 'count', screen: 'import' };
-  if (parts[0] === 'count' && parts[1] === 'pending') return { tab: 'count', screen: 'pending' };
   if (parts[0] === 'add') {
     const q = new URLSearchParams(query);
-    return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '', pending: q.get('pending') ?? '' };
+    return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '' };
   }
   if (parts[0] === 'labels' && query) {
     const ids = (new URLSearchParams(query).get('ids') ?? '').split(',').filter(Boolean);
@@ -69,19 +58,6 @@ export const href = {
     if (barcode) q.set('barcode', barcode);
     return q.size ? `#/add?${q}` : '#/add';
   },
-  /** A named order list (F27). */
-  orderList: (id: string) => `#/order/${encodeURIComponent(id)}`,
-  /** Placed orders (F30, §21.5). */
-  placed: '#/placed',
-  placedOrder: (id: string) => `#/placed/${encodeURIComponent(id)}`,
-  /** Helper devices (§18.1), from the count-in start screen. */
-  helpers: '#/count/helpers',
-  /** Import counts (§18.5), from count-in and the Backup screen. */
-  importCounts: '#/count/import',
-  /** Pending from helpers (§18.5). */
-  pending: '#/count/pending',
-  /** Accept a pending item: the Add item form, filled in (§18.5). */
-  accept: (pendingId: string) => `#/add?${new URLSearchParams({ pending: pendingId })}`,
   labels: (ids: string[]) => `#/labels?${new URLSearchParams({ ids: ids.join(',') })}`,
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',

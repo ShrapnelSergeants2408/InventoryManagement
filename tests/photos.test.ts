@@ -7,7 +7,7 @@ import { loadSnapshot, replaceAll } from '../src/data/inventory';
 import { addItem, deleteItem, updateItem } from '../src/data/items';
 import { getThumbnail, setPhoto } from '../src/data/photos';
 import { getSettings } from '../src/data/settings';
-import { item, vendor } from './helpers';
+import { item } from './helpers';
 
 let db: InventoryDb;
 afterEach(() => db?.close());
@@ -50,15 +50,10 @@ describe('list thumbnails', () => {
   });
 });
 
-// Take, replace and remove (F19, SPEC §8). No PIN anywhere here: the data layer has no gate,
-// and the UI calls setPhoto directly (checked in scripts/m7-ui-check.mjs).
+// Take, replace and remove (SPEC v2.0 §8).
 const lists = {
-  suppliers: [
-    { name: 'REV', website: '', notes: '' },
-    { name: 'other', website: '', notes: '' },
-  ],
   locations: [],
-  categories: [{ name: 'Motors', order: 0, subcategories: [] }],
+  categories: [{ name: 'Decorations', order: 0, subcategories: [] }],
 };
 const jpeg = (...bytes: number[]) => new Blob([new Uint8Array(bytes)], { type: 'image/jpeg' });
 
@@ -124,12 +119,12 @@ describe('setPhoto (F19)', () => {
     await expectConsistent();
   });
 
-  it('a counts edit saved afterwards keeps the photo (hasPhoto is never taken from the form)', async () => {
+  it('a quantity edit saved afterwards keeps the photo (hasPhoto is never taken from the form)', async () => {
     await setup();
     const before = (await loadSnapshot(db)).items.find((i) => i.id === 'a')!;
     await setPhoto(db, 'a', { full: jpeg(1), thumb: null }, 5);
     // The editor was opened before the photo was taken, so its base says no photo.
-    await updateItem(db, before, { ...before, onHand: 3 }, 6);
+    await updateItem(db, before, { ...before, quantity: 3 }, 6);
     expect((await db.items.get('a'))!.hasPhoto).toBe(true);
     await expectConsistent();
   });
@@ -154,18 +149,18 @@ describe('setPhoto (F19)', () => {
 describe('photo saved with the editor (F6, F7)', () => {
   it('Add item with a photo: item and photo in one save', async () => {
     await setup();
-    const saved = await addItem(db, item({ id: 'tm-NEW' }), 10, { full: jpeg(1, 2), thumb: jpeg(3) });
+    const saved = await addItem(db, item({ id: 'it-NEW00001' }), 10, { full: jpeg(1, 2), thumb: jpeg(3) });
     expect(saved.hasPhoto).toBe(true);
-    expect((await db.photos.get('tm-NEW'))!.full.size).toBe(2);
+    expect((await db.photos.get('it-NEW00001'))!.full.size).toBe(2);
     await expectConsistent();
   });
 
   it('Add item that fails validation stores no photo either', async () => {
     await setup();
-    const bad = item({ id: 'tm-BAD', vendors: [vendor({ supplier: 'Nobody' }), null, null] });
+    const bad = item({ id: 'it-BAD00001', quantity: -1 });
     await expect(addItem(db, bad, 10, { full: jpeg(1), thumb: null })).rejects.toThrow();
-    expect(await db.items.get('tm-BAD')).toBeUndefined();
-    expect(await db.photos.get('tm-BAD')).toBeUndefined();
+    expect(await db.items.get('it-BAD00001')).toBeUndefined();
+    expect(await db.photos.get('it-BAD00001')).toBeUndefined();
     expect((await getSettings(db)).lastChangeAt).toBe(1);
   });
 

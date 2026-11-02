@@ -1,4 +1,4 @@
-// Prices are stored and summed as integer cents so totals are exact (spec-questions Q6).
+// Prices are stored and summed as integer cents so totals are exact (item value, H6).
 
 export type PriceParse =
   | { ok: true; cents: number | null }

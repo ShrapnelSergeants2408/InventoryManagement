@@ -97,6 +97,8 @@ describe('restoring', () => {
     if (!read.ok) return;
     expect([read.plan.data.displays, read.plan.data.seasonTasks, read.plan.data.seasonRuns]).toEqual([[], [], []]);
     expect(read.plan.data.items).toHaveLength(1);
+    const onPhone = await readRestoreFile({ name: 'old.zip', bytes }, await loadSnapshot(src));
+    expect(onPhone.ok && onPhone.plan.warnings.at(-1)).toBe('This backup was made before displays and season tasks (0.1.4): the phone’s 1 display and 1 season task will be removed.');
     expect(mantel.name).toBe('Mantel');
   });
   it('a backup whose items name a display that isn’t in displays.csv is refused', async () => {

@@ -183,7 +183,10 @@ describe('out and back (F25, F5)', () => {
     await putOut(db, [{ id: 'it-lights', to: { displayId: mantel.id } }], 200);
     expect(await getItem(db, 'it-lights')).toMatchObject({ outDisplayId: mantel.id, outWhere: 'Mantel', outSince: 100 });
     await expect(putOut(db, [{ id: 'it-drill' }])).rejects.toThrow(/Household item/);
-    await expect(putOut(db, [{ id: 'it-garland', to: { displayId: 'dp-gone' } }])).rejects.toThrow(/display was removed/);
+    await db.items.update('it-garland', { status: 'lent', lentTo: 'Aunt May', lentOn: '2026-11-01' });
+    await expect(putOut(db, [{ id: 'it-garland' }])).rejects.toThrow(/lent to Aunt May/);
+    expect(await getItem(db, 'it-garland')).toMatchObject({ status: 'lent', lentTo: 'Aunt May' });
+    await expect(putOut(db, [{ id: 'it-lights', to: { displayId: 'dp-gone' } }])).rejects.toThrow(/display was removed/);
   });
   it('put back clears where it was out; items not out are left alone', async () => {
     const db = await setUp();
@@ -197,6 +200,9 @@ describe('out and back (F25, F5)', () => {
     expect((await db.bins.get('bn-xmas4'))!.state).toBe('out');
     expect(await setBinsState(db, ['bn-xmas4'], 'stored')).toBe(1);
     await expect(setBinsState(db, ['bn-gone'], 'out')).rejects.toThrow(/deleted meanwhile/);
+    await db.bins.add(bin({ id: 'bn-house', part: 'household', code: 'G-09', name: 'Cords' }));
+    await expect(setBinsState(db, ['bn-house'], 'out')).rejects.toThrow(/Household bin/);
+    await expect(unpackBin(db, 'bn-house', [], true)).rejects.toThrow(/Household bin/);
   });
   it('unpack a bin: chosen items out and the bin out, in one step; an item from elsewhere is refused and nothing changes', async () => {
     const db = await setUp();

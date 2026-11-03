@@ -121,7 +121,12 @@ const BUSY = new Set<SeasonRun['phase']>(['setting up', 'taking down']);
 export function seasonCalendar(seasons: readonly Season[], today: Date, comingUp = 3, runs: readonly SeasonRun[] = []): SeasonCalendar {
   const on: SeasonNow[] = [];
   for (const season of seasons) {
-    const run = runs.filter((r) => r.seasonId === season.id && UNDERWAY.has(r.phase)).sort((a, b) => b.year - a.year)[0] ?? null;
+    // A run left underway goes stale when the next year's window starts (domain/holiday.ts, isStale).
+    const stale = (r: SeasonRun) => {
+      const next = windowStarting(season, r.year + 1);
+      return next !== null && next.start <= today;
+    };
+    const run = runs.filter((r) => r.seasonId === season.id && UNDERWAY.has(r.phase) && !stale(r)).sort((a, b) => b.year - a.year)[0] ?? null;
     const dates = run ? { setupFrom: run.setupFrom || season.setupFrom, takedownBy: run.takedownBy || season.takedownBy } : season;
     const window = run ? windowStarting(dates, run.year) : windowNow(season, today);
     if (window) on.push({ season, window, startsToday: daysBetween(window.start, today) === 0, daysLeft: daysBetween(today, window.end), run });

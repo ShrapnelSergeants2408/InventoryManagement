@@ -220,6 +220,8 @@ export async function setBinsState(db: InventoryDb, ids: readonly string[], stat
   return db.transaction('rw', db.bins, db.settings, async () => {
     const rows = await db.bins.bulkGet([...new Set(ids)]);
     if (rows.some((r) => !r)) fail('A bin was deleted meanwhile. Nothing changed.');
+    const household = rows.find((b) => b!.part !== 'holiday');
+    if (household) fail(`${household.code} is a Household bin; only Holiday bins go out for a season.`);
     const changing = rows.filter((b) => b!.state !== state).map((b) => ({ ...b!, state }));
     if (changing.length) await db.bins.bulkPut(changing);
     await touch(db, now);
@@ -241,6 +243,7 @@ export async function putOut(db: InventoryDb, items: readonly { id: string; to?:
     for (const [k, row] of rows.entries()) {
       const item = row!;
       if (item.part !== 'holiday') fail(`“${item.name}” is a Household item; only Holiday items are put out on displays.`);
+      if (item.status === 'lent') fail(`“${item.name}” is lent to ${item.lentTo || 'someone'}; mark it returned first.`);
       const to = items[k]!.to ?? { displayId: displays.has(item.displayId) ? item.displayId : '' };
       let outDisplayId = '';
       let outWhere = '';
@@ -277,6 +280,7 @@ export async function putBack(db: InventoryDb, ids: readonly string[], now = Dat
 export async function unpackBin(db: InventoryDb, binId: string, items: readonly { id: string; to?: OutPlace }[], binOut: boolean, now = Date.now()): Promise<number> {
   return db.transaction('rw', db.bins, db.items, db.displays, db.settings, async () => {
     const bin = (await db.bins.get(binId)) ?? fail('This bin was deleted meanwhile.');
+    if (bin.part !== 'holiday') fail(`${bin.code} is a Household bin; only Holiday bins are unpacked for a season.`);
     for (const row of await db.items.bulkGet(items.map((i) => i.id))) if (row && row.binId !== binId) fail(`“${row.name}” isn't in ${bin.code} any more.`);
     const n = items.length ? await putOut(db, items, now) : 0;
     if (binOut && bin.state !== 'out') await db.bins.put({ ...bin, state: 'out' });

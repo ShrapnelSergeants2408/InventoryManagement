@@ -17,6 +17,16 @@ export function runDates(season: Pick<Season, 'setupFrom' | 'takedownBy'>, run: 
 /** The run's window (its year, its dates), or null when the season has no dates. */
 export const runWindow = (season: Season, run: SeasonRun): Window | null => windowStarting(runDates(season, run), run.year);
 
+/**
+ * A run still marked underway is stale once the season's next window (the one starting the year
+ * after the run's) has begun: it was never taken down, and the new year gets its own run. A season
+ * without dates never goes stale.
+ */
+export function isStale(season: Pick<Season, 'setupFrom' | 'takedownBy'>, run: Pick<SeasonRun, 'year'>, today: Date): boolean {
+  const next = windowStarting(season, run.year + 1);
+  return next !== null && next.start <= today;
+}
+
 /** A season's runs, newest first. */
 export const runsOf = (runs: readonly SeasonRun[], seasonId: string) => runs.filter((r) => r.seasonId === seasonId).sort((a, b) => b.year - a.year);
 
@@ -25,7 +35,7 @@ export const runsOf = (runs: readonly SeasonRun[], seasonId: string) => runs.fil
  * else the window containing today, else the next window, else this year.
  */
 export function runYear(season: Season, runs: readonly SeasonRun[], today: Date): number {
-  const underway = runsOf(runs, season.id).find(isUnderway);
+  const underway = runsOf(runs, season.id).find((r) => isUnderway(r) && !isStale(season, r, today));
   if (underway) return underway.year;
   const w = windowNow(season, today) ?? nextWindow(season, today);
   return w ? w.start.getFullYear() : today.getFullYear();
@@ -125,7 +135,8 @@ export function setupList(d: HolidayRecords, seasonId: string, run: Pick<SeasonR
 
   const displays = [...d.displays].sort((a, b) => a.order - b.order);
   const known = new Set(displays.map((x) => x.id));
-  const items = seasonItems(d, seasonId, ix).sort(byName);
+  // A lent item isn't here to put out; it stays off the list until it's returned.
+  const items = seasonItems(d, seasonId, ix).filter((i) => i.status !== 'lent').sort(byName);
   const groups: SetupGroup[] = [...displays, null]
     .map((display) => {
       const mine = items

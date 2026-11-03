@@ -27,6 +27,15 @@ describe('which run a season is on (§3: the year its setup starts)', () => {
     expect(currentRun(xmas, [late], day(1, 10, 2027))).toBe(late);
     expect(currentRun(xmas, [run({ phase: 'done' })], day(2, 1, 2027))).toBeNull();
   });
+  it('a run never taken down goes stale when next year’s window starts, so next year gets its own run (review finding 2)', () => {
+    const old = run({ year: 2026, phase: 'up' });
+    expect(runYear(xmas, [old], day(11, 24, 2027))).toBe(2026);
+    expect(runYear(xmas, [old], day(11, 25, 2027))).toBe(2027);
+    expect(currentRun(xmas, [old], day(11, 26, 2027))).toBeNull();
+    // Until then it shows as overdue; from then on, the new window leads without it.
+    expect(seasonCalendar([xmas], day(11, 1, 2027), 3, [old]).lead?.run).toBe(old);
+    expect(seasonCalendar([xmas], day(11, 26, 2027), 3, [old]).lead?.run).toBeNull();
+  });
   it('a season without dates runs in the calendar year', () => {
     expect(runYear(season({ id: 'se-x', setupFrom: '', takedownBy: '' }), [], day(5, 5))).toBe(2026);
   });
@@ -69,6 +78,8 @@ describe('the setup list (F25)', () => {
     item({ id: 'it-tree', name: 'Tree stand', spotId: 'sp-peg', seasonId: 'se-xmas' }),
     // A display that was removed: "No display".
     item({ id: 'it-odd', name: 'Angel', seasonId: 'se-xmas', displayId: 'dp-gone' }),
+    // Lent: not here to put out (review finding 1).
+    item({ id: 'it-lent', name: 'Lent wreath', binId: 'bn-xmas4', status: 'lent', lentTo: 'May' }),
     // Halloween, or no season: not on the list.
     item({ id: 'it-skull', name: 'Skull', binId: 'bn-hall', displayId: 'dp-porch' }),
     item({ id: 'it-plain', name: 'Plain', binId: 'bn-spare' }),

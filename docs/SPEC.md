@@ -21,6 +21,7 @@
 - **H1** (app 0.1.1, `docs/reviews/H1.md`): the FRC features stripped, rebranded.
 - **H2a** (app 0.1.2, `docs/reviews/H2a.md`): the v2.0 data model in one part — areas, spots, bins, seasons, tags, every item field, several photos, the §7 backup, F7, F11, F16. Find, Browse, bin and spot scanning and labels (old H2b) were not built.
 - **H3** (app 0.1.3, `docs/reviews/H3.md`; details (a)–(l) accepted, area codes from names added after review): schema v3 with the two parts and the 0.1.2 upgrade, F21 (switch, both tab bars, Undo toast), Set up for both parts, F1, F2, F3, F10 for bins, spots and items, F11 per part, season dates and the Season home (seasons on now, Coming up), the read-only Lists tabs, and the §7 part columns. Details decided along the way are listed there for Dan to confirm.
+- **H4** (app 0.1.4, `docs/reviews/H4.md`): schema v5 (displays, season tasks, season runs; photos may carry a season), F22 displays and the item's usual display, F25 Start setup and the setup list, season tasks, F5 Unpack and Put out / Put back on an item, F8 setup photos by season on displays, F23 runs on the Season home and the `.ics` file, and the §7 files for them. Details (a)–(n) are listed there for Dan to confirm. A run's own dates are stored but have no screen yet.
 
 ---
 
@@ -42,7 +43,7 @@ Users:
 |---|---|---|
 | App type | PWA, added to the home screen from **iPhone Safari**. One app, one icon (Dan, 2026-11-03) | No App Store; the FRC app's code base |
 | Language/build | TypeScript, Preact, Vite (unchanged) | Existing code and tooling |
-| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v4 (H3: v3 the two parts, v4 area codes; v2 was H2a, v1 was H1) | **Local-first:** works with no signal in the attic, garage or storage room |
+| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v5 (H4: displays, season tasks and runs; H3: v3 the two parts, v4 area codes; v2 was H2a, v1 was H1) | **Local-first:** works with no signal in the attic, garage or storage room |
 | Server | One Cloudflare **Worker** (API + static app), **D1** (data), **R2** (photos and files), on Dan's free-tier account | Free tier, never sleeps, ~$0 for a family (§14) |
 | Sign-in | Cloudflare Access, one-time email code, a policy listing the family's email addresses. **Fallback** (§12.4) if it misbehaves in an iOS home-screen app | Real identity without passwords |
 | Address | `https://<name>.workers.dev`. A custom domain (~$10–12/yr) can be added later with no code change (Dan, 2026-11-02: free address for now) | |

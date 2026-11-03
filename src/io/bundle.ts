@@ -4,7 +4,7 @@
 // bundle later.
 import JSZip from 'jszip';
 import { emptyData, type HouseholdData } from '../domain/integrity';
-import { fromV2 } from '../domain/parts';
+import { fromV2, lettersToCodes } from '../domain/parts';
 import type { PhotoInfo } from '../domain/types';
 import { decodeCsvBytes, type FileProblem } from './csv';
 import {
@@ -172,6 +172,15 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   }
 
   if (problems.length > 0) return { bundle: null, problems, warnings };
+  // The first 0.1.3 build wrote areas.csv with `letter`, not `code`: convert as its phones upgrade.
+  const areasText = await text(AREAS_FILE);
+  const areasHeader = (areasText ?? '').split(/\r?\n/, 1)[0]!.toLowerCase().split(',').map((h) => h.trim().replace(/^﻿/, ''));
+  if (format === 'v3' && areasHeader.includes('letter') && !areasHeader.includes('code')) {
+    const coded = lettersToCodes(out.areas.map(({ code, ...a }) => ({ ...a, letter: code })), out.bins);
+    out.areas = coded.areas;
+    out.bins = coded.bins;
+    warnings.push('This backup is from the first 0.1.3 build: its areas get codes from their names, and their bins are renamed (A-04 → ATTIC-04).');
+  }
   if (format === 'v2') {
     // Season dates came with 0.1.3: the conversion gives each season its default dates.
     const seasons = out.seasons.map(({ setupFrom: _f, takedownBy: _t, ...rest }) => rest);

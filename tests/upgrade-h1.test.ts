@@ -30,7 +30,7 @@ async function makeH1(name: string): Promise<void> {
   old.close();
 }
 
-describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
+describe('upgrade from H1 (schema v1 → v2 → v3 → v4)', () => {
   it('turns locations into spots in Unsorted, keeps items, photos, lists and settings', async () => {
     const name = `up-${Math.random()}`;
     await makeH1(name);
@@ -97,10 +97,10 @@ describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
     await db.open();
     await checkSchema(db);
     db.close();
-    // H1's checkSchema compared against SCHEMA_VERSION 1: native version 30 / 10 = 3 > 1.
+    // H1's checkSchema compared against SCHEMA_VERSION 1: native version 40 / 10 = 4 > 1.
     const h1 = new Dexie(name);
     await h1.open();
-    expect(h1.verno).toBe(3);
+    expect(h1.verno).toBe(4);
     expect(((await h1.table('settings').get('schemaVersion')) as { value: number }).value).toBeGreaterThan(1);
     h1.close();
   });

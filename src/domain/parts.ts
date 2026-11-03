@@ -115,6 +115,37 @@ export interface V2Data {
   categories: V2<Category, 'part'>[];
 }
 
+/**
+ * Area letters become codes from the area names (Dan, 2026-11-03): Attic's A → ATTIC, unique across
+ * both parts, chosen in walk order (Household first). Bins with a letter's code are renamed to
+ * match (A-04 → ATTIC-04); a renamed bin's printed label shows the old code, so it counts as not
+ * printed yet. Used for 0.1.2 data and for the first 0.1.3 build, which still had letters.
+ * Areas keep their input order.
+ */
+export function lettersToCodes<A extends { id: string; name: string; order: number; part: Part; letter: string }, B extends { code: string; labelPrintedAt: number | null; labelContents: string | null }>(
+  areas: readonly A[],
+  bins: readonly B[],
+): { areas: (Omit<A, 'letter'> & { code: string })[]; bins: B[] } {
+  const taken: string[] = [];
+  const codeOf = new Map<string, string>();
+  const byId = new Map<string, string>();
+  const walk = [...areas].sort((a, b) => (a.part === b.part ? a.order - b.order : a.part === 'household' ? -1 : 1));
+  for (const a of walk) {
+    const code = defaultAreaCode(a.name, taken) ?? a.letter;
+    taken.push(code);
+    codeOf.set(a.letter, code);
+    byId.set(a.id, code);
+  }
+  return {
+    areas: areas.map(({ letter: _l, ...a }) => ({ ...a, code: byId.get(a.id)! })),
+    bins: bins.map((b) => {
+      const p = splitBinCode(b.code);
+      const code = p && codeOf.get(p.area);
+      return code ? { ...b, code: `${code}-${String(p!.number).padStart(2, '0')}`, labelPrintedAt: null, labelContents: null } : b;
+    }),
+  };
+}
+
 /** 0.1.2 data with its records in the two-part model; anything else in `D` is kept. */
 export type FromV2<D> = Omit<D, keyof V2Data> & { items: Item[]; areas: Area[]; spots: Spot[]; bins: Bin[]; seasons: Season[]; tags: Tag[]; categories: Category[] };
 
@@ -127,30 +158,15 @@ export type FromV2<D> = Omit<D, keyof V2Data> & { items: Item[]; areas: Area[]; 
 export function fromV2<D extends V2Data>(d: D): FromV2<D> {
   const household: Part = 'household';
   const categories: Category[] = [...d.categories].sort((a, b) => a.order - b.order).map((c, order) => ({ ...c, part: household, order }));
-  // Letters become codes from the area names (Dan, 2026-11-03), in walk order: Attic's A → ATTIC.
-  const taken: string[] = [];
-  const codeOf = new Map<string, string>();
-  const areas: Area[] = [...d.areas]
-    .sort((a, b) => a.order - b.order)
-    .map(({ letter, ...a }) => {
-      const code = defaultAreaCode(a.name, taken) ?? letter;
-      taken.push(code);
-      codeOf.set(letter, code);
-      return { ...a, part: household, code };
-    });
-  // Bin codes follow (A-04 → ATTIC-04). A renamed bin's printed label no longer matches, so it
-  // counts as not printed yet.
-  const bins: Bin[] = d.bins.map(({ ...b }) => {
-    const p = splitBinCode(b.code);
-    const code = p && codeOf.get(p.area);
-    const moved = code ? { code: `${code}-${String(p!.number).padStart(2, '0')}`, labelPrintedAt: null, labelContents: null } : {};
-    return { ...b, ...moved, part: household, seasonId: '' };
-  });
+  const coded = lettersToCodes(
+    d.areas.map((a) => ({ ...a, part: household })),
+    d.bins,
+  );
   return {
     ...d,
-    areas: d.areas.map((a) => areas.find((x) => x.id === a.id)!),
+    areas: coded.areas,
     spots: [...d.spots],
-    bins,
+    bins: coded.bins.map((b) => ({ ...b, part: household, seasonId: '' })),
     items: d.items.map((i) => ({ ...i, part: household, seasonId: '', displayId: '', outDisplayId: '', checkedAt: null })),
     seasons: d.seasons.map((s) => {
       const dates = defaultDates(s.name);

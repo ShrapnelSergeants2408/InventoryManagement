@@ -42,7 +42,7 @@ Users:
 |---|---|---|
 | App type | PWA, added to the home screen from **iPhone Safari**. One app, one icon (Dan, 2026-11-03) | No App Store; the FRC app's code base |
 | Language/build | TypeScript, Preact, Vite (unchanged) | Existing code and tooling |
-| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v3 (H3; v2 was H2a, v1 was H1) | **Local-first:** works with no signal in the attic, garage or storage room |
+| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v4 (H3: v3 the two parts, v4 area codes; v2 was H2a, v1 was H1) | **Local-first:** works with no signal in the attic, garage or storage room |
 | Server | One Cloudflare **Worker** (API + static app), **D1** (data), **R2** (photos and files), on Dan's free-tier account | Free tier, never sleeps, ~$0 for a family (§14) |
 | Sign-in | Cloudflare Access, one-time email code, a policy listing the family's email addresses. **Fallback** (§12.4) if it misbehaves in an iOS home-screen app | Real identity without passwords |
 | Address | `https://<name>.workers.dev`. A custom domain (~$10–12/yr) can be added later with no code change (Dan, 2026-11-02: free address for now) | |

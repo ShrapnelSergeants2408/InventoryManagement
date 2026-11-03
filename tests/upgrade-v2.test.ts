@@ -61,7 +61,7 @@ async function makeV2(name: string): Promise<void> {
   old.close();
 }
 
-describe('upgrade from 0.1.2 (schema v2 → v3)', () => {
+describe('upgrade from 0.1.2 (schema v2 → v3 → v4)', () => {
   it('moves everything into Household and the seasons into Holiday, keeping every record', async () => {
     const name = `v2-${Math.random()}`;
     await makeV2(name);
@@ -69,7 +69,7 @@ describe('upgrade from 0.1.2 (schema v2 → v3)', () => {
     await db.open();
     expect(await checkSchema(db)).toBe('ok');
     expect((await db.settings.get('schemaVersion'))?.value).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
 
     const snap = await loadSnapshot(db);
     // Letters become codes from the names (Dan, 2026-11-03).
@@ -124,11 +124,11 @@ describe('upgrade from 0.1.2 (schema v2 → v3)', () => {
     await db.open();
     await checkSchema(db);
     db.close();
-    // 0.1.2's checkSchema: stored 3 > 2, and native version 30 / 10 = 3 > 2.
+    // 0.1.2's checkSchema: stored 4 > 2, and native version 40 / 10 = 4 > 2.
     const v2 = new Dexie(name);
     await v2.open();
-    expect(v2.verno).toBe(3);
-    expect(((await v2.table('settings').get('schemaVersion')) as { value: number }).value).toBe(3);
+    expect(v2.verno).toBe(4);
+    expect(((await v2.table('settings').get('schemaVersion')) as { value: number }).value).toBe(4);
     v2.close();
   });
 

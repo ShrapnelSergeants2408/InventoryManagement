@@ -1,13 +1,14 @@
-// Spot detail (SPEC v2.0 §3, F11): photos, its area, the bins on it and its loose items. Actions:
-// Add bin here, Add item here, Rename, Move to another area, Remove. The dialogs are shared with
-// More › Areas & spots.
+// Spot detail (SPEC v3.0 §3, F11): photos, its area, the bins on it and its loose items. Actions:
+// Add bin here, Add item here, Print label, Rename, Move to another area (of the same part),
+// Remove. The dialogs are shared with More › Areas & spots. The top bar shows the spot's part.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { moveSpotToArea, removeSpot, updateSpot } from '../../../data/places';
 import { noteViewed } from '../../../data/prefs';
+import { partView } from '../../../domain/parts';
 import { binLabel, indexPlaces, pathText, spotPath } from '../../../domain/places';
-import { type Area, type Spot } from '../../../domain/types';
+import { type Area, type Part, type Spot } from '../../../domain/types';
 import { BackButton, TopBar, plural } from '../../components/common';
 import { SeasonChip } from '../../components/chips';
 import { Dialog, DialogActions } from '../../components/Dialog';
@@ -15,6 +16,7 @@ import { PhotoCarousel } from '../../components/PhotoCarousel';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href, replaceRoute } from '../../shell/router';
+import { useRecordPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { EntryDialog } from '../more/EntryDialog';
 import { StorageError } from '../StorageError';
@@ -35,15 +37,18 @@ export function SpotScreen({ id }: { id: string }) {
     );
   }
   const spot = live.value.spots.find((s) => s.id === id);
-  if (!spot) return <Missing what="Spot" id={id} back={back} />;
-  return <SpotDetail spot={spot} snap={live.value} back={back} />;
+  const part = live.value.areas.find((a) => a.id === spot?.areaId)?.part;
+  if (!spot || !part) return <Missing what="Spot" id={id} back={back} />;
+  // Everything on this screen (other areas and spots to move to) is in the spot's part.
+  return <SpotDetail spot={spot} snap={partView(live.value, part)} part={part} back={back} />;
 }
 
 type Open = 'rename' | 'move' | 'remove' | null;
 
-function SpotDetail({ spot, snap, back }: { spot: Spot; snap: InventorySnapshot; back: ComponentChildren }) {
+function SpotDetail({ spot, snap, part, back }: { spot: Spot; snap: InventorySnapshot; part: Part; back: ComponentChildren }) {
   const [open, setOpen] = useState<Open>(null);
   useEffect(() => noteViewed(spot.id), [spot.id]);
+  useRecordPart(part);
   const ix = indexPlaces(snap);
   const area = ix.area.get(spot.areaId);
   const bins = snap.bins.filter((b) => b.spotId === spot.id).sort((a, b) => a.code.localeCompare(b.code, 'en-US', { numeric: true }));
@@ -53,7 +58,7 @@ function SpotDetail({ spot, snap, back }: { spot: Spot; snap: InventorySnapshot;
 
   return (
     <>
-      <TopBar title={spot.name} kicker={area ? `${area.name} (${area.letter})` : ''} back={back} />
+      <TopBar title={spot.name} kicker={area ? `${area.name} (${area.letter})` : ''} back={back} part={part} />
       <div class="dbody">
         <div class="dleft">
           <PhotoCarousel ownerType="spot" ownerId={spot.id} name={spot.name} />
@@ -65,6 +70,10 @@ function SpotDetail({ spot, snap, back }: { spot: Spot; snap: InventorySnapshot;
             <a class="btn lg" href={href.add('', '', spot.id)}>
               <Icon name="plus" />
               Add item here
+            </a>
+            <a class="btn lg" href={href.labels([spot.id])}>
+              <Icon name="print" />
+              Print label
             </a>
             <button type="button" class="btn lg" onClick={() => setOpen('rename')}>
               <Icon name="pencil" />

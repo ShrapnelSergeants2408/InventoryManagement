@@ -42,7 +42,7 @@ describe('backup edge cases', () => {
       dataset({
         areas: [area({ id: 'ar-1', name: 'Shelf, "top"' })],
         spots: [spot({ id: 'sp-1', areaId: 'ar-1', name: '=1+1' })],
-        tags: [{ name: 'Kids’ room', order: 0 }, { name: 'a,b', order: 1 }],
+        tags: [{ part: 'holiday' as const, name: 'Kids’ room', order: 0 }, { part: 'holiday' as const, name: 'a,b', order: 1 }],
         items,
         photos: [
           { id: 'ph-a', ownerType: 'item', ownerId: 'a/b', kind: 'photo', caption: 'cap,"q"', order: 0 },

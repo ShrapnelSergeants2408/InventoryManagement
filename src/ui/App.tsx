@@ -1,11 +1,14 @@
 // Boot: open the inventory → storage error | first-launch setup (what the inventory starts with,
-// SPEC v2.0 §12.5) | app.
+// SPEC v3.0 §12.5) | app. Tab screens belong to a part (F21); their address says which.
 import { useEffect, useState } from 'preact/hooks';
 import { InventoryDb, checkSchema } from '../data/db';
 import { isSetUp, watchPersistentStorage } from '../data/setup';
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
-import { InventoryScreen } from './screens/inventory/Inventory';
+import { BrowseScreen } from './screens/inventory/Inventory';
+import { FindScreen } from './screens/find/Find';
+import { SeasonHomeScreen } from './screens/home/SeasonHome';
+import { ListsScreen } from './screens/lists/Lists';
 import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
 import { BackupScreen } from './screens/more/Backup';
@@ -21,7 +24,8 @@ import { ScanScreen } from './screens/scan/Scan';
 import { SetupScreen } from './screens/Setup';
 import { AppOutdated, OpenBlocked, StorageError, UpdatedElsewhere } from './screens/StorageError';
 import { Shell } from './shell/Shell';
-import { useRoute, type Route } from './shell/router';
+import { homeTab, useRoute, type Route, type Tab } from './shell/router';
+import { setPart, usePart } from './part';
 
 type Boot =
   | { state: 'opening' }
@@ -51,7 +55,20 @@ async function openDb(on: { blocked: () => void; replaced: () => void }): Promis
   return db;
 }
 
+/** The tab a route shows: an address without a part opens the part in use at its home. */
+function tabOf(route: Route, part: ReturnType<typeof usePart>): Tab {
+  if (route.screen === 'tab' && route.part === null && route.tab === 'find') return homeTab(part);
+  return route.tab;
+}
+
 function Screen({ route }: { route: Route }) {
+  const part = usePart();
+  const routePart = route.screen === 'tab' ? route.part : null;
+  // A tab address names its part: switching there (a link, Back) switches the app (F21).
+  useEffect(() => {
+    if (routePart) setPart(routePart);
+  }, [routePart]);
+  const shown = routePart ?? part;
   switch (route.screen) {
     case 'item':
       return <DetailScreen key={route.id} id={route.id} />;
@@ -68,15 +85,15 @@ function Screen({ route }: { route: Route }) {
     case 'spot':
       return <SpotScreen key={route.id} id={route.id} />;
     case 'labels':
-      return <LabelsScreen key={route.ids.join(',')} ids={route.ids} />;
+      return <LabelsScreen key={`${part}-${route.ids.join(',')}`} part={part} ids={route.ids} />;
     case 'categories':
-      return <CategoriesScreen />;
+      return <CategoriesScreen key={part} part={part} />;
     case 'places':
-      return <PlacesScreen />;
+      return <PlacesScreen key={part} part={part} />;
     case 'seasons':
       return <SeasonsScreen />;
     case 'tags':
-      return <TagsScreen />;
+      return <TagsScreen key={part} part={part} />;
     case 'backup':
       return <BackupScreen />;
     case 'settings':
@@ -84,20 +101,25 @@ function Screen({ route }: { route: Route }) {
     case 'tab':
       break;
   }
-  switch (route.tab) {
-    case 'inventory':
-      return <InventoryScreen />;
+  switch (tabOf(route, shown)) {
+    case 'season':
+      return <SeasonHomeScreen />;
+    case 'find':
+      return <FindScreen key={`${shown}-${route.q}`} part={shown} q={route.q} />;
+    case 'browse':
+      return <BrowseScreen key={shown} part={shown} />;
     case 'scan':
       return <ScanScreen />;
-    case 'labels':
-      return <LabelsScreen ids={null} />;
+    case 'lists':
+      return <ListsScreen key={shown} part={shown} />;
     case 'more':
-      return <MoreScreen />;
+      return <MoreScreen key={shown} part={shown} />;
   }
 }
 
 export function App() {
   const [boot, setBoot] = useState<Boot>({ state: 'opening' });
+  const part = usePart();
   // Failed opens in a row, so "Set up again" waits until Try again has failed too (finding 1).
   const [failures, setFailures] = useState(0);
   const route = useRoute();
@@ -156,7 +178,7 @@ export function App() {
   }
   return (
     <DbContext.Provider value={boot.db}>
-      <Shell tab={route.tab}>
+      <Shell tab={tabOf(route, route.screen === 'tab' ? (route.part ?? part) : part)}>
         <Screen route={route} />
       </Shell>
     </DbContext.Provider>

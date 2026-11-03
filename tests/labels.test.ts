@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  binLabelGroups,
+  binLabelState,
+  binSummary,
+  contentsLines,
+  labelFace,
+  spotLabelGroups,
   NUDGE_MAX_MM,
   PAGE,
   PLAIN_QR_SIZES,
@@ -18,7 +24,7 @@ import {
   stepNudge,
   type LabelLayout,
 } from '../src/domain/labels';
-import { household, item } from './helpers';
+import { bin, household, item, spot } from './helpers';
 
 const L = (id: string) => layoutById(id)!;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);
@@ -163,18 +169,36 @@ describe('alignment nudge (0.5 mm steps, per layout)', () => {
   });
 });
 
-describe('label text (§9 label content)', () => {
+describe('label text (SPEC v3.0 §9 table)', () => {
   const it1 = item({ name: 'Snowman lights', category: 'Lights', subcategory: 'Outdoor' });
   const path = 'Attic › Shelf B › A-04 Christmas 4';
-  it('5160: name and path', () => expect(labelText(it1, 'name-location', path)).toEqual({ name: 'Snowman lights', extra: [path] }));
-  it('5163: name, path and category', () => expect(labelText(it1, 'name-location-category', path)).toEqual({ name: 'Snowman lights', extra: [path, 'Lights › Outdoor'] }));
-  it('22805 and plain: the name only', () => {
+  it('item, 5163: name and path', () => expect(labelText(it1, 'name-location-category', path)).toEqual({ name: 'Snowman lights', extra: [path] }));
+  it('item, 5160, 22805 and plain: the name only', () => {
+    expect(labelText(it1, 'name-location', path)).toEqual({ name: 'Snowman lights', extra: [] });
     expect(labelText(it1, 'short-name', path)).toEqual({ name: 'Snowman lights', extra: [] });
     expect(labelText(it1, 'name', path)).toEqual({ name: 'Snowman lights', extra: [] });
   });
-  it('no home is left out; a category without a subcategory is shown alone', () => {
-    const bare = item({ category: 'Tools' });
-    expect(labelText(bare, 'name-location-category', '').extra).toEqual(['Tools']);
+  it('item with no home: no path line', () => {
+    expect(labelText(item({ category: 'Tools' }), 'name-location-category', '').extra).toEqual([]);
+  });
+  it('bin: 5163 has the code, name, season chip and contents; 5160 and plain the code and name; 22805 the code', () => {
+    const b = bin({ id: 'bn-xmas4', code: 'A-04', name: 'Christmas 4' });
+    const t = { kind: 'bin' as const, bin: b, contents: ['Lights ×3', 'Garland ~40'], season: { name: 'Christmas', color: 'red' as const } };
+    expect(labelFace(t, 'name-location-category')).toEqual({ id: 'bn-xmas4', code: 'A-04', name: 'Christmas 4', extra: ['Lights ×3', 'Garland ~40'], chip: { name: 'Christmas', color: 'red' } });
+    expect(labelFace(t, 'name-location')).toEqual({ id: 'bn-xmas4', code: 'A-04', name: 'Christmas 4', extra: [], chip: null });
+    expect(labelFace(t, 'name')).toEqual({ id: 'bn-xmas4', code: 'A-04', name: 'Christmas 4', extra: [], chip: null });
+    expect(labelFace(t, 'short-name')).toEqual({ id: 'bn-xmas4', code: 'A-04', name: '', extra: [], chip: null });
+  });
+  it('spot: 5163 has area › spot; the others the spot name', () => {
+    const t = { kind: 'spot' as const, spot: spot({ id: 'sp-1', name: 'Shelf B' }), areaName: 'Attic' };
+    expect(labelFace(t, 'name-location-category').name).toBe('Attic › Shelf B');
+    expect(labelFace(t, 'name-location').name).toBe('Shelf B');
+    expect(labelFace(t, 'short-name').name).toBe('Shelf B');
+  });
+  it('contents: up to 6 lines, then "+ n more"', () => {
+    const lines = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+    expect(contentsLines(lines.slice(0, 6))).toEqual(lines.slice(0, 6));
+    expect(contentsLines(lines)).toEqual([...lines.slice(0, 6), '+ 2 more']);
   });
   it('labelPath reads the item’s home (§4)', () => {
     const h = household();
@@ -182,6 +206,41 @@ describe('label text (§9 label content)', () => {
     expect(labelPath(item({ binId: 'bn-spare' }), h)).toBe('A-05 Spare (no spot)');
     expect(labelPath(item({ spotId: 'sp-peg' }), h)).toBe('Garage › Pegboard');
     expect(labelPath(item(), h)).toBe('');
+  });
+});
+
+describe('bin labels: out of date (§4)', () => {
+  const items = [item({ id: 'a', name: 'Lights', binId: 'bn-1', quantity: 3 }), item({ id: 'b', name: 'Garland', binId: 'bn-1', quantity: 40, approx: true })];
+  it('never printed, current, then out of date when the contents change', () => {
+    const b = bin({ id: 'bn-1' });
+    expect(binLabelState(b, items)).toBe('none');
+    const printed = { ...b, labelPrintedAt: 5, labelContents: binSummary(items, 'bn-1') };
+    expect(printed.labelContents).toBe('Garland ~40\nLights ×3');
+    expect(binLabelState(printed, items)).toBe('current');
+    expect(binLabelState(printed, [...items, item({ id: 'c', name: 'Star', binId: 'bn-1', quantity: 1 })])).toBe('stale');
+    expect(binLabelState(printed, items.map((i) => (i.id === 'a' ? { ...i, quantity: 2 } : i)))).toBe('stale');
+    // An item taken out (status out) no longer counts as in the bin.
+    expect(binLabelState(printed, items.map((i) => (i.id === 'a' ? { ...i, status: 'out' as const } : i)))).toBe('stale');
+  });
+});
+
+describe('choosing bins and spots (§9)', () => {
+  const h = household();
+  it('bins by area in walk order, "No spot" last; or by season, "No season" last', () => {
+    expect(binLabelGroups(h, h.seasons, 'area').map((g) => [g.name, g.list.map((b) => b.code)])).toEqual([
+      ['Attic', ['A-04']],
+      ['No spot', ['A-05']],
+    ]);
+    expect(binLabelGroups(h, h.seasons, 'season').map((g) => [g.name, g.list.map((b) => b.code)])).toEqual([
+      ['Christmas', ['A-04']],
+      ['No season', ['A-05']],
+    ]);
+  });
+  it('spots by area in walk order', () => {
+    expect(spotLabelGroups(h).map((g) => [g.name, g.list.map((s) => s.name)])).toEqual([
+      ['Attic', ['Shelf A', 'Shelf B']],
+      ['Garage', ['Pegboard']],
+    ]);
   });
 });
 
@@ -193,9 +252,9 @@ describe('choosing items: groups in print order', () => {
     item({ id: 'd', category: 'Orphan', binId: 'bn-spare' }),
   ];
   const cats = [
-    { name: 'Structure', order: 0, subcategories: [] },
-    { name: 'Motors', order: 1, subcategories: [] },
-    { name: 'Empty', order: 2, subcategories: [] },
+    { part: 'holiday' as const, name: 'Structure', order: 0, subcategories: [] },
+    { part: 'holiday' as const, name: 'Motors', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Empty', order: 2, subcategories: [] },
   ];
   // Walk order: the Garage first.
   const h = household();

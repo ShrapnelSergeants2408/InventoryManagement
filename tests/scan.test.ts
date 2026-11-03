@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { prepareZXingModule, readBarcodes } from 'zxing-wasm/reader';
 import { qrMatrix, qrPath } from '../src/domain/qr';
 import { QR_PREFIX, barcodeKey, cleanCode, formatName, qrPayload, resolveScan } from '../src/domain/scan';
-import { item } from './helpers';
+import { area, bin, item, spot } from './helpers';
 
 const items = [
   item({ id: 'st-0063', name: 'NEO 2.0', barcode: '' }),
@@ -13,9 +13,19 @@ const items = [
   item({ id: 'tm-AAAAA', name: 'Twin 1', barcode: '0012345678905' }),
   item({ id: 'tm-BBBBB', name: 'Twin 2', barcode: '012345678905' }),
 ];
+// Both parts: a Holiday bin and a Household bin and spot (letters and codes are unique across parts).
+const places = {
+  areas: [area({ id: 'ar-store', part: 'holiday', letter: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', letter: 'G' })],
+  spots: [spot({ id: 'sp-rack1', areaId: 'ar-store', name: 'Rack 1' }), spot({ id: 'sp-peg', areaId: 'ar-garage', name: 'Pegboard' })],
+  bins: [bin({ id: 'bn-S2', code: 'S-02', part: 'holiday', spotId: 'sp-rack1' }), bin({ id: 'bn-G3', code: 'G-03', part: 'household', name: 'Cords', spotId: 'sp-peg' })],
+};
+const data = { items, bins: places.bins, spots: places.spots };
 const kind = (raw: string) => {
-  const r = resolveScan(raw, items);
-  return r.kind === 'item' ? [r.kind, r.item.id, r.via] : r.kind === 'many' ? [r.kind, r.items.map((i) => i.id)] : r.kind === 'missing-label' ? [r.kind, r.id] : [r.kind];
+  const r = resolveScan(raw, data);
+  if (r.kind === 'item') return [r.kind, r.item.id, r.via];
+  if (r.kind === 'bin') return [r.kind, r.bin.id, r.via];
+  if (r.kind === 'spot') return [r.kind, r.spot.id, r.via];
+  return r.kind === 'many' ? [r.kind, r.items.map((i) => i.id)] : r.kind === 'missing-label' ? [r.kind, r.id] : [r.kind];
 };
 
 describe('QR payload (SPEC §9)', () => {
@@ -25,7 +35,25 @@ describe('QR payload (SPEC §9)', () => {
   });
 });
 
-describe('scan resolution (F21)', () => {
+describe('scan resolution (SPEC v3.0 F3)', () => {
+  it('bin and spot labels open them, in either part', () => {
+    expect(kind('hhi:bn-S2')).toEqual(['bin', 'bn-S2', 'label']);
+    expect(kind('hhi:bn-G3')).toEqual(['bin', 'bn-G3', 'label']);
+    expect(kind('hhi:sp-rack1')).toEqual(['spot', 'sp-rack1', 'label']);
+    expect(kind('sp-peg')).toEqual(['spot', 'sp-peg', 'id']);
+  });
+
+  it('a typed bin code finds the bin wherever it is: "S-02", "s2", "g 3"', () => {
+    expect(kind('S-02')).toEqual(['bin', 'bn-S2', 'code']);
+    expect(kind('s2')).toEqual(['bin', 'bn-S2', 'code']);
+    expect(kind('g 3')).toEqual(['bin', 'bn-G3', 'code']);
+    expect(kind('Z-99')).toEqual(['unknown']);
+  });
+
+  it('a label for a bin or spot no longer here', () => {
+    expect(kind('hhi:bn-GONE')).toEqual(['missing-label', 'bn-GONE']);
+  });
+
   it('a team label opens its item', () => {
     expect(kind('hhi:st-0063')).toEqual(['item', 'st-0063', 'label']);
   });
@@ -60,11 +88,11 @@ describe('scan resolution (F21)', () => {
     expect(kind('5012345678900')).toEqual(['unknown']);
     expect(kind('https://www.revrobotics.com/rev-21-1650/')).toEqual(['unknown']);
     expect(kind('   ')).toEqual(['empty']);
-    expect(resolveScan(' 0 1234 ', items)).toEqual({ kind: 'unknown', code: '01234' });
+    expect(resolveScan(' 0 1234 ', data)).toEqual({ kind: 'unknown', code: '01234' });
   });
 
   it('an item with no barcode is never matched by a blank one', () => {
-    expect(resolveScan('', items).kind).toBe('empty');
+    expect(resolveScan('', data).kind).toBe('empty');
   });
 
   it('cleanCode and formatName', () => {
@@ -97,7 +125,7 @@ describe('QR round trip: generated label codes decode back to the payload', () =
     const found = await readBarcodes(render(text) as unknown as ImageData, { formats: ['QRCode'] });
     expect(found.map((f) => f.text)).toEqual([text]);
     expect(found[0]!.ecLevel).toBe('M'); // survives a scuffed label
-    expect(resolveScan(found[0]!.text, items).kind).not.toBe('unknown');
+    expect(resolveScan(found[0]!.text, data).kind).not.toBe('unknown');
   });
 
   it('the path draws exactly the dark modules', () => {

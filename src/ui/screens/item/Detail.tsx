@@ -1,6 +1,7 @@
 // Item detail (F16): photo carousel, path breadcrumbs, status, condition and season chips, the
 // quantity stepper, details and a collapsed Records section. Actions: Edit, Move (F7), and under
-// More…: Split a line, Duplicate, Print QR label, Delete. H3 restyles it for the phone.
+// More…: Split a line, Duplicate, Print QR label, Delete. The top bar shows the item's part in its
+// color (F21); opening an item of the other part switches the app to it. H7 restyles it.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { adjustQuantity, setQuantity, type InventorySnapshot } from '../../../data/inventory';
@@ -10,6 +11,7 @@ import { kindOfId } from '../../../domain/ids';
 import { formatCents } from '../../../domain/money';
 import { indexPlaces, itemPath, itemSeasonId, NO_HOME, NO_SPOT, pathText, type PathPart } from '../../../domain/places';
 import { formatIsoDate } from '../../../domain/dates';
+import { partView } from '../../../domain/parts';
 import type { Item } from '../../../domain/types';
 import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { ConditionChip, SeasonChip, StatusChip } from '../../components/chips';
@@ -20,6 +22,7 @@ import { CountStepper } from '../../components/QuantityStepper';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { getPart, useRecordPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { DeleteItemButton } from './DeleteItem';
@@ -31,7 +34,7 @@ export const toHome = (id: string): Home => (id === '' ? 'none' : kindOfId(id) =
 
 export function DetailScreen({ id }: { id: string }) {
   const live = useSnapshot();
-  const back = <BackButton fallback={href.tab('inventory')} />;
+  const back = <BackButton fallback={href.home(getPart())} />;
   if (live.state === 'error') {
     return (
       <>
@@ -63,7 +66,7 @@ export function ItemMissing({ id, back }: { id: string; back: ComponentChildren 
         icon="search"
         title={`No item “${id}”`}
         actions={
-          <a class="btn pri" href={href.tab('inventory')}>
+          <a class="btn pri" href={href.home(getPart())}>
             <Icon name="inventory" />
             Go to the inventory
           </a>
@@ -103,6 +106,7 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
   // Offered under the Inventory search box (F1).
   useEffect(() => noteViewed(item.id), [item.id]);
   useEffect(() => void getRecentHomes(db).then(setRecent), [db, open]);
+  useRecordPart(item.part);
 
   const ix = indexPlaces(snap);
   const path = itemPath(item, ix);
@@ -113,7 +117,7 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
 
   return (
     <>
-      <TopBar title={item.name} kicker={path.length ? pathText(path) : NO_HOME} back={back} />
+      <TopBar title={item.name} kicker={path.length ? pathText(path) : NO_HOME} back={back} part={item.part} />
       <div class="dbody">
         <div class="dleft">
           <PhotoCarousel ownerType="item" ownerId={item.id} name={item.name} />
@@ -207,7 +211,9 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
 
       {open === 'move' && (
         <HomePicker
-          snap={snap}
+          snap={partView(snap, item.part)}
+          all={snap}
+          part={item.part}
           mode="item"
           title={`Move ${item.name} to…`}
           current={homeId(item)}
@@ -289,7 +295,7 @@ function SplitDialog({ item, snap, recent, onClose }: { item: Item; snap: Invent
   };
 
   if (picking) {
-    return <HomePicker snap={snap} mode="item" title="Put the new line in…" current={home} recent={recent} submitLabel="Choose" onClose={() => setPicking(false)} onPick={(to) => (setHome(to), setPicking(false))} />;
+    return <HomePicker snap={partView(snap, item.part)} mode="item" title="Put the new line in…" current={home} recent={recent} submitLabel="Choose" onClose={() => setPicking(false)} onPick={(to) => (setHome(to), setPicking(false))} />;
   }
   return (
     <Dialog label="Split this line" onClose={() => !busy && onClose()}>

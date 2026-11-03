@@ -82,7 +82,7 @@ export function RestoreDialog({ plan, phone, onClose }: { plan: RestorePlan; pho
     <Dialog label="Replace all inventory with this backup?" role="alertdialog" onClose={() => !busy && onClose()}>
       <h2 class="h2">Replace all inventory with this backup?</h2>
       <div class="mono small">
-        {plan.fileName} · {formatBytes(plan.fileSize)} · {plan.format === 'h1' ? 'full backup from version 0.1.1' : 'full backup'}
+        {plan.fileName} · {formatBytes(plan.fileSize)} · {plan.format === 'v2' ? 'full backup from version 0.1.2' : 'full backup'}
       </div>
       <table class="cmp">
         <thead>

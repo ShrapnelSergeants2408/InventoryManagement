@@ -1,21 +1,25 @@
-// Scan (F3): the camera reads a household QR label (hhi:<id>) or a stored product barcode and
-// opens that item with the quantity stepper. A code can be typed instead (torn label, no
-// camera). An unknown code can be attached to an item or used for a new one. H2b adds bin and
-// spot labels and typed bin codes.
+// Scan (SPEC v3.0 F3): the camera reads a household QR label (hhi:<id>) or a product barcode. An
+// item's label or barcode opens it with the quantity stepper; a bin or spot label, or a typed bin
+// code (A-04), opens that bin or spot. Labels work in either part: one from the other part
+// switches the app there, with a toast whose Undo goes back (F21). A code can be typed instead
+// (torn label, no camera). An unknown code can be attached to an item or used for a new one, in
+// the part in use.
 import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { adjustQuantity, setQuantity, type InventorySnapshot } from '../../../data/inventory';
 import { setBarcode } from '../../../data/items';
 import { labelPath } from '../../../domain/labels';
 import { resolveScan, formatName, type ScanResult } from '../../../domain/scan';
+import { partOfRecord, partView } from '../../../domain/parts';
 import { matchesQuery } from '../../../domain/search';
-import type { Item } from '../../../domain/types';
+import { PART_NAME, type Item, type Part } from '../../../domain/types';
 import { plural } from '../../components/common';
 import { CountStepper } from '../../components/QuantityStepper';
 import { Scanner, type CameraState } from '../../components/Scanner';
 import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { getPart, setPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 
@@ -46,8 +50,16 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
   const [attempt, setAttempt] = useState(0);
 
   const handle = (code: string, format: string | null) => {
-    const result = resolveScan(code, snap.items);
+    const result = resolveScan(code, snap);
     if (result.kind === 'empty') return;
+    if (result.kind === 'bin' || result.kind === 'spot') {
+      // A bin or spot opens its screen (mockup 5), switching part when it's in the other one.
+      const id = result.kind === 'bin' ? result.bin.id : result.spot.id;
+      switchFor(partOfRecord(snap, id), result.kind, true);
+      location.hash = result.kind === 'bin' ? href.bin(id) : href.spot(id);
+      return;
+    }
+    if (result.kind === 'item') switchFor(result.item.part, 'item', false);
     setPanel({ kind: 'result', result, format });
   };
   const close = () => setPanel({ kind: 'none' });
@@ -113,7 +125,7 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
       )}
       {panel.kind === 'attach' && (
         <AttachPanel
-          snap={snap}
+          snap={partView(snap, getPart())}
           code={panel.code}
           onBack={() => setPanel({ kind: 'result', result: panel.back, format: panel.format })}
           onAttached={(item) => setPanel({ kind: 'result', result: { kind: 'item', item, via: 'barcode', code: panel.code }, format: panel.format })}
@@ -121,6 +133,23 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
       )}
     </div>
   );
+}
+
+/**
+ * A label from the other part switches the app to it (F21), with "Switched to Holiday" and an
+ * Undo that returns to the part (and, when the scan opened a screen, the screen) you were in.
+ */
+function switchFor(part: Part | null, what: 'item' | 'bin' | 'spot', navigates: boolean): void {
+  const before = getPart();
+  if (!part || part === before) return;
+  setPart(part);
+  showToast(`Switched to ${PART_NAME[part]} · this label is a ${PART_NAME[part]} ${what}`, {
+    label: 'Undo',
+    run: () => {
+      setPart(before);
+      if (navigates) history.back();
+    },
+  });
 }
 
 function CameraBlocked(props: { state: CameraState; onRetry: () => void; onCode: (code: string) => void }) {
@@ -169,7 +198,7 @@ function CameraBlocked(props: { state: CameraState; onRetry: () => void; onCode:
             <strong>No camera? Type the code on the label or barcode</strong>
           </label>
           <div class="inline-add">
-            <input id="mc" class="field mono" autoComplete="off" placeholder="e.g. hhi:it-7K2M9QXP or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
+            <input id="mc" class="field mono" autoComplete="off" placeholder="e.g. A-04, hhi:bn-7K2M9QXP or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
             <button type="submit" class="btn" disabled={code.trim() === ''}>
               Find
             </button>
@@ -202,12 +231,12 @@ function TypePanel(props: { onFind: (code: string) => void; onClose: () => void 
       >
         <div class="sp-body">
           <h2 class="h2">Type a code</h2>
-          <p class="m0">For a torn label or a barcode the camera can’t read. Type the code from the label (e.g. hhi:it-7K2M9QXP) or the barcode digits.</p>
-          <input class="field mono" aria-label="Code" autoFocus autoComplete="off" placeholder="e.g. hhi:it-7K2M9QXP or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
+          <p class="m0">For a torn label or a barcode the camera can’t read. Type a bin code (A-04), the code under a label’s QR (hhi:…) or the barcode digits.</p>
+          <input class="field mono" aria-label="Code" autoFocus autoComplete="off" placeholder="e.g. A-04 or 722787604386" value={code} onInput={(e) => setCode((e.currentTarget as HTMLInputElement).value)} />
         </div>
         <div class="sp-foot">
           <button type="submit" class="btn pri lg" disabled={code.trim() === ''}>
-            Find item
+            Find
           </button>
           <button type="button" class="btn" onClick={props.onClose}>
             Back to camera
@@ -304,10 +333,10 @@ function MissingPanel({ id, onDone }: { id: string; onDone: () => void }) {
         <span class="dlg-ic gray">
           <Icon name="help" />
         </span>
-        <h2 class="h2">This label’s item isn’t here</h2>
+        <h2 class="h2">This label’s {id.toLowerCase().startsWith('bn-') ? 'bin' : id.toLowerCase().startsWith('sp-') ? 'spot' : 'item'} isn’t here</h2>
       </div>
       <div class="mono code-big">{id}</div>
-      <p class="m0">The item may have been deleted, or this phone was restored from an older backup. Print a new label from the item’s card if it still exists.</p>
+      <p class="m0">It may have been deleted, or this phone was restored from an older backup. Print a new label from its screen if it still exists.</p>
     </Panel>
   );
 }

@@ -7,6 +7,7 @@ import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href, replaceRoute } from '../../shell/router';
+import { getPart } from '../../part';
 import { showToast } from '../../shell/toast';
 
 export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; label?: string }) {
@@ -21,7 +22,7 @@ export function DeleteItemButton({ item, label = 'Delete item' }: { item: Item; 
     try {
       await deleteItem(db, item.id);
       showToast(`Deleted “${item.name}”.`);
-      replaceRoute(href.tab('inventory'));
+      replaceRoute(href.home(getPart()));
     } catch (e) {
       showToast(`Couldn't delete: ${e instanceof Error ? e.message : String(e)}`);
       setBusy(false);

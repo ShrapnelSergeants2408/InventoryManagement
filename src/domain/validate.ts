@@ -1,5 +1,9 @@
-// Field rules shared by the editors and every importer (SPEC v2.0 §3).
-import { BIN_STATES, CONDITIONS, ITEM_STATUSES, SEASON_COLORS, type Area, type Bin, type Item, type Season, type Spot } from './types';
+// Field rules shared by the editors and every importer (SPEC v3.0 §3).
+import { isMonthDay } from './seasons';
+import { BIN_STATES, CONDITIONS, ITEM_STATUSES, PARTS, SEASON_COLORS, type Area, type Bin, type Item, type Part, type Season, type Spot } from './types';
+
+export const isPart = (p: unknown): p is Part => PARTS.includes(p as Part);
+const partError = (p: unknown): FieldError => ({ field: 'part', message: `part "${String(p)}" must be household or holiday` });
 
 export type NumberParse = { ok: true; value: number } | { ok: false; error: string };
 
@@ -56,6 +60,7 @@ export function validateItem(item: Item): FieldError[] {
     if (value !== '' && !isIsoDate(value)) errors.push({ field, message: `${label} "${value}" isn't a date (YYYY-MM-DD)` });
   };
   req('id', item.id, 'id');
+  if (!isPart(item.part)) errors.push(partError(item.part));
   req('name', item.name, 'name');
   req('category', item.category, 'category');
   if (!(Number.isSafeInteger(item.quantity) && item.quantity >= 0)) errors.push({ field: 'quantity', message: 'quantity must be a whole number ≥ 0' });
@@ -65,6 +70,13 @@ export function validateItem(item: Item): FieldError[] {
   if (!wholeOrNull(item.value)) errors.push({ field: 'value', message: 'value must be whole cents ≥ 0' });
   if (!wholeOrNull(item.keepAtLeast)) errors.push({ field: 'keepAtLeast', message: 'keep at least must be a whole number ≥ 0' });
   if (item.outSince !== null && !Number.isSafeInteger(item.outSince)) errors.push({ field: 'outSince', message: 'out since must be a time' });
+  if (item.checkedAt !== null && !Number.isSafeInteger(item.checkedAt)) errors.push({ field: 'checkedAt', message: 'checked at must be a time' });
+  if (item.part === 'household') {
+    // Seasons, displays and condition checks are Holiday only (§3).
+    if (item.seasonId !== '') errors.push({ field: 'seasonId', message: 'a household item has no season' });
+    if (item.displayId !== '' || item.outDisplayId !== '') errors.push({ field: 'displayId', message: 'a household item has no display' });
+    if (item.checkedAt !== null) errors.push({ field: 'checkedAt', message: 'a household item has no condition check date' });
+  }
   date('lentOn', item.lentOn, 'lent on');
   date('purchaseDate', item.purchaseDate, 'purchase date');
   date('warrantyUntil', item.warrantyUntil, 'warranty until');
@@ -78,6 +90,7 @@ export const isAreaLetter = (s: string) => /^[A-Z]$/.test(s);
 export function validateArea(a: Area): FieldError[] {
   const errors: FieldError[] = [];
   if (a.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
+  if (!isPart(a.part)) errors.push(partError(a.part));
   if (a.name.trim() === '') errors.push({ field: 'name', message: 'area name is required' });
   if (!isAreaLetter(a.letter)) errors.push({ field: 'letter', message: `area letter "${a.letter}" must be one letter A–Z` });
   return errors;
@@ -97,6 +110,8 @@ export const BIN_CODE_PATTERN = /^[A-Z]-\d{2,}$/;
 export function validateBin(b: Bin): FieldError[] {
   const errors: FieldError[] = [];
   if (b.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
+  if (!isPart(b.part)) errors.push(partError(b.part));
+  if (b.part === 'household' && b.seasonId !== '') errors.push({ field: 'seasonId', message: 'a household bin has no season' });
   if (b.name.trim() === '') errors.push({ field: 'name', message: 'bin name is required' });
   if (!BIN_CODE_PATTERN.test(b.code)) errors.push({ field: 'code', message: `bin code "${b.code}" must look like A-04` });
   if (!BIN_STATES.includes(b.state)) errors.push({ field: 'state', message: `bin state "${b.state}" must be stored or out` });
@@ -110,5 +125,9 @@ export function validateSeason(s: Season): FieldError[] {
   if (s.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
   if (s.name.trim() === '') errors.push({ field: 'name', message: 'season name is required' });
   if (!SEASON_COLORS.includes(s.color)) errors.push({ field: 'color', message: `season color "${s.color}" isn't in the palette` });
+  for (const [field, label] of [['setupFrom', 'setup from'], ['takedownBy', 'takedown by']] as const) {
+    if (s[field] !== '' && !isMonthDay(s[field])) errors.push({ field, message: `${label} "${s[field]}" must be a month and day (MM-DD)` });
+  }
+  if ((s.setupFrom === '') !== (s.takedownBy === '')) errors.push({ field: 'takedownBy', message: 'a season needs both dates, or neither' });
   return errors;
 }

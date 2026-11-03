@@ -1,4 +1,4 @@
-// Restore (F18, SPEC v2.0 §7): read a backup file, then plan what replaces what. Nothing here
+// Restore (F18, SPEC v3.0 §7): read a backup file, then plan what replaces what. Nothing here
 // touches the database; data/backup.ts applies a plan in one transaction.
 import type { InventorySnapshot } from '../data/inventory';
 import { checkData, unlistedTags, type HouseholdData } from '../domain/integrity';
@@ -8,8 +8,8 @@ import type { FileProblem } from './csv';
 import { completeCategories, spellLikeLists } from './lists-csv';
 
 export interface RestorePlan {
-  /** h1: a 0.1.1 backup, converted (locations became spots in "Unsorted"). */
-  format: 'h2' | 'h1';
+  /** v2: a 0.1.2 backup, converted to two parts (everything in Household, the seasons in Holiday). */
+  format: 'v3' | 'v2';
   fileName: string;
   fileSize: number;
   data: HouseholdData;
@@ -53,11 +53,11 @@ export function planRestore(bundle: Bundle, current: Pick<InventorySnapshot, 'ca
   }
   const categories = completeCategories(bundle.hasCategories ? d.categories : current.categories, d.items);
   const tagBase = bundle.hasTags ? d.tags : current.tags;
-  const addedTags = unlistedTags({ ...d, tags: tagBase });
+  const added = unlistedTags({ ...d, tags: tagBase });
   const data: HouseholdData = {
     ...d,
     categories: categories.list,
-    tags: [...tagBase, ...addedTags.map((name, k) => ({ name, order: tagBase.length + k }))],
+    tags: [...tagBase, ...added.map((t, k) => ({ ...t, order: tagBase.filter((x) => x.part === t.part).length + added.slice(0, k).filter((x) => x.part === t.part).length }))],
     items: spellLikeLists(d.items, categories.list),
   };
   const problems = checkData(data);
@@ -72,7 +72,7 @@ export function planRestore(bundle: Bundle, current: Pick<InventorySnapshot, 'ca
       images: bundle.images,
       missingImages: bundle.missingImages,
       addedCategories: categories.added,
-      addedTags,
+      addedTags: added.map((t) => t.name),
       ...savedDate(bundle, file.name),
       warnings,
     },

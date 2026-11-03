@@ -46,8 +46,8 @@ describe('selection (F28)', () => {
 
 describe('inventory view ids (F28: header checkboxes and "Select all shown")', () => {
   const categories: Category[] = [
-    { name: 'Motors', order: 0, subcategories: ['Brushless'] },
-    { name: 'Fasteners', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Motors', order: 0, subcategories: ['Brushless'] },
+    { part: 'holiday' as const, name: 'Fasteners', order: 1, subcategories: [] },
   ];
   const items = [
     item({ id: 'm1', category: 'Motors', subcategory: 'Brushless', name: 'NEO zap' }),

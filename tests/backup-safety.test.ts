@@ -7,6 +7,7 @@ import { STORAGE_PERSISTED_EVENT, emptyStart, watchPersistentStorage } from '../
 import { loadSnapshot, replaceAll, type ReplaceAllInput } from '../src/data/inventory';
 import { photosOf } from '../src/data/photos';
 import { getSettings } from '../src/data/settings';
+import { DEFAULT_CATEGORIES } from '../src/domain/parts';
 import { readRestoreFile } from '../src/io/restore';
 import { exportBackup, exportMessage } from '../src/ui/screens/more/export-backup';
 import { area, dataset, item } from './helpers';
@@ -58,7 +59,8 @@ describe('a full backup with no items', () => {
     const s = await loadSnapshot(dst);
     expect(s.items).toEqual([]);
     expect(s.areas.map((a) => a.name)).toEqual(['Attic']);
-    expect(s.categories.length).toBe(13);
+    // Both parts' default lists (11 Household, 10 Holiday).
+    expect(s.categories.length).toBe(DEFAULT_CATEGORIES.household.length + DEFAULT_CATEGORIES.holiday.length);
     expect(s.seasons.length).toBe(10);
   });
 

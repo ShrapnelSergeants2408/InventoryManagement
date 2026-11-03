@@ -1,9 +1,10 @@
-// Backup export (F18, SPEC v2.0 §7): a full-backup ZIP or a data-only CSV, built in memory.
+// Backup export (F18, SPEC v3.0 §7): a full-backup ZIP or a data-only CSV, built in memory.
 // Settings are never included.
 import JSZip from 'jszip';
 import type { InventorySnapshot } from '../data/inventory';
 import type { HouseholdData } from '../domain/integrity';
 import { indexPlaces, itemPath, itemSeasonId, pathText } from '../domain/places';
+import { PARTS } from '../domain/types';
 import { MANIFEST_FILE, type Manifest } from './bundle';
 import { writeCsv } from './csv';
 import {
@@ -28,7 +29,7 @@ import {
 import { CATEGORIES_FILE, serializeCategoriesCsv } from './lists-csv';
 
 export const APP_NAME = 'Hiebert Home Inventory';
-export const APP_VERSION = '0.1.2';
+export const APP_VERSION = '0.1.3';
 
 export type BackupKind = 'full' | 'data';
 
@@ -97,6 +98,9 @@ export async function buildFullBackup(data: HouseholdData, images: ReadonlyMap<s
     spotCount: data.spots.length,
     binCount: data.bins.length,
     seasonCount: data.seasons.length,
+    parts: Object.fromEntries(
+      PARTS.map((p) => [p, { items: data.items.filter((i) => i.part === p).length, areas: data.areas.filter((a) => a.part === p).length, bins: data.bins.filter((b) => b.part === p).length }]),
+    ),
   };
   zip.file(MANIFEST_FILE, JSON.stringify(manifest, null, 2) + '\n', { date });
   // Bytes rather than Blobs: JSZip reads a Blob through FileReader, which Node (tests) lacks.

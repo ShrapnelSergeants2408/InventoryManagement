@@ -1,11 +1,14 @@
-// Areas, spots and bins (SPEC v2.0 §3, F7, F11). Each change runs in one transaction with the
-// records it moves, so a failure leaves the phone unchanged.
+// Areas, spots and bins (SPEC v3.0 §3, F7, F11). Areas belong to a part (spots and bins follow
+// their area); names are unique within a part, letters and bin codes across both. Each change
+// runs in one transaction with the records it moves, so a failure leaves the phone unchanged.
 import { checkName, moveBy, renumber } from '../domain/lists';
 import { ID_PREFIX, newId } from '../domain/ids';
+import { binToPart, itemToPart } from '../domain/parts';
 import { binCodeKey, defaultLetter, nextBinCode, tidyBinCode } from '../domain/places';
-import { nameKey, type Area, type Bin, type Spot } from '../domain/types';
+import { PART_NAME, nameKey, type Area, type Bin, type Part, type Spot } from '../domain/types';
 import { isAreaLetter, validateBin } from '../domain/validate';
-import type { InventoryDb } from './db';
+import { fromItemRow, toItemRow, toTagRow, type InventoryDb } from './db';
+import { ensureCategories } from './lists';
 import { deletePhotosOf } from './photos';
 
 function fail(message: string): never {
@@ -22,8 +25,10 @@ async function freshId(db: InventoryDb, prefix: string): Promise<string> {
 
 // ── Areas ──
 
-async function orderedAreas(db: InventoryDb): Promise<Area[]> {
-  return (await db.areas.toArray()).sort((a, b) => a.order - b.order);
+/** Every area (letters are unique across both parts), or one part's in walk order. */
+async function orderedAreas(db: InventoryDb, part?: Part): Promise<Area[]> {
+  const list = part ? await db.areas.where('part').equals(part).toArray() : await db.areas.toArray();
+  return list.sort((a, b) => a.order - b.order);
 }
 
 async function writeAreaOrder(db: InventoryDb, list: readonly Area[]): Promise<void> {
@@ -35,18 +40,22 @@ function checkLetter(letter: string, list: readonly Area[], selfId?: string): st
   const l = letter.trim().toUpperCase();
   if (!isAreaLetter(l)) fail(`The area letter must be one letter A–Z.`);
   const other = list.find((a) => a.letter === l && a.id !== selfId);
-  if (other) fail(`The letter ${l} is already used by “${other.name}”.`);
+  if (other) fail(`The letter ${l} is already used by “${other.name}”${other.part === list.find((a) => a.id === selfId)?.part ? '' : ` in ${PART_NAME[other.part]}`}.`);
   return l;
 }
 
-/** Adds an area at the end of the walk order. Its letter defaults to the first free one in its name. */
-export async function addArea(db: InventoryDb, v: { name: string; letter?: string; notes?: string }, now = Date.now()): Promise<Area> {
+/**
+ * Adds an area at the end of its part's walk order. Its letter defaults to the first letter of
+ * its name that's free in either part (§3).
+ */
+export async function addArea(db: InventoryDb, part: Part, v: { name: string; letter?: string; notes?: string }, now = Date.now()): Promise<Area> {
   return db.transaction('rw', db.areas, db.settings, async () => {
-    const list = await orderedAreas(db);
+    const all = await orderedAreas(db);
+    const list = all.filter((a) => a.part === part);
     const checked = checkName(v.name, list.map((a) => a.name), 'Area');
     if (!checked.ok) return fail(checked.error);
-    const letter = v.letter?.trim() ? checkLetter(v.letter, list) : (defaultLetter(checked.name, list.map((a) => a.letter)) ?? fail('All 26 area letters are used.'));
-    const area: Area = { id: await freshId(db, ID_PREFIX.area), name: checked.name, letter, order: list.length, notes: (v.notes ?? '').trim() };
+    const letter = v.letter?.trim() ? checkLetter(v.letter, all) : (defaultLetter(checked.name, all.map((a) => a.letter)) ?? fail('All 26 area letters are used, across both parts.'));
+    const area: Area = { id: await freshId(db, ID_PREFIX.area), part, name: checked.name, letter, order: list.length, notes: (v.notes ?? '').trim() };
     await db.areas.add(area);
     await touch(db, now);
     return area;
@@ -56,41 +65,43 @@ export async function addArea(db: InventoryDb, v: { name: string; letter?: strin
 /** Renames an area or changes its letter or notes. Existing bin codes keep their letter (§3). */
 export async function updateArea(db: InventoryDb, id: string, v: { name: string; letter: string; notes: string }, now = Date.now()): Promise<Area> {
   return db.transaction('rw', db.areas, db.settings, async () => {
-    const list = await orderedAreas(db);
-    const area = list.find((a) => a.id === id) ?? fail('This area was removed meanwhile.');
-    const checked = checkName(v.name, list.map((a) => a.name), 'Area', area.name);
+    const all = await orderedAreas(db);
+    const area = all.find((a) => a.id === id) ?? fail('This area was removed meanwhile.');
+    const checked = checkName(v.name, all.filter((a) => a.part === area.part).map((a) => a.name), 'Area', area.name);
     if (!checked.ok) return fail(checked.error);
-    const next: Area = { ...area, name: checked.name, letter: checkLetter(v.letter, list, id), notes: v.notes.trim() };
+    const next: Area = { ...area, name: checked.name, letter: checkLetter(v.letter, all, id), notes: v.notes.trim() };
     await db.areas.put(next);
     await touch(db, now);
     return next;
   });
 }
 
-/** Reorder mode ▲/▼: moves an area one place in the walk order. */
+/** Reorder mode ▲/▼: moves an area one place in its part's walk order. */
 export async function moveArea(db: InventoryDb, id: string, delta: number, now = Date.now()): Promise<void> {
   await db.transaction('rw', db.areas, db.settings, async () => {
-    const list = await orderedAreas(db);
+    const area = (await db.areas.get(id)) ?? fail('This area was removed meanwhile.');
+    const list = await orderedAreas(db, area.part);
     const at = list.findIndex((a) => a.id === id);
-    if (at < 0) fail('This area was removed meanwhile.');
     await writeAreaOrder(db, moveBy(list, at, delta));
     await touch(db, now);
   });
 }
 
 /**
- * Removes an area (F11). One that still has spots needs `moveTo`, another area: its spots move
- * there, after that area's own, keeping their bins and items. Returns how many spots moved.
+ * Removes an area (F11). One that still has spots needs `moveTo`, another area of the same part:
+ * its spots move there, after that area's own, keeping their bins and items. Returns how many
+ * spots moved.
  */
 export async function removeArea(db: InventoryDb, id: string, moveTo: string | null, now = Date.now()): Promise<number> {
   return db.transaction('rw', db.areas, db.spots, db.settings, async () => {
-    const list = await orderedAreas(db);
+    const found = (await db.areas.get(id)) ?? fail('This area was removed meanwhile.');
+    const list = await orderedAreas(db, found.part);
     const area = list.find((a) => a.id === id) ?? fail('This area was removed meanwhile.');
     const spots = (await db.spots.where('areaId').equals(id).toArray()).sort((a, b) => a.order - b.order);
     if (spots.length > 0) {
       if (!moveTo) fail(`“${area.name}” still has ${spots.length === 1 ? '1 spot' : `${spots.length} spots`}; choose an area to move ${spots.length === 1 ? 'it' : 'them'} to.`);
       if (moveTo === id) fail('Choose a different area to move its spots to.');
-      const target = list.find((a) => a.id === moveTo) ?? fail('The area to move to was removed meanwhile.');
+      const target = list.find((a) => a.id === moveTo) ?? fail('The area to move to was removed meanwhile, or is in the other part.');
       const there = await db.spots.where('areaId').equals(moveTo).toArray();
       const clash = spots.find((s) => there.some((t) => nameKey(t.name) === nameKey(s.name)));
       if (clash) fail(`“${target.name}” already has a spot called “${clash.name}”. Rename one of them first.`);
@@ -152,14 +163,15 @@ export async function moveSpot(db: InventoryDb, id: string, delta: number, now =
 }
 
 /**
- * Move spot to another area (sorting the H1 "Unsorted" spots, Dan 2026-11-02). It goes last in
- * the new area, and its bins and items go with it.
+ * Move spot to another area of the same part (sorting the H1 "Unsorted" spots, Dan 2026-11-02;
+ * spots don't change part, §3). It goes last in the new area, and its bins and items go with it.
  */
 export async function moveSpotToArea(db: InventoryDb, id: string, areaId: string, now = Date.now()): Promise<Spot> {
   return db.transaction('rw', db.areas, db.spots, db.settings, async () => {
     const spot = (await db.spots.get(id)) ?? fail('This spot was removed meanwhile.');
     if (spot.areaId === areaId) return spot;
     const area = (await db.areas.get(areaId)) ?? fail('That area was removed meanwhile.');
+    if (area.part !== (await db.areas.get(spot.areaId))?.part) fail(`“${area.name}” is in ${PART_NAME[area.part]}; a spot stays in its part.`);
     const there = await spotsIn(db, areaId);
     if (there.some((s) => nameKey(s.name) === nameKey(spot.name))) fail(`“${area.name}” already has a spot called “${spot.name}”. Rename one of them first.`);
     const next = { ...spot, areaId, order: there.length };
@@ -176,10 +188,13 @@ export async function moveSpotToArea(db: InventoryDb, id: string, areaId: string
  * bins and items moved.
  */
 export async function removeSpot(db: InventoryDb, id: string, moveTo: string, now = Date.now()): Promise<{ bins: number; items: number }> {
-  return db.transaction('rw', [db.spots, db.bins, db.items, db.pictures, db.settings], async () => {
+  return db.transaction('rw', [db.areas, db.spots, db.bins, db.items, db.pictures, db.settings], async () => {
     const spot = (await db.spots.get(id)) ?? fail('This spot was removed meanwhile.');
     if (moveTo === id) fail('Choose a different spot to move its contents to.');
-    if (moveTo !== '' && !(await db.spots.get(moveTo))) fail('The spot to move to was removed meanwhile.');
+    if (moveTo !== '') {
+      const target = (await db.spots.get(moveTo)) ?? fail('The spot to move to was removed meanwhile.');
+      if ((await db.areas.get(target.areaId))?.part !== (await db.areas.get(spot.areaId))?.part) fail('Choose a spot in the same part.');
+    }
     const bins = await db.bins.where('spotId').equals(id).toArray();
     const items = await db.items.where('spotId').equals(id).toArray();
     await db.bins.bulkPut(bins.map((b) => ({ ...b, spotId: moveTo })));
@@ -204,28 +219,39 @@ export async function suggestBinCode(db: InventoryDb, place: { spotId: string } 
 
 export type BinFields = Omit<Bin, 'id' | 'labelPrintedAt' | 'labelContents'>;
 
+/** The part a spot is in (its area's). */
+async function partOfSpot(db: InventoryDb, spotId: string): Promise<Part> {
+  const spot = (await db.spots.get(spotId)) ?? fail('That spot was removed meanwhile.');
+  return (await db.areas.get(spot.areaId))?.part ?? fail('That spot’s area was removed meanwhile.');
+}
+
 async function checkBin(db: InventoryDb, bin: Bin): Promise<Bin> {
   const tidy: Bin = { ...bin, code: tidyBinCode(bin.code), name: bin.name.trim(), notes: bin.notes.trim() };
   const errors = validateBin(tidy);
   if (errors.length) fail(errors.map((e) => e.message).join('; '));
-  if (tidy.spotId && !(await db.spots.get(tidy.spotId))) fail('That spot was removed meanwhile.');
+  const spotPart = tidy.spotId ? await partOfSpot(db, tidy.spotId) : tidy.part;
+  if (spotPart !== tidy.part) fail(`That spot is in ${PART_NAME[spotPart]}; use Move bin to move the bin there.`);
   if (tidy.seasonId && !(await db.seasons.get(tidy.seasonId))) fail('That season was removed meanwhile.');
   const other = (await db.bins.toArray()).find((b) => b.id !== tidy.id && binCodeKey(b.code) === binCodeKey(tidy.code));
   if (other) fail(`The code ${tidy.code} is already on “${other.name}”.`);
   return tidy;
 }
 
-const binTables = (db: InventoryDb) => [db.bins, db.spots, db.seasons, db.tags, db.settings];
+const binTables = (db: InventoryDb) => [db.bins, db.areas, db.spots, db.seasons, db.tagList, db.settings];
 
-/** Adds a bin. A blank code takes the next free one in the spot's area (§3, D4). */
-export async function addBin(db: InventoryDb, v: BinFields & { areaId?: string }, now = Date.now()): Promise<Bin> {
-  return db.transaction('rw', [...binTables(db), db.areas], async () => {
+/**
+ * Adds a bin. Its part is its spot's (or, with no spot, the given area's, else `part`). A blank
+ * code takes the next free one in the spot's area (§3, D4).
+ */
+export async function addBin(db: InventoryDb, v: Omit<BinFields, 'part'> & { part?: Part; areaId?: string }, now = Date.now()): Promise<Bin> {
+  return db.transaction('rw', binTables(db), async () => {
     let code = v.code.trim();
     if (code === '') code = (await suggestBinCode(db, v.spotId ? { spotId: v.spotId } : { areaId: v.areaId ?? '' })) ?? fail('Choose a spot or an area, so the bin gets a code.');
-    const { areaId: _a, ...fields } = v;
-    const bin = await checkBin(db, { ...fields, code, id: await freshId(db, ID_PREFIX.bin), labelPrintedAt: null, labelContents: null });
+    const { areaId, part: given, ...fields } = v;
+    const part = v.spotId ? await partOfSpot(db, v.spotId) : ((areaId ? (await db.areas.get(areaId))?.part : undefined) ?? given ?? fail('Choose a spot or an area for the bin.'));
+    const bin = await checkBin(db, { ...fields, part, code, id: await freshId(db, ID_PREFIX.bin), labelPrintedAt: null, labelContents: null });
     await db.bins.add(bin);
-    await addTagsToList(db, bin.tags);
+    await addTagsToList(db, bin.part, bin.tags);
     await touch(db, now);
     return bin;
   });
@@ -235,21 +261,33 @@ export async function addBin(db: InventoryDb, v: BinFields & { areaId?: string }
 export async function updateBin(db: InventoryDb, id: string, v: BinFields, now = Date.now()): Promise<Bin> {
   return db.transaction('rw', binTables(db), async () => {
     const row = (await db.bins.get(id)) ?? fail('This bin was deleted meanwhile.');
-    const bin = await checkBin(db, { ...row, ...v, id });
+    // The part only changes with Move bin.
+    const bin = await checkBin(db, { ...row, ...v, id, part: row.part });
     await db.bins.put(bin);
-    await addTagsToList(db, bin.tags);
+    await addTagsToList(db, bin.part, bin.tags);
     await touch(db, now);
     return bin;
   });
 }
 
-/** Move bin (F7): to another spot, or to no spot (''). Its items go with it; its code stays. */
+/**
+ * Move bin (F7): to another spot, or to no spot (''). Its items go with it; its code stays. A
+ * spot in the other part moves the bin and everything in it to that part (§3): seasons and tags
+ * are cleared, categories matched by name, else "Other".
+ */
 export async function moveBin(db: InventoryDb, id: string, spotId: string, now = Date.now()): Promise<Bin> {
-  return db.transaction('rw', db.bins, db.spots, db.settings, async () => {
+  return db.transaction('rw', [db.bins, db.areas, db.spots, db.items, db.categoryList, db.settings], async () => {
     const row = (await db.bins.get(id)) ?? fail('This bin was deleted meanwhile.');
-    if (spotId && !(await db.spots.get(spotId))) fail('That spot was removed meanwhile.');
-    const next = { ...row, spotId };
+    const part = spotId ? await partOfSpot(db, spotId) : row.part;
+    const next = { ...binToPart(row, part), spotId };
     await db.bins.put(next);
+    if (part !== row.part) {
+      const categories = await db.categoryList.where('part').equals(part).toArray();
+      const inside = await db.items.where('binId').equals(id).toArray();
+      const moved = inside.map((i) => itemToPart(fromItemRow(i), part, categories));
+      await ensureCategories(db, part, moved.map((i) => i.category));
+      await db.items.bulkPut(moved.map((i) => toItemRow(i, now)));
+    }
     await touch(db, now);
     return next;
   });
@@ -276,16 +314,16 @@ export async function deleteBin(db: InventoryDb, id: string, items: 'to-spot' | 
   });
 }
 
-/** Appends tag names the Tags list doesn't have yet (a tag typed on a record). Inside a rw transaction over tags. */
-export async function addTagsToList(db: InventoryDb, tags: readonly string[]): Promise<void> {
+/** Appends tag names the part's Tags list doesn't have yet (a tag typed on a record). Inside a rw transaction over tagList. */
+export async function addTagsToList(db: InventoryDb, part: Part, tags: readonly string[]): Promise<void> {
   if (tags.length === 0) return;
-  const list = await db.tags.toArray();
+  const list = await db.tagList.where('part').equals(part).toArray();
   const keys = new Set(list.map((t) => t.key));
   let order = list.length;
   for (const name of tags) {
     const key = nameKey(name);
     if (keys.has(key)) continue;
     keys.add(key);
-    await db.tags.add({ key, name: name.trim(), order: order++ });
+    await db.tagList.add(toTagRow({ part, name: name.trim(), order: order++ }));
   }
 }

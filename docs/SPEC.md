@@ -20,6 +20,7 @@
 **Built so far:**
 - **H1** (app 0.1.1, `docs/reviews/H1.md`): the FRC features stripped, rebranded.
 - **H2a** (app 0.1.2, `docs/reviews/H2a.md`): the v2.0 data model in one part — areas, spots, bins, seasons, tags, every item field, several photos, the §7 backup, F7, F11, F16. Find, Browse, bin and spot scanning and labels (old H2b) were not built.
+- **H3** (app 0.1.3, `docs/reviews/H3.md`, waiting for Dan's review): schema v3 with the two parts and the 0.1.2 upgrade, F21 (switch, both tab bars, Undo toast), Set up for both parts, F1, F2, F3, F10 for bins, spots and items, F11 per part, season dates and the Season home (seasons on now, Coming up), the read-only Lists tabs, and the §7 part columns. Details decided along the way are listed there for Dan to confirm.
 
 ---
 
@@ -253,7 +254,7 @@ Restore reads a 0.1.2 backup ZIP the same way. **H1 (0.1.1) backup ZIPs are no l
 - **Bin contents summary** (labels, bin cards): items in the bin with status `stored`, the largest quantities first, then A–Z. Each is shown as "Name ×3" or "Name ~40". Bulk lines come first when tied.
 - **Label out of date:** a bin whose current contents summary differs from `labelContents` shows "Label out of date" with **Reprint**.
 - **Ids in QR codes** (§9): `hhi:` + the record id.
-- **The current season** (Holiday): the season whose window (setupFrom to takedownBy, wrapping over New Year) contains today; if several, the one whose run is underway, else the one that started most recently; if none, the next to start. The Holiday home can show another.
+- **Seasons on now** (Holiday): every season whose window (setupFrom to takedownBy, wrapping over New Year) contains today, or whose run this year is underway (not `planned` or `done`). Several can be on at once (late November: Fall, Thanksgiving and Christmas). The Holiday home leads with the one needing action soonest: a setup starting today or underway first, then the nearest takedown date; the others are listed under **Also now** (Dan, 2026-11-03, H3 mockups). If none is on, the home leads with the next to start.
 - **A season's run:** the run for this year, created when someone first taps **Start setup**. Setup progress = bins of the season set to `out`, items set `out`, and setup tasks ticked. Takedown progress = items back to `stored`, items checked (F9), bins back to `stored`, and takedown tasks ticked.
 
 ## 5. Features
@@ -262,7 +263,7 @@ Restore reads a 0.1.2 backup ZIP the same way. **H1 (0.1.1) backup ZIPs are no l
 
 | # | Feature | Acceptance criteria |
 |---|---|---|
-| F21 | Part switch | **New.** A two-way switch at the top of the main screens: **Household \| Holiday**, the current part in its color (§11). Switching changes the tab bar, the lists and the search scope, and keeps nothing open from the other part. The phone remembers the last part used and opens in it. Scanning a label or typing a bin code from the other part opens that record and switches part, with a toast ("Switched to Holiday"). Detail screens show the part's color in the top bar so it's always clear which part you're in |
+| F21 | Part switch | **New.** A two-way switch at the top of the main screens: **Household \| Holiday**, the current part in its color (§11). Switching changes the tab bar, the lists and the search scope, and keeps nothing open from the other part. The phone remembers the last part used and opens in it. Scanning a label or typing a bin code from the other part opens that record and switches part, with a toast ("Switched to Holiday") whose **Undo** goes back to the screen and part you were in (Dan, 2026-11-03). Detail screens show the part's color in the top bar so it's always clear which part you're in |
 | F1 | Find | One search box over the **current part**: item names, notes, tags, barcode, model/serial, bin codes and names, spots, areas, categories, and in Holiday seasons and displays. Results update as you type, grouped Items / Bins / Spots, each with its path (§4) and a thumbnail. Below them, one line: "3 matches in Holiday" opens the other part's results. With the box empty and focused: the 8 records of this part most recently opened on this phone |
 | F2 | Browse | Views, remembered per part: **By place** (Area › Spot › Bin, collapsible, walk order; loose items under their spot; "No home yet" last), **By category**, and in Holiday **By season** (season › bin › item, plus "Not in a bin") and **By display** (display › items that go there). Filters: area, status (stored / out / lent), condition (not OK), tag, and in Holiday season |
 | F3 | Scan | Aim-and-hold scanner (FRC F21 rules: center square, 0.6 s hold). `hhi:bn-…` opens the bin, `hhi:sp-…` the spot, `hhi:it-…` the item, in whichever part (F21). Any other code is matched against item barcodes in both parts, and an unknown one offers **Attach to an item** or **Add item with this barcode** (in the current part). Codes can also be typed (a bin code like "A-04" works). Torch button |
@@ -275,7 +276,7 @@ Restore reads a 0.1.2 backup ZIP the same way. **H1 (0.1.1) backup ZIPs are no l
 
 | # | Feature | Acceptance criteria |
 |---|---|---|
-| F23 | Season calendar | **New.** The Holiday home (§10) shows the current season with its dates and phase ("Christmas · setup from Nov 25 · not started"), and **Coming up**: the next three seasons with their setup dates. **More › Seasons** edits each season's dates. **Add to Calendar** makes an `.ics` file (iOS opens it in Calendar) with each season's setup and takedown dates as yearly all-day events, so reminders come from the iPhone's Calendar. In-app push reminders are not in this release (§13) |
+| F23 | Season calendar | **New.** The Holiday home (§10) shows the seasons on now (§4), each with its dates and phase ("Christmas · setup from Nov 25 · not started"), and **Coming up**: the next three seasons with their setup dates. **More › Seasons** edits each season's dates. **Add to Calendar** makes an `.ics` file (iOS opens it in Calendar) with each season's setup and takedown dates as yearly all-day events, so reminders come from the iPhone's Calendar. In-app push reminders are not in this release (§13) |
 | F25 | Setup list | **New.** On a season, **Start setup** creates this year's run (§3) and opens its setup list, three sections with progress ("12 of 30"): **Bins to bring out** (the season's bins, by place, each with **Out** to set the bin `out`, or scan the bin), **Put out** (the season's items by display, then "No display", each ticked to set it `out` on its display; **Unpack a bin** (F5) does a whole bin at once), and **Tasks** (setup tasks, ticked). Setup photos (F8) for each display are one tap away. **Finish setup** sets the run to `up`; anything still unticked is listed but doesn't block. Season tasks are added, edited and reordered on the season (More › Seasons) or straight from the list |
 | F6 | Takedown list | (Was "Repack checklist".) On a season whose run is `up`, **Start takedown** opens the takedown list: **Pack** (items still `out`, grouped by their home bin: "A-04 Christmas 4 · 3 still out"; tap **Put back**, or open the bin and pack it, F4), **Check** (F9: items not checked this run), **Bins to put away** (bins `out` → `stored`, scan or tap), and **Tasks** (takedown tasks). Scanning a bin in this view shows that bin's missing items. When nothing is out, it shows "All packed" and **Finish** sets the run to `done` |
 | F4 | Pack a bin | On a bin, **Pack**: a list of what's in it, and four ways to add. (a) **Scan** an item label or barcode. (b) **Search**. (c) **From "out"**: items of the bin's season that are out, with their home in this bin first, then others, ticked to put in. (d) **Quick add**: camera first, then name, quantity (with "approx"), category. The season defaults to the bin's. Items added get status `stored` and this bin as home. Moving an item from another bin asks first ("Snowman lights is in A-07. Move it here?") |
@@ -383,11 +384,13 @@ One file holds both parts.
 
 | Tab | Household | Holiday |
 |---|---|---|
-| 1 | **Find** (home): search, recently viewed, Browse | **Season** (home): the current season's card with its phase and the next step (Start setup / Setup list / Start takedown / Takedown list), Coming up (F23), Find below |
-| 2 | **Scan** (large center button) | **Find**: search, recently viewed, Browse |
-| 3 | **Lists**: Out on loan, Warranties ending, later Shopping | **Scan** (large center button) |
-| 4 | **More** | **Lists**: To buy (F24), Needs attention (F9), Out now (items `out`, by display) |
-| 5 | | **More** |
+| 1 | **Find** (home): search, recently viewed | **Season** (home): the lead season's card with its phase and the next step (Start setup / Setup list / Start takedown / Takedown list), **Also now** (the other seasons on now, each with its next step), **Coming up** (F23) |
+| 2 | **Browse** (F2) | **Find**: search, recently viewed, Browse |
+| 3 | **Scan** (large center button) | **Scan** (large center button) |
+| 4 | **Lists**: Out on loan, Warranties ending, later Shopping | **Lists**: To buy (F24), Needs attention (F9), Out now (items `out`, by display) |
+| 5 | **More** | **More** |
+
+Both parts have five tabs so that Scan is the center button in the same place in both (Dan, 2026-11-03).
 
 **More** (per part): Areas & spots, Categories, Tags, Labels, Export & backup, Activity, Settings, About, Sign out; Holiday adds Seasons and Displays.
 
@@ -399,14 +402,14 @@ Detail screens (item, bin, spot, display):
 - recent activity;
 - a sticky bottom action bar with at most 3 buttons plus "More…".
 
-**Mockups** of the part switch, both tab bars, the Holiday home, the setup list and the takedown list come at the start of H3, before their code (§15).
+**Mockups** of the part switch, both tab bars, the Holiday home, the setup list, the takedown list and a bin opened across parts were approved by Dan on 2026-11-03: `docs/mockups/h3/` and the H3 design canvas.
 
 ## 11. UI conventions
 
 Adapted from FRC §17.
 
 - **Theme:** light. The ground, card, text and fonts are as FRC (Atkinson Hyperlegible body text, Barlow Condensed for headings and numbers).
-- **Part colors:** each part has an accent color for its switch segment, top bar and primary buttons, so the part is obvious at a glance. Chosen with the H3 mockups (§17). Neither is used for status or condition.
+- **Part colors:** each part has an accent color for its switch segment, top bar, Scan button and primary buttons, so the part is obvious at a glance: **Household rust `#8a3315`** (the app's current brand color) and **Holiday evergreen `#1f4d3a`** (Dan, 2026-11-03). Both are darker than every season color, and neither is used for status or condition.
 - **Status chips** use word + icon, never color alone:
   - **Out:** filled blue-gray, arrow-out icon, "OUT · Mantel".
   - **Lent:** outline, hand icon, "LENT · Mike".
@@ -537,11 +540,12 @@ Same routine as HANDOFF §4: spec first, a branch per milestone from `main` (nev
 | 2026-11-03 | The family uses both parts, with live sync, offline first, on the Cloudflare free tier; sign-in stays emailed codes (Cloudflare Access) for the family's emails, not a shared household code | Dan |
 | 2026-11-03 | Order: split, then sync; the Holiday part usable for Christmas setup by late Nov 2026 (sync may follow). The phone's data is test data. Write SPEC v3.0 before more code | Dan |
 | 2026-11-03 | SPEC v3.0 §17 questions 1–8: every proposed answer accepted (area letters across parts, default categories and season dates, moving between parts, setup list order, `.ics` calendar, Holiday tab bar, 0.1.2 upgrade into Household, targets) | Dan |
+| 2026-11-03 | H3 mockups approved, with three additions: Household also gets five tabs (Find, Browse, Scan, Lists, More) so Scan sits in the center in both parts; the Holiday home shows every season on now (lead card plus Also now); the "Switched to …" toast has Undo. Part colors: Household rust #8a3315, Holiday evergreen #1f4d3a | Dan |
 
 ## 17. Open questions
 
 The eight questions raised with the draft were settled on 2026-11-03: Dan accepted every proposed answer (decision log). In short: area letters unique across both parts (letter pairs if ever needed); the default categories and season dates in §3; items and bins can move between parts, clearing Holiday fields; the setup list order bins → items by display → tasks; the `.ics` calendar file instead of in-app reminders; the Holiday tab bar Season, Find, Scan, Lists, More; the 0.1.2 data upgraded into Household, with H1 backups no longer read; the targets in §15 (Christmas setup from about Nov 25).
 
 To settle during the work:
-- Part colors and the app icon (H3 mockups).
+- The app icon (H3).
 - The free email sender, only if the §12.4 fallback is needed (H5 spike).

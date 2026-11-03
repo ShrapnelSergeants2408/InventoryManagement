@@ -7,9 +7,9 @@ import { household, item } from './helpers';
 const h = household();
 
 const categories: Category[] = [
-  { name: 'Decorations', order: 0, subcategories: ['Ornaments', 'Garland'] },
-  { name: 'Tools', order: 1, subcategories: ['Power', 'Hand'] },
-  { name: 'Empty', order: 2, subcategories: [] },
+  { part: 'holiday' as const, name: 'Decorations', order: 0, subcategories: ['Ornaments', 'Garland'] },
+  { part: 'holiday' as const, name: 'Tools', order: 1, subcategories: ['Power', 'Hand'] },
+  { part: 'holiday' as const, name: 'Empty', order: 2, subcategories: [] },
 ];
 
 const items = [
@@ -96,7 +96,7 @@ describe('search and filters in the grouped list (F1, F2)', () => {
 describe('filter options', () => {
   it('areas and seasons in use in their order, with none last; tags in list order then unlisted', () => {
     const tagged = [...items, item({ id: 'x', tags: ['Outdoor', 'kids'] }), item({ id: 'y', tags: ['Fragile'] })];
-    const o = filterOptions(tagged, categories, h, h.seasons, [{ name: 'Fragile', order: 0 }, { name: 'Outdoor', order: 1 }, { name: 'Unused', order: 2 }]);
+    const o = filterOptions(tagged, categories, h, h.seasons, [{ part: 'holiday', name: 'Fragile', order: 0 }, { part: 'holiday', name: 'Outdoor', order: 1 }, { part: 'holiday', name: 'Unused', order: 2 }]);
     expect(o.areas).toEqual(['ar-attic', 'ar-garage', '']);
     expect(o.seasons).toEqual(['se-hall', 'se-xmas', '']);
     expect(o.tags).toEqual(['Fragile', 'Outdoor', 'kids']);

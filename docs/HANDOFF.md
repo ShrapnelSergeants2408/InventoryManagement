@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: Dan, or a future Claude Code session. It covers what the app is, where everything lives and how to change it safely.
 
-Written 2026-11-02, updated 2026-11-03 at app version 0.1.2 (SPEC v3.0: the app is splitting into Household and Holiday parts; next milestone H3 of H0–H9).
+Written 2026-11-02, updated 2026-11-03 at app version 0.1.3 (SPEC v3.0, milestone H3: the Household and Holiday parts; next milestone H4, the Holiday setup).
 
 ---
 
@@ -15,7 +15,7 @@ A household inventory web app (PWA): what's in each bin and on each shelf, with 
 | **Code** | GitHub, `dhiebert-whs/HouseholdInventory` (`upstream` remote = the FRC app, for reference only; nothing is merged back) |
 | **Users** | The family, each on an iPhone, the app added to the home screen from Safari |
 | **Where the data lives (now)** | In each phone's browser storage (IndexedDB via Dexie, database `home-inventory`). Until H5 there is **no sync**: each phone has its own copy, and backups are the only way to move data |
-| **Where it's going** | H3 splits the app into Household and Holiday parts with a switch; H4 adds the Holiday setup workflow; H5 adds a Cloudflare Worker + D1 + R2 server and sync between phones (SPEC v3.0 §12, §15) |
+| **Where it's going** | H3 (0.1.3) split the app into Household and Holiday parts with a switch; H4 adds the Holiday setup workflow; H5 adds a Cloudflare Worker + D1 + R2 server and sync between phones (SPEC v3.0 §12, §15) |
 | **Stack** | TypeScript, Preact, Vite; Dexie; Papa Parse (CSV), JSZip, a QR library, a barcode scanner with the zxing fallback (iPhone Safari has no BarcodeDetector); Vitest |
 
 ## 2. Where everything is
@@ -43,7 +43,7 @@ A browser check runs on a built app:
 
 ```
 npm run build
-node scripts/h2a-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
+node scripts/h3-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
 ```
 
 It prints one PASS, FAIL or INFO line per check and exits 1 if anything failed. On Windows, pass folder arguments as Windows paths.
@@ -63,9 +63,15 @@ The routine that kept the FRC app's data safe:
 
 ## 5. Changing the database (the risky part)
 
-- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 2: v1 was H1, v2 is H2a with its upgrade from v1, tested in `tests/upgrade-h1.test.ts` and the H2a browser check). Add a new `this.version(n)` with an `.upgrade()`; never edit an old one once a phone has real data. A table whose primary key changes needs a new table name (as `photos` → `pictures`).
+- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 3):
+  - v1 was H1;
+  - v2 is H2a, with its upgrade from v1 (`tests/upgrade-h1.test.ts`);
+  - v3 is H3, the two parts, with its upgrade from v2 (`tests/upgrade-v2.test.ts` and part 1 of `scripts/h3-ui-check.mjs`).
+- Add a new `this.version(n)` with an `.upgrade()`; never edit an old one once a phone has real data.
+- A table whose primary key changes needs a new table name: `photos` → `pictures` (H2a), and `categories` → `categoryList`, `tags` → `tagList` (H3, keyed by part and name).
+- The 0.1.2 → 0.1.3 conversion lives in `src/domain/parts.ts` (`fromV2`), so the upgrade and restoring a 0.1.2 backup can't drift apart. 0.1.1 backups are no longer read.
 - The app writes its schema version into the database. An **older** cached copy that finds a newer database shows "update needed" and writes nothing. Keep this guard working.
-- Until H4, a phone's database is its only copy: make a **Full backup** on the phone before installing an update that changes the schema.
+- Until H5, a phone's database is its only copy: make a **Full backup** on the phone before installing an update that changes the schema.
 
 ## 6. Updating the app on an iPhone
 
@@ -73,9 +79,9 @@ The routine that kept the FRC app's data safe:
 2. If it doesn't appear: close the app (swipe up), open it again, wait a few seconds, and repeat once.
 3. **More › App version** shows the version and build time: check it's the new one.
 
-Never remove the home-screen app or clear Safari's website data for its address before a **Full backup**: until H4 that erases the inventory on that phone.
+Never remove the home-screen app or clear Safari's website data for its address before a **Full backup**: until H5 that erases the inventory on that phone.
 
-## 7. Keeping the data safe (until H4)
+## 7. Keeping the data safe (until H5)
 
 - **More › Backup & restore › Full backup (ZIP)**, then save to Files or iCloud Drive. The reminder is monthly by default (More › Settings; 0 turns it off).
 - **Restore** replaces everything on the phone with a backup, after a comparison and an "I understand" tick.

@@ -14,6 +14,7 @@ import { useDb, useNow, useSettings, useSnapshot, useStorageStatus, type Storage
 import { Icon } from '../../icons';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
+import { getPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { exportBackup, exportMessage } from './export-backup';
@@ -107,7 +108,7 @@ export function BackupScreen() {
     }
   });
 
-  const top = <TopBar title="Backup & restore" back={<BackButton label="More" fallback={href.tab('more')} />} />;
+  const top = <TopBar title="Backup & restore" back={<BackButton label="More" fallback={href.tab(getPart(), 'more')} />} />;
   if (live.state === 'error') {
     return (
       <>
@@ -174,8 +175,8 @@ export function BackupScreen() {
               </h2>
             </div>
             <p class="bk-p">
-              Replaces <strong>all</strong> inventory on this phone with a full backup (ZIP). A backup from version 0.1.1 also works: its locations become spots in an
-              “Unsorted” area.
+              Replaces <strong>all</strong> inventory on this phone, both parts, with a full backup (ZIP). A backup from version 0.1.2 also works: everything in it goes
+              to Household and its seasons to Holiday. Backups from 0.1.1 can no longer be read.
             </p>
             <button type="button" class="btn lg" disabled={!!busy || !phone} onClick={restorePicker.open}>
               <Icon name="upload" class="ic flip" />

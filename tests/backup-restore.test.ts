@@ -1,5 +1,6 @@
-// Full backup and restore (SPEC v2.0 F18, §7): every record and photo round-trips with nothing
-// lost, an H1 (0.1.1) backup still restores, and a restore never half-applies.
+// Full backup and restore (SPEC v3.0 F18, §7): both parts' records and photos round-trip with
+// nothing lost, a 0.1.2 backup restores the way the phone upgrades (§3), a 0.1.1 backup is
+// refused clearly, and a restore never half-applies.
 import 'fake-indexeddb/auto';
 import JSZip from 'jszip';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -8,7 +9,7 @@ import { InventoryDb } from '../src/data/db';
 import { loadSnapshot, replaceAll, type ReplaceAllInput } from '../src/data/inventory';
 import { photosOf } from '../src/data/photos';
 import { getSettings } from '../src/data/settings';
-import { DEFAULT_SEASONS } from '../src/domain/places';
+import { DEFAULT_CATEGORIES } from '../src/domain/parts';
 import { backupFileName, buildDataCsv, dateFromFileName } from '../src/io/backup';
 import { readRestoreFile, looksLikeZip, type RestorePlan } from '../src/io/restore';
 import { area, bin, dataset, item, season, spot } from './helpers';
@@ -30,9 +31,16 @@ const zipBytes = (z: JSZip) => z.generateAsync({ type: 'uint8array' });
 
 const TRICKY = 'Goes on the "big" mantel, left side.\nLine two, with a comma\r\nLine three: 6 × ¾″ hooks — ünïcödé 🎄';
 
-/** A household using every field: areas, spots, bins, seasons, tags, records, photos on four kinds of owner. */
+/**
+ * Both parts using every field: areas, spots, bins, seasons, tags, records, photos on four kinds
+ * of owner. Holiday: the Attic, Christmas and Halloween. Household: the Garage, the drill, a tote.
+ */
 function phoneData(): ReplaceAllInput {
-  const areas = [area({ id: 'ar-ATTIC001', name: 'Attic', letter: 'A', order: 0, notes: 'pull-down "ladder"' }), area({ id: 'ar-GARAGE01', name: 'Garage', letter: 'G', order: 1 }), area({ id: 'ar-EMPTY001', name: 'Basement', letter: 'B', order: 2 })];
+  const areas = [
+    area({ id: 'ar-ATTIC001', name: 'Attic', letter: 'A', order: 0, notes: 'pull-down "ladder"' }),
+    area({ id: 'ar-GARAGE01', part: 'household', name: 'Garage', letter: 'G', order: 0 }),
+    area({ id: 'ar-EMPTY001', name: 'Basement', letter: 'B', order: 1 }),
+  ];
   const spots = [
     spot({ id: 'sp-SHELFB01', areaId: 'ar-ATTIC001', name: 'Shelf B', order: 0, notes: TRICKY }),
     spot({ id: 'sp-PEGBRD01', areaId: 'ar-GARAGE01', name: 'Pegboard', order: 0 }),
@@ -41,12 +49,12 @@ function phoneData(): ReplaceAllInput {
   const seasons = [season({ id: 'se-HALLOW01', name: 'Halloween', order: 0, color: 'orange', setupNotes: 'Porch: skeleton left' }), season({ id: 'se-XMAS0001', name: 'Christmas', order: 1, color: 'red' })];
   const bins = [
     bin({ id: 'bn-XMAS0004', code: 'A-04', name: 'Christmas 4: lights & garland', spotId: 'sp-SHELFB01', seasonId: 'se-XMAS0001', tags: ['Fragile', 'Heavy'], state: 'out', notes: 'lid cracked', labelPrintedAt: Date.UTC(2026, 10, 1, 15, 30), labelContents: 'Snowman lights ×3\nGarland ×2' }),
-    bin({ id: 'bn-LOOSE001', code: 'G-12', name: 'Tote with no spot', spotId: '' }),
+    bin({ id: 'bn-LOOSE001', part: 'household', code: 'G-12', name: 'Tote with no spot', spotId: '', tags: ['Fragile'] }),
   ];
   const items = [
     item({ id: 'it-SNOWMAN2', name: 'Snowman lights, "outdoor"', category: 'Lights', binId: 'bn-XMAS0004', quantity: 3, notes: TRICKY, barcode: '012345678905', tags: ['Outdoor'], condition: 'needs repair', conditionNote: 'left strand dead', value: 2499, purchaseDate: '2023-11-24', warrantyUntil: '2025-11-24' }),
-    item({ id: 'it-ORNAMENT', name: 'Glass ornaments 6 × ¾', category: 'Decorations', subcategory: 'Ornaments & hooks', binId: 'bn-XMAS0004', quantity: 40, approx: true, status: 'out', outWhere: 'Mantel', outSince: Date.UTC(2026, 11, 1, 18, 0) }),
-    item({ id: 'it-DRILL222', name: 'Cordless drill', category: 'Tools', subcategory: 'Power', spotId: 'sp-PEGBRD01', status: 'lent', lentTo: 'Mike', lentOn: '2026-10-30', value: 12900, model: 'DCD771', serial: 'S/N 0042', keepAtLeast: 1 }),
+    item({ id: 'it-ORNAMENT', name: 'Glass ornaments 6 × ¾', category: 'Decorations', subcategory: 'Ornaments & hooks', binId: 'bn-XMAS0004', quantity: 40, approx: true, status: 'out', outWhere: 'Mantel', outSince: Date.UTC(2026, 11, 1, 18, 0), displayId: 'dp-MANTEL01', outDisplayId: 'dp-MANTEL01', checkedAt: Date.UTC(2026, 0, 3) }),
+    item({ id: 'it-DRILL222', part: 'household', name: 'Cordless drill', category: 'Tools', subcategory: 'Power', spotId: 'sp-PEGBRD01', status: 'lent', lentTo: 'Mike', lentOn: '2026-10-30', value: 12900, model: 'DCD771', serial: 'S/N 0042', keepAtLeast: 1 }),
     item({ id: 'it-NOHOME01', name: 'Mystery cable', category: 'Decorations', seasonId: 'se-HALLOW01', quantity: 0, condition: 'toss' }),
   ];
   const photos = [
@@ -66,12 +74,15 @@ function phoneData(): ReplaceAllInput {
     ['ph-SETUP001', jpeg(0xff, 0xd8, 6)],
   ]);
   const categories = [
-    { name: 'Lights', order: 0, subcategories: [] },
-    { name: 'Empty category', order: 1, subcategories: [] },
-    { name: 'Decorations', order: 2, subcategories: ['Garland', 'Empty sub', 'Ornaments & hooks'] },
-    { name: 'Tools', order: 3, subcategories: ['Power'] },
+    { part: 'holiday' as const, name: 'Lights', order: 0, subcategories: [] },
+    { part: 'holiday' as const, name: 'Empty category', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Decorations', order: 2, subcategories: ['Garland', 'Empty sub', 'Ornaments & hooks'] },
+    { part: 'household' as const, name: 'Tools', order: 0, subcategories: ['Power'] },
+    // "Other" in both parts: names are unique within a part only.
+    { part: 'household' as const, name: 'Other', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Other', order: 3, subcategories: [] },
   ];
-  const tags = [{ name: 'Fragile', order: 0 }, { name: 'Outdoor', order: 1 }, { name: 'Heavy', order: 2 }, { name: 'Unused tag', order: 3 }];
+  const tags = [...(['Fragile', 'Outdoor', 'Heavy', 'Unused tag'] as const).map((name, order) => ({ part: 'holiday' as const, name, order })), { part: 'household' as const, name: 'Fragile', order: 0 }];
   return { items, areas, spots, bins, seasons, tags, categories, photos, images };
 }
 
@@ -114,11 +125,27 @@ describe('full backup ZIP (F18, §7)', () => {
       ['areas.csv', 'bins.csv', 'categories.csv', 'files.csv', 'items.csv', 'manifest.json', 'photos/ph-BIN00001.jpg', 'photos/ph-DRILL001.png', 'photos/ph-PEG00001.jpg', 'photos/ph-SETUP001.jpg', 'photos/ph-SNOW0001.jpg', 'photos/ph-SNOW0002.jpg', 'seasons.csv', 'spots.csv', 'tags.csv'].sort(),
     );
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string'));
-    expect(manifest).toMatchObject({ app: 'Hiebert Home Inventory', appVersion: '0.1.2', itemCount: 4, photoCount: 6, areaCount: 3, spotCount: 3, binCount: 2, seasonCount: 2 });
+    expect(manifest).toMatchObject({
+      app: 'Hiebert Home Inventory',
+      appVersion: '0.1.3',
+      itemCount: 4,
+      photoCount: 6,
+      areaCount: 3,
+      spotCount: 3,
+      binCount: 2,
+      seasonCount: 2,
+      parts: { household: { items: 1, areas: 1, bins: 1 }, holiday: { items: 3, areas: 2, bins: 1 } },
+    });
     const items = await zip.file('items.csv')!.async('string');
-    expect(items.split('\r\n')[0]).toBe('﻿id,name,category,subcategory,bin_id,spot_id,quantity,approx,season_id,tags,status,out_where,out_since,lent_to,lent_on,condition,condition_note,barcode,notes,value,purchase_date,model,serial,warranty_until,keep_at_least');
-    expect(items).toContain('it-DRILL222,Cordless drill,Tools,Power,,sp-PEGBRD01,0,,,,lent,,,Mike,2026-10-30,ok,,,,129.00,,DCD771,S/N 0042,,1');
-    expect(await zip.file('bins.csv')!.async('string')).toContain('bn-XMAS0004,A-04,Christmas 4: lights & garland,sp-SHELFB01,se-XMAS0001,Fragile; Heavy,out,lid cracked,2026-11-01T15:30:00.000Z');
+    expect(items.split('\r\n')[0]).toBe(
+      '﻿id,part,name,category,subcategory,bin_id,spot_id,quantity,approx,season_id,display_id,tags,status,out_where,out_display_id,out_since,lent_to,lent_on,condition,condition_note,checked_at,barcode,notes,value,purchase_date,model,serial,warranty_until,keep_at_least',
+    );
+    expect(items).toContain('it-DRILL222,household,Cordless drill,Tools,Power,,sp-PEGBRD01,0,,,,,lent,,,,Mike,2026-10-30,ok,,,,,129.00,,DCD771,S/N 0042,,1');
+    expect(items).toContain(',dp-MANTEL01,,out,Mantel,dp-MANTEL01,2026-12-01T18:00:00.000Z,,,ok,,2026-01-03T00:00:00.000Z,');
+    expect(await zip.file('bins.csv')!.async('string')).toContain('bn-XMAS0004,holiday,A-04,Christmas 4: lights & garland,sp-SHELFB01,se-XMAS0001,Fragile; Heavy,out,lid cracked,2026-11-01T15:30:00.000Z');
+    expect((await zip.file('categories.csv')!.async('string')).split('\r\n').slice(0, 3)).toEqual(['﻿part,category,subcategory,order', 'household,Tools,Power,0', 'household,Other,,1']);
+    expect(await zip.file('seasons.csv')!.async('string')).toContain('se-XMAS0001,Christmas,1,red,11-25,01-06,');
+    expect((await zip.file('tags.csv')!.async('string')).split('\r\n').slice(0, 3)).toEqual(['﻿part,name,order', 'household,Fragile,0', 'holiday,Fragile,0']);
   });
 
   it('round-trips with nothing lost: every field, tricky text, list order, photos byte for byte with captions and order', async () => {
@@ -127,13 +154,15 @@ describe('full backup ZIP (F18, §7)', () => {
     const before = await everything(src);
     const dst = newDb();
     const plan = await planFor(dst, await fileOf('b.zip', await buildBackup(src, 'full', new Date(2026, 10, 2, 12, 0))));
-    expect(plan.format).toBe('h2');
+    expect(plan.format).toBe('v3');
     expect(plan.warnings).toEqual([]);
     expect(await applyRestore(dst, plan, 9)).toBe(6);
     const after = await everything(dst);
     expect(after).toEqual(before);
     expect(after.items.find((i) => i.id === 'it-SNOWMAN2')).toMatchObject({ notes: TRICKY, value: 2499, hasPhoto: true });
-    expect(after.tags.map((t) => t.name)).toEqual(['Fragile', 'Outdoor', 'Heavy', 'Unused tag']);
+    expect(after.tags.map((t) => `${t.part}:${t.name}`)).toEqual(['household:Fragile', 'holiday:Fragile', 'holiday:Outdoor', 'holiday:Heavy', 'holiday:Unused tag']);
+    expect(after.items.find((i) => i.id === 'it-DRILL222')!.part).toBe('household');
+    expect(after.seasons.find((s) => s.id === 'se-XMAS0001')).toMatchObject({ setupFrom: '11-25', takedownBy: '01-06' });
     expect((await photosOf(dst, 'it-SNOWMAN2')).map((p) => p.caption)).toEqual(['Box, "front"', '']);
   });
 
@@ -166,48 +195,81 @@ describe('data-only CSV (§7)', () => {
     await replaceAll(db, phoneData());
     const csv = buildDataCsv(await loadSnapshot(db));
     const lines = csv.split('\r\n');
-    expect(lines[0]!.startsWith('﻿path,season,id,name,')).toBe(true);
-    expect(csv).toContain('Attic › Shelf B › A-04 Christmas 4: lights & garland,Christmas,it-ORNAMENT,');
-    expect(csv).toContain('Garage › Pegboard,,it-DRILL222,');
-    expect(csv).toContain('No home yet,Halloween,it-NOHOME01,');
+    expect(lines[0]!.startsWith('﻿path,season,id,part,name,')).toBe(true);
+    expect(csv).toContain('Attic › Shelf B › A-04 Christmas 4: lights & garland,Christmas,it-ORNAMENT,holiday,');
+    expect(csv).toContain('Garage › Pegboard,,it-DRILL222,household,');
+    expect(csv).toContain('No home yet,Halloween,it-NOHOME01,holiday,');
     const read = await readRestoreFile({ name: 'home-inventory-backup.csv', bytes: new TextEncoder().encode(csv) }, await loadSnapshot(db));
     expect(read.ok).toBe(false);
     if (!read.ok) expect(read.problems[0]!.message).toMatch(/only a full-backup ZIP can be restored/);
   });
 });
 
-describe('an H1 (0.1.1) backup still restores', () => {
-  async function h1Zip(): Promise<Uint8Array> {
+describe('older backups (SPEC v3.0 §3, §7)', () => {
+  /** A full backup as 0.1.2 wrote it: no part columns, no season dates, fewer item columns. */
+  async function v2Zip(): Promise<Uint8Array> {
     const z = new JSZip();
-    z.file('inventory.csv', '﻿id,name,category,subcategory,location,quantity,barcode,notes,photo_file\r\nit-AAAAAAAA,Snowman lights,decorations,Indoor,attic shelf b,3,012345678905,"left, ""dim""",photos/it-AAAAAAAA.jpg\r\nit-BBBBBBBB,Rake,Yard,,Shed,2,,,\r\nit-CCCCCCCC,Wreath,Decorations,,,1,,,photos/it-CCCCCCCC.jpg\r\n');
-    z.file('locations.csv', 'name,notes,order\r\nGarage shelf,by the door,1\r\nAttic shelf B,,0\r\n');
-    z.file('categories.csv', 'category,subcategory,order\r\nDecorations,Indoor,0\r\n');
-    z.file('manifest.json', JSON.stringify({ app: 'Hiebert Home Inventory', appVersion: '0.1.1', savedAt: '2026-11-02T18:00:00.000Z', itemCount: 3, photoCount: 1 }));
-    z.file('photos/it-AAAAAAAA.jpg', new Uint8Array([9, 8, 7]));
+    z.file('areas.csv', '﻿id,name,letter,order,notes\r\nar-ATTIC001,Attic,A,0,\r\n');
+    z.file('spots.csv', '﻿id,area_id,name,order,notes\r\nsp-SHELFB01,ar-ATTIC001,Shelf B,0,\r\n');
+    z.file('bins.csv', '﻿id,code,name,spot_id,season_id,tags,state,notes,label_printed_at,label_contents\r\nbn-XMAS0004,A-04,Christmas 4,sp-SHELFB01,se-XMAS0001,Fragile,stored,,,\r\n');
+    z.file(
+      'items.csv',
+      '﻿id,name,category,subcategory,bin_id,spot_id,quantity,approx,season_id,tags,status,out_where,out_since,lent_to,lent_on,condition,condition_note,barcode,notes,value,purchase_date,model,serial,warranty_until,keep_at_least\r\n' +
+        'it-LIGHTS01,Lights,Decorations,,bn-XMAS0004,,3,,se-XMAS0001,Fragile,stored,,,,,ok,,,,,,,,,\r\n',
+    );
+    z.file('seasons.csv', '﻿id,name,order,color,setup_notes\r\nse-XMAS0001,Christmas,0,red,mantel first\r\n');
+    z.file('tags.csv', '﻿name,order\r\nFragile,0\r\n');
+    z.file('categories.csv', '﻿category,subcategory,order\r\nDecorations,,0\r\nOther,,1\r\n');
+    z.file('files.csv', '﻿id,owner_type,owner_id,kind,caption,order,path\r\nph-PIC00001,item,it-LIGHTS01,photo,,0,photos/ph-PIC00001.jpg\r\n');
+    z.file('manifest.json', JSON.stringify({ app: 'Hiebert Home Inventory', appVersion: '0.1.2', savedAt: '2026-11-02T18:00:00.000Z', itemCount: 1, photoCount: 1 }));
+    z.file('photos/ph-PIC00001.jpg', new Uint8Array([0xff, 0xd8, 7]));
     return zipBytes(z);
   }
 
-  it('locations become spots in Unsorted; items keep them; photos come along; default seasons added', async () => {
+  it('a 0.1.2 backup restores as the phone upgrades: all Household, seasons kept (Holiday) with dates, Holiday categories added', async () => {
     const db = newDb();
-    const plan = await planFor(db, { name: 'home-inventory-backup-2026-11-02-1200.zip', bytes: await h1Zip() });
-    expect(plan.format).toBe('h1');
-    expect(plan.warnings).toContain('This is a backup from version 0.1.1: its locations become spots in an “Unsorted” area.');
-    expect(plan.savedAt).toEqual(new Date('2026-11-02T18:00:00.000Z'));
+    const plan = await planFor(db, { name: 'home-inventory-backup-2026-11-02-1200.zip', bytes: await v2Zip() });
+    expect(plan.format).toBe('v2');
+    expect(plan.warnings).toContain('This backup is from version 0.1.2: everything in it goes to Household, and its seasons to Holiday.');
     await applyRestore(db, plan);
     const s = await loadSnapshot(db);
-    expect(s.areas.map((a) => [a.name, a.letter])).toEqual([['Unsorted', 'U']]);
-    expect(s.spots.map((x) => x.name)).toEqual(['Attic shelf B', 'Garage shelf', 'Shed']);
-    const lights = s.items.find((i) => i.id === 'it-AAAAAAAA')!;
-    expect(lights).toMatchObject({ category: 'Decorations', subcategory: 'Indoor', quantity: 3, barcode: '012345678905', notes: 'left, "dim"', spotId: s.spots[0]!.id, hasPhoto: true });
-    expect(s.items.find((i) => i.id === 'it-BBBBBBBB')!.spotId).toBe(s.spots[2]!.id);
-    expect(s.categories.map((c) => c.name)).toEqual(['Decorations', 'Yard']);
-    expect(s.seasons.map((x) => x.name)).toEqual(DEFAULT_SEASONS.map((x) => x.name));
-    const pics = await photosOf(db, 'it-AAAAAAAA');
-    expect(pics.map((p) => p.id)).toEqual([expect.stringMatching(/^ph-/)]);
-    expect(await blobBytes(pics[0]!.full)).toEqual([9, 8, 7]);
-    // Its photo file is missing from the ZIP: the item comes back without one.
-    expect(s.items.find((i) => i.id === 'it-CCCCCCCC')!.hasPhoto).toBe(false);
-    expect(await db.pictures.count()).toBe(1);
+    expect(s.areas.map((a) => [a.part, a.name])).toEqual([['household', 'Attic']]);
+    expect(s.bins).toEqual([expect.objectContaining({ part: 'household', code: 'A-04', seasonId: '', tags: ['Fragile'] })]);
+    expect(s.items).toEqual([expect.objectContaining({ part: 'household', binId: 'bn-XMAS0004', seasonId: '', tags: ['Fragile'], hasPhoto: true })]);
+    expect(s.seasons).toEqual([expect.objectContaining({ id: 'se-XMAS0001', name: 'Christmas', setupFrom: '11-25', takedownBy: '01-06', setupNotes: 'mantel first' })]);
+    expect(s.categories.filter((c) => c.part === 'household').map((c) => c.name)).toEqual(['Decorations', 'Other']);
+    expect(s.categories.filter((c) => c.part === 'holiday').map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES.holiday]);
+    expect(s.tags).toEqual([{ part: 'household', name: 'Fragile', order: 0 }]);
+    expect(await blobBytes((await photosOf(db, 'it-LIGHTS01'))[0]!.full)).toEqual([0xff, 0xd8, 7]);
+  });
+
+  it('hand-edited files: a blank part cell, or files that disagree about the part column, are refused', async () => {
+    const src = newDb();
+    await replaceAll(src, phoneData());
+    const z = await JSZip.loadAsync(await buildBackup(src, 'full', new Date()));
+    z.file('items.csv', (await z.file('items.csv')!.async('string')).replace('it-NOHOME01,holiday,', 'it-NOHOME01,,'));
+    z.file('categories.csv', (await z.file('categories.csv')!.async('string')).replace('holiday,Lights', ',Lights'));
+    const blank = await readRestoreFile({ name: 'x.zip', bytes: await zipBytes(z) }, await loadSnapshot(src));
+    expect(blank.ok || blank.problems.map((p) => p.message)).toEqual(['part is required (household or holiday)', 'part is required (household or holiday)']);
+    // items.csv re-saved without its part column, beside 0.1.3 areas and bins.
+    const z2 = await JSZip.loadAsync(await buildBackup(src, 'full', new Date()));
+    const lines = (await z2.file('items.csv')!.async('string')).split('\r\n').map((l) => l.replace(/^(﻿?[^,]*),[^,]*,/, '$1,'));
+    z2.file('items.csv', lines.join('\r\n'));
+    const mixed = await readRestoreFile({ name: 'x.zip', bytes: await zipBytes(z2) }, await loadSnapshot(src));
+    // (Stripping a column by regex also garbles the row with a quoted comma; only the mismatch matters here.)
+    expect(mixed.ok || mixed.problems.map((p) => p.message)).toContain("areas.csv, bins.csv have the part column that items.csv lacks; the files don't come from one backup");
+  });
+
+  it('a 0.1.1 (H1) backup is refused, saying so; nothing changes', async () => {
+    const db = newDb();
+    await replaceAll(db, dataset({ items: [item({ id: 'keep' })] }));
+    const z = new JSZip();
+    z.file('inventory.csv', '﻿id,name,category,subcategory,location,quantity,barcode,notes,photo_file\r\nit-AAAAAAAA,Snowman lights,decorations,Indoor,attic shelf b,3,,,\r\n');
+    z.file('locations.csv', 'name,notes,order\r\nAttic shelf B,,0\r\n');
+    const read = await readRestoreFile({ name: 'old.zip', bytes: await zipBytes(z) }, await loadSnapshot(db));
+    expect(read.ok).toBe(false);
+    if (!read.ok) expect(read.problems.map((p) => p.message)).toEqual(['this is a backup from version 0.1.1, which this version can no longer read']);
+    expect((await loadSnapshot(db)).items.map((i) => i.id)).toEqual(['keep']);
   });
 });
 
@@ -219,17 +281,24 @@ describe('restore keeps lists the backup lacks, and completes them (§7)', () =>
     orig.remove('categories.csv');
     orig.remove('tags.csv');
     const dst = newDb();
-    await replaceAll(dst, dataset({ categories: [{ name: 'Tools', order: 0, subcategories: ['Hand'] }], tags: [{ name: 'Kids', order: 0 }] }));
+    await replaceAll(dst, dataset({ categories: [{ part: 'household' as const, name: 'Tools', order: 0, subcategories: ['Hand'] }], tags: [{ part: 'holiday' as const, name: 'Kids', order: 0 }] }));
     const plan = await planFor(dst, { name: 'x.zip', bytes: await zipBytes(orig) });
-    expect(plan.data.categories.map((c) => [c.name, c.subcategories])).toEqual([
-      ['Tools', ['Hand', 'Power']],
-      ['Decorations', ['Ornaments & hooks']],
-      ['Lights', []],
+    expect(plan.data.categories.map((c) => [c.part, c.name, c.subcategories])).toEqual([
+      ['household', 'Tools', ['Hand', 'Power']],
+      ['holiday', 'Decorations', ['Ornaments & hooks']],
+      ['holiday', 'Lights', []],
     ]);
-    // Added in the order the items (stored by id) first use them.
+    // Added in the order the items (stored by id) first use them, each in its part.
     expect(plan.addedCategories).toEqual(['Tools › Power', 'Decorations', 'Decorations › Ornaments & hooks', 'Lights']);
-    expect(plan.data.tags.map((t) => t.name)).toEqual(['Kids', 'Fragile', 'Heavy', 'Outdoor']);
-    expect(plan.addedTags).toEqual(['Fragile', 'Heavy', 'Outdoor']);
+    expect(plan.data.tags.map((t) => [t.part, t.name, t.order])).toEqual([
+      ['holiday', 'Kids', 0],
+      ['holiday', 'Fragile', 1],
+      ['holiday', 'Heavy', 2],
+      ['household', 'Fragile', 0],
+      ['holiday', 'Outdoor', 3],
+    ]);
+    // Bins (by code) first, then items: A-04's tags, G-12's (Household), then the items'.
+    expect(plan.addedTags).toEqual(['Fragile', 'Heavy', 'Fragile', 'Outdoor']);
   });
 
   it('hand-edited capitals take the list’s spelling', async () => {

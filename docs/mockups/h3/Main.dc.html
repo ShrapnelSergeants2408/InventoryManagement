@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Household: Find</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&amp;family=Barlow+Condensed:wght@600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}
+.ic{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sw{display:flex;padding:4px;gap:4px;background:#efe9e2;border-radius:999px}
+.sw a{flex:1;display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:999px;font-weight:700;font-size:16px;text-decoration:none;color:#4a403a}
+.lbl{margin:0;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:#4a403a;font-weight:700}
+.row{display:flex;align-items:center;gap:12px;min-height:72px;padding:8px 16px;border-bottom:1px solid #ddd5cb;background:#fff}
+.th{width:52px;height:52px;border-radius:10px;background:#e6dfd6;flex:none;display:flex;align-items:center;justify-content:center;color:#4a403a}
+.rt{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+.rt strong{font-size:19px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rt span{font-size:15px;color:#4a403a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.code{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:22px}
+.tabs{display:flex;align-items:flex-end;justify-content:space-around;height:84px;padding:0 4px 20px;background:#fff;border-top:1px solid #ddd5cb;box-sizing:border-box}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:13px;font-weight:700;color:#4a403a;text-decoration:none}
+.scan{width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;margin-top:-22px}
+</style>
+</helmet>
+<div style="width:390px;height:844px;box-sizing:border-box;display:flex;flex-direction:column;background:#f2efea;font-family:'Atkinson Hyperlegible',system-ui,sans-serif;color:#1a1411;overflow:hidden">
+  <div style="padding:54px 16px 12px;background:#fff;border-bottom:1px solid #ddd5cb;display:flex;flex-direction:column;gap:12px">
+    <nav class="sw" aria-label="Part">
+      <a href="Main.dc.html" aria-current="page" style="background:{{accent}};color:#fff">Household</a>
+      <a href="Holiday-Home.dc.html">Holiday</a>
+    </nav>
+    <div style="position:relative">
+      <svg class="ic" aria-hidden="true" viewBox="0 0 24 24" style="position:absolute;left:14px;top:16px;color:#4a403a"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+      <label for="q" style="position:absolute;width:1px;height:1px;overflow:hidden">Search Household</label>
+      <input id="q" type="search" value="extension" style="width:100%;box-sizing:border-box;min-height:56px;padding:0 16px 0 48px;border:2px solid {{accent}};border-radius:12px;font:inherit;font-size:18px;background:#fff">
+    </div>
+  </div>
+  <div style="flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column">
+    <p class="lbl" style="padding:16px 16px 8px">Items · 2</p>
+    <div class="row">
+      <div class="th"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg></div>
+      <div class="rt"><strong>Extension cord, 50 ft</strong><span>Garage › Pegboard</span></div>
+      <span style="font-weight:700">×2</span>
+    </div>
+    <div class="row">
+      <div class="th"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="12" cy="12" r="3"></circle></svg></div>
+      <div class="rt"><strong>Outdoor extension cord</strong><span>Garage › Shelf C › G-03 Cords</span></div>
+      <span style="font-weight:700">×1</span>
+    </div>
+    <p class="lbl" style="padding:16px 16px 8px">Bins · 1</p>
+    <div class="row">
+      <div class="th"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"></path><path d="M3 7l9 4 9-4M12 11v10"></path></svg></div>
+      <div class="rt"><span class="code" style="color:#1a1411">G-03</span><span>Cords &amp; cables · Garage › Shelf C</span></div>
+    </div>
+    <a href="Holiday-Home.dc.html" style="margin:20px 16px 0;min-height:56px;display:flex;align-items:center;gap:10px;padding:0 16px;border:2px dashed #cfc6bb;border-radius:12px;text-decoration:none;font-weight:700;font-size:17px">
+      <span style="flex:1">4 matches in Holiday</span>
+      <svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg>
+    </a>
+    <p style="margin:8px 16px 0;font-size:15px;color:#4a403a">Search looks in the part you're in; the other part's count shows here.</p>
+  </div>
+  <nav class="tabs" aria-label="Household tabs">
+    <a class="tab" href="Main.dc.html" aria-current="page" style="color:{{accent}}"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>Find</a>
+    <a class="tab" href="Main.dc.html"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"></path><path d="M3 12l9 4 9-4"></path><path d="M3 17l9 4 9-4"></path></svg>Browse</a>
+    <a class="tab" href="Main.dc.html"><span class="scan" style="background:{{accent}}"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24" style="width:30px;height:30px"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M7 12h10"></path></svg></span>Scan</a>
+    <a class="tab" href="Main.dc.html"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"></path></svg>Lists</a>
+    <a class="tab" href="Main.dc.html"><svg class="ic" aria-hidden="true" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle></svg>More</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#8a3315","options":["#8a3315","#1f3a5f","#5c4a1e"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#8a3315' };
+  }
+}
+</script>
+</body>
+</html>

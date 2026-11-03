@@ -123,7 +123,7 @@ describe('a whole household checked together (restore, setup)', () => {
       'spot "Shelf A" is in area ar-gone, which isn\'t there',
       'bin A-04 has season se-gone, which isn\'t there',
       'item "Test item" is on spot sp-gone, which isn\'t there',
-      'item "Test item" has category "Nope", which isn\'t in the category list',
+      'item "Test item" has category "Nope", which isn\'t in the Holiday category list',
       'photo ph-1 belongs to bin bn-gone, which isn\'t there',
     ]);
   });
@@ -135,7 +135,7 @@ describe('a whole household checked together (restore, setup)', () => {
     d.bins.push({ ...d.bins[0]!, id: 'bn-2', code: 'A-04', name: 'Other' });
     d.seasons.push({ ...d.seasons[0]!, id: 'se-2', name: 'christmas' });
     expect(checkData(d)).toEqual([
-      'area "ATTIC" is listed twice (also "Attic")',
+      'area "ATTIC" is listed twice in Holiday (also "Attic")',
       'areas "Garage" and "ATTIC" both use the letter G',
       'spot "shelf a" is listed twice in its area',
       'bin code A-04 is used by two bins ("Christmas 4" and "Other")',
@@ -143,7 +143,35 @@ describe('a whole household checked together (restore, setup)', () => {
     ]);
   });
 
+  it('the two parts (SPEC v3.0 §3): names per part, letters and codes across both, no links across', () => {
+    const d = ok();
+    // The same area name in Household is fine; its letter must still be its own.
+    d.areas.push({ ...d.areas[0]!, id: 'ar-h1', part: 'household', name: 'Attic', letter: 'H' });
+    d.categories.push({ part: 'holiday', name: 'Ornaments', order: 9, subcategories: [] });
+    expect(checkData(d)).toEqual([]);
+    d.areas.push({ ...d.areas[0]!, id: 'ar-h2', part: 'household', name: 'Garage', letter: 'A' });
+    d.spots.push({ id: 'sp-h', areaId: 'ar-h1', name: 'Pegboard', order: 0, notes: '' });
+    // A Holiday item homed on a Household spot, a Household bin on a Holiday spot, a household
+    // bin with a season, a Household item with a Holiday-only category.
+    d.items.push(item({ id: 'i-x', spotId: 'sp-h' }));
+    d.bins.push({ ...d.bins[0]!, id: 'bn-h', part: 'household', code: 'H-01', seasonId: '' });
+    d.bins.push({ ...d.bins[0]!, id: 'bn-h2', part: 'household', code: 'H-02', spotId: '', seasonId: 'se-xmas' });
+    d.items.push(item({ id: 'i-y', part: 'household', category: 'Ornaments' }));
+    expect(checkData(d)).toEqual([
+      'bin bn-h2: a household bin has no season',
+      'areas "Attic" and "Garage" both use the letter A',
+      'bin H-01 is in Household, but its home is in Holiday',
+      'item "Test item" is in Holiday, but its home is in Household',
+      'item "Test item" has category "Ornaments", which isn\'t in the Household category list',
+    ]);
+  });
+
   it('tags records use but the list lacks, in first-appearance order', () => {
-    expect(unlistedTags({ tags: [{ name: 'Fragile', order: 0 }], bins: [bin({ tags: ['Outdoor'] })], items: [item({ tags: ['fragile', 'Kids'] })] })).toEqual(['Outdoor', 'Kids']);
+    expect(unlistedTags({ tags: [{ part: 'holiday', name: 'Fragile', order: 0 }], bins: [bin({ tags: ['Outdoor'] })], items: [item({ tags: ['fragile', 'Kids'] }), item({ part: 'household', tags: ['Fragile'] })] }).map((t) => [t.part, t.name])).toEqual([
+      ['holiday', 'Outdoor'],
+      ['holiday', 'Kids'],
+      // Tags are per part: Household's Fragile isn't Holiday's.
+      ['household', 'Fragile'],
+    ]);
   });
 });

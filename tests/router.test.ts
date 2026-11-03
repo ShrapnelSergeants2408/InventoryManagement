@@ -1,53 +1,78 @@
 import { describe, expect, it } from 'vitest';
-import { href, parseHash } from '../src/ui/shell/router';
+import { PART_TABS, homeTab, href, parseHash } from '../src/ui/shell/router';
 
-describe('hash routes', () => {
+describe('hash routes (SPEC v3.0 F21, §10)', () => {
   it.each([
-    ['', { tab: 'inventory', screen: 'tab' }],
-    ['#/', { tab: 'inventory', screen: 'tab' }],
-    ['#/order', { tab: 'inventory', screen: 'tab' }],
-    ['#/more', { tab: 'more', screen: 'tab' }],
-    ['#/nonsense', { tab: 'inventory', screen: 'tab' }],
-    ['#/item/st-0001', { tab: 'inventory', screen: 'item', id: 'st-0001' }],
-    ['#/add', { tab: 'inventory', screen: 'add', name: '', barcode: '', home: '' }],
-    ['#/add?home=bn-A1B2C3D4', { tab: 'inventory', screen: 'add', name: '', barcode: '', home: 'bn-A1B2C3D4' }],
-    ['#/bin/bn-A1B2C3D4', { tab: 'inventory', screen: 'bin', id: 'bn-A1B2C3D4' }],
-    ['#/bin/bn-A1B2C3D4/edit', { tab: 'inventory', screen: 'bin-edit', id: 'bn-A1B2C3D4' }],
-    ['#/new-bin?spot=sp-1', { tab: 'inventory', screen: 'bin-add', spot: 'sp-1', area: '' }],
-    ['#/new-bin', { tab: 'inventory', screen: 'bin-add', spot: '', area: '' }],
-    ['#/spot/sp-1', { tab: 'inventory', screen: 'spot', id: 'sp-1' }],
-    ['#/count/import', { tab: 'inventory', screen: 'tab' }],
-    ['#/labels', { tab: 'labels', screen: 'tab' }],
-    ['#/labels?ids=st-0063', { tab: 'labels', screen: 'labels', ids: ['st-0063'] }],
-    ['#/labels?ids=', { tab: 'labels', screen: 'tab' }],
-    ['#/scan', { tab: 'scan', screen: 'tab' }],
-    ['#/item/st-0063/edit', { tab: 'inventory', screen: 'edit', id: 'st-0063' }],
-    ['#/more/suppliers', { tab: 'more', screen: 'tab' }],
+    // No part: the part in use, at its home (App resolves 'find' with no part to the home tab).
+    ['', { tab: 'find', screen: 'tab', part: null, q: '' }],
+    ['#/', { tab: 'find', screen: 'tab', part: null, q: '' }],
+    ['#/inventory', { tab: 'find', screen: 'tab', part: null, q: '' }],
+    ['#/nonsense', { tab: 'find', screen: 'tab', part: null, q: '' }],
+    ['#/scan', { tab: 'scan', screen: 'tab', part: null, q: '' }],
+    ['#/more', { tab: 'more', screen: 'tab', part: null, q: '' }],
+    // Tab screens carry their part.
+    ['#/holiday/season', { tab: 'season', screen: 'tab', part: 'holiday', q: '' }],
+    ['#/holiday/find?q=lights', { tab: 'find', screen: 'tab', part: 'holiday', q: 'lights' }],
+    ['#/holiday/browse', { tab: 'browse', screen: 'tab', part: 'holiday', q: '' }],
+    ['#/household/find', { tab: 'find', screen: 'tab', part: 'household', q: '' }],
+    ['#/household/browse', { tab: 'browse', screen: 'tab', part: 'household', q: '' }],
+    ['#/household/scan', { tab: 'scan', screen: 'tab', part: 'household', q: '' }],
+    ['#/household/lists', { tab: 'lists', screen: 'tab', part: 'household', q: '' }],
+    ['#/household/more', { tab: 'more', screen: 'tab', part: 'household', q: '' }],
+    // A tab the part doesn't have opens the part's home.
+    ['#/household/season', { tab: 'find', screen: 'tab', part: 'household', q: '' }],
+    ['#/holiday', { tab: 'season', screen: 'tab', part: 'holiday', q: '' }],
+    ['#/holiday/nonsense', { tab: 'season', screen: 'tab', part: 'holiday', q: '' }],
+    // Records and lists.
+    ['#/item/st-0001', { tab: 'find', screen: 'item', id: 'st-0001' }],
+    ['#/add', { tab: 'find', screen: 'add', name: '', barcode: '', home: '' }],
+    ['#/add?home=bn-A1B2C3D4', { tab: 'find', screen: 'add', name: '', barcode: '', home: 'bn-A1B2C3D4' }],
+    ['#/bin/bn-A1B2C3D4', { tab: 'find', screen: 'bin', id: 'bn-A1B2C3D4' }],
+    ['#/bin/bn-A1B2C3D4/edit', { tab: 'find', screen: 'bin-edit', id: 'bn-A1B2C3D4' }],
+    ['#/new-bin?spot=sp-1', { tab: 'find', screen: 'bin-add', spot: 'sp-1', area: '' }],
+    ['#/new-bin', { tab: 'find', screen: 'bin-add', spot: '', area: '' }],
+    ['#/spot/sp-1', { tab: 'find', screen: 'spot', id: 'sp-1' }],
+    ['#/labels', { tab: 'more', screen: 'labels', ids: [] }],
+    ['#/labels?ids=st-0063', { tab: 'more', screen: 'labels', ids: ['st-0063'] }],
+    ['#/labels?ids=', { tab: 'more', screen: 'labels', ids: [] }],
+    ['#/item/st-0063/edit', { tab: 'find', screen: 'edit', id: 'st-0063' }],
     ['#/more/backup', { tab: 'more', screen: 'backup' }],
     ['#/more/settings', { tab: 'more', screen: 'settings' }],
     ['#/more/categories', { tab: 'more', screen: 'categories' }],
-    ['#/more/locations', { tab: 'more', screen: 'tab' }],
     ['#/more/places', { tab: 'more', screen: 'places' }],
     ['#/more/seasons', { tab: 'more', screen: 'seasons' }],
     ['#/more/tags', { tab: 'more', screen: 'tags' }],
-    ['#/more/nonsense', { tab: 'more', screen: 'tab' }],
+    ['#/more/nonsense', { tab: 'more', screen: 'tab', part: null, q: '' }],
   ])('%s', (hash, route) => {
     expect(parseHash(hash)).toEqual(route);
   });
 
-  it('round-trips item ids and add names with special characters', () => {
-    expect(parseHash(href.item('tm-7K/3 x'))).toEqual({ tab: 'inventory', screen: 'item', id: 'tm-7K/3 x' });
-    expect(parseHash(href.add('wreath & “more”?'))).toEqual({ tab: 'inventory', screen: 'add', name: 'wreath & “more”?', barcode: '', home: '' });
-    expect(parseHash(href.add('', '012345678905'))).toEqual({ tab: 'inventory', screen: 'add', name: '', barcode: '012345678905', home: '' });
+  it('five tabs in each part, Scan in the middle of both; homes are Find and Season', () => {
+    expect(PART_TABS.household).toEqual(['find', 'browse', 'scan', 'lists', 'more']);
+    expect(PART_TABS.holiday).toEqual(['season', 'find', 'scan', 'lists', 'more']);
+    expect(PART_TABS.household.indexOf('scan')).toBe(2);
+    expect(PART_TABS.holiday.indexOf('scan')).toBe(2);
+    expect(homeTab('household')).toBe('find');
+    expect(homeTab('holiday')).toBe('season');
+  });
+
+  it('round-trips ids, names and searches with special characters', () => {
+    expect(parseHash(href.item('tm-7K/3 x'))).toEqual({ tab: 'find', screen: 'item', id: 'tm-7K/3 x' });
+    expect(parseHash(href.add('wreath & “more”?'))).toEqual({ tab: 'find', screen: 'add', name: 'wreath & “more”?', barcode: '', home: '' });
+    expect(parseHash(href.add('', '012345678905'))).toEqual({ tab: 'find', screen: 'add', name: '', barcode: '012345678905', home: '' });
     expect(href.add()).toBe('#/add');
-    expect(parseHash(href.labels(['st-0063', 'tm-7K3QX']))).toEqual({ tab: 'labels', screen: 'labels', ids: ['st-0063', 'tm-7K3QX'] });
-    expect(parseHash(href.edit('tm-7K/3 x'))).toEqual({ tab: 'inventory', screen: 'edit', id: 'tm-7K/3 x' });
+    expect(parseHash(href.labels(['st-0063', 'tm-7K3QX']))).toEqual({ tab: 'more', screen: 'labels', ids: ['st-0063', 'tm-7K3QX'] });
+    expect(href.labels()).toBe('#/labels');
+    expect(parseHash(href.edit('tm-7K/3 x'))).toEqual({ tab: 'find', screen: 'edit', id: 'tm-7K/3 x' });
     expect(parseHash(href.list('places'))).toEqual({ tab: 'more', screen: 'places' });
-    expect(parseHash(href.binAdd({ area: 'ar-1' }))).toEqual({ tab: 'inventory', screen: 'bin-add', spot: '', area: 'ar-1' });
+    expect(parseHash(href.binAdd({ area: 'ar-1' }))).toEqual({ tab: 'find', screen: 'bin-add', spot: '', area: 'ar-1' });
     expect(parseHash(href.add('', '', 'sp-1'))).toMatchObject({ home: 'sp-1' });
+    expect(parseHash(href.tab('holiday', 'find', 'Snowman & “lights”?'))).toEqual({ tab: 'find', screen: 'tab', part: 'holiday', q: 'Snowman & “lights”?' });
+    expect(href.home('holiday')).toBe('#/holiday/season');
+    expect(href.home('household')).toBe('#/household/find');
   });
 
   it('a malformed escape does not throw', () => {
-    expect(parseHash('#/item/%E0%A4%A')).toEqual({ tab: 'inventory', screen: 'item', id: '%E0%A4%A' });
+    expect(parseHash('#/item/%E0%A4%A')).toEqual({ tab: 'find', screen: 'item', id: '%E0%A4%A' });
   });
 });

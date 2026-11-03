@@ -1,4 +1,5 @@
-// Upgrading an H1 phone in place (SPEC "Upgrading an H1 phone"): schema v1 → v2.
+// Upgrading an H1 phone in place (SPEC v2.0 "Upgrading an H1 phone"), then on to v3 (SPEC v3.0 §3):
+// schema v1 → v2 → v3 in one open. Everything lands in Household.
 import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { describe, expect, it } from 'vitest';
@@ -29,7 +30,7 @@ async function makeH1(name: string): Promise<void> {
   old.close();
 }
 
-describe('upgrade from H1 (schema v1 → v2)', () => {
+describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
   it('turns locations into spots in Unsorted, keeps items, photos, lists and settings', async () => {
     const name = `up-${Math.random()}`;
     await makeH1(name);
@@ -40,7 +41,7 @@ describe('upgrade from H1 (schema v1 → v2)', () => {
 
     const areas = await db.areas.toArray();
     expect(areas).toHaveLength(1);
-    expect(areas[0]).toMatchObject({ name: UNSORTED_AREA.name, letter: 'U', order: 0 });
+    expect(areas[0]).toMatchObject({ part: 'household', name: UNSORTED_AREA.name, letter: 'U', order: 0 });
     const spots = (await db.spots.toArray()).sort((a, b) => a.order - b.order);
     // Walk order kept; a location only an item used comes last.
     expect(spots.map((s) => [s.name, s.notes, s.order, s.areaId])).toEqual([
@@ -50,7 +51,7 @@ describe('upgrade from H1 (schema v1 → v2)', () => {
     ]);
 
     const a = (await db.items.get('it-AAAAAAAA'))!;
-    expect(a).toMatchObject({ name: 'Snowman lights', subcategory: 'Indoor', quantity: 3, barcode: '012345678905', notes: 'left strand dim', hasPhoto: true, updatedAt: 5 });
+    expect(a).toMatchObject({ part: 'household', name: 'Snowman lights', subcategory: 'Indoor', quantity: 3, barcode: '012345678905', notes: 'left strand dim', hasPhoto: true, updatedAt: 5 });
     expect(a.spotId).toBe(spots[0]!.id);
     expect(a).toMatchObject({ binId: '', approx: false, seasonId: '', tags: [], status: 'stored', condition: 'ok', value: null, keepAtLeast: null, outSince: null });
     expect('location' in a).toBe(false);
@@ -64,7 +65,8 @@ describe('upgrade from H1 (schema v1 → v2)', () => {
     expect(new Uint8Array(await pics[0]!.full.arrayBuffer())).toEqual(new Uint8Array([9, 8, 7]));
 
     expect((await db.seasons.orderBy('order').toArray()).map((s) => s.name)).toEqual(DEFAULT_SEASONS.map((s) => s.name));
-    expect(await db.categories.toArray()).toEqual([{ name: 'Decorations', order: 0, subcategories: ['Indoor'] }]);
+    expect(await db.categoryList.where('part').equals('household').toArray()).toEqual([{ part: 'household', name: 'Decorations', order: 0, subcategories: ['Indoor'] }]);
+    expect(await db.categoryList.where('part').equals('holiday').count()).toBeGreaterThan(0);
     expect((await db.settings.get('reminderDays'))?.value).toBe(14);
     expect((await db.settings.get('setupDoneAt'))?.value).toBe(1);
     expect(db.tables.map((t) => t.name).sort()).not.toContain('photos');
@@ -94,10 +96,10 @@ describe('upgrade from H1 (schema v1 → v2)', () => {
     await db.open();
     await checkSchema(db);
     db.close();
-    // H1's checkSchema compared against SCHEMA_VERSION 1: native version 20 / 10 = 2 > 1.
+    // H1's checkSchema compared against SCHEMA_VERSION 1: native version 30 / 10 = 3 > 1.
     const h1 = new Dexie(name);
     await h1.open();
-    expect(h1.verno).toBe(2);
+    expect(h1.verno).toBe(3);
     expect(((await h1.table('settings').get('schemaVersion')) as { value: number }).value).toBeGreaterThan(1);
     h1.close();
   });

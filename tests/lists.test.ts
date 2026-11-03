@@ -67,8 +67,8 @@ describe('reorder (▲/▼ Reorder mode, F9/F25)', () => {
 
 describe('categories (F9)', () => {
   const cats: Category[] = [
-    { name: 'Pneumatics', order: 0, subcategories: ['Air Supply', 'Valves'] },
-    { name: 'Motors', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Pneumatics', order: 0, subcategories: ['Air Supply', 'Valves'] },
+    { part: 'holiday' as const, name: 'Motors', order: 1, subcategories: [] },
   ];
   const items = [
     item({ id: 'v', category: 'Pneumatics', subcategory: 'Valves' }),

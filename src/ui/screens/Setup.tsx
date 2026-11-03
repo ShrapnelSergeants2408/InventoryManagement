@@ -13,6 +13,7 @@ import { plural } from '../components/common';
 import { forgetAllThumbnails, useDb } from '../data-hooks';
 import { Icon } from '../icons';
 import { href } from '../shell/router';
+import { getPart, setPart } from '../part';
 
 const BACKUP_ACCEPT = '.zip,application/zip,application/x-zip-compressed';
 
@@ -158,7 +159,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
     );
   } else {
     const options: Array<{ k: StartChoice; title: string; desc: string }> = [
-      { k: 'empty', title: 'Start fresh', desc: 'Household categories (Decorations, Lights, Tools…) and seasons, no items yet. Then add your areas and spots.' },
+      { k: 'empty', title: 'Start fresh', desc: 'Default categories for Household and Holiday, and the seasons with their dates; no items yet. Then add your Holiday and Household storage areas.' },
       { k: 'restore', title: 'Restore a backup file', desc: 'A full-backup ZIP made by this app, e.g. from another phone' },
     ];
     body = (
@@ -216,7 +217,7 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
   const what =
     r.choice === 'restore'
       ? `${plural(r.items, 'item')} and ${plural(r.photos, 'photo')} from ${r.fileName ?? 'the backup'}`
-      : `${plural(r.categories, 'category', 'categories')} and the default seasons; no items yet`;
+      : `${plural(r.categories, 'category', 'categories')} across both parts, and the default seasons; no items yet`;
   const storage =
     r.persisted === true
       ? 'Persistent storage granted: works offline'
@@ -238,9 +239,23 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
         </li>
       </ul>
       <div class="setup-acts">
-        <button type="button" class="btn pri lg" onClick={() => open(r.choice === 'restore' ? href.tab('inventory') : href.list('places'))}>
-          {r.choice === 'restore' ? 'Go to inventory' : 'Add your areas and spots'}
-        </button>
+        {r.choice === 'restore' ? (
+          <button type="button" class="btn pri lg" onClick={() => open(href.home(getPart()))}>
+            Go to inventory
+          </button>
+        ) : (
+          <>
+            <button type="button" class="btn pri lg" onClick={() => (setPart('holiday'), open(href.list('places')))}>
+              Add Holiday storage areas
+            </button>
+            <button type="button" class="btn lg" onClick={() => (setPart('household'), open(href.list('places')))}>
+              Add Household areas
+            </button>
+            <button type="button" class="btn lg" onClick={() => (setPart('holiday'), open(href.home('holiday')))}>
+              Later
+            </button>
+          </>
+        )}
       </div>
     </div>
   );

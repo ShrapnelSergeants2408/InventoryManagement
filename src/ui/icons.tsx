@@ -59,6 +59,11 @@ export const ICONS = {
   season: 'M12 3v18 M4.2 7.5l15.6 9 M4.2 16.5l15.6-9 M9.5 4.5L12 7l2.5-2.5 M9.5 19.5L12 17l2.5 2.5',
   tag: 'M3 3h8l10 10-8 8L3 11z M7.5 7.5v.01',
   split: 'M6 3v6a4 4 0 0 0 4 4h4a4 4 0 0 1 4 4v4 M18 3v6a4 4 0 0 1-4 4 M3 18l3 3 3-3 M15 18l3 3 3-3',
+  // H3: the two parts' tab bars (mockups, SPEC v3.0 §10).
+  calendar: 'M3 7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M3 10h18 M8 3v4 M16 3v4',
+  browse: 'M3 7l9-4 9 4-9 4z M3 12l9 4 9-4 M3 17l9 4 9-4',
+  lists: 'M9 6h11 M9 12h11 M9 18h11 M4 6h.01 M4 12h.01 M4 18h.01',
+  moreDots: 'M4 12h.01 M12 12h.01 M20 12h.01',
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -1,19 +1,21 @@
-// More › Areas & spots (F11): areas in walk order with their letters, each with its spots.
-// Add, rename, reorder (▲/▼) and remove; removing an area asks where its spots go. A spot can
-// move to another area (sorting the H1 "Unsorted" spots). Bins with no spot are listed last.
+// More › Areas & spots (F11): the current part's areas in walk order with their letters, each
+// with its spots. Add, rename, reorder (▲/▼) and remove; removing an area asks where its spots go.
+// A spot can move to another area of the part. Bins with no spot are listed last. Names are
+// unique within the part; letters across both parts (§3).
 import { useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { addArea, addSpot, moveArea, moveSpot, removeArea, updateArea } from '../../../data/places';
-import { SUGGESTED_AREAS } from '../../../data/setup';
+import { SUGGESTED_AREAS } from '../../../domain/parts';
 import { checkName } from '../../../domain/lists';
 import { binLabel, defaultLetter } from '../../../domain/places';
-import { nameKey, type Area, type Spot } from '../../../domain/types';
+import { PART_NAME, nameKey, type Area, type Part, type Spot } from '../../../domain/types';
 import { isAreaLetter } from '../../../domain/validate';
 import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useSnapshot } from '../../data-hooks';
+import { useDb, usePartSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { getPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { MoveSpot, RemoveSpot } from '../places/Spot';
 import { StorageError } from '../StorageError';
@@ -29,12 +31,12 @@ type Open =
 
 const fail = (e: unknown) => showToast(e instanceof Error ? e.message : String(e));
 
-export function PlacesScreen() {
+export function PlacesScreen({ part }: { part: Part }) {
   const db = useDb();
-  const live = useSnapshot();
+  const { live, snap, all } = usePartSnapshot(part);
   const [open, setOpen] = useState<Open>(null);
   const [reorder, setReorder] = useState(false);
-  const back = <BackButton label="More" fallback={href.tab('more')} />;
+  const back = <BackButton label="More" fallback={href.tab(getPart(), 'more')} />;
   if (live.state === 'error') {
     return (
       <>
@@ -43,16 +45,15 @@ export function PlacesScreen() {
       </>
     );
   }
-  const snap = live.state === 'ready' ? live.value : null;
   const areas = snap ? [...snap.areas].sort((a, b) => a.order - b.order) : [];
   const spotsIn = (areaId: string) => (snap?.spots ?? []).filter((s) => s.areaId === areaId).sort((a, b) => a.order - b.order);
   const binsOn = (spotId: string) => (snap?.bins ?? []).filter((b) => b.spotId === spotId).length;
   const looseOn = (spotId: string) => (snap?.items ?? []).filter((i) => i.spotId === spotId).length;
   const noSpot = (snap?.bins ?? []).filter((b) => b.spotId === '').sort((a, b) => a.code.localeCompare(b.code, 'en-US', { numeric: true }));
-  const unused = SUGGESTED_AREAS.filter((n) => !areas.some((a) => nameKey(a.name) === nameKey(n)));
+  const unused = SUGGESTED_AREAS[part].filter((n) => !areas.some((a) => nameKey(a.name) === nameKey(n)));
   const quickAdd = async (name: string) => {
     try {
-      const a = await addArea(db, { name });
+      const a = await addArea(db, part, { name });
       showToast(`Added ${a.name} (${a.letter}).`);
     } catch (e) {
       fail(e);
@@ -63,7 +64,7 @@ export function PlacesScreen() {
     <>
       <TopBar
         title="Areas & spots"
-        subtitle={snap ? `${plural(areas.length, 'area')} · ${plural(snap.spots.length, 'spot')} · ${plural(snap.bins.length, 'bin')}` : 'Loading…'}
+        subtitle={snap ? `${PART_NAME[part]} · ${plural(areas.length, 'area')} · ${plural(snap.spots.length, 'spot')} · ${plural(snap.bins.length, 'bin')}` : 'Loading…'}
         back={back}
         actions={
           <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'area', area: null })}>
@@ -87,9 +88,9 @@ export function PlacesScreen() {
           <>
             {areas.length === 0 && (
               <div class="empty-card">
-                <strong>No areas yet.</strong> Add the rooms and zones where things are stored. Tap one to add it:
+                <strong>No {PART_NAME[part]} areas yet.</strong> {part === 'holiday' ? 'Add the places where decorations are stored.' : 'Add the rooms and zones where things are stored.'} Tap one to add it:
                 <div class="chips-row">
-                  {SUGGESTED_AREAS.map((n) => (
+                  {SUGGESTED_AREAS[part].map((n) => (
                     <button key={n} type="button" class="fchip" onClick={() => void quickAdd(n)}>
                       <Icon name="plus" />
                       {n}
@@ -207,7 +208,7 @@ export function PlacesScreen() {
         )}
       </div>
 
-      {open?.kind === 'area' && snap && <AreaDialog area={open.area} areas={areas} onClose={() => setOpen(null)} />}
+      {open?.kind === 'area' && snap && all && <AreaDialog part={part} area={open.area} areas={areas} allAreas={all.areas} onClose={() => setOpen(null)} />}
       {open?.kind === 'remove-area' && snap && <RemoveArea area={open.area} snap={snap} onClose={() => setOpen(null)} />}
       {open?.kind === 'add-spot' && snap && (
         <EntryDialog
@@ -234,7 +235,7 @@ export function PlacesScreen() {
 }
 
 /** Add or edit an area: name, letter (defaults to the first free one in the name) and notes. */
-function AreaDialog({ area, areas, onClose }: { area: Area | null; areas: readonly Area[]; onClose: () => void }) {
+function AreaDialog({ part, area, areas, allAreas, onClose }: { part: Part; area: Area | null; areas: readonly Area[]; allAreas: readonly Area[]; onClose: () => void }) {
   const db = useDb();
   const [name, setName] = useState(area?.name ?? '');
   const [letter, setLetter] = useState(area?.letter ?? '');
@@ -242,9 +243,11 @@ function AreaDialog({ area, areas, onClose }: { area: Area | null; areas: readon
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const others = areas.filter((a) => a.id !== area?.id);
+  // Letters are unique across both parts, so every bin code is (§3).
+  const otherLetters = allAreas.filter((a) => a.id !== area?.id);
   const check = checkName(name, others.map((a) => a.name), 'Area');
-  const shownLetter = letter.trim().toUpperCase() || defaultLetter(name, others.map((a) => a.letter)) || '';
-  const letterTaken = others.find((a) => a.letter === shownLetter);
+  const shownLetter = letter.trim().toUpperCase() || defaultLetter(name, otherLetters.map((a) => a.letter)) || '';
+  const letterTaken = otherLetters.find((a) => a.letter === shownLetter);
   const letterBad = shownLetter !== '' && !isAreaLetter(shownLetter);
   const ok = check.ok && shownLetter !== '' && !letterTaken && !letterBad;
   const save = async (e: Event) => {
@@ -253,7 +256,7 @@ function AreaDialog({ area, areas, onClose }: { area: Area | null; areas: readon
     setBusy(true);
     try {
       if (area) await updateArea(db, area.id, { name, letter: shownLetter, notes });
-      else await addArea(db, { name, letter: shownLetter, notes });
+      else await addArea(db, part, { name, letter: shownLetter, notes });
       showToast(area ? 'Saved.' : `Added ${name.trim()} (${shownLetter}).`);
       onClose();
     } catch (err) {
@@ -277,7 +280,11 @@ function AreaDialog({ area, areas, onClose }: { area: Area | null; areas: readon
             Letter <span class="lbl-opt">(starts its bin codes)</span>
           </label>
           <input id="ar-letter" class={letterTaken || letterBad ? 'field bad mono' : 'field mono'} maxLength={1} value={letter} placeholder={shownLetter || 'A'} autoComplete="off" onInput={(e) => setLetter((e.currentTarget as HTMLInputElement).value)} />
-          {letterTaken && <div class="err">{shownLetter} is already used by “{letterTaken.name}”.</div>}
+          {letterTaken && (
+            <div class="err">
+              {shownLetter} is already used by “{letterTaken.name}”{letterTaken.part !== part ? ` in ${PART_NAME[letterTaken.part]}` : ''}.
+            </div>
+          )}
           {letterBad && <div class="err">One letter A–Z.</div>}
           {area && nameKey(shownLetter) !== nameKey(area.letter) && <div class="small muted">Bins made here from now on get {shownLetter}-codes; existing bins keep their codes.</div>}
         </div>

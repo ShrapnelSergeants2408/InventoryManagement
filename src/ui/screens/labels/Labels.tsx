@@ -310,9 +310,9 @@ function Layout({ targets, onBack }: { targets: LabelTarget[]; onBack: () => voi
   const [choice, setChoice] = useState(() => {
     const c = loadLabelChoice();
     const plainQr = (PLAIN_QR_SIZES as readonly number[]).includes(c.plainQr ?? 0) ? (c.plainQr as PlainQrSize) : 1;
-    // Bins default to 5163 (§9), which carries their contents.
-    const fallback = hasBins ? 'avery-5163' : SHEET_LAYOUTS[0]!.id;
-    return { layoutId: c.layoutId && layoutById(c.layoutId) ? c.layoutId : fallback, plainQr };
+    // Bins start on 5163 (§9), the layout that carries their contents; otherwise the layout used last.
+    if (hasBins) return { layoutId: 'avery-5163', plainQr };
+    return { layoutId: c.layoutId && layoutById(c.layoutId) ? c.layoutId : SHEET_LAYOUTS[0]!.id, plainQr };
   });
   const layout = layoutById(choice.layoutId, choice.plainQr)!;
   const chosen = targets;

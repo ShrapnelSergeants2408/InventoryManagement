@@ -148,9 +148,11 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   };
   const items = await read(ITEMS_FILE, parseItems);
   out.items = items.list;
-  out.areas = (await read(AREAS_FILE, parseAreas)).list;
+  const areas = await read(AREAS_FILE, parseAreas);
+  out.areas = areas.list;
   out.spots = (await read(SPOTS_FILE, parseSpots)).list;
-  out.bins = (await read(BINS_FILE, parseBins)).list;
+  const bins = await read(BINS_FILE, parseBins);
+  out.bins = bins.list;
   out.seasons = (await read(SEASONS_FILE, parseSeasons)).list;
   const tagsText = await text(TAGS_FILE);
   hasTags = tagsText !== null;
@@ -158,6 +160,16 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   for (const { path, ...p } of (await read(FILES_FILE, parseFiles)).list) wanted.push({ ...p, path });
   // 0.1.2 wrote no `part` column (§3, "Upgrading a 0.1.2 phone").
   const format: Bundle['format'] = items.hasPart === false ? 'v2' : 'v3';
+  // Every file with records of a part must agree: a 0.1.2 file mixed with 0.1.3 ones (one re-saved
+  // without its part column) would otherwise move the whole Holiday part to Household.
+  const mixed = [
+    [ITEMS_FILE, items.hasPart],
+    [AREAS_FILE, areas.hasPart],
+    [BINS_FILE, bins.hasPart],
+  ].filter(([, h]) => h !== null && h !== (format === 'v3'));
+  if (mixed.length > 0) {
+    problems.push({ file: 'backup', row: null, message: `${mixed.map(([f]) => f).join(', ')} ${format === 'v3' ? 'lack' : 'have'} the part column that ${ITEMS_FILE} ${format === 'v3' ? 'has' : 'lacks'}; the files don't come from one backup` });
+  }
 
   if (problems.length > 0) return { bundle: null, problems, warnings };
   if (format === 'v2') {

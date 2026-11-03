@@ -243,6 +243,23 @@ describe('older backups (SPEC v3.0 §3, §7)', () => {
     expect(await blobBytes((await photosOf(db, 'it-LIGHTS01'))[0]!.full)).toEqual([0xff, 0xd8, 7]);
   });
 
+  it('hand-edited files: a blank part cell, or files that disagree about the part column, are refused', async () => {
+    const src = newDb();
+    await replaceAll(src, phoneData());
+    const z = await JSZip.loadAsync(await buildBackup(src, 'full', new Date()));
+    z.file('items.csv', (await z.file('items.csv')!.async('string')).replace('it-NOHOME01,holiday,', 'it-NOHOME01,,'));
+    z.file('categories.csv', (await z.file('categories.csv')!.async('string')).replace('holiday,Lights', ',Lights'));
+    const blank = await readRestoreFile({ name: 'x.zip', bytes: await zipBytes(z) }, await loadSnapshot(src));
+    expect(blank.ok || blank.problems.map((p) => p.message)).toEqual(['part is required (household or holiday)', 'part is required (household or holiday)']);
+    // items.csv re-saved without its part column, beside 0.1.3 areas and bins.
+    const z2 = await JSZip.loadAsync(await buildBackup(src, 'full', new Date()));
+    const lines = (await z2.file('items.csv')!.async('string')).split('\r\n').map((l) => l.replace(/^(﻿?[^,]*),[^,]*,/, '$1,'));
+    z2.file('items.csv', lines.join('\r\n'));
+    const mixed = await readRestoreFile({ name: 'x.zip', bytes: await zipBytes(z2) }, await loadSnapshot(src));
+    // (Stripping a column by regex also garbles the row with a quoted comma; only the mismatch matters here.)
+    expect(mixed.ok || mixed.problems.map((p) => p.message)).toContain("areas.csv, bins.csv have the part column that items.csv lacks; the files don't come from one backup");
+  });
+
   it('a 0.1.1 (H1) backup is refused, saying so; nothing changes', async () => {
     const db = newDb();
     await replaceAll(db, dataset({ items: [item({ id: 'keep' })] }));

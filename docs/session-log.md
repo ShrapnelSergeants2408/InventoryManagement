@@ -998,3 +998,45 @@ Documentation only; no code changed, so no tests were run.
 High that the draft records Dan's answers. The proposed details (letters across parts, default categories and dates, moving between parts, the setup-list order, the `.ics` calendar, the upgrade, the targets) are mine and listed in SPEC §17 for Dan.
 
 **Next:** Dan reviews SPEC v3.0 and answers §17; then H3 starts with mockups.
+
+## 2026-11-03 (late morning) — H3: two parts, Find, Browse, scanning, labels (0.1.3)
+
+**SESSION IDENTITY**
+New session after the H3 mockups were approved. Dan: "go ahead with h3".
+
+**DATES & TIMES**
+2026-11-03, from about 11:10 (after the 11:05 mockup commit) to about 12:15 CST. The exact start time was not recorded.
+
+**WORK COMPLETED**
+Branch `h3-two-parts`:
+- schema v3 with `part`, season dates, the 0.1.2 upgrade, and new part-keyed `categoryList` and `tagList` tables;
+- the part rules in the domain and data layers;
+- §7 backup columns; 0.1.2 ZIPs restore through the same conversion; 0.1.1 ZIPs are refused;
+- the part switch and both five-tab bars, the Undo toast;
+- Find, Browse (place, category, season), the Season home, the Lists tabs, More per part;
+- scanning of bins, spots and typed bin codes across parts;
+- bin, spot and item labels with "Label out of date";
+- Move across parts; Set up for both parts.
+
+Version 0.1.3. `scripts/h3-ui-check.mjs` replaces the H2a check (its flows moved into part 3). `docs/reviews/H3.md` lists details (a)–(l) for Dan. SPEC "Built so far" and HANDOFF updated.
+
+**DELIVERABLES PRODUCED**
+- Branch `h3-two-parts`.
+- `docs/reviews/H3.md`.
+- `scripts/h3-ui-check.mjs`.
+- Tests `upgrade-v2`, `parts`, `parts-db`, `seasons`.
+
+**PREDECESSORS/CONTEXT**
+SPEC v3.0 (PR #6) and the H3 mockups (approved 2026-11-03).
+
+**EVIDENCE**
+- Unit tests: 464/464 pass (33 files).
+- Build: clean.
+- H3 browser check: 57/57 PASS, including the in-place upgrade of a real 0.1.2-shaped database; no console errors.
+- An independent review of the database, backup and part rules (separate agent) found nothing serious; its two minor findings (blank `part` cells, mixed 0.1.2/0.1.3 files in one ZIP) were fixed and tested.
+
+**CONFIDENCE**
+- High for the upgrade, the backup round trip and the part rules (unit and browser tested, independently reviewed).
+- Medium for the look of the screens H7 still reworks (item, bin and spot detail, the editor, Labels). They work at phone width but use stopgap layouts.
+
+**Next:** Dan reviews the PR and details (a)–(l). Before installing 0.1.3, make a Full backup on the phone. Then the phone check in `docs/reviews/H3.md`, then H4 (Holiday setup, target ~Nov 24).

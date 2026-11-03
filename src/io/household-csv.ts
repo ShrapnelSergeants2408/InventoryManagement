@@ -116,8 +116,10 @@ export interface Parsed<T> {
 class Row {
   readonly errors: string[] = [];
   private readonly get: (h: string) => string;
+  private readonly hasPart: boolean;
   constructor(table: CsvTable, cells: string[]) {
     this.get = cellGetter(table, cells);
+    this.hasPart = table.columns.has('part');
   }
   text(col: string): string {
     return this.get(col).trim();
@@ -177,6 +179,11 @@ class Row {
   }
   /** A part; blank only in a file without the column (0.1.2), read as Household for conversion. */
   part(): Part {
+    // A file with the column (0.1.3 on) needs it filled in; only a 0.1.2 file, without it, reads as Household.
+    if (this.hasPart && this.text('part') === '') {
+      this.errors.push('part is required (household or holiday)');
+      return 'household';
+    }
     return this.oneOf('part', PARTS, 'household');
   }
   monthDay(col: string, label: string): string {

@@ -41,6 +41,10 @@ export function parseCategoriesCsv(text: string): Parsed<Category> {
       problems.push({ file: CATEGORIES_FILE, row, message: 'category name is required' });
       return;
     }
+    if (partRaw === '' && table.columns.has('part')) {
+      problems.push({ file: CATEGORIES_FILE, row, message: 'part is required (household or holiday)' });
+      return;
+    }
     const part = partRaw === '' ? 'household' : PARTS.find((p) => p === partRaw);
     if (!part) {
       problems.push({ file: CATEGORIES_FILE, row, message: `part "${partRaw}" must be household or holiday` });

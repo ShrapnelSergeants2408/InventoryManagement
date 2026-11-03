@@ -20,6 +20,7 @@
 **Built so far:**
 - **H1** (app 0.1.1, `docs/reviews/H1.md`): the FRC features stripped, rebranded.
 - **H2a** (app 0.1.2, `docs/reviews/H2a.md`): the v2.0 data model in one part — areas, spots, bins, seasons, tags, every item field, several photos, the §7 backup, F7, F11, F16. Find, Browse, bin and spot scanning and labels (old H2b) were not built.
+- **H3** (app 0.1.3, `docs/reviews/H3.md`, waiting for Dan's review): schema v3 with the two parts and the 0.1.2 upgrade, F21 (switch, both tab bars, Undo toast), Set up for both parts, F1, F2, F3, F10 for bins, spots and items, F11 per part, season dates and the Season home (seasons on now, Coming up), the read-only Lists tabs, and the §7 part columns. Details decided along the way are listed there for Dan to confirm.
 
 ---
 

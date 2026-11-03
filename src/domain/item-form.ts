@@ -16,6 +16,8 @@ export interface ItemDraft {
   quantity: string;
   approx: boolean;
   seasonId: string;
+  /** Holiday only: the display it usually goes on (F22), or ''. */
+  displayId: string;
   tags: string[];
   condition: Condition;
   conditionNote: string;
@@ -46,6 +48,7 @@ export function draftFromItem(item: Item, categories: readonly Category[] = []):
     quantity: String(item.quantity),
     approx: item.approx,
     seasonId: item.seasonId,
+    displayId: item.displayId,
     tags: [...item.tags],
     condition: item.condition,
     conditionNote: item.conditionNote,
@@ -155,6 +158,7 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
     approx: d.approx,
     // Seasons are Holiday only (§3).
     seasonId: base.part === 'holiday' ? d.seasonId : '',
+    displayId: base.part === 'holiday' ? d.displayId : '',
     tags,
     condition: d.condition,
     conditionNote: d.condition === 'ok' ? '' : d.conditionNote.trim(),

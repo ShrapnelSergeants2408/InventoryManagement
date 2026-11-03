@@ -12,7 +12,7 @@ export async function buildBackup(db: InventoryDb, kind: BackupKind, now: Date):
     const snap = await loadSnapshot(db);
     return new Blob([buildDataCsv(snap)], { type: 'text/csv' });
   }
-  const { snap, rows } = await db.transaction('r', [db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.categoryList, db.pictures], async () => ({
+  const { snap, rows } = await db.transaction('r', [db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.categoryList, db.displays, db.seasonTasks, db.seasonRuns, db.pictures], async () => ({
     snap: await loadSnapshot(db),
     rows: await db.pictures.toArray(),
   }));

@@ -270,9 +270,12 @@ export async function moveSeason(db: InventoryDb, id: string, delta: number, now
   });
 }
 
-/** Removes a season (after confirming when in use, §6); it's cleared from the items and bins that had it. */
+/**
+ * Removes a season (after confirming when in use, §6); it's cleared from the items and bins that
+ * had it and from display setup photos, and its photos, tasks and runs go with it.
+ */
 export async function removeSeason(db: InventoryDb, id: string, now = Date.now()): Promise<{ items: number; bins: number }> {
-  return db.transaction('rw', [db.seasons, db.items, db.bins, db.pictures, db.settings], async () => {
+  return db.transaction('rw', [db.seasons, db.items, db.bins, db.pictures, db.seasonTasks, db.seasonRuns, db.settings], async () => {
     const list = await orderedSeasons(db);
     if (!list.some((s) => s.id === id)) fail('This season was removed meanwhile.');
     const items = await db.items.where('seasonId').equals(id).toArray();
@@ -281,6 +284,10 @@ export async function removeSeason(db: InventoryDb, id: string, now = Date.now()
     await db.bins.bulkPut(bins.map((b) => ({ ...b, seasonId: '' })));
     await db.seasons.delete(id);
     await db.pictures.where('ownerId').equals(id).delete();
+    const tagged = (await db.pictures.toArray()).filter((p) => p.seasonId === id);
+    if (tagged.length) await db.pictures.bulkPut(tagged.map(({ seasonId: _s, ...p }) => p));
+    await db.seasonTasks.where('seasonId').equals(id).delete();
+    await db.seasonRuns.where('seasonId').equals(id).delete();
     await writeSeasonOrder(db, list.filter((s) => s.id !== id));
     await touch(db, now);
     return { items: items.length, bins: bins.length };

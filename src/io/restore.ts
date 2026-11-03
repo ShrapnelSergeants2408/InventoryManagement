@@ -46,7 +46,7 @@ function savedDate(bundle: Bundle, fileName: string): Pick<RestorePlan, 'savedAt
  * list. Either way, categories and tags the records use that aren't listed are added at the end
  * (§7), and items take the list's spelling. A backup whose records don't fit together is refused.
  */
-export function planRestore(bundle: Bundle, current: Pick<InventorySnapshot, 'categories' | 'tags'>, file: { name: string; size: number }, warnings: string[] = []): RestoreRead {
+export function planRestore(bundle: Bundle, current: Pick<InventorySnapshot, 'categories' | 'tags'> & Partial<Pick<InventorySnapshot, 'displays' | 'seasonTasks'>>, file: { name: string; size: number }, warnings: string[] = []): RestoreRead {
   const d = bundle.data;
   if (d.items.length === 0 && d.areas.length === 0 && !bundle.hasCategories) {
     return { ok: false, problems: [{ file: file.name, row: null, message: 'the backup has no items or lists, so restoring it would empty this phone' }], warnings };
@@ -62,6 +62,12 @@ export function planRestore(bundle: Bundle, current: Pick<InventorySnapshot, 'ca
   };
   const problems = checkData(data);
   if (problems.length > 0) return { ok: false, problems: problems.map((message) => ({ file: file.name, row: null, message })), warnings };
+  // A backup from before 0.1.4 has no displays or season tasks: say that the phone's go.
+  const lost = [
+    current.displays?.length && d.displays.length === 0 ? `${current.displays.length} display${current.displays.length === 1 ? '' : 's'}` : '',
+    current.seasonTasks?.length && d.seasonTasks.length === 0 ? `${current.seasonTasks.length} season task${current.seasonTasks.length === 1 ? '' : 's'}` : '',
+  ].filter(Boolean);
+  if (lost.length) warnings = [...warnings, `This backup was made before displays and season tasks (0.1.4): the phone’s ${lost.join(' and ')} will be removed.`];
   return {
     ok: true,
     plan: {
@@ -80,7 +86,7 @@ export function planRestore(bundle: Bundle, current: Pick<InventorySnapshot, 'ca
 }
 
 /** Reads a chosen file (told apart by content) and plans the restore. Only full-backup ZIPs restore. */
-export async function readRestoreFile(file: { name: string; bytes: Uint8Array }, current: Pick<InventorySnapshot, 'categories' | 'tags'>): Promise<RestoreRead> {
+export async function readRestoreFile(file: { name: string; bytes: Uint8Array }, current: Pick<InventorySnapshot, 'categories' | 'tags'> & Partial<Pick<InventorySnapshot, 'displays' | 'seasonTasks'>>): Promise<RestoreRead> {
   const meta = { name: file.name, size: file.bytes.length };
   if (!looksLikeZip(file.bytes)) {
     return { ok: false, problems: [{ file: file.name, row: null, message: 'only a full-backup ZIP can be restored; a data-only CSV is for spreadsheets' }], warnings: [] };

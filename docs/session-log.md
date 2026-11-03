@@ -1087,3 +1087,42 @@ Unit 467/467; build clean; H3 browser check 57/57 PASS, no console errors.
 High: the v3-letters upgrade, running it twice, and restoring a letters-build backup are all tested.
 
 **Next:** Dan merges the new PR; check the deploy ran; then the phone check in `docs/reviews/H3.md`.
+
+## 2026-11-03 (afternoon) — Deploy check, then H4: the Holiday setup (0.1.4)
+
+**SESSION IDENTITY**
+Dan: "merged. check deploy. then begin h4". PR #8 (area codes, schema v4) had been merged at 13:55 CST.
+
+**DATES & TIMES**
+2026-11-03. PR #8's deploy run finished 13:56 CST; H4 data commit 14:08, screens commit 14:28, docs about 14:30 onwards. The session's start time was not recorded.
+
+**WORK COMPLETED**
+- Deploy check: the "Deploy to GitHub Pages" run for PR #8 succeeded (52 s), and the live site serves 0.1.3 with ATTIC-04 codes.
+- H4 on branch `h4-holiday-setup`:
+  - schema v5: displays, season tasks, season runs; photos may carry a season;
+  - the rules: run years, the setup list, the Season home with runs, the `.ics` file, integrity checks;
+  - the backup files `displays.csv`, `season_tasks.csv`, `season_runs.csv`, and `season_id` in `files.csv`;
+  - screens: More › Displays, a display's screen with setup photos by season, a season's screen (Start setup, tasks, notes, photos), the setup list as in the mockup, Unpack, Put out / Put back, the usual display in the editor and on the item, the Season home's next steps, Add to Calendar.
+- `scripts/h4-ui-check.mjs` replaces the H3 check (its parts 1–3 kept, part 4 added).
+- `docs/reviews/H4.md` lists details (a)–(n) for Dan. SPEC "Built so far" and §2, HANDOFF updated.
+
+**DELIVERABLES PRODUCED**
+- Branch `h4-holiday-setup`.
+- `docs/reviews/H4.md`.
+- `scripts/h4-ui-check.mjs`.
+- Tests `holiday`, `holiday-db`, `holiday-backup`; `backup-restore` extended.
+
+**PREDECESSORS/CONTEXT**
+H3 (PR #7) and the area-code change (PR #8); SPEC v3.0 §15 H4; the approved H3 setup-list mockup.
+
+**EVIDENCE**
+- Unit tests: 505/505 pass (37 files).
+- Build: clean.
+- H4 browser check: 90/90 PASS, no console errors or warnings; the new screens checked at 390 px.
+- Independent review of the data layer (separate agent): nothing corrupting; four findings (lent items put out, a stale "up" run blocking next year, Household bins set out, a silent loss on restoring a 0.1.3 backup) fixed with tests.
+
+**CONFIDENCE**
+- High for the upgrade (no stored record changes), the new writes and the backup round trip (unit and browser tested).
+- Medium for Add to Calendar on an iPhone: what iOS's share sheet does with an `.ics` file wasn't testable here (phone check step 8).
+
+**Next:** Dan reviews the PR and details (a)–(n); Full backup on the phone before installing 0.1.4; the phone check in `docs/reviews/H4.md`; then H5 (sync and sign-in).

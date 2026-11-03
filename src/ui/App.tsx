@@ -18,6 +18,9 @@ import { PlacesScreen } from './screens/more/Places';
 import { SeasonsScreen, TagsScreen } from './screens/more/Seasons';
 import { BinEditorScreen, BinScreen } from './screens/places/Bin';
 import { SpotScreen } from './screens/places/Spot';
+import { DisplayScreen, DisplaysScreen } from './screens/holiday/Displays';
+import { SeasonScreen } from './screens/holiday/Season';
+import { SetupListScreen } from './screens/holiday/SetupList';
 import { SettingsScreen } from './screens/more/Settings';
 import { LabelsScreen } from './screens/labels/Labels';
 import { ScanScreen } from './screens/scan/Scan';
@@ -84,6 +87,14 @@ function Screen({ route }: { route: Route }) {
       return <BinEditorScreen key={`bin-add-${route.spot}-${route.area}`} mode="add" spot={route.spot} area={route.area} />;
     case 'spot':
       return <SpotScreen key={route.id} id={route.id} />;
+    case 'season':
+      return <SeasonScreen key={route.id} id={route.id} />;
+    case 'setup':
+      return <SetupListScreen key={route.id} id={route.id} />;
+    case 'display':
+      return <DisplayScreen key={route.id} id={route.id} />;
+    case 'displays':
+      return <DisplaysScreen />;
     case 'labels':
       return <LabelsScreen key={`${part}-${route.ids.join(',')}`} part={part} ids={route.ids} />;
     case 'categories':

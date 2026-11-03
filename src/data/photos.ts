@@ -20,7 +20,7 @@ export interface PhotoEdits {
 
 export const NO_PHOTO_EDITS: PhotoEdits = { add: [], remove: [] };
 
-const tables = (db: InventoryDb) => [db.pictures, db.items, db.bins, db.spots, db.seasons, db.settings];
+const tables = (db: InventoryDb) => [db.pictures, db.items, db.bins, db.spots, db.seasons, db.displays, db.settings];
 
 /** The owner's photos in carousel order. */
 export async function photosOf(db: InventoryDb, ownerId: string): Promise<PhotoRow[]> {
@@ -37,9 +37,9 @@ const reordered = (list: readonly PhotoRow[]) => list.flatMap((p, order) => (p.o
  * failed with Dexie's PrematureCommitError when adding a bin or spot photo (exact cause not
  * isolated; tests/photos.test.ts covers it).
  */
-export async function applyPhotoEdits(db: InventoryDb, type: PhotoOwner, ownerId: string, edits: PhotoEdits, now: number, kind: PhotoKind = 'photo'): Promise<void> {
+export async function applyPhotoEdits(db: InventoryDb, type: PhotoOwner, ownerId: string, edits: PhotoEdits, now: number, kind: PhotoKind = 'photo', seasonId = ''): Promise<void> {
   if (edits.add.length === 0 && edits.remove.length === 0) return;
-  const table = type === 'item' ? db.items : type === 'bin' ? db.bins : type === 'spot' ? db.spots : db.seasons;
+  const table = type === 'item' ? db.items : type === 'bin' ? db.bins : type === 'spot' ? db.spots : type === 'display' ? db.displays : db.seasons;
   const owner = await table.get(ownerId);
   if (!owner) throw new Error(`no ${type} with id ${ownerId}`);
   const current = (await db.pictures.where('ownerId').equals(ownerId).toArray()).sort((a, b) => a.order - b.order);
@@ -51,7 +51,9 @@ export async function applyPhotoEdits(db: InventoryDb, type: PhotoOwner, ownerId
   const added: PhotoRow[] = edits.add.map((p, k) => {
     const id = newId(ID_PREFIX.photo, (x) => taken.has(x));
     taken.add(id);
-    return { id, ownerType: type, ownerId, kind, caption: '', order: kept.length + k, full: p.full, thumb: p.thumb, updatedAt: now, taken: now };
+    const row: PhotoRow = { id, ownerType: type, ownerId, kind, caption: '', order: kept.length + k, full: p.full, thumb: p.thumb, updatedAt: now, taken: now };
+    if (seasonId) row.seasonId = seasonId;
+    return row;
   });
   if (removing.size) await db.pictures.bulkDelete([...removing]);
   if (added.length) await db.pictures.bulkAdd(added);
@@ -65,9 +67,23 @@ export async function applyPhotoEdits(db: InventoryDb, type: PhotoOwner, ownerId
   await db.settings.put({ key: 'lastChangeAt', value: now });
 }
 
-/** Adds photos to a record's carousel. */
-export async function addPhotos(db: InventoryDb, type: PhotoOwner, ownerId: string, photos: readonly NewPhoto[], now = Date.now()): Promise<void> {
-  await db.transaction('rw', tables(db), () => applyPhotoEdits(db, type, ownerId, { add: photos, remove: [] }, now));
+/**
+ * Adds photos to a record's carousel. A display's setup photos (F8) are kind `setup` and carry
+ * the season they show; a season's setup photos are kind `setup` without one.
+ */
+export async function addPhotos(db: InventoryDb, type: PhotoOwner, ownerId: string, photos: readonly NewPhoto[], now = Date.now(), setup: { seasonId: string } | null = null): Promise<void> {
+  if (setup?.seasonId && !(await db.seasons.get(setup.seasonId))) throw new Error('That season was removed meanwhile.');
+  await db.transaction('rw', tables(db), () => applyPhotoEdits(db, type, ownerId, { add: photos, remove: [] }, now, setup ? 'setup' : 'photo', setup?.seasonId ?? ''));
+}
+
+/** Changes the season a setup photo shows (F8); '' for none. */
+export async function setPhotoSeason(db: InventoryDb, photoId: string, seasonId: string, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.pictures, db.seasons, db.settings, async () => {
+    if (seasonId && !(await db.seasons.get(seasonId))) throw new Error('That season was removed meanwhile.');
+    const n = await db.pictures.update(photoId, { seasonId: seasonId || undefined });
+    if (n === 0) throw new Error(`no photo with id ${photoId}`);
+    await db.settings.put({ key: 'lastChangeAt', value: now });
+  });
 }
 
 /** Deletes one photo (after the carousel's confirmation, §8). */
@@ -140,6 +156,8 @@ export async function getThumbnail(db: InventoryDb, ownerId: string, make: (full
 }
 
 /** Photo records without their images (backups, counts). */
-export function photoInfo({ id, ownerType, ownerId, kind, caption, order }: PhotoRow): PhotoInfo {
-  return { id, ownerType, ownerId, kind, caption, order };
+export function photoInfo({ id, ownerType, ownerId, kind, seasonId, caption, order }: PhotoRow): PhotoInfo {
+  const info: PhotoInfo = { id, ownerType, ownerId, kind, caption, order };
+  if (seasonId) info.seasonId = seasonId;
+  return info;
 }

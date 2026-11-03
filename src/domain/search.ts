@@ -1,6 +1,6 @@
 // Search (SPEC v2.0 F1).
 import { itemPath, itemSeasonId, pathText, type PlaceIndex } from './places';
-import type { Item, Season } from './types';
+import type { Display, Item, Season } from './types';
 
 /** Lower-case, accents removed, runs of whitespace collapsed. */
 export function normalize(s: string): string {
@@ -15,11 +15,14 @@ export function normalize(s: string): string {
 export interface SearchContext {
   places: PlaceIndex;
   seasons: ReadonlyMap<string, Season>;
+  /** Holiday: an item also matches the display it usually goes on (H4). */
+  displays?: ReadonlyMap<string, Display>;
 }
 
 /**
  * Everything F1 searches on an item: name, notes, tags, barcode, model and serial, its
- * category, its path (area, spot, bin code and name) and its season.
+ * category, its path (area, spot, bin code and name), its season, and in Holiday its usual display
+ * and where it's out.
  */
 export function searchText(item: Item, ctx?: SearchContext): string {
   const parts = [item.name, item.notes, item.tags.join(' '), item.barcode, item.model, item.serial, item.category, item.subcategory];
@@ -28,7 +31,10 @@ export function searchText(item: Item, ctx?: SearchContext): string {
     if (path.length) parts.push(pathText(path));
     const season = ctx.seasons.get(itemSeasonId(item, ctx.places));
     if (season) parts.push(season.name);
+    const display = ctx.displays?.get(item.displayId);
+    if (display) parts.push(display.name);
   }
+  if (item.status === 'out' && item.outWhere) parts.push(item.outWhere);
   return normalize(parts.join(' \n '));
 }
 

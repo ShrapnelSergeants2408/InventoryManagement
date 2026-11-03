@@ -10,26 +10,32 @@ import { writeCsv } from './csv';
 import {
   AREAS_FILE,
   BINS_FILE,
+  DISPLAYS_FILE,
   FILES_FILE,
   ITEMS_FILE,
   ITEM_COLUMNS,
+  RUNS_FILE,
   SEASONS_FILE,
   SPOTS_FILE,
   TAGS_FILE,
+  TASKS_FILE,
   itemCells,
   photoPathFor,
   serializeAreas,
   serializeBins,
+  serializeDisplays,
   serializeFiles,
   serializeItems,
+  serializeRuns,
   serializeSeasons,
   serializeSpots,
   serializeTags,
+  serializeTasks,
 } from './household-csv';
 import { CATEGORIES_FILE, serializeCategoriesCsv } from './lists-csv';
 
 export const APP_NAME = 'Hiebert Home Inventory';
-export const APP_VERSION = '0.1.3';
+export const APP_VERSION = '0.1.4';
 
 export type BackupKind = 'full' | 'data';
 
@@ -84,6 +90,9 @@ export async function buildFullBackup(data: HouseholdData, images: ReadonlyMap<s
     [ITEMS_FILE, serializeItems(data.items)],
     [SEASONS_FILE, serializeSeasons(data.seasons)],
     [TAGS_FILE, serializeTags(data.tags)],
+    [DISPLAYS_FILE, serializeDisplays(data.displays)],
+    [TASKS_FILE, serializeTasks(data.seasonTasks)],
+    [RUNS_FILE, serializeRuns(data.seasonRuns)],
     [CATEGORIES_FILE, serializeCategoriesCsv(data.categories)],
     [FILES_FILE, serializeFiles(photos, (p) => paths.get(p.id)!)],
   ];
@@ -98,6 +107,7 @@ export async function buildFullBackup(data: HouseholdData, images: ReadonlyMap<s
     spotCount: data.spots.length,
     binCount: data.bins.length,
     seasonCount: data.seasons.length,
+    displayCount: data.displays.length,
     parts: Object.fromEntries(
       PARTS.map((p) => [p, { items: data.items.filter((i) => i.part === p).length, areas: data.areas.filter((a) => a.part === p).length, bins: data.bins.filter((b) => b.part === p).length }]),
     ),

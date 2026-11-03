@@ -1,11 +1,15 @@
-// H3 real-browser check (SPEC v3.0, milestone H3: two parts, Find, Browse, scanning, labels).
-// Part 1 builds a database exactly as 0.1.2 declared it (schema v2), then opens 0.1.3: the
+// H4 real-browser check (SPEC v3.0, milestones H3 and H4). Parts 1–3 are the H3 check: two parts,
+// Find, Browse, scanning, labels. Part 4 is H4: displays, the item's usual display, a season's
+// tasks, Start setup and the setup list (ticks, Unpack a whole bin, Finish setup), the Holiday
+// home after it, a display's screen and setup photos by season, Put out / Put back on an item, Find
+// by display, Add to Calendar, removing a display; then the new screens at iPhone width.
+// Part 1 builds a database exactly as 0.1.2 declared it (schema v2), then opens 0.1.4: the
 // in-place upgrade must put everything in Household and the seasons in Holiday. Part 2 starts
 // fresh and drives both parts: Set up, the part switch and tab bars, areas with codes across
 // parts, bins and items, Find with the other part's count, Browse views, a typed bin code from
 // the other part (switch + Undo), bin labels and "Label out of date", moving an item and a bin
 // to the other part, the Season home and Lists, then the iPhone layout. Real IndexedDB, headless
-// Chrome. Usage: npm run build && node scripts/h3-ui-check.mjs <chrome.exe> <screenshot dir>
+// Chrome. Usage: npm run build && node scripts/h4-ui-check.mjs <chrome.exe> <screenshot dir>
 import { tempDir, track } from './tmp-cleanup.mjs';
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -150,7 +154,7 @@ try {
   await waitFor(`document.querySelector('.tabs')`, 60000);
   await waitFor(`document.querySelector('.hbody, .fbody')`);
   const up = await js(`return { areas: await idb('areas'), bins: await idb('bins'), items: await idb('items'), seasons: await idb('seasons'), cats: await idb('categoryList'), tags: await idb('tagList'), schema: (await idb('settings')).find((s) => s.key === 'schemaVersion')?.value }`);
-  check('upgrade: schema 4; area, bin and item in Household; codes from names (A-04 → ATTIC-04); the bin and item lose their season', [up.schema, up.areas.map((a) => [a.part, a.code]), up.bins.map((b) => [b.part, b.seasonId, b.code]), up.items.map((i) => [i.part, i.seasonId, i.binId])], [4, [['household', 'ATTIC']], [['household', '', 'ATTIC-04']], [['household', '', 'bn-XMAS0004']]]);
+  check('upgrade: schema 5; area, bin and item in Household; codes from names (A-04 → ATTIC-04); the bin and item lose their season', [up.schema, up.areas.map((a) => [a.part, a.code]), up.bins.map((b) => [b.part, b.seasonId, b.code]), up.items.map((i) => [i.part, i.seasonId, i.binId])], [5, [['household', 'ATTIC']], [['household', '', 'ATTIC-04']], [['household', '', 'bn-XMAS0004']]]);
   check('upgrade: Christmas kept with its default dates; lists in Household, Holiday defaults added', [up.seasons.map((s) => [s.name, s.setupFrom, s.takedownBy]), up.cats.filter((c) => c.part === 'household').map((c) => c.name), up.cats.filter((c) => c.part === 'holiday').length, up.tags.map((t) => [t.part, t.name])], [[['Christmas', '11-25', '01-06']], ['Decorations', 'Other'], 10, [['household', 'Fragile']]]);
   check('first open: the Holiday part, Season tab (§12.5)', await js(`return [part(), tabs(), current()]`), ['holiday', ['Season', 'Find', 'Scan', 'Lists', 'More'], 'Season']);
   await shot('01-upgraded-season-home');
@@ -268,9 +272,9 @@ try {
   await js(`await go('#/holiday/lists');`);
   check('Holiday Lists: To buy, Needs attention, Out now', await js(`return $$('.lsec h2').map((e) => norm(e.textContent).replace(/ ·.*/, ''))`), ['To buy', 'Needs attention', 'Out now']);
   await js(`await go('#/holiday/more');`);
-  check('Holiday More: Areas & spots, Seasons, Categories, Tags, Labels…; version 0.1.3', await js(`return $$('.mrow .mt').map((e) => norm(e.textContent))`), ['Areas & spots', 'Seasons', 'Categories', 'Tags', 'Labels', 'Backup & restore', 'Settings', 'Hiebert Home Inventory', 'App version 0.1.3']);
+  check('Holiday More: Areas & spots, Seasons, Displays, Categories, Tags, Labels…; version 0.1.4', await js(`return $$('.mrow .mt').map((e) => norm(e.textContent))`), ['Areas & spots', 'Seasons', 'Displays', 'Categories', 'Tags', 'Labels', 'Backup & restore', 'Settings', 'Hiebert Home Inventory', 'App version 0.1.4']);
   await js(`await go('#/household/more');`);
-  check('Household More has no Seasons', await js(`return $$('.mrow .mt').map((e) => norm(e.textContent)).includes('Seasons')`), false);
+  check('Household More has no Seasons or Displays', await js(`const t = $$('.mrow .mt').map((e) => norm(e.textContent)); return [t.includes('Seasons'), t.includes('Displays')]`), [false, false]);
 
   // The part is remembered across a reload.
   await navigate(`${ORIGIN}/`);
@@ -317,10 +321,111 @@ try {
   const manifest = await js(`const l = $('link[rel=manifest]'); return l ? await (await fetch(l.href)).json() : null`);
   check('manifest name, short name and portrait', [manifest?.name, manifest?.short_name, manifest?.orientation], ['Hiebert Home Inventory', 'Home Inventory', 'portrait']);
 
+  // ── Part 4: H4, the Holiday setup ──
+  // Displays (F22).
+  await js(`await go('#/holiday/more'); await click('.mrow', 'Displays'); await settle(500);`);
+  check('More › Displays: empty, in Holiday', await js(`return [part(), location.hash, !!$('.empty-card')]`), ['holiday', '#/more/displays', true]);
+  for (const name of ['Mantel', 'Front porch']) {
+    await js(`await click('.top .btn.pri', 'Add display'); await type('#dp-name', '${name}'); await click('[role=dialog] .btn.pri', 'Add display'); await settle(500);`);
+  }
+  await js(`await click('.top .btn.pri', 'Add display'); await type('#dp-name', 'mantel'); await settle(200);`);
+  check('a duplicate display name is refused as you type', await js(`return [/already in the list/.test($('[role=dialog] .err')?.textContent ?? ''), $('[role=dialog] .btn.pri').disabled]`), [true, true]);
+  await js(`await click('[role=dialog] .btn', 'Cancel'); await settle(300);`);
+  const displays = await js(`return (await idb('displays')).sort((a, b) => a.order - b.order).map((d) => [d.name, d.order])`);
+  check('displays stored in walk order', displays, [['Mantel', 0], ['Front porch', 1]]);
+  const dIds = Object.fromEntries((await js(`return await idb('displays')`)).map((d) => [d.name, d.id]));
+
+  // Items with their usual display, in the Christmas bin STORAGE-01 (empty since the icicles moved).
+  for (const [name, cat, disp] of [['Garland', 'Wreaths & garland', 'Mantel'], ['Wreath', 'Wreaths & garland', 'Front porch'], ['Angel', 'Ornaments', '']]) {
+    await js(`await go('#/bin/${sBin.id}'); await click('.dacts .btn', 'Add item here'); await settle(700);`);
+    await waitFor(`document.querySelector('#nm')`);
+    await js(`await type('#nm', '${name}'); await pick('#cat', '${cat}'); ${disp ? `await pickText('#dsp', '${disp}');` : ''} await click('.top .btn.pri', 'Add item'); await settle(900);`);
+    await waitFor(`location.hash.startsWith('#/item/')`);
+  }
+  const hItems = Object.fromEntries((await js(`return await idb('items')`)).filter((i) => i.binId === sBin.id).map((i) => [i.name, i]));
+  check('the item editor stores the usual display', [hItems.Garland?.displayId === dIds.Mantel, hItems.Wreath?.displayId === dIds['Front porch'], hItems.Angel?.displayId], [true, true, '']);
+  check('item detail shows the usual display', await js(`await go('#/item/${hItems.Garland.id}'); return byText('.kv a', 'Mantel')?.getAttribute('href')`), `#/display/${dIds.Mantel}`);
+  await js(`await go('#/item/${hItems.Garland.id}/edit'); await settle(500);`);
+  check('a Household item has no display field', await js(`const a = !!$('#dsp'); const cord = (await idb('items')).find((i) => i.name === 'Extension cord'); await go('#/item/' + cord.id + '/edit'); await settle(500); return [a, !!$('#dsp')]`), [true, false]);
+
+  // A season: tasks, then Start setup (F25).
+  const xmasId = (await js(`return await idb('seasons')`)).find((x) => x.name === 'Christmas').id;
+  await js(`await go('#/season/${xmasId}'); await settle(500);`);
+  check('Christmas: not started, Start setup offered, Holiday bar', await js(`return [/^Not started/.test(norm($('.hsbody .card .h2').textContent)), !!byText('.hsbody .btn.pri', 'Start setup'), norm($('.top .ptag')?.textContent ?? '')]`), [true, true, 'Holiday']);
+  await js(`await type('input[aria-label="New setup task"]', 'Test the lights'); await click('.hsbody .inline-add .btn', 'Add'); await settle(400);`);
+  await js(`await type('input[aria-label="New takedown task"]', 'Recycle the tree'); byText('[aria-label="Takedown tasks"] .btn', 'Add').click(); await settle(400);`);
+  check('season tasks stored by phase', await js(`return (await idb('seasonTasks')).map((t) => [t.phase, t.text]).sort()`), [['setup', 'Test the lights'], ['takedown', 'Recycle the tree']]);
+  await js(`await click('.hsbody .btn.pri', 'Start setup'); await settle(900);`);
+  await waitFor(`location.hash === '#/season/${xmasId}/setup'`);
+  const run1 = (await js(`return await idb('seasonRuns')`))[0];
+  check('Start setup: this year’s run, setting up', [run1?.seasonId === xmasId, run1?.phase, typeof run1?.startedAt], [true, 'setting up', 'number']);
+  check('setup list: the three sections with counts', await js(`return [norm($('.sl-head .h1').textContent), $$('.slsec').map((e) => [...e.children].map((c) => norm(c.textContent)).join(' '))]`), ['Christmas setup', ['1 · Bins to bring out 0 of 1', '2 · Put out 0 of 3', '3 · Tasks 0 of 1']]);
+  check('Put out: by display in walk order, then No display', await js(`return $$('.slsub span').map((e) => norm(e.textContent))`), ['Mantel · 0 of 1', 'Front porch · 0 of 1', 'No display · 0 of 1']);
+  await shot('11-setup-list');
+  await js(`$('.tbox[aria-label="Put out Garland"]').click(); await settle(600);`);
+  check('ticking an item puts it out on its usual display', await js(`const g = (await idb('items')).find((i) => i.name === 'Garland'); return [g.status, g.outWhere, g.outDisplayId === '${dIds.Mantel}', norm($('.slsub span').textContent)]`), ['out', 'Mantel', true, 'Mantel · 1 of 1']);
+  await js(`$('.tbox[aria-label="Test the lights"]').click(); await settle(600);`);
+  check('ticking a task records it in the run', await js(`return (await idb('seasonRuns'))[0].doneTaskIds.length`), 1);
+  await js(`await type('input[aria-label="New setup task"]', 'Get the ladder'); await click('.sladd .btn', 'Add'); await settle(500);`);
+  check('a task added from the list', await js(`return $$('.slrow .rt strong').map((e) => norm(e.textContent)).slice(-2)`), ['Test the lights', 'Get the ladder']);
+  await js(`await click('.slpad .btn', 'Unpack a whole bin'); await settle(500);`);
+  check('Unpack: the bin’s stored items, each to its usual display, the bin out too', await js(`const d = dlg('Unpack STORAGE-01'); return [!!d, $$('.uprow .rt').map((e) => [...e.children].map((c) => norm(c.textContent))), d.querySelector('.tick input')?.checked, norm(d.querySelector('.btn.pri').textContent)]`), [true, [['Angel ×1', '→ No display'], ['Wreath ×1', '→ Front porch']], true, 'Take all 2 out']);
+  await shot('12-unpack');
+  await js(`await click('[role=dialog] .btn.pri', 'Take all 2 out'); await settle(800);`);
+  check('unpacked: items out on their displays, the bin out', await js(`const it = await idb('items'); const w = it.find((i) => i.name === 'Wreath'); const a = it.find((i) => i.name === 'Angel'); const b = (await idb('bins')).find((x) => x.id === '${sBin.id}'); return [w.status, w.outWhere, a.status, a.outWhere, b.state]`), ['out', 'Front porch', 'out', '', 'out']);
+  check('progress: 5 of 6 (one task left)', await js(`return norm($('.sl-meta').textContent).replace(/ ·.*/, '')`), '5 of 6 done');
+  await js(`await click('.slfoot .btn', 'Finish setup'); await settle(400);`);
+  check('Finish setup names what’s unticked', await js(`return norm(dlg('Finish setup').querySelector('.dlg-p').textContent)`), 'Still unticked: 1 task. They stay as they are.');
+  await js(`await click('[role=dialog] .btn.pri', 'Finish setup'); await settle(900);`);
+  check('finished: the run is up, the app is on the Season home', await js(`return [(await idb('seasonRuns'))[0].phase, location.hash]`), ['up', '#/holiday/season']);
+  check('the Season home shows Christmas up until its takedown date', await js(`const cards = [...$$('.hcard'), ...$$('.hmini')]; const c = cards.find((x) => norm(x.textContent).includes('Christmas')); return /Up · take down by Jan 6/.test(norm(c?.textContent ?? ''))`), true);
+  await shot('13-season-home-up');
+
+  // A display's screen (F22) and setup photos by season (F8).
+  await js(`await go('#/display/${dIds.Mantel}'); await settle(600);`);
+  check('display: on it now and usually here', await js(`return $$('.hsbody .card .h2').map((e) => norm(e.textContent))`), ['Setup photos', 'On it now · 1', 'Usually goes here · 1']);
+  await js(`await click('.seasonpick .chip', 'Christmas'); await settle(300); await choosePhoto('[aria-label="Setup photos"]', '#c00');`);
+  check('a setup photo is stored with the display and the season', await js(`return (await idb('pictures')).filter((p) => p.ownerId === '${dIds.Mantel}').map((p) => [p.ownerType, p.kind, p.seasonId === '${xmasId}'])`), [['display', 'setup', true]]);
+  await js(`await click('.seasonpick .chip', 'Easter'); await settle(400);`);
+  check('another season shows its own (none yet)', await js(`return norm($('[aria-label="Setup photos"] .nophoto-t')?.textContent ?? '')`), 'No Easter setup photos yet');
+  await shot('14-display');
+
+  // Put back and Put out on an item (F5).
+  await js(`await go('#/item/${hItems.Garland.id}'); await click('.dacts .btn', 'Put back'); await settle(600);`);
+  check('Put back: stored again in its bin', await js(`const g = (await idb('items')).find((i) => i.name === 'Garland'); return [g.status, g.outWhere, g.binId === '${sBin.id}']`), ['stored', '', true]);
+  await js(`await click('.dacts .btn', 'Put out'); await settle(400); await pickText('#po-to', 'Somewhere else'); await type('[role=dialog] input[aria-label="Where"]', 'Stairs'); await click('[role=dialog] .btn.pri', 'Put out'); await settle(600);`);
+  check('Put out somewhere typed', await js(`const g = (await idb('items')).find((i) => i.name === 'Garland'); return [g.status, g.outWhere, g.outDisplayId]`), ['out', 'Stairs', '']);
+
+  // Find matches an item's display (F1).
+  await js(`await go('#/holiday/find'); await type('.fbox input', 'porch'); await settle(300);`);
+  check('Find in Holiday by display name', await js(`return $$('.fres .rt strong').map((e) => norm(e.textContent))`), ['Wreath']);
+
+  // Add to Calendar (F23): the .ics file (headless Chrome can't share, so it downloads).
+  const ics = await js(`
+    let got = null;
+    const click0 = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = function () { if (this.download) got = [this.download, this.href]; else click0.call(this); };
+    await go('#/holiday/season'); await click('.hbody .btn', 'Add the season dates to Calendar'); await settle(500);
+    HTMLAnchorElement.prototype.click = click0;
+    if (!got) return null;
+    const text = await (await fetch(got[1])).text();
+    return [got[0], text.startsWith('BEGIN:VCALENDAR'), text.includes('SUMMARY:Christmas: set up'), (text.match(/BEGIN:VEVENT/g) ?? []).length];`);
+  check('Add to Calendar: holiday-seasons.ics with each season’s two dates', ics, ['holiday-seasons.ics', true, true, 20]);
+
+  // Removing a display (F22, §6).
+  await js(`await go('#/more/displays'); const row = byText('.lrow', 'Front porch'); [...row.querySelectorAll('.btn')].find((b) => norm(b.textContent) === 'Remove').click(); await settle(400);`);
+  check('removing a display in use names what uses it', await js(`return norm(dlg('Remove display').querySelector('.dlg-big').textContent)`), '1 item usually goes there, and 1 item is out on it. It’s cleared from them; items out there stay out. Its setup photos are deleted.');
+  await js(`await click('[role=alertdialog] .btn.danger', 'Remove display'); await settle(600);`);
+  check('removed: the wreath keeps where it is as text', await js(`const w = (await idb('items')).find((i) => i.name === 'Wreath'); return [w.displayId, w.outDisplayId, w.outWhere, w.status, (await idb('displays')).length]`), ['', '', 'Front porch', 'out', 1]);
+
+  // The new screens have no console errors at desktop width either; iPhone width follows.
+
   // ── iPhone size ──
   await size(390, 844, true);
   const peg = await js(`return (await idb('spots')).find((s) => s.name === 'Pegboard').id`);
-  for (const [h, name] of [['#/holiday/season', 'season'], ['#/household/find', 'find'], ['#/household/browse', 'browse'], ['#/holiday/lists', 'lists'], ['#/holiday/more', 'more']]) {
+  const xmas = (await js(`return await idb('seasons')`)).find((x) => x.name === 'Christmas');
+  const mantel = (await js(`return await idb('displays')`)).find((x) => x.name === 'Mantel');
+  for (const [h, name] of [['#/holiday/season', 'season'], ['#/household/find', 'find'], ['#/household/browse', 'browse'], ['#/holiday/lists', 'lists'], ['#/holiday/more', 'more'], [`#/season/${xmas.id}`, 'h4-season'], [`#/season/${xmas.id}/setup`, 'h4-setup-list'], [`#/display/${mantel.id}`, 'h4-display'], ['#/more/displays', 'h4-displays']]) {
     await js(`await go('${h}');`);
     await shot(`09-iphone-${name}`);
     check(`iPhone 390 px, ${name}: nothing scrolls sideways`, await js(`return document.documentElement.scrollWidth > innerWidth`), false);

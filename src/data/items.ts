@@ -39,6 +39,8 @@ async function fitToLists(db: InventoryDb, given: Item): Promise<Item> {
   const homePart = await partOfHome(db, given);
   if (homePart !== null && homePart !== given.part) fail(`That home is in ${PART_NAME[homePart]}; use Move to move the item there.`);
   if (given.seasonId && !(await db.seasons.get(given.seasonId))) fail('That season was removed meanwhile.');
+  if (given.displayId && !(await db.displays.get(given.displayId))) fail('That display was removed meanwhile.');
+  if (given.outDisplayId && !(await db.displays.get(given.outDisplayId))) fail('The display it’s out on was removed meanwhile.');
 
   const cat =
     (await db.categoryList.get([given.part, given.category])) ??
@@ -69,7 +71,7 @@ async function touch(db: InventoryDb, now: number, home = ''): Promise<void> {
   if (home !== '') await db.settings.put({ key: RECENT_HOMES, value: pushRecent(await getRecentHomes(db), home, 6) });
 }
 
-const TABLES = (db: InventoryDb) => [db.items, db.pictures, db.categoryList, db.areas, db.bins, db.spots, db.seasons, db.tagList, db.settings];
+const TABLES = (db: InventoryDb) => [db.items, db.pictures, db.categoryList, db.areas, db.bins, db.spots, db.seasons, db.displays, db.tagList, db.settings];
 
 /** Adds a new item, with photos taken in the form. The id must be unused. */
 export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photos: PhotoEdits = NO_PHOTO_EDITS): Promise<Item> {

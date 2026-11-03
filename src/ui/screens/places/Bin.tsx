@@ -1,6 +1,7 @@
 // Bin detail and editor (SPEC v3.0 §3, F7, F10, §6). Detail: photos, where it is, season (Holiday)
 // and tags, what's in it, its label ("Label out of date" with Reprint, §4), and Add item here,
-// Print label, Move bin (also to the other part), Edit, Delete. The top bar shows the bin's part.
+// Print label, Move bin (also to the other part), Edit, Delete; in Holiday, Unpack (F5). The top
+// bar shows the bin's part.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
@@ -25,6 +26,7 @@ import { showToast } from '../../shell/toast';
 import { Thumb } from '../inventory/ItemRow';
 import { Breadcrumbs } from '../item/Detail';
 import { StorageError } from '../StorageError';
+import { UnpackDialog } from '../holiday/PutOut';
 
 function Loading({ title, back }: { title: string; back: ComponentChildren }) {
   return (
@@ -91,7 +93,7 @@ export function BinScreen({ id }: { id: string }) {
 
 function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; back: ComponentChildren }) {
   const db = useDb();
-  const [open, setOpen] = useState<'move' | 'delete' | null>(null);
+  const [open, setOpen] = useState<'move' | 'delete' | 'unpack' | null>(null);
   useEffect(() => noteViewed(bin.id), [bin.id]);
   useRecordPart(bin.part);
   const ix = indexPlaces(snap);
@@ -109,7 +111,13 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
         <div class="dleft">
           <PhotoCarousel ownerType="bin" ownerId={bin.id} name={binLabel(bin)} />
           <div class="dacts">
-            <a class="btn pri lg" href={href.add('', '', bin.id)}>
+            {bin.part === 'holiday' && items.some((i) => i.status === 'stored') && (
+              <button type="button" class="btn pri lg" onClick={() => setOpen('unpack')}>
+                <Icon name="arrowOut" />
+                Unpack…
+              </button>
+            )}
+            <a class={bin.part === 'holiday' && items.some((i) => i.status === 'stored') ? 'btn lg' : 'btn pri lg'} href={href.add('', '', bin.id)}>
               <Icon name="plus" />
               Add item here
             </a>
@@ -204,6 +212,7 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
           }}
         />
       )}
+      {open === 'unpack' && <UnpackDialog bin={bin} items={items} displays={snap.displays} onClose={() => setOpen(null)} />}
       {open === 'delete' && <DeleteBin bin={bin} items={items} spotName={spot?.name ?? null} onClose={() => setOpen(null)} />}
     </>
   );

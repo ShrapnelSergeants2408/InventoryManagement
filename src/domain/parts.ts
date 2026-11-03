@@ -4,7 +4,7 @@
 import { ID_PREFIX, newId } from './ids';
 import { DEFAULT_SEASONS, defaultAreaCode, splitBinCode } from './places';
 import { defaultDates } from './seasons';
-import { nameKey, type Area, type Bin, type Category, type Item, type Part, type Season, type Spot, type Tag } from './types';
+import { nameKey, type Area, type Bin, type Category, type Display, type Item, type Part, type Season, type SeasonRun, type SeasonTask, type Spot, type Tag } from './types';
 
 /** Default categories for each part (§3, Category). */
 export const DEFAULT_CATEGORIES: Readonly<Record<Part, readonly string[]>> = {
@@ -41,6 +41,10 @@ export interface PartRecords {
   seasons: readonly Season[];
   tags: readonly Tag[];
   categories: readonly Category[];
+  /** Holiday's setup records (H4); a view keeps them in Holiday and empties them in Household. */
+  displays?: readonly Display[];
+  seasonTasks?: readonly SeasonTask[];
+  seasonRuns?: readonly SeasonRun[];
 }
 
 /** The part a spot is in: its area's. Null when the area is missing. */
@@ -62,6 +66,9 @@ export function partView<T extends PartRecords>(d: T, part: Part): T {
     spots: d.spots.filter((s) => areaIds.has(s.areaId)),
     bins: d.bins.filter((b) => b.part === part),
     seasons: part === 'holiday' ? d.seasons : [],
+    ...(d.displays && { displays: part === 'holiday' ? d.displays : [] }),
+    ...(d.seasonTasks && { seasonTasks: part === 'holiday' ? d.seasonTasks : [] }),
+    ...(d.seasonRuns && { seasonRuns: part === 'holiday' ? d.seasonRuns : [] }),
     tags: d.tags.filter((t) => t.part === part),
     categories: d.categories.filter((c) => c.part === part),
   };

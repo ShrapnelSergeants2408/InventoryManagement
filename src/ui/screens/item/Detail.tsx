@@ -1,10 +1,12 @@
 // Item detail (F16): photo carousel, path breadcrumbs, status, condition and season chips, the
 // quantity stepper, details and a collapsed Records section. Actions: Edit, Move (F7), and under
-// More…: Split a line, Duplicate, Print QR label, Delete. The top bar shows the item's part in its
+// More…: Split a line, Duplicate, Print QR label, Delete; in Holiday, Put out… or Put back (F5) and
+// its usual display (F22). The top bar shows the item's part in its
 // color (F21); opening an item of the other part switches the app to it. H7 restyles it.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { adjustQuantity, setQuantity, type InventorySnapshot } from '../../../data/inventory';
+import { putBack } from '../../../data/holiday';
 import { duplicateItem, getRecentHomes, homeId, moveItemsHome, splitItem, type Home } from '../../../data/items';
 import { noteViewed } from '../../../data/prefs';
 import { kindOfId } from '../../../domain/ids';
@@ -26,6 +28,7 @@ import { getPart, useRecordPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { DeleteItemButton } from './DeleteItem';
+import { PutOutDialog } from '../holiday/PutOut';
 
 const crumb = (i: Item) => (i.subcategory ? `${i.category} › ${i.subcategory}` : i.category);
 
@@ -97,7 +100,7 @@ export function Breadcrumbs({ parts, empty }: { parts: readonly PathPart[]; empt
   );
 }
 
-type Open = 'move' | 'more' | 'split' | null;
+type Open = 'move' | 'more' | 'split' | 'out' | null;
 
 function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; back: ComponentChildren }) {
   const db = useDb();
@@ -112,6 +115,7 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
   const path = itemPath(item, ix);
   const season = snap.seasons.find((s) => s.id === itemSeasonId(item, ix));
   const ownSeason = item.seasonId !== '';
+  const display = snap.displays.find((d) => d.id === item.displayId);
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
   const records = [item.purchaseDate, item.model, item.serial, item.warrantyUntil].some((x) => x !== '');
 
@@ -134,6 +138,18 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
               <Icon name="dots" />
               More…
             </button>
+            {item.part === 'holiday' &&
+              (item.status === 'out' ? (
+                <button type="button" class="btn lg" onClick={() => void putBack(db, [item.id]).then(() => showToast(`${item.name} is back in ${path.length ? pathText(path) : 'storage'}.`), fail)}>
+                  <Icon name="check" />
+                  Put back
+                </button>
+              ) : (
+                <button type="button" class="btn lg" onClick={() => setOpen('out')}>
+                  <Icon name="arrowOut" />
+                  Put out…
+                </button>
+              ))}
           </div>
         </div>
 
@@ -172,8 +188,14 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
             <Breadcrumbs parts={path} empty={NO_HOME} />
             <span class="lbl">Category</span>
             <span>{crumb(item)}</span>
-            <span class="lbl">Season</span>
-            <span class={season ? '' : 'muted'}>{season ? `${season.name}${ownSeason ? '' : ' (from its bin)'}` : 'None'}</span>
+            {item.part === 'holiday' && (
+              <>
+                <span class="lbl">Season</span>
+                <span class={season ? '' : 'muted'}>{season ? `${season.name}${ownSeason ? '' : ' (from its bin)'}` : 'None'}</span>
+                <span class="lbl">Usual display</span>
+                {display ? <a href={href.display(display.id)}>{display.name}</a> : <span class="muted">None</span>}
+              </>
+            )}
             {item.condition !== 'ok' && (
               <>
                 <span class="lbl">Condition</span>
@@ -209,6 +231,7 @@ function Detail({ item, snap, back }: { item: Item; snap: InventorySnapshot; bac
         </div>
       </div>
 
+      {open === 'out' && <PutOutDialog item={item} displays={snap.displays} onClose={() => setOpen(null)} />}
       {open === 'move' && (
         <HomePicker
           snap={partView(snap, item.part)}

@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: Dan, or a future Claude Code session. It covers what the app is, where everything lives and how to change it safely.
 
-Written 2026-11-02, updated 2026-11-03 at app version 0.1.3 (SPEC v3.0, milestone H3: the Household and Holiday parts; next milestone H4, the Holiday setup).
+Written 2026-11-02, updated 2026-11-03 at app version 0.1.4 (SPEC v3.0, milestone H4: the Holiday setup; next milestone H5, sync and sign-in).
 
 ---
 
@@ -15,7 +15,7 @@ A household inventory web app (PWA): what's in each bin and on each shelf, with 
 | **Code** | GitHub, `dhiebert-whs/HouseholdInventory` (`upstream` remote = the FRC app, for reference only; nothing is merged back) |
 | **Users** | The family, each on an iPhone, the app added to the home screen from Safari |
 | **Where the data lives (now)** | In each phone's browser storage (IndexedDB via Dexie, database `home-inventory`). Until H5 there is **no sync**: each phone has its own copy, and backups are the only way to move data |
-| **Where it's going** | H3 (0.1.3) split the app into Household and Holiday parts with a switch; H4 adds the Holiday setup workflow; H5 adds a Cloudflare Worker + D1 + R2 server and sync between phones (SPEC v3.0 §12, §15) |
+| **Where it's going** | H3 (0.1.3) split the app into Household and Holiday parts with a switch; H4 (0.1.4) added the Holiday setup: displays, the setup list, Unpack, setup photos, the calendar file; H5 adds a Cloudflare Worker + D1 + R2 server and sync between phones (SPEC v3.0 §12, §15) |
 | **Stack** | TypeScript, Preact, Vite; Dexie; Papa Parse (CSV), JSZip, a QR library, a barcode scanner with the zxing fallback (iPhone Safari has no BarcodeDetector); Vitest |
 
 ## 2. Where everything is
@@ -43,7 +43,7 @@ A browser check runs on a built app:
 
 ```
 npm run build
-node scripts/h3-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
+node scripts/h4-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
 ```
 
 It prints one PASS, FAIL or INFO line per check and exits 1 if anything failed. On Windows, pass folder arguments as Windows paths.
@@ -63,11 +63,12 @@ The routine that kept the FRC app's data safe:
 
 ## 5. Changing the database (the risky part)
 
-- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 4):
+- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 5):
   - v1 was H1;
   - v2 is H2a, with its upgrade from v1 (`tests/upgrade-h1.test.ts`);
-  - v3 is H3, the two parts, with its upgrade from v2 (`tests/upgrade-v2.test.ts` and part 1 of `scripts/h3-ui-check.mjs`);
-  - v4 turns area letters into codes (ATTIC-04). It exists because the first 0.1.3 build, with letters, was merged and deployed before the area-code change (`tests/upgrade-v3.test.ts`). On a phone coming from v2 it changes nothing.
+  - v3 is H3, the two parts, with its upgrade from v2 (`tests/upgrade-v2.test.ts` and part 1 of `scripts/h4-ui-check.mjs`);
+  - v4 turns area letters into codes (ATTIC-04). It exists because the first 0.1.3 build, with letters, was merged and deployed before the area-code change (`tests/upgrade-v3.test.ts`). On a phone coming from v2 it changes nothing;
+  - v5 is H4: new, empty `displays`, `seasonTasks` and `seasonRuns` tables; nothing stored changes (`tests/holiday-db.test.ts`, "schema v5"). Photos may carry a `seasonId` from here on; older ones have none.
 - After merging a PR, don't push more commits to its branch: they won't reach `main` (2026-11-03, the area-code change). Start a new branch from `main` and open a new PR.
 - Add a new `this.version(n)` with an `.upgrade()`; never edit an old one once a phone has real data.
 - A table whose primary key changes needs a new table name: `photos` → `pictures` (H2a), and `categories` → `categoryList`, `tags` → `tagList` (H3, keyed by part and name).

@@ -1,7 +1,9 @@
-// The Inventory screen's grouped list (SPEC v2.0 F1, F2): pure, so it is unit-tested.
+// The Inventory screen's grouped list (SPEC v2.0 F1, F2 "By category"): pure, so it is
+// unit-tested. H2b adds the By place and By season views.
 import { passesFilters, activeFilterCount, type Filters } from './filters';
+import { indexPlaces, itemAreaId, itemSeasonId, type Places } from './places';
 import { matchesTerms, queryTerms, searchText } from './search';
-import { nameKey, type Category, type Item, type Location } from './types';
+import { nameKey, type Category, type Item, type Season, type Tag } from './types';
 
 export interface CategoryLine {
   kind: 'category';
@@ -97,6 +99,8 @@ export interface ViewInput {
   /** In the order they are stored in. */
   items: readonly Item[];
   categories: readonly Category[];
+  places: Places;
+  seasons: readonly Season[];
   query: string;
   filters: Filters;
   /** Keys (categoryKey / subcategoryKey) of expanded groups. */
@@ -106,7 +110,9 @@ export interface ViewInput {
 export function buildInventoryView(input: ViewInput): InventoryView {
   const terms = queryTerms(input.query);
   const filtering = terms.length > 0 || activeFilterCount(input.filters) > 0;
-  const passes = (i: Item) => passesFilters(i, input.filters) && matchesTerms(searchText(i), terms);
+  const ix = indexPlaces(input.places);
+  const ctx = { places: ix, seasons: new Map(input.seasons.map((s) => [s.id, s])) };
+  const passes = (i: Item) => passesFilters(i, input.filters, ix) && matchesTerms(searchText(i, ctx), terms);
 
   const lines: ListLine[] = [];
   let shown = 0;
@@ -142,21 +148,24 @@ export function buildInventoryView(input: ViewInput): InventoryView {
 
 export interface FilterOptions {
   categories: string[];
-  /** Locations in use, in walk order; '' ("No location") last when any item has none. */
-  locations: string[];
+  /** Area ids in use, in walk order; '' ("No home yet") last when any item has none. */
+  areas: string[];
+  /** Season ids in use (an item's own or its bin's), in season order; '' last when any has none. */
+  seasons: string[];
+  /** Tag names in use, in Tags list order, then unlisted ones. */
+  tags: string[];
 }
 
-export function filterOptions(items: readonly Item[], categories: readonly Category[], locations: readonly Location[]): FilterOptions {
-  const usedLoc = new Set(items.map((i) => nameKey(i.location)));
-  const locs = [...locations].sort((a, b) => a.order - b.order).filter((l) => usedLoc.has(nameKey(l.name))).map((l) => l.name);
-  // A location an item uses that isn't in the list (shouldn't happen; lists are completed on import).
-  const listed = new Set(locs.map(nameKey));
-  for (const it of items) {
-    if (it.location !== '' && !listed.has(nameKey(it.location))) {
-      listed.add(nameKey(it.location));
-      locs.push(it.location);
-    }
-  }
-  if (usedLoc.has('')) locs.push('');
-  return { categories: categoryOrder(categories, items).map((c) => c.name), locations: locs };
+export function filterOptions(items: readonly Item[], categories: readonly Category[], places: Places, seasons: readonly Season[], tags: readonly Tag[]): FilterOptions {
+  const ix = indexPlaces(places);
+  const usedAreas = new Set(items.map((i) => itemAreaId(i, ix) ?? ''));
+  const areas = [...places.areas].sort((a, b) => a.order - b.order).filter((a) => usedAreas.has(a.id)).map((a) => a.id);
+  if (usedAreas.has('')) areas.push('');
+  const usedSeasons = new Set(items.map((i) => itemSeasonId(i, ix)));
+  const seasonIds = [...seasons].sort((a, b) => a.order - b.order).filter((s) => usedSeasons.has(s.id)).map((s) => s.id);
+  if (usedSeasons.has('')) seasonIds.push('');
+  const usedTags = new Map<string, string>();
+  for (const i of items) for (const t of i.tags) if (!usedTags.has(nameKey(t))) usedTags.set(nameKey(t), t);
+  const tagNames = [...tags].sort((a, b) => a.order - b.order).filter((t) => usedTags.delete(nameKey(t.name))).map((t) => t.name);
+  return { categories: categoryOrder(categories, items).map((c) => c.name), areas, seasons: seasonIds, tags: [...tagNames, ...usedTags.values()] };
 }

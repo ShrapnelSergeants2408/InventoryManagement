@@ -1,4 +1,4 @@
-// Managed lists (categories and locations, SPEC v2.0 F11): name checks, usage counts,
+// Managed lists (categories, seasons, tags, SPEC v2.0 F11): name checks, usage counts,
 // reordering and the item rewrites that rename and remove apply. Pure; the data layer
 // runs each change in one transaction.
 import { nameKey, type Category, type Item } from './types';
@@ -32,33 +32,9 @@ export function moveBy<T>(list: readonly T[], index: number, delta: number): T[]
   return out;
 }
 
-// ── Locations (F25) ──────────────────────────────────────────────────────────
+// ── Recent picks ──
 
-/** Items without a location are grouped under this name, so no location may use it. */
-export const NO_LOCATION = 'No location';
-
-/** Names a new or renamed location can't take: the list plus "No location". */
-export const takenLocationNames = (names: readonly string[]) => [...names, NO_LOCATION];
-
-/** Items per location name (nameKey); items with no location are counted under ''. */
-export function locationUsage(items: readonly Item[]): Map<string, Item[]> {
-  const out = new Map<string, Item[]>();
-  for (const item of items) {
-    const key = item.location === '' ? '' : nameKey(item.location);
-    const list = out.get(key) ?? [];
-    list.push(item);
-    out.set(key, list);
-  }
-  return out;
-}
-
-/** Rename, or remove with a replacement location or '' ("No location"). Returns only the items that changed. */
-export function reassignLocation(items: readonly Item[], from: string, to: string): Item[] {
-  const key = nameKey(from);
-  return items.filter((i) => i.location !== '' && nameKey(i.location) === key && i.location !== to).map((i) => ({ ...i, location: to }));
-}
-
-/** Recently used locations for the quick picks (F25): most recent first, at most `max`. */
+/** Recently used names for quick picks (homes, "out where"): most recent first, at most `max`. */
 export function pushRecent(recent: readonly string[], name: string, max = 5): string[] {
   if (name === '') return [...recent];
   return [name, ...recent.filter((r) => nameKey(r) !== nameKey(name))].slice(0, max);

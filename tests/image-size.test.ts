@@ -20,7 +20,7 @@ describe('image resize math (SPEC §8)', () => {
   });
 
   it('constants', () => {
-    expect([PHOTO_LONG_SIDE, THUMB_LONG_SIDE]).toEqual([1024, 160]);
+    expect([PHOTO_LONG_SIDE, THUMB_LONG_SIDE]).toEqual([1600, 320]);
   });
 });
 

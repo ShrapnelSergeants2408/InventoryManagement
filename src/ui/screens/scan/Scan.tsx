@@ -1,21 +1,19 @@
 // Scan (F3): the camera reads a household QR label (hhi:<id>) or a stored product barcode and
 // opens that item with the quantity stepper. A code can be typed instead (torn label, no
-// camera). An unknown code can be attached to an item or used for a new one. A QR code whose
-// text is a location's name shows that location's items (H2 replaces this with spot and bin labels).
+// camera). An unknown code can be attached to an item or used for a new one. H2b adds bin and
+// spot labels and typed bin codes.
 import type { ComponentChildren } from 'preact';
 import { useMemo, useState } from 'preact/hooks';
 import { adjustQuantity, setQuantity, type InventorySnapshot } from '../../../data/inventory';
 import { setBarcode } from '../../../data/items';
-import { addLocation, updateLocation } from '../../../data/lists';
-import { saveFilters } from '../../../data/prefs';
-import { NO_FILTERS } from '../../../domain/filters';
-import { couldBeLocation, resolveScan, formatName, type ScanResult } from '../../../domain/scan';
+import { labelPath } from '../../../domain/labels';
+import { resolveScan, formatName, type ScanResult } from '../../../domain/scan';
 import { matchesQuery } from '../../../domain/search';
-import { nameKey, type Item, type Location } from '../../../domain/types';
+import type { Item } from '../../../domain/types';
 import { plural } from '../../components/common';
 import { CountStepper } from '../../components/QuantityStepper';
 import { Scanner, type CameraState } from '../../components/Scanner';
-import { useDb, usePhoto, useSnapshot } from '../../data-hooks';
+import { useDb, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -25,9 +23,7 @@ type Panel =
   | { kind: 'none' }
   | { kind: 'typing' }
   | { kind: 'result'; result: ScanResult; format: string | null }
-  | { kind: 'attach'; code: string; format: string | null; back: ScanResult }
-  /** Rename an existing location to a scanned name. */
-  | { kind: 'rename'; text: string; format: string | null };
+  | { kind: 'attach'; code: string; format: string | null; back: ScanResult };
 
 export function ScanScreen() {
   const live = useSnapshot();
@@ -50,7 +46,7 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
   const [attempt, setAttempt] = useState(0);
 
   const handle = (code: string, format: string | null) => {
-    const result = resolveScan(code, snap.items, snap.locations);
+    const result = resolveScan(code, snap.items);
     if (result.kind === 'empty') return;
     setPanel({ kind: 'result', result, format });
   };
@@ -109,12 +105,10 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
           onPick={(item) =>
             setPanel({
               kind: 'result',
-              result: { kind: 'item', item, via: panel.result.kind === 'location' ? 'location' : 'barcode', code: panel.result.kind === 'many' || panel.result.kind === 'location' ? panel.result.code : '' },
+              result: { kind: 'item', item, via: 'barcode', code: panel.result.kind === 'many' ? panel.result.code : '' },
               format: panel.format,
             })
           }
-          onLocation={(location) => setPanel({ kind: 'result', result: { kind: 'location', location, code: location.name }, format: panel.format })}
-          onRename={(text) => setPanel({ kind: 'rename', text, format: panel.format })}
         />
       )}
       {panel.kind === 'attach' && (
@@ -123,14 +117,6 @@ function Scan({ snap }: { snap: InventorySnapshot }) {
           code={panel.code}
           onBack={() => setPanel({ kind: 'result', result: panel.back, format: panel.format })}
           onAttached={(item) => setPanel({ kind: 'result', result: { kind: 'item', item, via: 'barcode', code: panel.code }, format: panel.format })}
-        />
-      )}
-      {panel.kind === 'rename' && (
-        <RenamePanel
-          text={panel.text}
-          locations={snap.locations}
-          onBack={() => setPanel({ kind: 'result', result: resolveScan(panel.text, snap.items, snap.locations), format: panel.format })}
-          onRenamed={(location) => setPanel({ kind: 'result', result: { kind: 'location', location, code: location.name }, format: panel.format })}
         />
       )}
     </div>
@@ -239,17 +225,14 @@ function ResultPanel(props: {
   onDone: () => void;
   onAttach: (code: string) => void;
   onPick: (item: Item) => void;
-  onLocation: (location: Location) => void;
-  onRename: (text: string) => void;
 }) {
   const r = props.result;
   if (r.kind === 'item') {
     // The live item, so the stepper shows saved changes.
     const item = props.snap.items.find((i) => i.id === r.item.id);
     if (!item) return <MissingPanel id={r.item.id} onDone={props.onDone} />;
-    const by =
-      r.via === 'label' ? `QR label ${r.code}` : r.via === 'id' ? `Typed ID ${item.id}` : r.via === 'location' ? `In location ${r.code}` : `${formatName(props.format)} ${r.code}`;
-    return <FoundPanel item={item} by={by} onDone={props.onDone} />;
+    const by = r.via === 'label' ? `QR label ${r.code}` : r.via === 'id' ? `Typed ID ${item.id}` : `${formatName(props.format)} ${r.code}`;
+    return <FoundPanel item={item} path={labelPath(item, props.snap)} by={by} onDone={props.onDone} />;
   }
   if (r.kind === 'many') {
     return (
@@ -273,10 +256,6 @@ function ResultPanel(props: {
     );
   }
   if (r.kind === 'missing-label') return <MissingPanel id={r.id} onDone={props.onDone} />;
-  if (r.kind === 'location') return <LocationPanel snap={props.snap} location={r.location} onPick={props.onPick} onDone={props.onDone} />;
-  if (r.kind === 'unknown' && couldBeLocation(r.text, props.format)) {
-    return <NoLocationPanel text={r.text} code={r.code} snap={props.snap} onDone={props.onDone} onAttach={props.onAttach} onLocation={props.onLocation} onRename={props.onRename} />;
-  }
   if (r.kind === 'unknown') {
     return (
       <Panel
@@ -304,7 +283,7 @@ function ResultPanel(props: {
         </div>
         <div class="mono code-big">{r.code}</div>
         <div class="small muted">{formatName(props.format)} · no item has this code</div>
-        <p class="m0">If this is a part you already track, attach the barcode to it so the next scan opens it straight away.</p>
+        <p class="m0">If this is something you already track, attach the barcode to it so the next scan opens it straight away.</p>
       </Panel>
     );
   }
@@ -333,10 +312,10 @@ function MissingPanel({ id, onDone }: { id: string; onDone: () => void }) {
   );
 }
 
-function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () => void }) {
+function FoundPanel({ item, path, by, onDone }: { item: Item; path: string; by: string; onDone: () => void }) {
   const db = useDb();
-  const photo = usePhoto(item.id, item.hasPhoto);
-  const meta = [item.location || 'No location', item.subcategory ? `${item.category} › ${item.subcategory}` : item.category].join(' · ');
+  const photo = useThumbnail(item.id, item.hasPhoto);
+  const meta = [path || 'No home yet', item.subcategory ? `${item.category} › ${item.subcategory}` : item.category].join(' · ');
   const fail = (e: unknown) => showToast(`Couldn't save: ${e instanceof Error ? e.message : String(e)}`);
   return (
     <Panel
@@ -358,7 +337,7 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
       </div>
       <div class="found-head">
         {photo ? (
-          <img class="found-ph" src={photo.url} alt="" />
+          <img class="found-ph" src={photo} alt="" />
         ) : (
           <span class="found-ph nophoto">
             <Icon name="photo" class="ic lg" />
@@ -389,176 +368,15 @@ function FoundPanel({ item, by, onDone }: { item: Item; by: string; onDone: () =
 }
 
 function PickRow({ item, on, onClick, sub }: { item: Item; on: boolean; onClick: () => void; sub?: string }) {
-  const photo = usePhoto(item.id, item.hasPhoto);
+  const photo = useThumbnail(item.id, item.hasPhoto);
   return (
     <button type="button" class={on ? 'pick on' : 'pick'} aria-pressed={on} onClick={onClick}>
-      {photo ? <img src={photo.url} alt="" /> : <span class="pick-ph nophoto" />}
+      {photo ? <img src={photo} alt="" /> : <span class="pick-ph nophoto" />}
       <span class="pick-t">
         <strong>{item.name}</strong>
         <span class="small muted">{sub ?? `${item.category} · ${item.barcode ? `barcode ${item.barcode}` : 'no barcode yet'}`}</span>
       </span>
     </button>
-  );
-}
-
-/** A QR code naming a location: the items in it, and the inventory filtered to it. */
-function LocationPanel(props: { snap: InventorySnapshot; location: Location; onPick: (item: Item) => void; onDone: () => void }) {
-  const key = nameKey(props.location.name);
-  const items = props.snap.items.filter((i) => nameKey(i.location) === key).sort((a, b) => a.name.localeCompare(b.name));
-  const show = () => {
-    // Only this location: other filters and the search are cleared (the search isn't kept).
-    saveFilters({ ...NO_FILTERS, location: props.location.name });
-    location.hash = href.tab('inventory');
-  };
-  return (
-    <Panel
-      label="Location found"
-      foot={
-        <>
-          {items.length > 0 && (
-            <button type="button" class="btn pri lg" onClick={show}>
-              <Icon name="inventory" />
-              Show in Inventory
-            </button>
-          )}
-          <button type="button" class={items.length > 0 ? 'btn' : 'btn pri lg'} data-autofocus onClick={props.onDone}>
-            Scan again
-          </button>
-        </>
-      }
-    >
-      <div class="small muted found-by">
-        <Icon name="pin" />
-        Location
-      </div>
-      <h2 class="h2">{props.location.name}</h2>
-      <div class="small muted">
-        {items.length ? plural(items.length, 'item') : 'No items here yet'}
-        {props.location.notes ? ` · ${props.location.notes}` : ''}
-      </div>
-      {items.length > 0 && (
-        <div class="loc-res">
-          <p class="m0">Tap an item to change its quantity.</p>
-          <div class="picks">
-            {items.map((i) => (
-              <PickRow key={i.id} item={i} on={false} sub={`Quantity ${i.quantity}`} onClick={() => props.onPick(i)} />
-            ))}
-          </div>
-        </div>
-      )}
-    </Panel>
-  );
-}
-
-/** "Location not found": add the scanned name, rename a location to it, or treat it as an item code. */
-function NoLocationPanel(props: {
-  text: string;
-  code: string;
-  snap: InventorySnapshot;
-  onDone: () => void;
-  onAttach: (code: string) => void;
-  onLocation: (location: Location) => void;
-  onRename: (text: string) => void;
-}) {
-  const db = useDb();
-  const [busy, setBusy] = useState(false);
-  const add = async () => {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const l = await addLocation(db, props.text);
-      showToast(`Added location “${l.name}”.`);
-      props.onLocation(l);
-    } catch (e) {
-      setBusy(false);
-      showToast(e instanceof Error ? e.message : String(e));
-    }
-  };
-  return (
-    <Panel
-      label="Location not found"
-      foot={
-        <>
-          <button type="button" class="btn pri lg" disabled={busy} onClick={() => void add()}>
-            <Icon name="plus" />
-            Add “{props.text}” as a location
-          </button>
-          {props.snap.locations.length > 0 && (
-            <button type="button" class="btn" disabled={busy} onClick={() => props.onRename(props.text)}>
-              Rename a location to “{props.text}”…
-            </button>
-          )}
-          <button type="button" class="btn" disabled={busy} onClick={() => props.onAttach(props.code)}>
-            Attach to an existing item
-          </button>
-          <a class="btn" href={href.add('', props.code)}>
-            Add a new item with this code
-          </a>
-          <button type="button" class="btn" disabled={busy} onClick={props.onDone}>
-            Scan again
-          </button>
-        </>
-      }
-    >
-      <div class="dlg-head">
-        <span class="dlg-ic gray">
-          <Icon name="pin" />
-        </span>
-        <h2 class="h2">Location not found</h2>
-      </div>
-      <div class="code-big loc-text">{props.text}</div>
-      <p class="m0">No location or item has this code. If it’s the QR code on a bin or shelf, add it as a location, or rename an existing location to match it.</p>
-    </Panel>
-  );
-}
-
-/** Rename an existing location to the scanned name. */
-function RenamePanel(props: { text: string; locations: readonly Location[]; onBack: () => void; onRenamed: (location: Location) => void }) {
-  const db = useDb();
-  const [from, setFrom] = useState(props.locations[0]?.name ?? '');
-  const [busy, setBusy] = useState(false);
-  const chosen = props.locations.find((l) => l.name === from) ?? null;
-  const rename = async () => {
-    if (!chosen || busy) return;
-    setBusy(true);
-    try {
-      await updateLocation(db, chosen.name, props.text, chosen.notes);
-      showToast(`Renamed “${chosen.name}” to “${props.text}”.`);
-      props.onRenamed({ ...chosen, name: props.text });
-    } catch (e) {
-      setBusy(false);
-      showToast(e instanceof Error ? e.message : String(e));
-    }
-  };
-  return (
-    <Panel
-      label="Rename a location"
-      foot={
-        <>
-          <button type="button" class="btn pri lg" disabled={!chosen || busy} onClick={() => void rename()}>
-            Rename {chosen ? `“${chosen.name}”` : ''}
-          </button>
-          <button type="button" class="btn" disabled={busy} onClick={props.onBack}>
-            Back
-          </button>
-        </>
-      }
-    >
-      <h2 class="h2">Rename a location to “{props.text}”</h2>
-      <p class="m0">Items in that location follow the new name.</p>
-      <div>
-        <label class="lbl" for="ren-from">
-          Location to rename
-        </label>
-        <select id="ren-from" class="field" value={from} onChange={(e) => setFrom((e.currentTarget as HTMLSelectElement).value)}>
-          {props.locations.map((l) => (
-            <option key={l.name} value={l.name}>
-              {l.name}
-            </option>
-          ))}
-        </select>
-      </div>
-    </Panel>
   );
 }
 
@@ -598,7 +416,7 @@ function AttachPanel(props: { snap: InventorySnapshot; code: string; onBack: () 
       }
     >
       <h2 class="h2">Attach {props.code} to…</h2>
-      <input class="field" type="search" aria-label="Find the item" autoFocus autoComplete="off" placeholder="Find the item — name, category, location" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
+      <input class="field" type="search" aria-label="Find the item" autoFocus autoComplete="off" placeholder="Find the item — name, category, place" value={q} onInput={(e) => setQ((e.currentTarget as HTMLInputElement).value)} />
       <div class="picks">
         {matches.map((i) => (
           <PickRow key={i.id} item={i} on={i.id === chosen} onClick={() => setChosen(i.id)} />

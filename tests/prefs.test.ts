@@ -23,9 +23,9 @@ describe('remembered list state (F1 expanded groups, F5 filters)', () => {
     expect(loadExpanded(s)).toEqual(new Set(['["Motors"]', '["Motors","Brushless"]']));
   });
 
-  it('filters round-trip, including "No location"', () => {
+  it('filters round-trip, including "No home yet" and no season', () => {
     const s = memoryStore();
-    const f = { ...NO_FILTERS, category: 'Lights', location: '' };
+    const f = { ...NO_FILTERS, category: 'Lights', area: '', season: '', status: 'lent' as const, attention: true, tag: 'Fragile' };
     saveFilters(f, s);
     expect(loadFilters(s)).toEqual(f);
   });

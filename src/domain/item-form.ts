@@ -1,6 +1,9 @@
-// Item editor (add and edit): the form's text fields ⇄ an Item, and the messages the editor shows.
-import { nameKey, type Category, type Item } from './types';
-import { parseWholeNumber } from './validate';
+// Item editor (add and edit, F16): the form's fields ⇄ an Item, and the messages the editor
+// shows. Status (out, lent) and keepAtLeast aren't edited here (H5–H7); they keep their values.
+import { kindOfId } from './ids';
+import { centsToPlain, parsePrice } from './money';
+import { tagProblem, isIsoDate, parseWholeNumber } from './validate';
+import { blankItem, nameKey, type Category, type Condition, type Item } from './types';
 
 export interface ItemDraft {
   name: string;
@@ -8,10 +11,22 @@ export interface ItemDraft {
   subcategory: string;
   /** Name typed for a new subcategory, or null when an existing one (or none) is picked. */
   newSubcategory: string | null;
-  location: string;
+  /** A bin or spot id, or '' for no home yet. */
+  home: string;
   quantity: string;
+  approx: boolean;
+  seasonId: string;
+  tags: string[];
+  condition: Condition;
+  conditionNote: string;
   barcode: string;
   notes: string;
+  /** Dollars as typed. */
+  value: string;
+  purchaseDate: string;
+  model: string;
+  serial: string;
+  warrantyUntil: string;
 }
 
 /**
@@ -27,20 +42,30 @@ export function draftFromItem(item: Item, categories: readonly Category[] = []):
     category: cat?.name ?? item.category,
     subcategory: sub,
     newSubcategory: null,
-    location: item.location,
+    home: item.binId || item.spotId,
     quantity: String(item.quantity),
+    approx: item.approx,
+    seasonId: item.seasonId,
+    tags: [...item.tags],
+    condition: item.condition,
+    conditionNote: item.conditionNote,
     barcode: item.barcode,
     notes: item.notes,
+    value: item.value === null ? '' : centsToPlain(item.value),
+    purchaseDate: item.purchaseDate,
+    model: item.model,
+    serial: item.serial,
+    warrantyUntil: item.warrantyUntil,
   };
 }
 
-/** A new item: quantity 1. */
-export function newDraft(category: string, name = ''): ItemDraft {
-  return { name, category, subcategory: '', newSubcategory: null, location: '', quantity: '1', barcode: '', notes: '' };
+/** A new item: quantity 1, optionally already in a home (Add item here). */
+export function newDraft(category: string, name = '', home = ''): ItemDraft {
+  return draftFromItem({ ...blankItem('', name, category), binId: kindOfId(home) === 'bin' ? home : '', spotId: kindOfId(home) === 'spot' ? home : '' });
 }
 
 export interface FormError {
-  /** 'name', 'category', 'newSubcategory', 'quantity' */
+  /** 'name', 'category', 'newSubcategory', 'quantity', 'value', 'tags', a date field… */
   field: string;
   message: string;
 }
@@ -88,18 +113,55 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
   if (q.ok) quantity = q.value;
   else err('quantity', q.error);
 
+  let value: number | null = null;
+  const v = parsePrice(d.value);
+  if (v.ok) value = v.cents;
+  else err('value', v.error.replace(/^price/, 'value'));
+
+  const dates: Array<[keyof ItemDraft, string]> = [
+    ['purchaseDate', 'Purchase date'],
+    ['warrantyUntil', 'Warranty until'],
+  ];
+  for (const [field, label] of dates) {
+    const s = (d[field] as string).trim();
+    if (s !== '' && !isIsoDate(s)) err(field, `${label} must be a date`);
+  }
+
+  const tags: string[] = [];
+  for (const raw of d.tags) {
+    const t = raw.trim();
+    const p = tagProblem(t);
+    if (p) err('tags', p);
+    else if (!tags.some((x) => nameKey(x) === nameKey(t))) tags.push(t);
+  }
+
+  const kind = kindOfId(d.home);
+  if (d.home !== '' && kind !== 'bin' && kind !== 'spot') err('home', 'Choose a bin or a spot, or no home yet');
+
   if (errors.length > 0) return { ok: false, errors };
 
+  const base = ctx.base ?? blankItem(ctx.id, name, cat!.name);
   const item: Item = {
+    ...base,
     id: ctx.id,
     name,
     category: cat?.name ?? d.category,
     subcategory,
-    location: d.location.trim(),
+    binId: kind === 'bin' ? d.home : '',
+    spotId: kind === 'spot' ? d.home : '',
     quantity,
+    approx: d.approx,
+    seasonId: d.seasonId,
+    tags,
+    condition: d.condition,
+    conditionNote: d.condition === 'ok' ? '' : d.conditionNote.trim(),
     barcode: d.barcode.trim(),
     notes: d.notes.trim(),
-    hasPhoto: ctx.base?.hasPhoto ?? false,
+    value,
+    purchaseDate: d.purchaseDate.trim(),
+    model: d.model.trim(),
+    serial: d.serial.trim(),
+    warrantyUntil: d.warrantyUntil.trim(),
   };
   return { ok: true, item, newSubcategory };
 }
@@ -108,13 +170,15 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 /**
  * Applies only the fields the editor changed onto the item as stored now, so a quantity
- * changed elsewhere while the editor was open isn't overwritten.
+ * changed elsewhere while the editor was open isn't overwritten. Home moves together: a new
+ * bin or spot replaces both fields, so the item never ends up in two places.
  */
 export function mergeEdit(base: Item, edited: Item, current: Item): Item {
   const out: Item = { ...current };
   for (const k of Object.keys(edited) as (keyof Item)[]) {
-    if (k === 'id' || k === 'hasPhoto') continue;
+    if (k === 'id' || k === 'hasPhoto' || k === 'binId' || k === 'spotId') continue;
     if (!same(edited[k], base[k])) Object.assign(out, { [k]: edited[k] });
   }
+  if (edited.binId !== base.binId || edited.spotId !== base.spotId) Object.assign(out, { binId: edited.binId, spotId: edited.spotId });
   return out;
 }

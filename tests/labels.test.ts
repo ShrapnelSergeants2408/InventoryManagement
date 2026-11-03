@@ -8,6 +8,7 @@ import {
   clampStart,
   cleanNudge,
   labelGroups,
+  labelPath,
   labelText,
   layoutById,
   perSheet,
@@ -17,7 +18,7 @@ import {
   stepNudge,
   type LabelLayout,
 } from '../src/domain/labels';
-import { item } from './helpers';
+import { household, item } from './helpers';
 
 const L = (id: string) => layoutById(id)!;
 const close = (a: number, b: number) => expect(a).toBeCloseTo(b, 9);
@@ -163,37 +164,43 @@ describe('alignment nudge (0.5 mm steps, per layout)', () => {
 });
 
 describe('label text (§9 label content)', () => {
-  const it1 = item({ name: 'Snowman lights', location: 'Attic shelf B', category: 'Lights', subcategory: 'Outdoor' });
-  it('5160: name and location', () => expect(labelText(it1, 'name-location')).toEqual({ name: 'Snowman lights', extra: ['Attic shelf B'] }));
-  it('5163: name, location and category', () => expect(labelText(it1, 'name-location-category')).toEqual({ name: 'Snowman lights', extra: ['Attic shelf B', 'Lights › Outdoor'] }));
+  const it1 = item({ name: 'Snowman lights', category: 'Lights', subcategory: 'Outdoor' });
+  const path = 'Attic › Shelf B › A-04 Christmas 4';
+  it('5160: name and path', () => expect(labelText(it1, 'name-location', path)).toEqual({ name: 'Snowman lights', extra: [path] }));
+  it('5163: name, path and category', () => expect(labelText(it1, 'name-location-category', path)).toEqual({ name: 'Snowman lights', extra: [path, 'Lights › Outdoor'] }));
   it('22805 and plain: the name only', () => {
-    expect(labelText(it1, 'short-name')).toEqual({ name: 'Snowman lights', extra: [] });
-    expect(labelText(it1, 'name')).toEqual({ name: 'Snowman lights', extra: [] });
+    expect(labelText(it1, 'short-name', path)).toEqual({ name: 'Snowman lights', extra: [] });
+    expect(labelText(it1, 'name', path)).toEqual({ name: 'Snowman lights', extra: [] });
   });
-  it('a blank location is left out; a category without a subcategory is shown alone', () => {
-    const bare = item({ location: '', category: 'Tools' });
-    expect(labelText(bare, 'name-location-category').extra).toEqual(['Tools']);
+  it('no home is left out; a category without a subcategory is shown alone', () => {
+    const bare = item({ category: 'Tools' });
+    expect(labelText(bare, 'name-location-category', '').extra).toEqual(['Tools']);
+  });
+  it('labelPath reads the item’s home (§4)', () => {
+    const h = household();
+    expect(labelPath(item({ binId: 'bn-xmas4' }), h)).toBe(path);
+    expect(labelPath(item({ binId: 'bn-spare' }), h)).toBe('A-05 Spare (no spot)');
+    expect(labelPath(item({ spotId: 'sp-peg' }), h)).toBe('Garage › Pegboard');
+    expect(labelPath(item(), h)).toBe('');
   });
 });
 
-describe('choosing items: groups in print order (F20, F25)', () => {
+describe('choosing items: groups in print order', () => {
   const items = [
-    item({ id: 'a', category: 'Motors', location: 'Bin B' }),
-    item({ id: 'b', category: 'Structure', location: '' }),
-    item({ id: 'c', category: 'Motors', location: 'Bin A' }),
-    item({ id: 'd', category: 'Orphan', location: 'Gone shelf' }),
+    item({ id: 'a', category: 'Motors', spotId: 'sp-peg' }),
+    item({ id: 'b', category: 'Structure' }),
+    item({ id: 'c', category: 'Motors', binId: 'bn-xmas4' }),
+    item({ id: 'd', category: 'Orphan', binId: 'bn-spare' }),
   ];
   const cats = [
     { name: 'Structure', order: 0, subcategories: [] },
     { name: 'Motors', order: 1, subcategories: [] },
     { name: 'Empty', order: 2, subcategories: [] },
   ];
-  // List order is the walk order: Bin B is walked before Bin A.
-  const locs = [
-    { name: 'Bin A', notes: '', order: 1 },
-    { name: 'Bin B', notes: '', order: 0 },
-  ];
-  const shape = (by: 'category' | 'location') => labelGroups(items, cats, locs, by).map((g) => [g.name, g.items.map((i) => i.id)]);
+  // Walk order: the Garage first.
+  const h = household();
+  const places = { ...h, areas: h.areas.map((a) => (a.id === 'ar-garage' ? { ...a, order: -1 } : a)) };
+  const shape = (by: 'category' | 'area') => labelGroups(items, cats, places, by).map((g) => [g.name, g.items.map((i) => i.id)]);
 
   it('by category: list order, empty categories left out, an unlisted category last', () => {
     expect(shape('category')).toEqual([
@@ -203,15 +210,15 @@ describe('choosing items: groups in print order (F20, F25)', () => {
     ]);
   });
 
-  it('by location: walk order, then No location (blank or not in the list)', () => {
-    expect(shape('location')).toEqual([
-      ['Bin B', ['a']],
-      ['Bin A', ['c']],
-      ['No location', ['b', 'd']],
+  it('by area: walk order, then No home yet (none, or a bin with no spot)', () => {
+    expect(shape('area')).toEqual([
+      ['Garage', ['a']],
+      ['Attic', ['c']],
+      ['No home yet', ['b', 'd']],
     ]);
   });
 
   it('every item appears exactly once either way', () => {
-    for (const by of ['category', 'location'] as const) expect(labelGroups(items, cats, locs, by).flatMap((g) => g.items.map((i) => i.id)).sort()).toEqual(['a', 'b', 'c', 'd']);
+    for (const by of ['category', 'area'] as const) expect(labelGroups(items, cats, places, by).flatMap((g) => g.items.map((i) => i.id)).sort()).toEqual(['a', 'b', 'c', 'd']);
   });
 });

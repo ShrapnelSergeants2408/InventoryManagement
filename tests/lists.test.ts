@@ -1,13 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkName,
-  locationUsage,
   moveBy,
   moveItems,
   moveTargets,
   placeLabel,
   pushRecent,
-  reassignLocation,
   renameCategoryItems,
   renameSubcategoryItems,
   renumber,
@@ -42,20 +40,8 @@ describe('checkName (F11)', () => {
   });
 });
 
-describe('locations (F25)', () => {
-  it('usage groups items by location ignoring capitals; no location under ""', () => {
-    const u = locationUsage([item({ id: 'a', location: 'Bin 1' }), item({ id: 'b', location: 'bin 1' }), item({ id: 'c', location: '' })]);
-    expect(u.get('bin 1')!.map((i) => i.id)).toEqual(['a', 'b']);
-    expect(u.get('')!.map((i) => i.id)).toEqual(['c']);
-  });
-
-  it('reassign moves items to the replacement, or to No location', () => {
-    const items = [item({ id: 'a', location: 'Bin 1' }), item({ id: 'b', location: 'Shelf' }), item({ id: 'c', location: '' })];
-    expect(reassignLocation(items, 'bin 1', 'Shelf').map((i) => [i.id, i.location])).toEqual([['a', 'Shelf']]);
-    expect(reassignLocation(items, 'Bin 1', '').map((i) => [i.id, i.location])).toEqual([['a', '']]);
-  });
-
-  it('recent locations: most recent first, no duplicates (ignoring capitals), at most 5', () => {
+describe('recent picks', () => {
+  it('recent names: most recent first, no duplicates (ignoring capitals), at most 5', () => {
     expect(pushRecent(['A', 'B', 'C'], 'b')).toEqual(['b', 'A', 'C']);
     expect(pushRecent(['A', 'B', 'C', 'D', 'E'], 'F')).toEqual(['F', 'A', 'B', 'C', 'D']);
     expect(pushRecent(['A'], '')).toEqual(['A']);

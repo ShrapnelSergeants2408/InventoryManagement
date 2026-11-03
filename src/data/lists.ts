@@ -1,20 +1,10 @@
-// Location and category list changes (SPEC v2.0 F11). A rename or remove rewrites every
-// affected item in the same transaction as the list, so the two never disagree.
-import {
-  checkName,
-  itemsIn,
-  moveBy,
-  moveItems,
-  reassignLocation,
-  renameCategoryItems,
-  renameSubcategoryItems,
-  renumber,
-  takenLocationNames,
-  type CategoryPlace,
-} from '../domain/lists';
-import { nameKey, type Item, type Location } from '../domain/types';
-import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
-import { RECENT_LOCATIONS, getRecentLocations } from './items';
+// Category, season and tag list changes (SPEC v2.0 F11). A rename or remove rewrites every
+// affected record in the same transaction as the list, so the two never disagree.
+import { checkName, itemsIn, moveBy, moveItems, renameCategoryItems, renameSubcategoryItems, renumber, type CategoryPlace } from '../domain/lists';
+import { ID_PREFIX, newId } from '../domain/ids';
+import { tagProblem } from '../domain/validate';
+import { SEASON_COLORS, nameKey, type Item, type Season, type SeasonColor, type Tag } from '../domain/types';
+import { fromItemRow, fromTagRow, toItemRow, toTagRow, type InventoryDb } from './db';
 
 function fail(message: string): never {
   throw new Error(message);
@@ -29,80 +19,6 @@ async function saveItems(db: InventoryDb, items: readonly Item[], now: number): 
 }
 
 const touch = (db: InventoryDb, now: number) => db.settings.put({ key: 'lastChangeAt', value: now });
-
-// ── Locations  ──
-
-async function orderedLocations(db: InventoryDb): Promise<Location[]> {
-  return (await db.locations.orderBy('order').toArray()).map(({ key: _k, ...l }) => l);
-}
-
-async function writeLocations(db: InventoryDb, list: readonly Location[]): Promise<void> {
-  await db.locations.clear();
-  await db.locations.bulkAdd(renumber(list).map(toLocationRow));
-}
-
-/** Adds a location at the end of the walk order. Returns it as stored. */
-export async function addLocation(db: InventoryDb, name: string, notes = '', now = Date.now()): Promise<Location> {
-  return db.transaction('rw', db.locations, db.settings, async () => {
-    const list = await orderedLocations(db);
-    const checked = checkName(name, takenLocationNames(list.map((l) => l.name)), 'Location');
-    if (!checked.ok) return fail(checked.error);
-    const loc = { name: checked.name, notes: notes.trim(), order: list.length };
-    await writeLocations(db, [...list, loc]);
-    await touch(db, now);
-    return loc;
-  });
-}
-
-/** Renames a location and/or changes its notes; items that used the old name follow. */
-export async function updateLocation(db: InventoryDb, oldName: string, name: string, notes: string, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.locations, db.items, db.settings, async () => {
-    const list = await orderedLocations(db);
-    const at = list.findIndex((l) => nameKey(l.name) === nameKey(oldName));
-    if (at < 0) fail(`location "${oldName}" isn't in the list`);
-    const checked = checkName(name, takenLocationNames(list.map((l) => l.name)), 'Location', list[at]!.name);
-    if (!checked.ok) return fail(checked.error);
-    const old = list[at]!.name;
-    list[at] = { ...list[at]!, name: checked.name, notes: notes.trim() };
-    await writeLocations(db, list);
-    await saveItems(db, reassignLocation(await allItems(db), old, checked.name), now);
-    const recent = await getRecentLocations(db);
-    await db.settings.put({ key: RECENT_LOCATIONS, value: recent.map((r) => (nameKey(r) === nameKey(old) ? checked.name : r)) });
-    await touch(db, now);
-  });
-}
-
-/** Removes a location; its items move to `replacement`, or to "No location" when it is ''. */
-export async function removeLocation(db: InventoryDb, name: string, replacement: string, now = Date.now()): Promise<number> {
-  return db.transaction('rw', db.locations, db.items, db.settings, async () => {
-    const list = await orderedLocations(db);
-    const gone = list.find((l) => nameKey(l.name) === nameKey(name)) ?? fail(`location "${name}" isn't in the list`);
-    let to = '';
-    if (replacement !== '') {
-      const target = list.find((l) => nameKey(l.name) === nameKey(replacement)) ?? fail(`location "${replacement}" isn't in the list`);
-      if (target === gone) fail('Choose a different location to move its items to.');
-      to = target.name;
-    }
-    const changed = reassignLocation(await allItems(db), gone.name, to);
-    await saveItems(db, changed, now);
-    await writeLocations(db, list.filter((l) => l !== gone));
-    const recent = await getRecentLocations(db);
-    await db.settings.put({ key: RECENT_LOCATIONS, value: recent.filter((r) => nameKey(r) !== nameKey(gone.name)) });
-    await touch(db, now);
-    return changed.length;
-  });
-}
-
-/** Reorder mode ▲/▼ (F25): moves a location one place in the walk order. */
-export async function moveLocation(db: InventoryDb, name: string, delta: number, now = Date.now()): Promise<void> {
-  await db.transaction('rw', db.locations, db.settings, async () => {
-    const list = await orderedLocations(db);
-    const at = list.findIndex((l) => nameKey(l.name) === nameKey(name));
-    if (at < 0) fail(`location "${name}" isn't in the list`);
-    await writeLocations(db, moveBy(list, at, delta));
-    await touch(db, now);
-  });
-}
 
 // ── Categories  ──
 
@@ -239,12 +155,12 @@ export async function moveSubcategory(db: InventoryDb, category: string, name: s
 }
 
 /**
- * Bulk move (F28): moves the chosen items to a category and subcategory in one transaction.
+ * Bulk category change (Select › Category…): moves the chosen items to a category and subcategory in one transaction.
  * Only category and subcategory change. With `create`, a category or subcategory that isn't in
  * the list yet is added first ("+ New category…", "+ New subcategory…"); a typed name that
  * matches one already there (ignoring capitals) just uses it, as in the item editor. Returns how many items were chosen.
  */
-export async function moveItemsTo(db: InventoryDb, ids: readonly string[], to: CategoryPlace, opts: { create?: boolean } = {}, now = Date.now()): Promise<number> {
+export async function changeItemsCategory(db: InventoryDb, ids: readonly string[], to: CategoryPlace, opts: { create?: boolean } = {}, now = Date.now()): Promise<number> {
   return db.transaction('rw', db.categories, db.items, db.settings, async () => {
     if (ids.length === 0) fail('Select at least one item to move.');
     const list = await orderedCategories(db);
@@ -280,5 +196,152 @@ export async function moveItemsTo(db: InventoryDb, ids: readonly string[], to: C
     await saveItems(db, moving.map((i) => ({ ...i, category: cat!.name, subcategory })), now);
     await touch(db, now);
     return unique.length;
+  });
+}
+
+// ── Seasons (F11) ──
+
+async function orderedSeasons(db: InventoryDb): Promise<Season[]> {
+  return (await db.seasons.toArray()).sort((a, b) => a.order - b.order);
+}
+
+async function writeSeasonOrder(db: InventoryDb, list: readonly Season[]): Promise<void> {
+  const changed = renumber(list).filter((s, i) => s !== list[i]);
+  if (changed.length) await db.seasons.bulkPut(changed);
+}
+
+/** The first palette color no season uses yet, else the palette in turn. */
+export function nextSeasonColor(used: readonly SeasonColor[]): SeasonColor {
+  return SEASON_COLORS.find((c) => !used.includes(c)) ?? SEASON_COLORS[used.length % SEASON_COLORS.length]!;
+}
+
+export async function addSeason(db: InventoryDb, v: { name: string; color?: SeasonColor }, now = Date.now()): Promise<Season> {
+  return db.transaction('rw', db.seasons, db.settings, async () => {
+    const list = await orderedSeasons(db);
+    const checked = checkName(v.name, list.map((s) => s.name), 'Season');
+    if (!checked.ok) return fail(checked.error);
+    const taken = new Set(list.map((s) => s.id));
+    const season: Season = { id: newId(ID_PREFIX.season, (x) => taken.has(x)), name: checked.name, order: list.length, color: v.color ?? nextSeasonColor(list.map((s) => s.color)), setupNotes: '' };
+    await db.seasons.add(season);
+    await touch(db, now);
+    return season;
+  });
+}
+
+export async function updateSeason(db: InventoryDb, id: string, v: { name: string; color: SeasonColor; setupNotes: string }, now = Date.now()): Promise<Season> {
+  return db.transaction('rw', db.seasons, db.settings, async () => {
+    const list = await orderedSeasons(db);
+    const season = list.find((s) => s.id === id) ?? fail('This season was removed meanwhile.');
+    const checked = checkName(v.name, list.map((s) => s.name), 'Season', season.name);
+    if (!checked.ok) return fail(checked.error);
+    if (!SEASON_COLORS.includes(v.color)) fail(`“${v.color}” isn't one of the season colors.`);
+    const next = { ...season, name: checked.name, color: v.color, setupNotes: v.setupNotes.trim() };
+    await db.seasons.put(next);
+    await touch(db, now);
+    return next;
+  });
+}
+
+export async function moveSeason(db: InventoryDb, id: string, delta: number, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.seasons, db.settings, async () => {
+    const list = await orderedSeasons(db);
+    const at = list.findIndex((s) => s.id === id);
+    if (at < 0) fail('This season was removed meanwhile.');
+    await writeSeasonOrder(db, moveBy(list, at, delta));
+    await touch(db, now);
+  });
+}
+
+/** Removes a season (after confirming when in use, §6); it's cleared from the items and bins that had it. */
+export async function removeSeason(db: InventoryDb, id: string, now = Date.now()): Promise<{ items: number; bins: number }> {
+  return db.transaction('rw', [db.seasons, db.items, db.bins, db.pictures, db.settings], async () => {
+    const list = await orderedSeasons(db);
+    if (!list.some((s) => s.id === id)) fail('This season was removed meanwhile.');
+    const items = await db.items.where('seasonId').equals(id).toArray();
+    const bins = await db.bins.where('seasonId').equals(id).toArray();
+    await db.items.bulkPut(items.map((i) => ({ ...i, seasonId: '', updatedAt: now })));
+    await db.bins.bulkPut(bins.map((b) => ({ ...b, seasonId: '' })));
+    await db.seasons.delete(id);
+    await db.pictures.where('ownerId').equals(id).delete();
+    await writeSeasonOrder(db, list.filter((s) => s.id !== id));
+    await touch(db, now);
+    return { items: items.length, bins: bins.length };
+  });
+}
+
+// ── Tags (F11) ──
+
+async function orderedTags(db: InventoryDb): Promise<Tag[]> {
+  return (await db.tags.orderBy('order').toArray()).map(fromTagRow);
+}
+
+async function writeTags(db: InventoryDb, list: readonly Tag[]): Promise<void> {
+  await db.tags.clear();
+  await db.tags.bulkAdd(renumber(list).map(toTagRow));
+}
+
+function checkTag(raw: string, list: readonly Tag[], self?: string): string {
+  const checked = checkName(raw, list.map((t) => t.name), 'Tag', self);
+  if (!checked.ok) return fail(checked.error);
+  const p = tagProblem(checked.name);
+  if (p) fail(p.charAt(0).toUpperCase() + p.slice(1) + '.');
+  return checked.name;
+}
+
+/** Whether a record's tags include `name`, ignoring capitals. */
+const hasTag = (tags: readonly string[], name: string) => tags.some((t) => nameKey(t) === nameKey(name));
+
+export async function addTag(db: InventoryDb, name: string, now = Date.now()): Promise<string> {
+  return db.transaction('rw', db.tags, db.settings, async () => {
+    const list = await orderedTags(db);
+    const tag = checkTag(name, list);
+    await writeTags(db, [...list, { name: tag, order: list.length }]);
+    await touch(db, now);
+    return tag;
+  });
+}
+
+/** Renames a tag on the list and on every item and bin that has it. */
+export async function renameTag(db: InventoryDb, oldName: string, name: string, now = Date.now()): Promise<string> {
+  return db.transaction('rw', db.tags, db.items, db.bins, db.settings, async () => {
+    const list = await orderedTags(db);
+    const at = list.findIndex((t) => nameKey(t.name) === nameKey(oldName));
+    if (at < 0) fail(`tag "${oldName}" isn't in the list`);
+    const tag = checkTag(name, list, list[at]!.name);
+    list[at] = { ...list[at]!, name: tag };
+    await writeTags(db, list);
+    const swap = (tags: string[]) => tags.map((t) => (nameKey(t) === nameKey(oldName) ? tag : t));
+    const items = (await db.items.toArray()).filter((i) => hasTag(i.tags, oldName));
+    const bins = (await db.bins.toArray()).filter((b) => hasTag(b.tags, oldName));
+    await db.items.bulkPut(items.map((i) => ({ ...i, tags: swap(i.tags), updatedAt: now })));
+    await db.bins.bulkPut(bins.map((b) => ({ ...b, tags: swap(b.tags) })));
+    await touch(db, now);
+    return tag;
+  });
+}
+
+/** Removes a tag (after confirming when in use, §6) from the list and from every record. */
+export async function removeTag(db: InventoryDb, name: string, now = Date.now()): Promise<{ items: number; bins: number }> {
+  return db.transaction('rw', db.tags, db.items, db.bins, db.settings, async () => {
+    const list = await orderedTags(db);
+    if (!list.some((t) => nameKey(t.name) === nameKey(name))) fail(`tag "${name}" isn't in the list`);
+    const drop = (tags: string[]) => tags.filter((t) => nameKey(t) !== nameKey(name));
+    const items = (await db.items.toArray()).filter((i) => hasTag(i.tags, name));
+    const bins = (await db.bins.toArray()).filter((b) => hasTag(b.tags, name));
+    await db.items.bulkPut(items.map((i) => ({ ...i, tags: drop(i.tags), updatedAt: now })));
+    await db.bins.bulkPut(bins.map((b) => ({ ...b, tags: drop(b.tags) })));
+    await writeTags(db, list.filter((t) => nameKey(t.name) !== nameKey(name)));
+    await touch(db, now);
+    return { items: items.length, bins: bins.length };
+  });
+}
+
+export async function moveTag(db: InventoryDb, name: string, delta: number, now = Date.now()): Promise<void> {
+  await db.transaction('rw', db.tags, db.settings, async () => {
+    const list = await orderedTags(db);
+    const at = list.findIndex((t) => nameKey(t.name) === nameKey(name));
+    if (at < 0) fail(`tag "${name}" isn't in the list`);
+    await writeTags(db, moveBy(list, at, delta));
+    await touch(db, now);
   });
 }

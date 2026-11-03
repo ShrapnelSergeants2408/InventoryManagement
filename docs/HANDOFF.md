@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: Dan, or a future Claude Code session. It covers what the app is, where everything lives and how to change it safely.
 
-Written 2026-11-02, at app version 0.1.0-h1 (SPEC v2.0, milestone H1 of H0–H7).
+Written 2026-11-02, updated at app version 0.1.2 (SPEC v2.0, milestone H2a of H0–H7).
 
 ---
 
@@ -43,7 +43,7 @@ A browser check runs on a built app:
 
 ```
 npm run build
-node scripts/h1-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
+node scripts/h2a-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
 ```
 
 It prints one PASS, FAIL or INFO line per check and exits 1 if anything failed. On Windows, pass folder arguments as Windows paths.
@@ -62,7 +62,7 @@ The routine that kept the FRC app's data safe:
 
 ## 5. Changing the database (the risky part)
 
-- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 1). Add a new `this.version(n)`; never edit an old one once a phone has real data.
+- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 2: v1 was H1, v2 is H2a with its upgrade from v1, tested in `tests/upgrade-h1.test.ts` and the H2a browser check). Add a new `this.version(n)` with an `.upgrade()`; never edit an old one once a phone has real data. A table whose primary key changes needs a new table name (as `photos` → `pictures`).
 - The app writes its schema version into the database. An **older** cached copy that finds a newer database shows "update needed" and writes nothing. Keep this guard working.
 - Until H4, a phone's database is its only copy: make a **Full backup** on the phone before installing an update that changes the schema.
 

@@ -1,24 +1,26 @@
-// Inventory reads and writes. Multi-table writes run in one transaction so a failure leaves
-// the phone unchanged.
-import type { Category, Item, Location } from '../domain/types';
-import { validateItem } from '../domain/validate';
-import { fromItemRow, toItemRow, toLocationRow, type InventoryDb } from './db';
+// Inventory reads and whole-inventory writes. Multi-table writes run in one transaction so a
+// failure leaves the phone unchanged.
+import { checkData, type HouseholdData } from '../domain/integrity';
+import { fromItemRow, fromTagRow, toItemRow, toTagRow, type InventoryDb, type PhotoRow } from './db';
 
-export interface InventorySnapshot {
-  items: Item[];
-  locations: Location[];
-  categories: Category[];
-}
+/** Everything the screens show, except photo images. */
+export type InventorySnapshot = Omit<HouseholdData, 'photos'>;
+
+const byOrder = <T extends { order: number }>(a: T, b: T) => a.order - b.order;
 
 export async function loadSnapshot(db: InventoryDb): Promise<InventorySnapshot> {
-  return db.transaction('r', [db.items, db.locations, db.categories], async () => ({
+  return db.transaction('r', [db.items, db.areas, db.spots, db.bins, db.seasons, db.tags, db.categories], async () => ({
     items: (await db.items.toArray()).map(fromItemRow),
-    locations: (await db.locations.orderBy('order').toArray()).map(({ key: _k, ...l }) => l),
+    areas: (await db.areas.toArray()).sort(byOrder),
+    spots: (await db.spots.toArray()).sort(byOrder),
+    bins: await db.bins.toArray(),
+    seasons: (await db.seasons.toArray()).sort(byOrder),
+    tags: (await db.tags.toArray()).sort(byOrder).map(fromTagRow),
     categories: await db.categories.orderBy('order').toArray(),
   }));
 }
 
-export async function getItem(db: InventoryDb, id: string): Promise<Item | null> {
+export async function getItem(db: InventoryDb, id: string) {
   const row = await db.items.get(id);
   return row ? fromItemRow(row) : null;
 }
@@ -27,44 +29,46 @@ export async function itemCount(db: InventoryDb): Promise<number> {
   return db.items.count();
 }
 
-export interface ReplaceAllInput extends InventorySnapshot {
-  photos: Map<string, Blob>;
-  /** Item ids whose photo the ZIP named but didn't have: the phone's own is kept. */
-  missingPhotos?: readonly string[];
+export interface ReplaceAllInput extends HouseholdData {
+  /** Photo id → image, for the photos in `photos`. */
+  images: Map<string, Blob>;
+  /** Photo ids the backup named but didn't have: the phone's own image is kept when it has one. */
+  missingImages?: readonly string[];
 }
 
 /**
- * Replaces every item, photo and list in one transaction (first setup, restore F18). With
- * `keepPhotos` (a CSV-only restore), `photos` is ignored: the phone's photos are kept for item
- * ids that are still there and the rest are deleted. Otherwise `photos` replaces them, except
- * that the phone keeps its photo for an id in `missingPhotos`. Settings are not touched.
- * Returns how many items have a photo.
+ * Replaces every household record and photo in one transaction (first setup, restore F18).
+ * A photo with no image (none given, and the phone has none for its id) is dropped. Settings
+ * are not touched. Returns how many photos are stored.
  */
-export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = Date.now(), opts: { keepPhotos?: boolean } = {}): Promise<number> {
-  for (const item of input.items) {
-    const errors = validateItem(item);
-    if (errors.length > 0) throw new Error(`item ${item.id}: ${errors.map((e) => e.message).join('; ')}`);
-  }
-  const ids = new Set(input.items.map((i) => i.id));
-  return db.transaction('rw', [db.items, db.photos, db.locations, db.categories, db.settings], async () => {
-    let withPhoto: Set<string>;
-    if (opts.keepPhotos) {
-      const existing = await db.photos.toCollection().primaryKeys();
-      await db.photos.bulkDelete(existing.filter((id) => !ids.has(id)));
-      withPhoto = new Set(existing.filter((id) => ids.has(id)));
-    } else {
-      const keep = new Set((input.missingPhotos ?? []).filter((id) => ids.has(id) && !input.photos.has(id)));
-      const existing = await db.photos.toCollection().primaryKeys();
-      await db.photos.bulkDelete(existing.filter((id) => !keep.has(id)));
-      await db.photos.bulkAdd([...input.photos].map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now })));
-      withPhoto = new Set([...input.photos.keys(), ...existing.filter((id) => keep.has(id))]);
+export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = Date.now()): Promise<number> {
+  const problems = checkData(input);
+  if (problems.length > 0) throw new Error(problems.slice(0, 5).join('; ') + (problems.length > 5 ? `; and ${problems.length - 5} more` : ''));
+  const tables = [db.items, db.areas, db.spots, db.bins, db.seasons, db.tags, db.pictures, db.categories, db.settings];
+  return db.transaction('rw', tables, async () => {
+    const keep = new Set(input.missingImages ?? []);
+    const kept = new Map((await db.pictures.bulkGet([...keep])).flatMap((r) => (r ? [[r.id, r] as const] : [])));
+    const rows: PhotoRow[] = [];
+    for (const p of input.photos) {
+      const image = input.images.get(p.id);
+      if (image) rows.push({ ...p, full: image, thumb: null, updatedAt: now });
+      else {
+        const own = kept.get(p.id);
+        if (own) rows.push({ ...own, ...p });
+      }
     }
-    await Promise.all([db.items.clear(), db.locations.clear(), db.categories.clear()]);
-    await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: withPhoto.has(i.id) }, now)));
-    await db.locations.bulkAdd(input.locations.map(toLocationRow));
+    const withPhoto = new Set(rows.filter((r) => r.ownerType === 'item').map((r) => r.ownerId));
+    await Promise.all([db.items, db.areas, db.spots, db.bins, db.seasons, db.tags, db.pictures, db.categories].map((t) => t.clear()));
+    await db.areas.bulkAdd(input.areas);
+    await db.spots.bulkAdd(input.spots);
+    await db.bins.bulkAdd(input.bins);
+    await db.seasons.bulkAdd(input.seasons);
+    await db.tags.bulkAdd(input.tags.map(toTagRow));
     await db.categories.bulkAdd(input.categories);
+    await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: withPhoto.has(i.id) }, now)));
+    await db.pictures.bulkAdd(rows);
     await db.settings.put({ key: 'lastChangeAt', value: now });
-    return input.items.filter((i) => withPhoto.has(i.id)).length;
+    return rows.length;
   });
 }
 

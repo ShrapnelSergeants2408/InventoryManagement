@@ -1,13 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import { indexPlaces } from '../src/domain/places';
 import { matchesQuery, normalize, queryTerms } from '../src/domain/search';
-import { item } from './helpers';
+import { household, item } from './helpers';
+
+const h = household();
+const ctx = { places: indexPlaces(h), seasons: new Map(h.seasons.map((s) => [s.id, s])) };
 
 const neo = item({
   name: 'Inflatable Snowman Motor',
   category: 'Decorations',
   subcategory: 'Outdoor',
-  location: 'Bin C4',
+  binId: 'bn-xmas4',
   notes: 'Spare for the arm, see Dan',
+  tags: ['Outdoor', 'Fragile'],
+  model: 'SM-200',
+  serial: 'X99',
 });
 
 describe('SPEC v2.0 F1 search', () => {
@@ -15,10 +22,21 @@ describe('SPEC v2.0 F1 search', () => {
     ['name', 'snowman'],
     ['category', 'decorations'],
     ['subcategory', 'outdoor'],
-    ['location', 'bin c4'],
     ['notes', 'the arm'],
+    ['tags', 'fragile'],
+    ['model', 'sm-200'],
+    ['serial', 'x99'],
+    ['area', 'attic'],
+    ['spot', 'shelf b'],
+    ['bin code', 'a-04'],
+    ['bin name', 'christmas 4'],
+    ['season (from its bin)', 'christmas'],
   ])('matches on %s', (_field, q) => {
-    expect(matchesQuery(neo, q)).toBe(true);
+    expect(matchesQuery(neo, q, ctx)).toBe(true);
+  });
+
+  it('without places, the path isn’t searched', () => {
+    expect(matchesQuery(neo, 'attic')).toBe(false);
   });
 
   it('is case- and accent-insensitive (D2)', () => {
@@ -45,8 +63,8 @@ describe('SPEC v2.0 F1 search', () => {
   });
 
   it('does not match across field boundaries', () => {
-    expect(matchesQuery(neo, 'motor bin')).toBe(true); // two words, two fields: fine
-    expect(matchesQuery(neo, 'motorbin')).toBe(false);
+    expect(matchesQuery(neo, 'motor attic', ctx)).toBe(true); // two words, two fields: fine
+    expect(matchesQuery(neo, 'motorattic', ctx)).toBe(false);
   });
 
   it('normalize collapses whitespace', () => {

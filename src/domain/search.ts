@@ -1,5 +1,6 @@
 // Search (SPEC v2.0 F1).
-import type { Item } from './types';
+import { itemPath, itemSeasonId, pathText, type PlaceIndex } from './places';
+import type { Item, Season } from './types';
 
 /** Lower-case, accents removed, runs of whitespace collapsed. */
 export function normalize(s: string): string {
@@ -11,9 +12,24 @@ export function normalize(s: string): string {
     .trim();
 }
 
-/** Everything F1 searches on an item: name, location, notes, category, subcategory and barcode. */
-export function searchText(item: Item): string {
-  return normalize([item.name, item.location, item.notes, item.category, item.subcategory, item.barcode].join(' \n '));
+export interface SearchContext {
+  places: PlaceIndex;
+  seasons: ReadonlyMap<string, Season>;
+}
+
+/**
+ * Everything F1 searches on an item: name, notes, tags, barcode, model and serial, its
+ * category, its path (area, spot, bin code and name) and its season.
+ */
+export function searchText(item: Item, ctx?: SearchContext): string {
+  const parts = [item.name, item.notes, item.tags.join(' '), item.barcode, item.model, item.serial, item.category, item.subcategory];
+  if (ctx) {
+    const path = itemPath(item, ctx.places);
+    if (path.length) parts.push(pathText(path));
+    const season = ctx.seasons.get(itemSeasonId(item, ctx.places));
+    if (season) parts.push(season.name);
+  }
+  return normalize(parts.join(' \n '));
 }
 
 /** Search words; an item matches when it contains every one of them, in any order. */
@@ -26,6 +42,6 @@ export function matchesTerms(text: string, terms: readonly string[]): boolean {
   return terms.every((t) => text.includes(t));
 }
 
-export function matchesQuery(item: Item, query: string): boolean {
-  return matchesTerms(searchText(item), queryTerms(query));
+export function matchesQuery(item: Item, query: string, ctx?: SearchContext): boolean {
+  return matchesTerms(searchText(item, ctx), queryTerms(query));
 }

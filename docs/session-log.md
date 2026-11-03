@@ -926,3 +926,48 @@ High for the removals and the backup round trip (tested). Not tested on a real i
 **Next:** Dan confirms details (a)–(h) in `docs/reviews/H1.md`, merges, and decides whether to turn on GitHub Pages for an iPhone check before H4. Then H2.
 
 **Later (about 12:40–13:05):** Dan turned on Actions and Pages after merging PR #2, so no run had started; the deploy was started by hand (`gh workflow run`) and passed. The app is live at https://dhiebert-whs.github.io/HouseholdInventory/. Dan: "installed and tested successfully on iphone. since this is a new build lets reset the version number to 0.1-h1. decisions a-h accepted." The version is now `0.1.0-h1` (npm needs three numbers) in `APP_VERSION`, `package.json`, the H1 browser check and the docs. Branch `h1-version-0.1`.
+
+**Later (H2 start):** Dan: "for version numbers, remove the h value and use its number as the 3rd position. so 0.1.0-h1 becomes 0.1.1, h2 would be 0.1.2 and so on". H1 is now `0.1.1` in `APP_VERSION`, `package.json`, `package-lock.json`, the H1 browser check, SPEC, HANDOFF and `docs/reviews/H1.md` (same branch, PR #3).
+
+## 2026-11-02 (afternoon) — H2a: places, bins, seasons (the model)
+
+**SESSION IDENTITY**
+New session (after /clear). Dan: "begin on h2". PR #3 (version) was still open, so the H2 work is stacked on `h1-version-0.1`. Four questions first:
+- upgrade in place;
+- H1 locations become spots in an "Unsorted" area;
+- two PRs (H2a, H2b);
+- store every §3 item field and show most.
+
+Dan chose the recommended answer each time. Mid-session, Dan: "for version numbers, remove the h value and use its number as the 3rd position. so 0.1.0-h1 becomes 0.1.1, h2 would be 0.1.2". PR #3 was updated to 0.1.1. Asked how a split H2 is numbered: H2a 0.1.2, H2b 0.1.3 (Dan).
+
+**DATES & TIMES**
+2026-11-02, about 13:05 onwards CST. The exact end time was not recorded.
+
+**WORK COMPLETED**
+SPEC updated (H2a/H2b split, upgrade, item fields, §7 `label_contents` and `tags.csv`, decision log). Branch `h2a-model`:
+- schema v2 with the in-place H1 upgrade;
+- areas, spots, bins, seasons, tags, several photos;
+- every item field;
+- the §7 backup, with H1 ZIPs still restorable;
+- Move, Split, Duplicate;
+- item, bin and spot screens; Areas & spots, Seasons and Tags lists;
+- Inventory filters and bulk Move.
+
+The H1 browser check was replaced by `scripts/h2a-ui-check.mjs`. Version 0.1.2. `docs/reviews/H2a.md` lists details (a)–(k) for Dan.
+
+**DELIVERABLES PRODUCED**
+- Branch `h2a-model`.
+- `docs/reviews/H2a.md`.
+- `scripts/h2a-ui-check.mjs`.
+- Tests `upgrade-h1`, `places`, `places-db`, `household-csv`.
+
+**PREDECESSORS/CONTEXT**
+H1 (0.1.1), PR #3 open.
+
+**EVIDENCE**
+Unit 405/405 (29 files); build clean; H2a browser check 35/35 PASS including the upgrade of a real H1 database, no console errors.
+
+**CONFIDENCE**
+High for the upgrade, backup round trip and restore safety (unit and browser tested). Medium for the screen details, which H3 reworks. The cause of the Dexie early-commit seen with bin and spot photos wasn't isolated; the rewritten code is tested.
+
+**Next:** Dan merges PR #3, then the H2a PR. Before installing 0.1.2 on the phone, make a Full backup. Then the phone check in `docs/reviews/H2a.md`, confirm (a)–(k), then H2b.

@@ -55,7 +55,7 @@ describe('inventory view ids (F28: header checkboxes and "Select all shown")', (
     item({ id: 'f1', category: 'Fasteners', name: 'Bolt' }),
     item({ id: 'f2', category: 'Fasteners', name: 'Zap nut' }),
   ];
-  const view = (query = '', expanded: string[] = []) => buildInventoryView({ items, categories, query, filters: NO_FILTERS, expanded: new Set(expanded) });
+  const view = (query = '', expanded: string[] = []) => buildInventoryView({ places: { areas: [], spots: [], bins: [] }, seasons: [], items, categories, query, filters: NO_FILTERS, expanded: new Set(expanded) });
 
   it('collapsed groups still carry their ids; shownIds is every item in list order', () => {
     const v = view();
@@ -86,7 +86,7 @@ describe('inventory view ids (F28: header checkboxes and "Select all shown")', (
 
   it('with a search, a subcategory header holds only its matching items', () => {
     const more = [...items, item({ id: 'm3', category: 'Motors', subcategory: 'Brushless', name: 'Falcon' })];
-    const v = buildInventoryView({ items: more, categories, query: 'neo', filters: NO_FILTERS, expanded: new Set() });
+    const v = buildInventoryView({ places: { areas: [], spots: [], bins: [] }, seasons: [], items: more, categories, query: 'neo', filters: NO_FILTERS, expanded: new Set() });
     const subs = v.lines.filter((l): l is SubcategoryLine => l.kind === 'subcategory');
     expect(subs.map((s) => [s.name, s.total, s.ids])).toEqual([['Brushless', 2, ['m1']]]);
   });

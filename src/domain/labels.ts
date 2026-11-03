@@ -6,7 +6,8 @@
 // published Avery templates for 5160 and 5163. For 22805 the 4 × 6 grid of 1½ in squares
 // is centred on the page. Check each against a real sheet with a test print before relying
 // on it; the alignment nudge corrects small offsets.
-import type { Category, Item, Location } from './types';
+import { indexPlaces, itemAreaId, itemPath, pathText, type Places } from './places';
+import type { Category, Item } from './types';
 
 export type LabelContent = 'name-location' | 'name-location-category' | 'short-name' | 'name';
 
@@ -178,11 +179,14 @@ export const sheetsNeeded = (l: LabelLayout, count: number, start = 0) => (count
 
 // ── Label text (SPEC §9 "Label content") ──
 
-/** The text printed next to the QR: the name, then the extra lines the layout has room for. */
-export function labelText(item: Item, content: LabelContent): { name: string; extra: string[] } {
+/**
+ * The text printed next to the QR: the name, then the extra lines the layout has room for.
+ * `path` is the item's home as one line (§4), '' for none.
+ */
+export function labelText(item: Item, content: LabelContent, path = ''): { name: string; extra: string[] } {
   const extra: string[] = [];
   if (content === 'name-location' || content === 'name-location-category') {
-    if (item.location) extra.push(item.location);
+    if (path) extra.push(path);
   }
   if (content === 'name-location-category') {
     extra.push(item.subcategory ? `${item.category} › ${item.subcategory}` : item.category);
@@ -190,30 +194,37 @@ export function labelText(item: Item, content: LabelContent): { name: string; ex
   return { name: item.name, extra };
 }
 
-// ── Choosing items (F20 step 1) ──
+// ── Choosing items (Labels step 1) ──
 
-export const NO_LOCATION = 'No location';
+export const NO_HOME_GROUP = 'No home yet';
 
 export interface LabelGroup {
   name: string;
   items: Item[];
 }
 
+/** An item's home as one line for its label (§4), '' when it has none. */
+export function labelPath(item: Item, places: Places): string {
+  const parts = itemPath(item, indexPlaces(places));
+  return parts.length ? pathText(parts) : '';
+}
+
 /**
  * Items grouped for choosing labels, in the order they print: by category (category list
- * order) or by location (the walk order, F25, then "No location"). Items keep list order
- * inside a group. An item whose category isn't in the list gets a group of its own at the
- * end, so nothing can drop out of a print.
+ * order) or by area (walk order, then "No home yet"). Items keep list order inside a group.
+ * An item whose category isn't in the list gets a group of its own at the end, so nothing can
+ * drop out of a print.
  */
-export function labelGroups(items: readonly Item[], categories: readonly Category[], locations: readonly Location[], by: 'category' | 'location'): LabelGroup[] {
-  const keyOf = (i: Item) => (by === 'category' ? i.category : i.location);
-  const names = by === 'category' ? categories.map((c) => c.name) : [...locations].sort((a, b) => a.order - b.order).map((l) => l.name);
-  const known = new Set(names);
-  const groups = names.map((name) => ({ name, items: items.filter((i) => keyOf(i) === name) }));
-  if (by === 'location') {
-    groups.push({ name: NO_LOCATION, items: items.filter((i) => !known.has(i.location)) });
-  } else {
-    for (const name of [...new Set(items.map(keyOf).filter((k) => !known.has(k)))]) groups.push({ name, items: items.filter((i) => keyOf(i) === name) });
+export function labelGroups(items: readonly Item[], categories: readonly Category[], places: Places, by: 'category' | 'area'): LabelGroup[] {
+  if (by === 'area') {
+    const ix = indexPlaces(places);
+    const groups = [...places.areas].sort((a, b) => a.order - b.order).map((a) => ({ name: a.name, items: items.filter((i) => itemAreaId(i, ix) === a.id) }));
+    groups.push({ name: NO_HOME_GROUP, items: items.filter((i) => itemAreaId(i, ix) === null) });
+    return groups.filter((g) => g.items.length > 0);
   }
+  const names = categories.map((c) => c.name);
+  const known = new Set(names);
+  const groups = names.map((name) => ({ name, items: items.filter((i) => i.category === name) }));
+  for (const name of [...new Set(items.map((i) => i.category).filter((k) => !known.has(k)))]) groups.push({ name, items: items.filter((i) => i.category === name) });
   return groups.filter((g) => g.items.length > 0);
 }

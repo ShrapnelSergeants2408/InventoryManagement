@@ -19,7 +19,7 @@ import { StorageError } from '../StorageError';
 import { exportBackup, exportMessage } from './export-backup';
 import { RestoreDialog, type PhoneNow } from './RestoreDialog';
 
-const BACKUP_ACCEPT = '.zip,.csv,application/zip,application/x-zip-compressed,text/csv,text/comma-separated-values';
+const BACKUP_ACCEPT = '.zip,application/zip,application/x-zip-compressed';
 
 interface PhotoStats {
   count: number;
@@ -31,8 +31,8 @@ function usePhotoStats(db: InventoryDb): PhotoStats | null {
   const [stats, setStats] = useState<PhotoStats | null>(null);
   useEffect(() => {
     const sub = liveQuery(async () => {
-      const rows = await db.photos.toArray();
-      return { count: rows.length, bytes: rows.reduce((n, r) => n + r.full.size, 0), ids: new Set(rows.map((r) => r.itemId)) };
+      const rows = await db.pictures.toArray();
+      return { count: rows.length, bytes: rows.reduce((n, r) => n + r.full.size, 0), ids: new Set(rows.map((r) => r.id)) };
     }).subscribe({ next: setStats, error: () => setStats(null) });
     return () => sub.unsubscribe();
   }, [db]);
@@ -121,7 +121,7 @@ export function BackupScreen() {
   const lastBackup = settings.lastBackupAt === null ? 'Never' : days === 0 ? formatDateTime(new Date(settings.lastBackupAt), new Date(now)) : `${plural(days!, 'day')} ago`;
   const fullSize = csvBytes !== null && photos ? formatBytes(csvBytes + photos.bytes) : '…';
   const phone: PhoneNow | null =
-    snap && photos ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, locations: snap.locations.length, lastChangeAt: settings.lastChangeAt } : null;
+    snap && photos ? { items: snap.items.length, photos: photos.count, photoIds: photos.ids, areas: snap.areas.length, spots: snap.spots.length, bins: snap.bins.length, lastChangeAt: settings.lastChangeAt } : null;
 
   return (
     <>
@@ -143,7 +143,7 @@ export function BackupScreen() {
             <span class="grow">
               <span class="mt block">Full backup (ZIP)</span>
               <span class="small muted block">
-                inventory.csv + locations and categories + {photos ? plural(photos.count, 'photo') : '… photos'} · about {fullSize}
+                Everything: items, areas, spots, bins, seasons, tags, categories and {photos ? plural(photos.count, 'photo') : '… photos'} · about {fullSize}
               </span>
             </span>
             <Icon name="upload" />
@@ -155,7 +155,7 @@ export function BackupScreen() {
             <span class="grow">
               <span class="mt block">Data only (CSV)</span>
               <span class="small muted block">
-                inventory.csv · about {csvBytes === null ? '…' : formatBytes(csvBytes)} · opens in Excel or Sheets
+                items.csv with each item’s place · about {csvBytes === null ? '…' : formatBytes(csvBytes)} · opens in Excel or Sheets; can’t be restored
               </span>
             </span>
             <Icon name="upload" />
@@ -174,12 +174,12 @@ export function BackupScreen() {
               </h2>
             </div>
             <p class="bk-p">
-              Replaces <strong>all</strong> inventory on this phone with a backup file. A CSV-only restore keeps existing photos for matching item ids. Location names that
-              aren’t in the list are added.
+              Replaces <strong>all</strong> inventory on this phone with a full backup (ZIP). A backup from version 0.1.1 also works: its locations become spots in an
+              “Unsorted” area.
             </p>
             <button type="button" class="btn lg" disabled={!!busy || !phone} onClick={restorePicker.open}>
               <Icon name="upload" class="ic flip" />
-              Choose backup file (ZIP or CSV)…
+              Choose a backup file (ZIP)…
             </button>
             {restorePicker.el}
           </section>

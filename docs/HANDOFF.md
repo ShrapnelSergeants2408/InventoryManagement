@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: Dan, or a future Claude Code session. It covers what the app is, where everything lives and how to change it safely.
 
-Written 2026-11-02, updated 2026-11-03 at app version 0.1.2 (SPEC v3.0 draft: the app is splitting into Household and Holiday parts; next milestone H3 of H0–H9).
+Written 2026-11-02, updated 2026-11-03 at app version 0.1.2 (SPEC v3.0: the app is splitting into Household and Holiday parts; next milestone H3 of H0–H9).
 
 ---
 

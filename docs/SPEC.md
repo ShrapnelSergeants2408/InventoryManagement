@@ -1,7 +1,7 @@
 # Hiebert Home Inventory: Specification v3.0
 
 **Owner:** Dan · **Users:** the Hiebert family (Dan, Ann and others Dan allows) · **Devices:** iPhones, the app added to the home screen from Safari
-**Status:** Draft for Dan's review, 2026-11-03 · **Based on:** v2.0 and the redesign interview of 2026-11-03 (§16)
+**Status:** Accepted, 2026-11-03 (Dan accepted the draft and its proposed answers) · **Based on:** v2.0 and the redesign interview of 2026-11-03 (§16)
 **Previous:** v2.0 (2026-11-02) is in git history on `main` before this change. The FRC 2408 spec it came from (v0.18) is in history before commit `925a75f` and upstream at `ShrapnelSergeants2408/InventoryManagement`. Nothing from either applies unless this document says so.
 
 **Changes in v3.0** (Dan, 2026-11-03):
@@ -536,18 +536,11 @@ Same routine as HANDOFF §4: spec first, a branch per milestone from `main` (nev
 | 2026-11-03 | Seasons are Holiday only. Holiday adds display spots, setup/takedown lists, condition checks with a to-buy list, and a season calendar | Dan |
 | 2026-11-03 | The family uses both parts, with live sync, offline first, on the Cloudflare free tier; sign-in stays emailed codes (Cloudflare Access) for the family's emails, not a shared household code | Dan |
 | 2026-11-03 | Order: split, then sync; the Holiday part usable for Christmas setup by late Nov 2026 (sync may follow). The phone's data is test data. Write SPEC v3.0 before more code | Dan |
+| 2026-11-03 | SPEC v3.0 §17 questions 1–8: every proposed answer accepted (area letters across parts, default categories and season dates, moving between parts, setup list order, `.ics` calendar, Holiday tab bar, 0.1.2 upgrade into Household, targets) | Dan |
 
 ## 17. Open questions
 
-For Dan before H3 starts. Each has a proposed answer in this document:
-1. **Area letters across both parts** (§3): letters unique across both parts so a typed bin code is never ambiguous; enough with 26? (Proposed: yes, and letter pairs if ever needed.)
-2. **Default categories** for each part (§3, Category), and **default season dates** (§3, Season).
-3. **Moving between parts** (§3, Parts): allowed for items and bins, clearing Holiday fields. Or simply not allowed?
-4. **Setup list shape** (F25): bins out → items put out by display → tasks. Is that the order you work in?
-5. **Season calendar** (F23): an `.ics` file for the iPhone Calendar instead of in-app reminders. Enough?
-6. **Holiday tab bar** (§10): Season home first, then Find, Scan, Lists, More.
-7. **The 0.1.2 upgrade** (§3): put everything into Household and drop H1 backup support. Or wipe and start fresh?
-8. **Targets** (§15): H3 ~Nov 14, H4 ~Nov 24. Is Christmas setup starting around Nov 25 (Thanksgiving weekend)?
+The eight questions raised with the draft were settled on 2026-11-03: Dan accepted every proposed answer (decision log). In short: area letters unique across both parts (letter pairs if ever needed); the default categories and season dates in §3; items and bins can move between parts, clearing Holiday fields; the setup list order bins → items by display → tasks; the `.ics` calendar file instead of in-app reminders; the Holiday tab bar Season, Find, Scan, Lists, More; the 0.1.2 data upgraded into Household, with H1 backups no longer read; the targets in §15 (Christmas setup from about Nov 25).
 
 To settle during the work:
 - Part colors and the app icon (H3 mockups).

@@ -1,5 +1,5 @@
 // Find (SPEC v3.0 F1): one search over a part's items, bins and spots, results grouped with their
-// paths. Items match on name, notes, tags, barcode, model, serial, category, path and season;
+// paths. Items match on name, notes, tags, barcode, model, serial, category, path, season and display;
 // bins on code, name, notes, tags, path and season; spots on name, notes and area. A typed bin
 // code ("a4") also finds that bin. Pure, so it is unit-tested.
 import type { PartRecords } from './parts';
@@ -27,7 +27,7 @@ export function findIn(d: PartRecords, query: string, limit = 50): FindResults {
   if (terms.length === 0) return NO_RESULTS;
   const ix = indexPlaces(d);
   const seasons = new Map(d.seasons.map((s) => [s.id, s]));
-  const ctx = { places: ix, seasons };
+  const ctx = { places: ix, seasons, displays: new Map((d.displays ?? []).map((x) => [x.id, x])) };
   const code = binCodeKey(query.trim());
   const isCode = BIN_CODE_PATTERN.test(code);
 

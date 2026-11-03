@@ -128,6 +128,8 @@ export type PhotoView = {
   caption: string;
   /** Taken or chosen on this phone (not a restored backup photo). */
   taken: boolean;
+  /** A display's setup photo: the season it shows, or ''. */
+  seasonId: string;
 };
 
 /** A record's photos in carousel order, live; [] while loading or when it has none. */
@@ -139,7 +141,7 @@ export function usePhotos(ownerId: string): PhotoView[] {
     const sub = liveQuery(() => photosOf(db, ownerId)).subscribe({
       next: (rows) => {
         for (const u of urls) URL.revokeObjectURL(u);
-        const next = rows.map((r) => ({ id: r.id, url: URL.createObjectURL(r.full), caption: r.caption, taken: r.taken !== undefined }));
+        const next = rows.map((r) => ({ id: r.id, url: URL.createObjectURL(r.full), caption: r.caption, taken: r.taken !== undefined, seasonId: r.seasonId ?? '' }));
         urls = next.map((v) => v.url);
         setViews(next);
       },

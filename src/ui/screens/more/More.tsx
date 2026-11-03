@@ -1,5 +1,5 @@
 // More (SPEC v3.0 §10): the current part's lists (Areas & spots, Categories, Tags, and in Holiday
-// Seasons), Labels, Backup & restore (both parts), Settings and About.
+// Seasons and Displays), Labels, Backup & restore (both parts), Settings and About.
 import { plural } from '../../components/common';
 import { PartSwitch } from '../../components/PartSwitch';
 import { PART_NAME, type Part } from '../../../domain/types';
@@ -61,6 +61,7 @@ export function MoreScreen({ part }: { part: Part }) {
               to={href.list('places')}
             />
             {part === 'holiday' && <Row icon="season" title="Seasons" sub={snap ? `${plural(snap.seasons.length, 'season')} · dates, colors, order` : 'Dates, colors, order'} to={href.list('seasons')} />}
+            {part === 'holiday' && <Row icon="pin" title="Displays" sub={snap ? `${snap.displays.length ? plural(snap.displays.length, 'display') : 'No displays yet'} · Mantel, Front porch…` : 'Mantel, Front porch…'} to={href.list('displays')} />}
             <Row icon="folder" title="Categories" sub={snap ? `${plural(snap.categories.length, 'category', 'categories')} · add, rename, reorder` : 'Add, rename, reorder'} to={href.list('categories')} />
             <Row icon="tag" title="Tags" sub={snap ? `${snap.tags.length ? plural(snap.tags.length, 'tag') : 'No tags yet'} · Fragile, Outdoor…` : 'Fragile, Outdoor…'} to={href.list('tags')} />
             <Row icon="labels" title="Labels" sub="QR labels for bins, spots and items" to={href.labels()} />

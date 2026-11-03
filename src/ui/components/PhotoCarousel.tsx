@@ -1,6 +1,7 @@
 // A record's photos (SPEC v2.0 §8, F16): a swipeable strip at the top of item, bin and spot
 // screens. Tap to enlarge. Take or pick more; reorder (the first is the thumbnail), caption and
-// delete (after confirming) the one in view. Each change is saved at once.
+// delete (after confirming) the one in view. Each change is saved at once. With `setup`, it shows a
+// display's setup photos of one season (F8) and adds new ones with that season.
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { addPhotos, deletePhoto, movePhoto, setCaption } from '../../data/photos';
 import type { PhotoOwner } from '../../domain/types';
@@ -10,9 +11,11 @@ import { showToast } from '../shell/toast';
 import { Dialog, DialogActions } from './Dialog';
 import { PhotoButtons, type PreparedPhoto } from './PhotoButtons';
 
-export function PhotoCarousel(props: { ownerType: PhotoOwner; ownerId: string; name: string }) {
+export function PhotoCarousel(props: { ownerType: PhotoOwner; ownerId: string; name: string; setup?: { seasonId: string; seasonName: string } }) {
   const db = useDb();
-  const photos = usePhotos(props.ownerId);
+  const own = usePhotos(props.ownerId);
+  const setup = props.setup;
+  const photos = setup ? own.filter((p) => p.seasonId === setup.seasonId) : own;
   const [at, setAt] = useState(0);
   const [enlarged, setEnlarged] = useState(false);
   const [removing, setRemoving] = useState<PhotoView | null>(null);
@@ -34,7 +37,7 @@ export function PhotoCarousel(props: { ownerType: PhotoOwner; ownerId: string; n
   };
   const add = async (p: PreparedPhoto) => {
     try {
-      await addPhotos(db, props.ownerType, props.ownerId, [p]);
+      await addPhotos(db, props.ownerType, props.ownerId, [p], Date.now(), setup ? { seasonId: setup.seasonId } : null);
       changed();
       showToast('Photo saved.');
       // The new photo is last.
@@ -59,8 +62,8 @@ export function PhotoCarousel(props: { ownerType: PhotoOwner; ownerId: string; n
       {photos.length === 0 ? (
         <div class="photo nophoto">
           <Icon name="photo" class="ic xxl" />
-          <span class="nophoto-t">No photo yet</span>
-          <span class="small muted">Add one so it’s easy to recognize.</span>
+          <span class="nophoto-t">{setup ? `No ${setup.seasonName} setup photos yet` : 'No photo yet'}</span>
+          <span class="small muted">{setup ? 'Take one when it’s set up, to copy next year.' : 'Add one so it’s easy to recognize.'}</span>
         </div>
       ) : (
         <div
@@ -90,6 +93,9 @@ export function PhotoCarousel(props: { ownerType: PhotoOwner; ownerId: string; n
       <PhotoButtons hasPhoto={false} small addLabel={photos.length ? 'Add photo' : 'Take photo'} onPhoto={(p) => add(p)} onRemove={() => undefined} />
       {current && (
         <div class="pacts">
+          {/* Order is the owner's whole carousel, so a season's photos alone aren't reordered here. */}
+          {!setup && (
+            <>
           <button type="button" class="btn sm" disabled={at === 0} onClick={() => void move(-1)} aria-label="Move this photo earlier">
             <Icon name="chevLeft" />
             {at === 1 ? 'Make first' : 'Earlier'}
@@ -98,6 +104,8 @@ export function PhotoCarousel(props: { ownerType: PhotoOwner; ownerId: string; n
             Later
             <Icon name="chevRight" />
           </button>
+            </>
+          )}
           <button type="button" class="btn sm" onClick={() => setCaptioning(current)}>
             <Icon name="pencil" />
             Caption

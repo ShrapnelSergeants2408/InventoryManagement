@@ -15,7 +15,7 @@ export const PART_TABS: Readonly<Record<Part, readonly Tab[]>> = {
 /** A part's home tab (§10): Find in Household, Season in Holiday. */
 export const homeTab = (part: Part): Tab => PART_TABS[part][0]!;
 
-export type ManagedList = 'categories' | 'places' | 'seasons' | 'tags';
+export type ManagedList = 'categories' | 'places' | 'seasons' | 'tags' | 'displays';
 
 export type Route =
   /** `part` null: the part in use (an address without one, e.g. the app's start page). */
@@ -29,6 +29,10 @@ export type Route =
   /** A new bin on a spot (`spot`), or in an area with no spot (`area`), or neither. */
   | { tab: 'find'; screen: 'bin-add'; spot: string; area: string }
   | { tab: 'find'; screen: 'spot'; id: string }
+  /** Holiday (H4): a season, its setup list (F25), a display (F22). */
+  | { tab: 'season'; screen: 'season'; id: string }
+  | { tab: 'season'; screen: 'setup'; id: string }
+  | { tab: 'season'; screen: 'display'; id: string }
   /** `ids`: records chosen before opening (Print label on a card); [] for the Labels screen. */
   | { tab: 'more'; screen: 'labels'; ids: string[] }
   | { tab: 'more'; screen: ManagedList }
@@ -36,7 +40,7 @@ export type Route =
   | { tab: 'more'; screen: 'settings' };
 
 const TABS: readonly Tab[] = ['season', 'find', 'browse', 'scan', 'lists', 'more'];
-const LISTS: readonly ManagedList[] = ['categories', 'places', 'seasons', 'tags'];
+const LISTS: readonly ManagedList[] = ['categories', 'places', 'seasons', 'tags', 'displays'];
 
 export function parseHash(hash: string): Route {
   const [path = '', query = ''] = hash.replace(/^#\/?/, '').split('?');
@@ -57,6 +61,8 @@ export function parseHash(hash: string): Route {
   }
   if (parts[0] === 'new-bin') return { tab: 'find', screen: 'bin-add', spot: q.get('spot') ?? '', area: q.get('area') ?? '' };
   if (parts[0] === 'spot' && parts[1]) return { tab: 'find', screen: 'spot', id: parts[1] };
+  if (parts[0] === 'season' && parts[1]) return parts[2] === 'setup' ? { tab: 'season', screen: 'setup', id: parts[1] } : { tab: 'season', screen: 'season', id: parts[1] };
+  if (parts[0] === 'display' && parts[1]) return { tab: 'season', screen: 'display', id: parts[1] };
   if (parts[0] === 'labels') return { tab: 'more', screen: 'labels', ids: (q.get('ids') ?? '').split(',').filter(Boolean) };
   if (parts[0] === 'more') {
     const list = LISTS.find((l) => l === parts[1]);
@@ -97,6 +103,9 @@ export const href = {
     return q.size ? `#/new-bin?${q}` : '#/new-bin';
   },
   spot: (id: string) => `#/spot/${encodeURIComponent(id)}`,
+  season: (id: string) => `#/season/${encodeURIComponent(id)}`,
+  setup: (id: string) => `#/season/${encodeURIComponent(id)}/setup`,
+  display: (id: string) => `#/display/${encodeURIComponent(id)}`,
   labels: (ids: string[] = []) => (ids.length ? `#/labels?${new URLSearchParams({ ids: ids.join(',') })}` : '#/labels'),
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',

@@ -21,7 +21,7 @@ import { EntryDialog } from './EntryDialog';
 
 const fail = (e: unknown) => showToast(e instanceof Error ? e.message : String(e));
 
-function ListFrame(props: { title: string; subtitle: string; addLabel: string; onAdd: () => void; reorder: boolean; setReorder: (on: boolean) => void; canReorder: boolean; children: ComponentChildren }) {
+export function ListFrame(props: { title: string; subtitle: string; addLabel: string; onAdd: () => void; reorder: boolean; setReorder: (on: boolean) => void; canReorder: boolean; children: ComponentChildren }) {
   return (
     <>
       <TopBar
@@ -45,7 +45,7 @@ function ListFrame(props: { title: string; subtitle: string; addLabel: string; o
   );
 }
 
-function UpDown(props: { name: string; first: boolean; last: boolean; move: (delta: number) => void }) {
+export function UpDown(props: { name: string; first: boolean; last: boolean; move: (delta: number) => void }) {
   return (
     <span class="updown">
       <button type="button" class="ib" aria-label={`Move ${props.name} up`} disabled={props.first} onClick={() => props.move(-1)}>
@@ -59,7 +59,7 @@ function UpDown(props: { name: string; first: boolean; last: boolean; move: (del
 }
 
 /** Confirm removing a season or tag that's in use (§6). */
-function ConfirmRemove(props: { what: string; name: string; items: number; bins: number; onClose: () => void; onRemove: () => Promise<void> }) {
+export function ConfirmRemove(props: { what: string; name: string; items: number; bins: number; onClose: () => void; onRemove: () => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const used = [props.items ? plural(props.items, 'item') : '', props.bins ? plural(props.bins, 'bin') : ''].filter(Boolean).join(' and ');
   return (

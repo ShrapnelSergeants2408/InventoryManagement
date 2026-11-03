@@ -361,6 +361,19 @@ function Form(props: { all: InventorySnapshot; part: Part; base: Item | null; st
                 </select>
               </Field>
               )}
+              {part === 'holiday' && (
+                <Field id="dsp" label="Usual display (where it goes when it’s out)" optional>
+                  <select id="dsp" class="field" value={d.displayId} onChange={(e) => set({ displayId: (e.currentTarget as HTMLSelectElement).value })}>
+                    <option value="">None</option>
+                    {snap.displays.map((x) => (
+                      <option key={x.id} value={x.id}>
+                        {x.name}
+                      </option>
+                    ))}
+                  </select>
+                  {snap.displays.length === 0 && <span class="small muted">Add displays in More › Displays.</span>}
+                </Field>
+              )}
               <Field id="tg" label="Tags" optional>
                 <div class="chips-row">
                   {d.tags.map((t) => (

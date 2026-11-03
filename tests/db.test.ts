@@ -26,7 +26,7 @@ describe('replaceAll', () => {
     fresh();
     await replaceAll(db, dataset({ items: [item({ id: 'keep' })] }));
     await expect(replaceAll(db, dataset({ items: [item({ id: 'x', binId: 'bn-gone' })] }))).rejects.toThrow(/bin bn-gone, which isn't there/);
-    await expect(replaceAll(db, dataset({ areas: [area({ id: 'a1', letter: 'A' }), area({ id: 'a2', name: 'Other', letter: 'A' })] }))).rejects.toThrow(/both use the letter A/);
+    await expect(replaceAll(db, dataset({ areas: [area({ id: 'a1', code: 'A' }), area({ id: 'a2', name: 'Other', code: 'A' })] }))).rejects.toThrow(/both use the code A/);
     expect((await loadSnapshot(db)).items.map((i) => i.id)).toEqual(['keep']);
   });
 
@@ -116,13 +116,13 @@ describe('settings', () => {
 });
 
 describe('schema (SPEC v3.0 §2, D1)', () => {
-  it('database home-inventory at schema v3 (H3)', async () => {
+  it('database home-inventory at schema v4 (H3, area codes)', async () => {
     expect(DB_NAME).toBe('home-inventory');
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
     fresh();
     await db.open();
     expect(await checkSchema(db)).toBe('ok');
-    expect((await db.settings.get(SCHEMA_KEY))?.value).toBe(3);
+    expect((await db.settings.get(SCHEMA_KEY))?.value).toBe(4);
   });
 
   it('an older copy of the app refuses a newer database without writing to it', async () => {

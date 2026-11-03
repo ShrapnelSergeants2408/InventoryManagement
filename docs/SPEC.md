@@ -20,7 +20,7 @@
 **Built so far:**
 - **H1** (app 0.1.1, `docs/reviews/H1.md`): the FRC features stripped, rebranded.
 - **H2a** (app 0.1.2, `docs/reviews/H2a.md`): the v2.0 data model in one part — areas, spots, bins, seasons, tags, every item field, several photos, the §7 backup, F7, F11, F16. Find, Browse, bin and spot scanning and labels (old H2b) were not built.
-- **H3** (app 0.1.3, `docs/reviews/H3.md`, waiting for Dan's review): schema v3 with the two parts and the 0.1.2 upgrade, F21 (switch, both tab bars, Undo toast), Set up for both parts, F1, F2, F3, F10 for bins, spots and items, F11 per part, season dates and the Season home (seasons on now, Coming up), the read-only Lists tabs, and the §7 part columns. Details decided along the way are listed there for Dan to confirm.
+- **H3** (app 0.1.3, `docs/reviews/H3.md`; details (a)–(l) accepted, area codes from names added after review): schema v3 with the two parts and the 0.1.2 upgrade, F21 (switch, both tab bars, Undo toast), Set up for both parts, F1, F2, F3, F10 for bins, spots and items, F11 per part, season dates and the Season home (seasons on now, Coming up), the read-only Lists tabs, and the §7 part columns. Details decided along the way are listed there for Dan to confirm.
 
 ---
 
@@ -42,7 +42,7 @@ Users:
 |---|---|---|
 | App type | PWA, added to the home screen from **iPhone Safari**. One app, one icon (Dan, 2026-11-03) | No App Store; the FRC app's code base |
 | Language/build | TypeScript, Preact, Vite (unchanged) | Existing code and tooling |
-| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v3 (H3; v2 was H2a, v1 was H1) | **Local-first:** works with no signal in the attic, garage or storage room |
+| Storage on the phone | IndexedDB via Dexie, database `home-inventory`, schema v4 (H3: v3 the two parts, v4 area codes; v2 was H2a, v1 was H1) | **Local-first:** works with no signal in the attic, garage or storage room |
 | Server | One Cloudflare **Worker** (API + static app), **D1** (data), **R2** (photos and files), on Dan's free-tier account | Free tier, never sleeps, ~$0 for a family (§14) |
 | Sign-in | Cloudflare Access, one-time email code, a policy listing the family's email addresses. **Fallback** (§12.4) if it misbehaves in an iOS home-screen app | Real identity without passwords |
 | Address | `https://<name>.workers.dev`. A custom domain (~$10–12/yr) can be added later with no code change (Dan, 2026-11-02: free address for now) | |
@@ -82,7 +82,7 @@ Every stored record (except local caches) has these sync fields:
 
 Rules:
 - Nothing links across parts: an item can't be homed in a bin of the other part, a household item can't have a category from the Holiday list, and so on. The phone and the server both refuse it.
-- **Area letters are unique across both parts**, so every bin code (A-04) is unique in the whole app, and a typed code finds one bin wherever it is.
+- **Area codes are unique across both parts**, so every bin code (ATTIC-04) is unique in the whole app, and a typed code finds one bin wherever it is.
 - Names (areas, categories, tags) are unique **within a part**, ignoring capitals. Both parts may have an area called "Attic".
 - **Moving to the other part:** an item can be moved to the other part by choosing a home there (F7, with a confirmation naming the part). Its season, display and tags are cleared when it leaves Holiday, and its category is matched by name in the new part, else set to "Other". A bin moves part with everything in it, the same way. Areas and spots don't change part.
 
@@ -93,11 +93,11 @@ A room or zone: Attic, Garage, Utility room, Storage room, Basement…
 |---|---|---|
 | part | yes | |
 | name | yes | Unique within the part, ignoring capitals |
-| letter | yes | One letter A–Z, unique across both parts. The bin-code prefix (§3, Bin). Defaults to the name's first free letter |
+| code | yes | 1–8 capital letters A–Z ("ATTIC", "STORAGE"), unique across both parts. The bin-code prefix (§3, Bin). Defaults to the first word of the name; if that's taken, the word with the other words' initials, then its first 7 letters and A–Z. Letters only, so a bin's number never runs into it (Dan, 2026-11-03: names, not letters, so codes say where the bin lives) |
 | order | yes | Walk order within the part |
 | notes | no | |
 
-With 26 letters across both parts, an area may also take a letter pair ("SA") once the single letters are used. **Open question for Dan** (§17): is 26 areas across both parts enough?
+Changing an area's code later doesn't rename its bins (their labels stay true); new bins there get the new code.
 
 ### Spot (`sp-`)
 A place inside an area: "Shelf B", "Pegboard", "Cabinet over washer", "Floor by the furnace".
@@ -114,7 +114,7 @@ A container with a QR label.
 
 | Field | Required | Notes |
 |---|---|---|
-| code | yes | Area letter + 2-digit number ("A-04"), the next free number in that area, assigned automatically and editable (D4). Unique across both parts. Printed large on the label. **Kept when the bin moves** to another area, so labels stay true |
+| code | yes | Area code + 2-digit number ("ATTIC-04"; typed "attic4" works), the next free number in that area, assigned automatically and editable (D4). Unique across both parts. Printed large on the label. **Kept when the bin moves** to another area, so labels stay true |
 | name | yes | "Christmas 4: lights & garland" |
 | part | when it has no spot | See Parts |
 | spotId | no | Where it's stored. Blank = "No spot" |
@@ -235,20 +235,21 @@ The phone keeps a thumbnail (about 320 px) for every photo, and the full image (
 name, email. Created by the server on first sign-in for an allowed email; the name can be edited in More. Any number of family members (§13).
 
 ### Activity (`ac-`, written by the server)
-at, personId, summary ("Ann moved Snowman lights to A-04 Christmas 4"), recordType, recordId, part. Kept 2 years (D8).
+at, personId, summary ("Ann moved Snowman lights to ATTIC-04 Christmas 4"), recordType, recordId, part. Kept 2 years (D8).
 
 ### Upgrading a 0.1.2 phone
 
 The phone's data is test data (Dan, 2026-11-03), so schema v3 keeps it simply:
 - every area, category, tag and item goes to **Household**;
 - seasons, and the season on items and bins, move to **Holiday**: the seasons are kept, and the household items and bins lose their season;
-- the Holiday part starts with its default categories and no areas.
+- the Holiday part starts with its default categories and no areas;
+- each area's letter becomes a code from its name (Attic's A → ATTIC), and its bins are renamed to match (A-04 → ATTIC-04). A renamed bin counts as not printed yet, since its old label shows the old code.
 
 Restore reads a 0.1.2 backup ZIP the same way. **H1 (0.1.1) backup ZIPs are no longer read** (nothing worth keeping is in one). A Full backup before installing 0.1.3 is still advised.
 
 ## 4. Rules and calculations
 
-- **An item's location:** the item's home spot or bin. For a bin, the bin's spot and its area. Shown as a path: *Attic › Shelf B › A-04 Christmas 4*. If the bin has no spot: *A-04 Christmas 4 (no spot)*.
+- **An item's location:** the item's home spot or bin. For a bin, the bin's spot and its area. Shown as a path: *Attic › Shelf B › ATTIC-04 Christmas 4*. If the bin has no spot: *ATTIC-04 Christmas 4 (no spot)*.
 - **An item's season** (Holiday): the item's own season, else its bin's.
 - **Out of place:** an item with status `out` or `lent` still keeps its home. Repacking returns it there.
 - **Bin contents summary** (labels, bin cards): items in the bin with status `stored`, the largest quantities first, then A–Z. Each is shown as "Name ×3" or "Name ~40". Bulk lines come first when tied.
@@ -278,7 +279,7 @@ Restore reads a 0.1.2 backup ZIP the same way. **H1 (0.1.1) backup ZIPs are no l
 |---|---|---|
 | F23 | Season calendar | **New.** The Holiday home (§10) shows the seasons on now (§4), each with its dates and phase ("Christmas · setup from Nov 25 · not started"), and **Coming up**: the next three seasons with their setup dates. **More › Seasons** edits each season's dates. **Add to Calendar** makes an `.ics` file (iOS opens it in Calendar) with each season's setup and takedown dates as yearly all-day events, so reminders come from the iPhone's Calendar. In-app push reminders are not in this release (§13) |
 | F25 | Setup list | **New.** On a season, **Start setup** creates this year's run (§3) and opens its setup list, three sections with progress ("12 of 30"): **Bins to bring out** (the season's bins, by place, each with **Out** to set the bin `out`, or scan the bin), **Put out** (the season's items by display, then "No display", each ticked to set it `out` on its display; **Unpack a bin** (F5) does a whole bin at once), and **Tasks** (setup tasks, ticked). Setup photos (F8) for each display are one tap away. **Finish setup** sets the run to `up`; anything still unticked is listed but doesn't block. Season tasks are added, edited and reordered on the season (More › Seasons) or straight from the list |
-| F6 | Takedown list | (Was "Repack checklist".) On a season whose run is `up`, **Start takedown** opens the takedown list: **Pack** (items still `out`, grouped by their home bin: "A-04 Christmas 4 · 3 still out"; tap **Put back**, or open the bin and pack it, F4), **Check** (F9: items not checked this run), **Bins to put away** (bins `out` → `stored`, scan or tap), and **Tasks** (takedown tasks). Scanning a bin in this view shows that bin's missing items. When nothing is out, it shows "All packed" and **Finish** sets the run to `done` |
+| F6 | Takedown list | (Was "Repack checklist".) On a season whose run is `up`, **Start takedown** opens the takedown list: **Pack** (items still `out`, grouped by their home bin: "ATTIC-04 Christmas 4 · 3 still out"; tap **Put back**, or open the bin and pack it, F4), **Check** (F9: items not checked this run), **Bins to put away** (bins `out` → `stored`, scan or tap), and **Tasks** (takedown tasks). Scanning a bin in this view shows that bin's missing items. When nothing is out, it shows "All packed" and **Finish** sets the run to `done` |
 | F4 | Pack a bin | On a bin, **Pack**: a list of what's in it, and four ways to add. (a) **Scan** an item label or barcode. (b) **Search**. (c) **From "out"**: items of the bin's season that are out, with their home in this bin first, then others, ticked to put in. (d) **Quick add**: camera first, then name, quantity (with "approx"), category. The season defaults to the bin's. Items added get status `stored` and this bin as home. Moving an item from another bin asks first ("Snowman lights is in A-07. Move it here?") |
 | F5 | Unpack | On a bin, **Unpack**: **Take everything out** or tick items. Each chosen item becomes `out` on its usual display, which can be changed once for the batch and per item (displays first, then typed text). The bin can be set to `out` too. Setup photos for those displays (F8) are offered |
 | F22 | Displays | **New.** **More › Displays**: add, rename, reorder (setup walk order), remove (clears it from items, after confirming). A display's screen shows its setup photos by season, the items that usually go there (with where they're stored), and the items on it now. The item editor picks a usual display |
@@ -329,7 +330,7 @@ One file holds both parts.
 
 | File | Contents |
 |---|---|
-| `areas.csv` | id, part, name, letter, order, notes |
+| `areas.csv` | id, part, name, code, order, notes (a 0.1.2 file's `letter` is read as the old code) |
 | `spots.csv` | id, area_id, name, order, notes |
 | `bins.csv` | id, part, code, name, spot_id, season_id, tags, state, notes, label_printed_at, label_contents |
 | `items.csv` | id, part, name, category, subcategory, bin_id, spot_id, quantity, approx, season_id, display_id, tags, status, out_where, out_display_id, out_since, lent_to, lent_on, condition, condition_note, checked_at, barcode, notes, value, purchase_date, model, serial, warranty_until, keep_at_least |
@@ -541,10 +542,12 @@ Same routine as HANDOFF §4: spec first, a branch per milestone from `main` (nev
 | 2026-11-03 | Order: split, then sync; the Holiday part usable for Christmas setup by late Nov 2026 (sync may follow). The phone's data is test data. Write SPEC v3.0 before more code | Dan |
 | 2026-11-03 | SPEC v3.0 §17 questions 1–8: every proposed answer accepted (area letters across parts, default categories and season dates, moving between parts, setup list order, `.ics` calendar, Holiday tab bar, 0.1.2 upgrade into Household, targets) | Dan |
 | 2026-11-03 | H3 mockups approved, with three additions: Household also gets five tabs (Find, Browse, Scan, Lists, More) so Scan sits in the center in both parts; the Holiday home shows every season on now (lead card plus Also now); the "Switched to …" toast has Undo. Part colors: Household rust #8a3315, Holiday evergreen #1f4d3a | Dan |
+| 2026-11-03 | H3 details (a)–(l) in `docs/reviews/H3.md` accepted | Dan |
+| 2026-11-03 | Areas get **codes from their names** instead of letters, so bin codes are descriptive: ATTIC-04, STORAGE-12 (1–8 letters, unique across parts, chosen from three options). Supersedes "area letters unique across both parts" (§17 answer 1) | Dan |
 
 ## 17. Open questions
 
-The eight questions raised with the draft were settled on 2026-11-03: Dan accepted every proposed answer (decision log). In short: area letters unique across both parts (letter pairs if ever needed); the default categories and season dates in §3; items and bins can move between parts, clearing Holiday fields; the setup list order bins → items by display → tasks; the `.ics` calendar file instead of in-app reminders; the Holiday tab bar Season, Find, Scan, Lists, More; the 0.1.2 data upgraded into Household, with H1 backups no longer read; the targets in §15 (Christmas setup from about Nov 25).
+The eight questions raised with the draft were settled on 2026-11-03: Dan accepted every proposed answer (decision log). In short: area letters unique across both parts (since replaced by area codes from their names, decision log); the default categories and season dates in §3; items and bins can move between parts, clearing Holiday fields; the setup list order bins → items by display → tasks; the `.ics` calendar file instead of in-app reminders; the Holiday tab bar Season, Find, Scan, Lists, More; the 0.1.2 data upgraded into Household, with H1 backups no longer read; the targets in §15 (Christmas setup from about Nov 25).
 
 To settle during the work:
 - The app icon (H3).

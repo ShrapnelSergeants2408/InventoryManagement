@@ -4,7 +4,7 @@ import { checkData, unlistedTags, type HouseholdData } from '../src/domain/integ
 import { RECORD_ID_PATTERN, kindOfId } from '../src/domain/ids';
 import {
   binContents,
-  defaultLetter,
+  defaultAreaCode,
   indexPlaces,
   itemAreaId,
   itemPath,
@@ -20,11 +20,17 @@ import { bin, dataset, household, item } from './helpers';
 
 describe('area letters (§3)', () => {
   it('the first free letter of the name, else the first free letter A–Z', () => {
-    expect(defaultLetter('Garage', [])).toBe('G');
-    expect(defaultLetter('Garage', ['G'])).toBe('A');
-    expect(defaultLetter('Garage', ['G', 'A', 'R', 'E'])).toBe('B');
-    expect(defaultLetter('4th floor', [])).toBe('T');
-    expect(defaultLetter('x', [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'])).toBeNull();
+    expect(defaultAreaCode('Garage', [])).toBe('GARAGE');
+    expect(defaultAreaCode('Storage room', [])).toBe('STORAGE');
+    expect(defaultAreaCode('Storage room', ['STORAGE'])).toBe('STORAGER');
+    expect(defaultAreaCode('Storage room', ['STORAGE', 'STORAGER'])).toBe('STORAGEA');
+    expect(defaultAreaCode('Cabinet over washer', [])).toBe('CABINET');
+    expect(defaultAreaCode('Basement storage', [])).toBe('BASEMENT');
+    expect(defaultAreaCode('Basement storage', ['BASEMENT'])).toBe('BASEMENS');
+    expect(defaultAreaCode('Kids’ closet', [])).toBe('KIDS');
+    expect(defaultAreaCode('4th floor', [])).toBe('TH');
+    expect(defaultAreaCode('Café', [])).toBe('CAFE');
+    expect(defaultAreaCode('', [])).toBe('AREA');
   });
 });
 
@@ -34,7 +40,10 @@ describe('bin codes (§3, D4)', () => {
     expect(tidyBinCode(' b 12 ')).toBe('B-12');
     expect(tidyBinCode('C-007')).toBe('C-07');
     expect(tidyBinCode('A-104')).toBe('A-104');
-    expect(tidyBinCode('AB-1')).toBe('AB-1');
+    expect(tidyBinCode('AB-1')).toBe('AB-01');
+    expect(tidyBinCode('attic4')).toBe('ATTIC-04');
+    expect(tidyBinCode(' storage 12 ')).toBe('STORAGE-12');
+    expect(tidyBinCode('A4B')).toBe('A4B');
     expect(sameBinCode('a-4', 'A-04')).toBe(true);
   });
 
@@ -130,13 +139,13 @@ describe('a whole household checked together (restore, setup)', () => {
 
   it('names, letters and codes must be unique where §3 says so', () => {
     const d = ok();
-    d.areas.push({ ...d.areas[0]!, id: 'ar-2', name: 'ATTIC', letter: 'G' });
+    d.areas.push({ ...d.areas[0]!, id: 'ar-2', name: 'ATTIC', code: 'G' });
     d.spots.push({ ...d.spots[0]!, id: 'sp-2', name: 'shelf a' });
     d.bins.push({ ...d.bins[0]!, id: 'bn-2', code: 'A-04', name: 'Other' });
     d.seasons.push({ ...d.seasons[0]!, id: 'se-2', name: 'christmas' });
     expect(checkData(d)).toEqual([
       'area "ATTIC" is listed twice in Holiday (also "Attic")',
-      'areas "Garage" and "ATTIC" both use the letter G',
+      'areas "Garage" and "ATTIC" both use the code G',
       'spot "shelf a" is listed twice in its area',
       'bin code A-04 is used by two bins ("Christmas 4" and "Other")',
       'season "christmas" is listed twice',
@@ -146,10 +155,10 @@ describe('a whole household checked together (restore, setup)', () => {
   it('the two parts (SPEC v3.0 §3): names per part, letters and codes across both, no links across', () => {
     const d = ok();
     // The same area name in Household is fine; its letter must still be its own.
-    d.areas.push({ ...d.areas[0]!, id: 'ar-h1', part: 'household', name: 'Attic', letter: 'H' });
+    d.areas.push({ ...d.areas[0]!, id: 'ar-h1', part: 'household', name: 'Attic', code: 'H' });
     d.categories.push({ part: 'holiday', name: 'Ornaments', order: 9, subcategories: [] });
     expect(checkData(d)).toEqual([]);
-    d.areas.push({ ...d.areas[0]!, id: 'ar-h2', part: 'household', name: 'Garage', letter: 'A' });
+    d.areas.push({ ...d.areas[0]!, id: 'ar-h2', part: 'household', name: 'Garage', code: 'A' });
     d.spots.push({ id: 'sp-h', areaId: 'ar-h1', name: 'Pegboard', order: 0, notes: '' });
     // A Holiday item homed on a Household spot, a Household bin on a Holiday spot, a household
     // bin with a season, a Household item with a Holiday-only category.
@@ -159,7 +168,7 @@ describe('a whole household checked together (restore, setup)', () => {
     d.items.push(item({ id: 'i-y', part: 'household', category: 'Ornaments' }));
     expect(checkData(d)).toEqual([
       'bin bn-h2: a household bin has no season',
-      'areas "Attic" and "Garage" both use the letter A',
+      'areas "Attic" and "Garage" both use the code A',
       'bin H-01 is in Household, but its home is in Holiday',
       'item "Test item" is in Holiday, but its home is in Household',
       'item "Test item" has category "Ornaments", which isn\'t in the Household category list',

@@ -16,7 +16,9 @@ export const SEASONS_FILE = 'seasons.csv';
 export const TAGS_FILE = 'tags.csv';
 export const FILES_FILE = 'files.csv';
 
-export const AREA_COLUMNS = ['id', 'part', 'name', 'letter', 'order', 'notes'] as const;
+export const AREA_COLUMNS = ['id', 'part', 'name', 'code', 'order', 'notes'] as const;
+/** 0.1.2 wrote the area's letter; read into `code` (one letter) for the conversion. */
+const AREA_COLUMNS_READ = [...AREA_COLUMNS, 'letter'] as const;
 export const SPOT_COLUMNS = ['id', 'area_id', 'name', 'order', 'notes'] as const;
 export const BIN_COLUMNS = ['id', 'part', 'code', 'name', 'spot_id', 'season_id', 'tags', 'state', 'notes', 'label_printed_at', 'label_contents'] as const;
 export const ITEM_COLUMNS = [
@@ -39,7 +41,7 @@ const sortByOrder = <T extends { order: number }>(list: readonly T[]) => [...lis
 const byPartThenOrder = <T extends { part: Part; order: number }>(list: readonly T[]) => PARTS.flatMap((p) => sortByOrder(list.filter((x) => x.part === p)).map((x, i) => ({ x, i })));
 
 export const serializeAreas = (list: readonly Area[]) =>
-  writeCsv(AREA_COLUMNS, byPartThenOrder(list).map(({ x: a, i }) => [a.id, a.part, a.name, a.letter, String(i), a.notes]));
+  writeCsv(AREA_COLUMNS, byPartThenOrder(list).map(({ x: a, i }) => [a.id, a.part, a.name, a.code, String(i), a.notes]));
 
 /** Spots in their area's walk order; `order` is the position within the area. */
 export const serializeSpots = (list: readonly Spot[]) =>
@@ -237,11 +239,11 @@ function renumberWithin<T extends { order: number }>(list: T[], group: (x: T) =>
 }
 
 export function parseAreas(text: string): Parsed<Area> {
-  const p = readTable(text, AREAS_FILE, AREA_COLUMNS, ['id', 'name', 'letter'], (r) => ({
+  const p = readTable(text, AREAS_FILE, AREA_COLUMNS_READ, ['id', 'name'], (r) => ({
     id: r.required('id', 'id'),
     part: r.part(),
     name: r.required('name', 'area name'),
-    letter: r.required('letter', 'area letter').toUpperCase(),
+    code: (r.text('code') || r.required('letter', 'area code')).toUpperCase(),
     order: r.whole('order', 'order', BLANK_ORDER)!,
     notes: r.long('notes'),
   }));

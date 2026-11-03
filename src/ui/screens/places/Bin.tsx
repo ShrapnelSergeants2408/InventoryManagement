@@ -264,7 +264,7 @@ interface BinDraft {
   name: string;
   code: string;
   spotId: string;
-  /** For a bin with no spot: the area whose letter its code takes. */
+  /** For a bin with no spot: the area whose code its code starts with. */
   areaId: string;
   seasonId: string;
   tags: string;
@@ -385,12 +385,12 @@ function BinForm(props: { all: InventorySnapshot; part: Part; base: Bin | null; 
           {!base && !d.spotId && (
             <div>
               <label class="lbl" for="ba">
-                Area (for its code letter)
+                Area (its code starts the bin’s)
               </label>
               <select id="ba" class="field" value={d.areaId} onChange={(e) => set({ areaId: (e.currentTarget as HTMLSelectElement).value })}>
                 {snap.areas.map((a) => (
                   <option key={a.id} value={a.id}>
-                    {a.name} ({a.letter})
+                    {a.name} ({a.code})
                   </option>
                 ))}
               </select>
@@ -401,7 +401,7 @@ function BinForm(props: { all: InventorySnapshot; part: Part; base: Bin | null; 
               Code <span class="lbl-opt">(printed large on its label; stays when the bin moves)</span>
             </label>
             <input id="bc" class={codeBad || clash ? 'field bad mono' : 'field mono'} value={d.code} placeholder={suggested ?? 'e.g. A-04'} autoComplete="off" onInput={(e) => set({ code: (e.currentTarget as HTMLInputElement).value })} />
-            {codeBad && <div class="err">A code is an area letter, a dash and a number, like A-04.</div>}
+            {codeBad && <div class="err">A code is an area code, a dash and a number, like ATTIC-04.</div>}
             {clash && <div class="err">{code} is already on “{clash.name}”{clash.part !== part ? ` in ${clash.part === 'holiday' ? 'Holiday' : 'Household'}` : ''}.</div>}
             {!base && d.code.trim() === '' && suggested && <div class="small muted">Leave blank for {suggested}, the next code in this area.</div>}
             {!base && !suggested && snap.areas.length === 0 && <div class="err">Add an area first (More › Areas & spots), so the bin gets a code.</div>}

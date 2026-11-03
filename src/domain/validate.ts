@@ -84,15 +84,15 @@ export function validateItem(item: Item): FieldError[] {
   return errors;
 }
 
-/** Area letters are one capital A–Z. */
-export const isAreaLetter = (s: string) => /^[A-Z]$/.test(s);
+/** Area codes are 1–8 capital letters ("ATTIC"); letters only, so a bin number never runs into one. */
+export const isAreaCode = (s: string) => /^[A-Z]{1,8}$/.test(s);
 
 export function validateArea(a: Area): FieldError[] {
   const errors: FieldError[] = [];
   if (a.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
   if (!isPart(a.part)) errors.push(partError(a.part));
   if (a.name.trim() === '') errors.push({ field: 'name', message: 'area name is required' });
-  if (!isAreaLetter(a.letter)) errors.push({ field: 'letter', message: `area letter "${a.letter}" must be one letter A–Z` });
+  if (!isAreaCode(a.code)) errors.push({ field: 'code', message: `area code "${a.code}" must be 1 to 8 letters A–Z` });
   return errors;
 }
 
@@ -104,8 +104,8 @@ export function validateSpot(s: Spot): FieldError[] {
   return errors;
 }
 
-/** "A-04": an area letter, a dash and at least two digits. */
-export const BIN_CODE_PATTERN = /^[A-Z]-\d{2,}$/;
+/** "ATTIC-04": an area code, a dash and at least two digits. 0.1.2's "A-04" fits too. */
+export const BIN_CODE_PATTERN = /^[A-Z]{1,8}-\d{2,}$/;
 
 export function validateBin(b: Bin): FieldError[] {
   const errors: FieldError[] = [];

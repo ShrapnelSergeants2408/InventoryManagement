@@ -90,7 +90,7 @@ function placeTree(input: BrowseInput): Node[] {
       key: groupKey('place', a.id),
       type: 'area',
       id: a.id,
-      name: `${a.name} (${a.letter})`,
+      name: a.name,
       items: [],
       children: spots
         .filter((s) => s.areaId === a.id)

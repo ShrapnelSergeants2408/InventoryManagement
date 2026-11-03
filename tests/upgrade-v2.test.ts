@@ -61,7 +61,7 @@ async function makeV2(name: string): Promise<void> {
   old.close();
 }
 
-describe('upgrade from 0.1.2 (schema v2 → v3)', () => {
+describe('upgrade from 0.1.2 (schema v2 → v3 → v4)', () => {
   it('moves everything into Household and the seasons into Holiday, keeping every record', async () => {
     const name = `v2-${Math.random()}`;
     await makeV2(name);
@@ -69,16 +69,18 @@ describe('upgrade from 0.1.2 (schema v2 → v3)', () => {
     await db.open();
     expect(await checkSchema(db)).toBe('ok');
     expect((await db.settings.get('schemaVersion'))?.value).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
 
     const snap = await loadSnapshot(db);
-    expect(snap.areas.map((a) => [a.id, a.part, a.name, a.letter, a.notes])).toEqual([
-      ['ar-ATTIC001', 'household', 'Attic', 'A', ''],
-      ['ar-GARAGE01', 'household', 'Garage', 'G', 'cold'],
+    // Letters become codes from the names (Dan, 2026-11-03).
+    expect(snap.areas.map((a) => [a.id, a.part, a.name, a.code, a.notes])).toEqual([
+      ['ar-ATTIC001', 'household', 'Attic', 'ATTIC', ''],
+      ['ar-GARAGE01', 'household', 'Garage', 'GARAGE', 'cold'],
     ]);
     expect(snap.spots).toEqual([{ id: 'sp-SHELFB01', areaId: 'ar-ATTIC001', name: 'Shelf B', order: 0, notes: '' }]);
-    // The bin keeps its code, tags and label fields, and loses its season.
-    expect(snap.bins).toEqual([{ id: 'bn-XMAS0004', part: 'household', code: 'A-04', name: 'Christmas 4', spotId: 'sp-SHELFB01', seasonId: '', tags: ['Fragile'], state: 'stored', notes: '', labelPrintedAt: 7, labelContents: 'Lights ×3' }]);
+    // The bin is renamed A-04 → ATTIC-04 (its old label no longer matches, so it counts as not
+    // printed), keeps its tags and loses its season.
+    expect(snap.bins).toEqual([{ id: 'bn-XMAS0004', part: 'household', code: 'ATTIC-04', name: 'Christmas 4', spotId: 'sp-SHELFB01', seasonId: '', tags: ['Fragile'], state: 'stored', notes: '', labelPrintedAt: null, labelContents: null }]);
 
     const lights = snap.items.find((i) => i.id === 'it-LIGHTS01')!;
     expect(lights).toMatchObject({ part: 'household', binId: 'bn-XMAS0004', quantity: 3, seasonId: '', tags: ['Fragile', 'Outdoor'], hasPhoto: true, displayId: '', outDisplayId: '', checkedAt: null });
@@ -122,11 +124,11 @@ describe('upgrade from 0.1.2 (schema v2 → v3)', () => {
     await db.open();
     await checkSchema(db);
     db.close();
-    // 0.1.2's checkSchema: stored 3 > 2, and native version 30 / 10 = 3 > 2.
+    // 0.1.2's checkSchema: stored 4 > 2, and native version 40 / 10 = 4 > 2.
     const v2 = new Dexie(name);
     await v2.open();
-    expect(v2.verno).toBe(3);
-    expect(((await v2.table('settings').get('schemaVersion')) as { value: number }).value).toBe(3);
+    expect(v2.verno).toBe(4);
+    expect(((await v2.table('settings').get('schemaVersion')) as { value: number }).value).toBe(4);
     v2.close();
   });
 

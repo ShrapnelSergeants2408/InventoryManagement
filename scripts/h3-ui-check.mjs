@@ -1,7 +1,7 @@
 // H3 real-browser check (SPEC v3.0, milestone H3: two parts, Find, Browse, scanning, labels).
 // Part 1 builds a database exactly as 0.1.2 declared it (schema v2), then opens 0.1.3: the
 // in-place upgrade must put everything in Household and the seasons in Holiday. Part 2 starts
-// fresh and drives both parts: Set up, the part switch and tab bars, areas with letters across
+// fresh and drives both parts: Set up, the part switch and tab bars, areas with codes across
 // parts, bins and items, Find with the other part's count, Browse views, a typed bin code from
 // the other part (switch + Undo), bin labels and "Label out of date", moving an item and a bin
 // to the other part, the Season home and Lists, then the iPhone layout. Real IndexedDB, headless
@@ -150,14 +150,14 @@ try {
   await waitFor(`document.querySelector('.tabs')`, 60000);
   await waitFor(`document.querySelector('.hbody, .fbody')`);
   const up = await js(`return { areas: await idb('areas'), bins: await idb('bins'), items: await idb('items'), seasons: await idb('seasons'), cats: await idb('categoryList'), tags: await idb('tagList'), schema: (await idb('settings')).find((s) => s.key === 'schemaVersion')?.value }`);
-  check('upgrade: schema 3; area, bin and item in Household; the bin and item lose their season', [up.schema, up.areas.map((a) => a.part), up.bins.map((b) => [b.part, b.seasonId, b.code]), up.items.map((i) => [i.part, i.seasonId, i.binId])], [3, ['household'], [['household', '', 'A-04']], [['household', '', 'bn-XMAS0004']]]);
+  check('upgrade: schema 4; area, bin and item in Household; codes from names (A-04 → ATTIC-04); the bin and item lose their season', [up.schema, up.areas.map((a) => [a.part, a.code]), up.bins.map((b) => [b.part, b.seasonId, b.code]), up.items.map((i) => [i.part, i.seasonId, i.binId])], [4, [['household', 'ATTIC']], [['household', '', 'ATTIC-04']], [['household', '', 'bn-XMAS0004']]]);
   check('upgrade: Christmas kept with its default dates; lists in Household, Holiday defaults added', [up.seasons.map((s) => [s.name, s.setupFrom, s.takedownBy]), up.cats.filter((c) => c.part === 'household').map((c) => c.name), up.cats.filter((c) => c.part === 'holiday').length, up.tags.map((t) => [t.part, t.name])], [[['Christmas', '11-25', '01-06']], ['Decorations', 'Other'], 10, [['household', 'Fragile']]]);
   check('first open: the Holiday part, Season tab (§12.5)', await js(`return [part(), tabs(), current()]`), ['holiday', ['Season', 'Find', 'Scan', 'Lists', 'More'], 'Season']);
   await shot('01-upgraded-season-home');
   await js(`await click('.psw a', 'Household'); await settle(600);`);
   check('the switch opens Household at Find, with its own tab bar', await js(`return [part(), location.hash, tabs(), current()]`), ['household', '#/household/find', ['Find', 'Browse', 'Scan', 'Lists', 'More'], 'Find']);
   await js(`await type('.fbox input', 'snowman'); await settle(300);`);
-  check('upgraded item found in Household with its path', await js(`return $$('.fres .rt').map((e) => [...e.children].map((c) => norm(c.textContent)))`), [['Snowman lights', 'Attic › Shelf B › A-04 Christmas 4']]);
+  check('upgraded item found in Household with its path', await js(`return $$('.fres .rt').map((e) => [...e.children].map((c) => norm(c.textContent)))`), [['Snowman lights', 'Attic › Shelf B › ATTIC-04 Christmas 4']]);
   await shot('02-upgraded-find');
 
   // ── Part 2: start fresh ──
@@ -179,11 +179,11 @@ try {
   check('spot screen: Holiday color in the top bar', await js(`return [$('.top').classList.contains('tint'), norm($('.top .ptag')?.textContent ?? '')]`), [true, 'Holiday']);
   await js(`await click('.dacts .btn', 'Add bin here'); await settle(600);`);
   await waitFor(`document.querySelector('#bn')`);
-  check('Holiday bin: code from the area, season field offered', await js(`return [$('#bc').placeholder, !!$('#bs')]`), ['S-01', true]);
+  check('Holiday bin: code from the area, season field offered', await js(`return [$('#bc').placeholder, !!$('#bs')]`), ['STORAGE-01', true]);
   await js(`await type('#bn', 'Christmas lights'); await pickText('#bs', 'Christmas'); await click('.top .btn.pri', 'Add bin'); await settle(800);`);
   await waitFor(`location.hash.startsWith('#/bin/')`);
   const sBin = (await js(`return await idb('bins')`))[0];
-  check('bin S-01 stored in Holiday with Christmas', [sBin?.part, sBin?.code, !!sBin?.seasonId], ['holiday', 'S-01', true]);
+  check('bin STORAGE-01 stored in Holiday with Christmas', [sBin?.part, sBin?.code, !!sBin?.seasonId], ['holiday', 'STORAGE-01', true]);
   await js(`await click('.dacts .btn', 'Add item here'); await settle(700);`);
   await waitFor(`document.querySelector('#nm')`);
   check('Holiday item editor: Holiday categories, season follows the bin', await js(`return [$$('#cat option').map((o) => o.textContent).slice(0, 2), norm($('#sea').options[0].textContent)]`), [['Ornaments', 'Lights'], 'Same as its bin (Christmas)']);
@@ -192,17 +192,17 @@ try {
   const icicle = (await js(`return await idb('items')`)).find((i) => i.name === 'Icicle lights');
   check('Holiday item stored', [icicle?.part, icicle?.binId === sBin.id, icicle?.category, icicle?.quantity], ['holiday', true, 'Lights', 6]);
 
-  // Household: Garage (G) › Pegboard, a bin and a drill.
+  // Household: Garage › Pegboard, a bin and a drill.
   await js(`await go('#/household/more'); await click('.mrow', 'Areas & spots'); await settle(600);`);
   check('Household areas: its own suggestions', await js(`return [part(), $$('.empty-card .fchip').map((b) => norm(b.textContent)).slice(0, 2)]`), ['household', ['Garage', 'Utility room']]);
-  await js(`await click('.top .btn.pri', 'Add area'); await type('#ar-name', 'Shed'); await type('#ar-letter', 's'); await settle(200);`);
-  check('a letter used by the other part is refused, naming the part', await js(`return norm($('[role=dialog] .err')?.textContent ?? '')`), 'S is already used by “Storage room” in Holiday.');
+  await js(`await click('.top .btn.pri', 'Add area'); await type('#ar-name', 'Shed'); await type('#ar-letter', 'storage'); await settle(200);`);
+  check('a code used by the other part is refused, naming the part', await js(`return norm($('[role=dialog] .err')?.textContent ?? '')`), 'STORAGE is already used by “Storage room” in Holiday.');
   await js(`await type('#ar-letter', ''); await click('[role=dialog] .btn', 'Cancel'); await settle(300); await click('.empty-card .fchip', 'Garage'); await settle(400);`);
   await js(`const row = byText('.area-row', 'Garage'); [...row.querySelectorAll('.btn')].find((b) => norm(b.textContent).includes('Spot')).click(); await settle(400); await type('#en-name', 'Pegboard'); await click('[role=dialog] .btn.pri', 'Add spot'); await settle(500);`);
-  check('areas: Holiday S, Household G', await js(`return (await idb('areas')).map((a) => [a.part, a.name, a.letter]).sort()`), [['holiday', 'Storage room', 'S'], ['household', 'Garage', 'G']]);
+  check('areas: codes from their names, unique across parts', await js(`return (await idb('areas')).map((a) => [a.part, a.name, a.code]).sort()`), [['holiday', 'Storage room', 'STORAGE'], ['household', 'Garage', 'GARAGE']]);
   await js(`await click('.spot-row .spot-link', 'Pegboard'); await settle(600); await click('.dacts .btn', 'Add bin here'); await settle(600);`);
   await waitFor(`document.querySelector('#bn')`);
-  check('Household bin: no season field', await js(`return [$('#bc').placeholder, !!$('#bs')]`), ['G-01', false]);
+  check('Household bin: no season field', await js(`return [$('#bc').placeholder, !!$('#bs')]`), ['GARAGE-01', false]);
   await js(`await type('#bn', 'Cords'); await click('.top .btn.pri', 'Add bin'); await settle(800); await click('.dacts .btn', 'Add item here'); await settle(700);`);
   await waitFor(`document.querySelector('#nm')`);
   check('Household item editor: Household categories, no season', await js(`return [$$('#cat option').map((o) => o.textContent)[0], !!$('#sea')]`), ['Tools', false]);
@@ -213,8 +213,8 @@ try {
   // Find: the part only, and the other part's count.
   await js(`await go('#/household/find'); await type('.fbox input', 'lights'); await settle(300);`);
   check('Find in Household: no match here; "2 matches in Holiday" (the item and its bin)', await js(`return [$$('.fres').length, norm($('.fother')?.textContent ?? '')]`), [0, '2 matches in Holiday']);
-  await js(`await type('.fbox input', 'g1'); await settle(300);`);
-  check('a typed bin code finds the bin', await js(`return $$('.fres .rt').map((e) => [...e.children].map((c) => norm(c.textContent)))`), [['G-01', 'Cords · Garage › Pegboard']]);
+  await js(`await type('.fbox input', 'garage1'); await settle(300);`);
+  check('a typed bin code finds the bin', await js(`return $$('.fres .rt').map((e) => [...e.children].map((c) => norm(c.textContent)))`), [['GARAGE-01', 'Cords · Garage › Pegboard']]);
   await js(`await type('.fbox input', 'cord'); await settle(300);`);
   check('Find groups Items / Bins', await js(`return $$('.flbl').map((e) => norm(e.textContent))`), ['Items · 1', 'Bins · 1']);
   await shot('03-household-find');
@@ -224,17 +224,17 @@ try {
 
   // Browse.
   await js(`await go('#/holiday/browse'); await click('.vsw .fchip', 'By season'); await settle(400); await click('.ghdr-t', 'Christmas'); await settle(300);`);
-  check('Holiday Browse by season: Christmas › S-01', await js(`return $$('.ghdr .gn').map((e) => norm(e.textContent)).slice(0, 2)`), ['Christmas', 'S-01 Christmas lights']);
+  check('Holiday Browse by season: Christmas › STORAGE-01', await js(`return $$('.ghdr .gn').map((e) => norm(e.textContent)).slice(0, 2)`), ['Christmas', 'STORAGE-01 Christmas lights']);
   check('Holiday Browse highlights Find; Household Browse has no By season', await js(`const a = current(); await go('#/household/browse'); return [a, current(), $$('.vsw .fchip').map((b) => norm(b.textContent))]`), ['Find', 'Browse', ['By place', 'By category']]);
-  await js(`await click('.vsw .fchip', 'By place'); await settle(300); await click('.ghdr-t', 'Garage'); await settle(300); await click('.ghdr-t', 'Pegboard'); await settle(300); await click('.ghdr-t', 'G-01'); await settle(300);`);
-  check('Household Browse by place: Garage › Pegboard › G-01 › the cord', await js(`return [$$('.ghdr .gn').map((e) => norm(e.textContent)), $$('.row .rname').map((e) => norm(e.textContent))]`), [['Garage (G)', 'Pegboard', 'G-01 Cords'], ['Extension cord']]);
+  await js(`await click('.vsw .fchip', 'By place'); await settle(300); await click('.ghdr-t', 'Garage'); await settle(300); await click('.ghdr-t', 'Pegboard'); await settle(300); await click('.ghdr-t', 'GARAGE-01'); await settle(300);`);
+  check('Household Browse by place: Garage › Pegboard › GARAGE-01 › the cord', await js(`return [$$('.ghdr .gn').map((e) => norm(e.textContent)), $$('.row .rname').map((e) => norm(e.textContent))]`), [['Garage', 'Pegboard', 'GARAGE-01 Cords'], ['Extension cord']]);
   await shot('05-household-browse');
 
   // Scan: a typed Holiday bin code while in Household switches part, with Undo.
   // Headless Chrome has no camera, so Scan shows its typed-code form; with a camera it's "Type a code".
   await js(`await go('#/household/scan'); await settle(1500);
-    if ($('#mc')) { await type('#mc', 's1'); await click('.denied-type .btn', 'Find'); }
-    else { await click('.ctop .btn', 'Type a code'); await type('.spanel input', 's1'); await click('.spanel .btn.pri', 'Find'); }
+    if ($('#mc')) { await type('#mc', 'storage1'); await click('.denied-type .btn', 'Find'); }
+    else { await click('.ctop .btn', 'Type a code'); await type('.spanel input', 'storage1'); await click('.spanel .btn.pri', 'Find'); }
     await settle(900);`);
   check('a Holiday bin opened from Household: switched, with the toast', await js(`return [location.hash === '#/bin/${sBin.id}', part(), toast()]`), [true, 'holiday', 'Switched to Holiday · this label is a Holiday bin']);
   await shot('06-bin-scanned-across');
@@ -243,7 +243,7 @@ try {
 
   // Labels: a bin label carries code, name, season and contents; printing records it.
   await js(`await go('#/bin/${sBin.id}'); await click('.dacts .btn', 'Print label'); await settle(800);`);
-  check('bin label on 5163 by default: code, name, season chip, contents', await js(`return [norm(byText('.lay.on', 'Avery')?.textContent ?? '').slice(0, 21), [...($('.sheet .lab .lab-t')?.children ?? [])].map((e) => norm(e.textContent))]`), ['Avery 5163-compatible', ['S-01', 'Christmas lights', 'Christmas', 'Icicle lights ×6']]);
+  check('bin label on 5163 by default: code, name, season chip, contents', await js(`return [norm(byText('.lay.on', 'Avery')?.textContent ?? '').slice(0, 21), [...($('.sheet .lab .lab-t')?.children ?? [])].map((e) => norm(e.textContent))]`), ['Avery 5163-compatible', ['STORAGE-01', 'Christmas lights', 'Christmas', 'Icicle lights ×6']]);
   await shot('07-bin-label');
   await js(`window.print = () => {}; await click('.btn.pri', 'Print 1 label'); await settle(300); await click('[role=dialog] .btn.pri', 'Open print dialog'); await settle(800);`);
   check('printing records the bin’s label', await js(`const b = (await idb('bins')).find((x) => x.id === '${sBin.id}'); return [typeof b.labelPrintedAt, b.labelContents]`), ['number', 'Icicle lights ×6']);
@@ -278,7 +278,7 @@ try {
   check('reopening the app opens the part used last (Household, Find)', await js(`return [part(), current()]`), ['household', 'Find']);
 
   // ── Part 3: the H2a flows, now in Household (editor, Move, Split, Duplicate, tags, delete bin, bulk Move) ──
-  const gBin = (await js(`return await idb('bins')`)).find((b) => b.code === 'G-01');
+  const gBin = (await js(`return await idb('bins')`)).find((b) => b.code === 'GARAGE-01');
   await js(`await go('#/bin/${gBin.id}'); await click('.dacts .btn', 'Add item here'); await settle(700);`);
   await waitFor(`document.querySelector('#nm')`);
   await js(`
@@ -299,7 +299,7 @@ try {
   check('its tag joined the Household Tags list only', await js(`return (await idb('tagList')).filter((t) => t.name === 'Sharp').map((t) => t.part)`), ['household']);
   await js(`await click('.dacts .btn', 'Move…'); await settle(400); await clickExact('.hp-row', 'Pegboard'); await click('[role=dialog] .btn.pri', 'Move here'); await settle(600);`);
   check('Move: a loose item on the Pegboard', await js(`const i = (await idb('items')).find((x) => x.id === '${bits.id}'); return [i.binId, norm($('.top-title .small').textContent)]`), ['', 'Garage › Pegboard']);
-  await js(`await click('.dacts .btn', 'More…'); await click('.menu-acts .btn', 'Split this line'); await settle(300); await type('#split-n', '6'); await click('[role=dialog] .btn', 'Garage › Pegboard'); await settle(300); await clickExact('.hp-row', 'G-01 Cords'); await click('[role=dialog] .btn.pri', 'Choose'); await settle(300); await click('[role=dialog] .btn.pri', 'Split off 6'); await settle(800);`);
+  await js(`await click('.dacts .btn', 'More…'); await click('.menu-acts .btn', 'Split this line'); await settle(300); await type('#split-n', '6'); await click('[role=dialog] .btn', 'Garage › Pegboard'); await settle(300); await clickExact('.hp-row', 'GARAGE-01 Cords'); await click('[role=dialog] .btn.pri', 'Choose'); await settle(300); await click('[role=dialog] .btn.pri', 'Split off 6'); await settle(800);`);
   check('Split a line: 6 into the bin, 34 stay', await js(`return (await idb('items')).filter((i) => i.name === 'Drill bits').map((i) => [i.quantity, i.binId ? 'bin' : 'spot', i.part]).sort((a, b) => a[0] - b[0])`), [[6, 'bin', 'household'], [34, 'spot', 'household']]);
   await js(`await go('#/item/${bits.id}'); await click('.dacts .btn', 'More…'); await click('.menu-acts .btn', 'Duplicate'); await settle(800);`);
   check('Duplicate: a copy with the photos, opened', await js(`const c = (await idb('items')).find((i) => i.name === 'Drill bits (copy)'); const p = (await idb('pictures')).filter((x) => x.ownerId === c?.id); return [!!c, p.length, location.hash === '#/item/' + c?.id]`), [true, 2, true]);

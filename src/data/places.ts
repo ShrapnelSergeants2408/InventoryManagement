@@ -1,12 +1,12 @@
 // Areas, spots and bins (SPEC v3.0 §3, F7, F11). Areas belong to a part (spots and bins follow
-// their area); names are unique within a part, letters and bin codes across both. Each change
+// their area); names are unique within a part, area and bin codes across both. Each change
 // runs in one transaction with the records it moves, so a failure leaves the phone unchanged.
 import { checkName, moveBy, renumber } from '../domain/lists';
 import { ID_PREFIX, newId } from '../domain/ids';
 import { binToPart, itemToPart } from '../domain/parts';
-import { binCodeKey, defaultLetter, nextBinCode, tidyBinCode } from '../domain/places';
+import { binCodeKey, defaultAreaCode, nextBinCode, tidyBinCode } from '../domain/places';
 import { PART_NAME, nameKey, type Area, type Bin, type Part, type Spot } from '../domain/types';
-import { isAreaLetter, validateBin } from '../domain/validate';
+import { isAreaCode, validateBin } from '../domain/validate';
 import { fromItemRow, toItemRow, toTagRow, type InventoryDb } from './db';
 import { ensureCategories } from './lists';
 import { deletePhotosOf } from './photos';
@@ -25,7 +25,7 @@ async function freshId(db: InventoryDb, prefix: string): Promise<string> {
 
 // ── Areas ──
 
-/** Every area (letters are unique across both parts), or one part's in walk order. */
+/** Every area (codes are unique across both parts), or one part's in walk order. */
 async function orderedAreas(db: InventoryDb, part?: Part): Promise<Area[]> {
   const list = part ? await db.areas.where('part').equals(part).toArray() : await db.areas.toArray();
   return list.sort((a, b) => a.order - b.order);
@@ -36,40 +36,40 @@ async function writeAreaOrder(db: InventoryDb, list: readonly Area[]): Promise<v
   if (changed.length) await db.areas.bulkPut(changed);
 }
 
-function checkLetter(letter: string, list: readonly Area[], selfId?: string): string {
-  const l = letter.trim().toUpperCase();
-  if (!isAreaLetter(l)) fail(`The area letter must be one letter A–Z.`);
-  const other = list.find((a) => a.letter === l && a.id !== selfId);
-  if (other) fail(`The letter ${l} is already used by “${other.name}”${other.part === list.find((a) => a.id === selfId)?.part ? '' : ` in ${PART_NAME[other.part]}`}.`);
+function checkCode(raw: string, list: readonly Area[], selfId?: string): string {
+  const l = raw.trim().toUpperCase().replace(/\s+/g, '');
+  if (!isAreaCode(l)) fail(`An area code is 1 to 8 letters A–Z, like ATTIC.`);
+  const other = list.find((a) => a.code === l && a.id !== selfId);
+  if (other) fail(`The code ${l} is already used by “${other.name}”${other.part === list.find((a) => a.id === selfId)?.part ? '' : ` in ${PART_NAME[other.part]}`}.`);
   return l;
 }
 
 /**
- * Adds an area at the end of its part's walk order. Its letter defaults to the first letter of
- * its name that's free in either part (§3).
+ * Adds an area at the end of its part's walk order. Its code defaults to the first word of its
+ * name, made unique across both parts (§3, Dan 2026-11-03).
  */
-export async function addArea(db: InventoryDb, part: Part, v: { name: string; letter?: string; notes?: string }, now = Date.now()): Promise<Area> {
+export async function addArea(db: InventoryDb, part: Part, v: { name: string; code?: string; notes?: string }, now = Date.now()): Promise<Area> {
   return db.transaction('rw', db.areas, db.settings, async () => {
     const all = await orderedAreas(db);
     const list = all.filter((a) => a.part === part);
     const checked = checkName(v.name, list.map((a) => a.name), 'Area');
     if (!checked.ok) return fail(checked.error);
-    const letter = v.letter?.trim() ? checkLetter(v.letter, all) : (defaultLetter(checked.name, all.map((a) => a.letter)) ?? fail('All 26 area letters are used, across both parts.'));
-    const area: Area = { id: await freshId(db, ID_PREFIX.area), part, name: checked.name, letter, order: list.length, notes: (v.notes ?? '').trim() };
+    const code = v.code?.trim() ? checkCode(v.code, all) : (defaultAreaCode(checked.name, all.map((a) => a.code)) ?? fail('Choose a code for this area; the ones from its name are taken.'));
+    const area: Area = { id: await freshId(db, ID_PREFIX.area), part, name: checked.name, code, order: list.length, notes: (v.notes ?? '').trim() };
     await db.areas.add(area);
     await touch(db, now);
     return area;
   });
 }
 
-/** Renames an area or changes its letter or notes. Existing bin codes keep their letter (§3). */
-export async function updateArea(db: InventoryDb, id: string, v: { name: string; letter: string; notes: string }, now = Date.now()): Promise<Area> {
+/** Renames an area or changes its code or notes. Existing bin codes keep theirs, so labels stay true (§3). */
+export async function updateArea(db: InventoryDb, id: string, v: { name: string; code: string; notes: string }, now = Date.now()): Promise<Area> {
   return db.transaction('rw', db.areas, db.settings, async () => {
     const all = await orderedAreas(db);
     const area = all.find((a) => a.id === id) ?? fail('This area was removed meanwhile.');
     const checked = checkName(v.name, all.filter((a) => a.part === area.part).map((a) => a.name), 'Area', area.name);
     if (!checked.ok) return fail(checked.error);
-    const next: Area = { ...area, name: checked.name, letter: checkLetter(v.letter, all, id), notes: v.notes.trim() };
+    const next: Area = { ...area, name: checked.name, code: checkCode(v.code, all, id), notes: v.notes.trim() };
     await db.areas.put(next);
     await touch(db, now);
     return next;
@@ -214,7 +214,7 @@ export async function suggestBinCode(db: InventoryDb, place: { spotId: string } 
   const areaId = 'areaId' in place ? place.areaId : (await db.spots.get(place.spotId))?.areaId;
   const area = areaId ? await db.areas.get(areaId) : undefined;
   if (!area) return null;
-  return nextBinCode(area.letter, (await db.bins.toArray()).map((b) => b.code));
+  return nextBinCode(area.code, (await db.bins.toArray()).map((b) => b.code));
 }
 
 export type BinFields = Omit<Bin, 'id' | 'labelPrintedAt' | 'labelContents'>;

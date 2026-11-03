@@ -20,7 +20,7 @@ export function item(over: Partial<Item> = {}): Item {
 }
 
 export function area(over: Partial<Area> = {}): Area {
-  return { id: 'ar-AREA0001', part: 'holiday', name: 'Attic', letter: 'A', order: 0, notes: '', ...over };
+  return { id: 'ar-AREA0001', part: 'holiday', name: 'Attic', code: 'A', order: 0, notes: '', ...over };
 }
 
 export function spot(over: Partial<Spot> = {}): Spot {
@@ -40,7 +40,7 @@ export function season(over: Partial<Season> = {}): Season {
  * Basement (B). Bin A-04 "Christmas 4" is on Shelf B with the Christmas season; bin A-05 has no spot.
  */
 export function household() {
-  const areas = [area({ id: 'ar-attic', name: 'Attic', letter: 'A', order: 0 }), area({ id: 'ar-garage', name: 'Garage', letter: 'G', order: 1 }), area({ id: 'ar-base', name: 'Basement', letter: 'B', order: 2 })];
+  const areas = [area({ id: 'ar-attic', name: 'Attic', code: 'A', order: 0 }), area({ id: 'ar-garage', name: 'Garage', code: 'G', order: 1 }), area({ id: 'ar-base', name: 'Basement', code: 'B', order: 2 })];
   const spots = [
     spot({ id: 'sp-shelfA', areaId: 'ar-attic', name: 'Shelf A', order: 0 }),
     spot({ id: 'sp-shelfB', areaId: 'ar-attic', name: 'Shelf B', order: 1 }),

@@ -49,23 +49,25 @@ async function consistent() {
 }
 
 describe('areas (F11)', () => {
-  it('add: end of walk order, letter from the name, names and letters unique', async () => {
+  it('add: end of walk order, code from the name, names and codes unique', async () => {
     await setup();
     const a = await addArea(db, 'holiday', { name: ' Utility room ', notes: ' furnace ' }, 9);
-    expect(a).toMatchObject({ name: 'Utility room', letter: 'U', order: 3, notes: 'furnace' });
-    expect((await addArea(db, 'holiday', { name: 'Upstairs' })).letter).toBe('P');
+    expect(a).toMatchObject({ name: 'Utility room', code: 'UTILITY', order: 3, notes: 'furnace' });
+    expect((await addArea(db, 'holiday', { name: 'Upstairs', code: ' up stairs ' })).code).toBe('UPSTAIRS');
+    expect(await suggestBinCode(db, { areaId: a.id })).toBe('UTILITY-01');
     await expect(addArea(db, 'holiday', { name: 'attic' })).rejects.toThrow(/already in the list/);
-    await expect(addArea(db, 'holiday', { name: 'Shed', letter: 'g' })).rejects.toThrow(/G is already used by “Garage”/);
-    await expect(addArea(db, 'holiday', { name: 'Shed', letter: '7' })).rejects.toThrow(/one letter/);
+    await expect(addArea(db, 'holiday', { name: 'Shed', code: 'g' })).rejects.toThrow(/G is already used by “Garage”/);
+    await expect(addArea(db, 'holiday', { name: 'Shed', code: '7' })).rejects.toThrow(/1 to 8 letters/);
+    await expect(addArea(db, 'holiday', { name: 'Shed', code: 'BACKYARDSHED' })).rejects.toThrow(/1 to 8 letters/);
     expect((await getSettings(db)).lastChangeAt).toBeGreaterThanOrEqual(9);
     await consistent();
   });
 
-  it('rename and change letter; existing bin codes keep their letter', async () => {
+  it('rename and change the code; existing bin codes keep theirs (labels stay true)', async () => {
     await setup();
-    await updateArea(db, 'ar-attic', { name: 'Loft', letter: 'L', notes: '' });
+    await updateArea(db, 'ar-attic', { name: 'Loft', code: 'L', notes: '' });
     const s = await consistent();
-    expect(s.areas[0]).toMatchObject({ name: 'Loft', letter: 'L' });
+    expect(s.areas[0]).toMatchObject({ name: 'Loft', code: 'L' });
     expect(s.bins.find((b) => b.id === 'bn-xmas4')!.code).toBe('A-04');
     expect(await suggestBinCode(db, { spotId: 'sp-shelfB' })).toBe('L-01');
   });

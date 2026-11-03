@@ -61,7 +61,7 @@ export function HomePicker(props: {
         options.push(opt({ id: s.id, kind: 'spot', label: s.name, path: pathText(spotPath(s, ix)), indent: false }));
         if (props.mode === 'item') for (const b of binsOn(s.id)) options.push(opt({ id: b.id, kind: 'bin', label: binLabel(b), path: pathText(binPath(b, ix)), indent: true }));
       }
-      groups.push({ title: `${a.name} (${a.letter})`, options });
+      groups.push({ title: a.name, options });
     }
     if (props.mode === 'item') {
       const loose = binsOn('').map((b) => opt({ id: b.id, kind: 'bin', label: binLabel(b), path: pathText(binPath(b, ix)), indent: false }));

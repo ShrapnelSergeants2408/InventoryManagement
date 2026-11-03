@@ -30,7 +30,7 @@ async function makeH1(name: string): Promise<void> {
   old.close();
 }
 
-describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
+describe('upgrade from H1 (schema v1 → v2 → v3 → v4)', () => {
   it('turns locations into spots in Unsorted, keeps items, photos, lists and settings', async () => {
     const name = `up-${Math.random()}`;
     await makeH1(name);
@@ -41,7 +41,8 @@ describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
 
     const areas = await db.areas.toArray();
     expect(areas).toHaveLength(1);
-    expect(areas[0]).toMatchObject({ part: 'household', name: UNSORTED_AREA.name, letter: 'U', order: 0 });
+    expect(areas[0]).toMatchObject({ part: 'household', name: UNSORTED_AREA.name, code: 'UNSORTED', order: 0 });
+    expect('letter' in areas[0]!).toBe(false);
     const spots = (await db.spots.toArray()).sort((a, b) => a.order - b.order);
     // Walk order kept; a location only an item used comes last.
     expect(spots.map((s) => [s.name, s.notes, s.order, s.areaId])).toEqual([
@@ -96,10 +97,10 @@ describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
     await db.open();
     await checkSchema(db);
     db.close();
-    // H1's checkSchema compared against SCHEMA_VERSION 1: native version 30 / 10 = 3 > 1.
+    // H1's checkSchema compared against SCHEMA_VERSION 1: native version 40 / 10 = 4 > 1.
     const h1 = new Dexie(name);
     await h1.open();
-    expect(h1.verno).toBe(3);
+    expect(h1.verno).toBe(4);
     expect(((await h1.table('settings').get('schemaVersion')) as { value: number }).value).toBeGreaterThan(1);
     h1.close();
   });

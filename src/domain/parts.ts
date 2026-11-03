@@ -2,7 +2,7 @@
 // one part's view of the data, moving an item or bin to the other part, and reading 0.1.2
 // (schema v2) data, which had no parts. Pure, so it is unit-tested.
 import { ID_PREFIX, newId } from './ids';
-import { DEFAULT_SEASONS } from './places';
+import { DEFAULT_SEASONS, defaultAreaCode, splitBinCode } from './places';
 import { defaultDates } from './seasons';
 import { nameKey, type Area, type Bin, type Category, type Item, type Part, type Season, type Spot, type Tag } from './types';
 
@@ -106,12 +106,44 @@ type V2<T, Added extends keyof T> = Omit<T, Added> & Partial<Pick<T, Added>>;
 /** Records as 0.1.2 stored or backed them up: no parts, no season dates, fewer item fields. */
 export interface V2Data {
   items: V2<Item, 'part' | 'displayId' | 'outDisplayId' | 'checkedAt'>[];
-  areas: V2<Area, 'part'>[];
+  /** 0.1.2 areas had a one-letter `letter` where 0.1.3 has `code`. */
+  areas: (Omit<Area, 'part' | 'code'> & { letter: string })[];
   spots: Spot[];
   bins: V2<Bin, 'part'>[];
   seasons: V2<Season, 'setupFrom' | 'takedownBy'>[];
   tags: V2<Tag, 'part'>[];
   categories: V2<Category, 'part'>[];
+}
+
+/**
+ * Area letters become codes from the area names (Dan, 2026-11-03): Attic's A → ATTIC, unique across
+ * both parts, chosen in walk order (Household first). Bins with a letter's code are renamed to
+ * match (A-04 → ATTIC-04); a renamed bin's printed label shows the old code, so it counts as not
+ * printed yet. Used for 0.1.2 data and for the first 0.1.3 build, which still had letters.
+ * Areas keep their input order.
+ */
+export function lettersToCodes<A extends { id: string; name: string; order: number; part: Part; letter: string }, B extends { code: string; labelPrintedAt: number | null; labelContents: string | null }>(
+  areas: readonly A[],
+  bins: readonly B[],
+): { areas: (Omit<A, 'letter'> & { code: string })[]; bins: B[] } {
+  const taken: string[] = [];
+  const codeOf = new Map<string, string>();
+  const byId = new Map<string, string>();
+  const walk = [...areas].sort((a, b) => (a.part === b.part ? a.order - b.order : a.part === 'household' ? -1 : 1));
+  for (const a of walk) {
+    const code = defaultAreaCode(a.name, taken) ?? a.letter;
+    taken.push(code);
+    codeOf.set(a.letter, code);
+    byId.set(a.id, code);
+  }
+  return {
+    areas: areas.map(({ letter: _l, ...a }) => ({ ...a, code: byId.get(a.id)! })),
+    bins: bins.map((b) => {
+      const p = splitBinCode(b.code);
+      const code = p && codeOf.get(p.area);
+      return code ? { ...b, code: `${code}-${String(p!.number).padStart(2, '0')}`, labelPrintedAt: null, labelContents: null } : b;
+    }),
+  };
 }
 
 /** 0.1.2 data with its records in the two-part model; anything else in `D` is kept. */
@@ -126,11 +158,15 @@ export type FromV2<D> = Omit<D, keyof V2Data> & { items: Item[]; areas: Area[]; 
 export function fromV2<D extends V2Data>(d: D): FromV2<D> {
   const household: Part = 'household';
   const categories: Category[] = [...d.categories].sort((a, b) => a.order - b.order).map((c, order) => ({ ...c, part: household, order }));
+  const coded = lettersToCodes(
+    d.areas.map((a) => ({ ...a, part: household })),
+    d.bins,
+  );
   return {
     ...d,
-    areas: d.areas.map((a) => ({ ...a, part: household })),
+    areas: coded.areas,
     spots: [...d.spots],
-    bins: d.bins.map((b) => ({ ...b, part: household, seasonId: '' })),
+    bins: coded.bins.map((b) => ({ ...b, part: household, seasonId: '' })),
     items: d.items.map((i) => ({ ...i, part: household, seasonId: '', displayId: '', outDisplayId: '', checkedAt: null })),
     seasons: d.seasons.map((s) => {
       const dates = defaultDates(s.name);

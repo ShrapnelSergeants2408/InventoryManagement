@@ -58,7 +58,7 @@ function SpotDetail({ spot, snap, part, back }: { spot: Spot; snap: InventorySna
 
   return (
     <>
-      <TopBar title={spot.name} kicker={area ? `${area.name} (${area.letter})` : ''} back={back} part={part} />
+      <TopBar title={spot.name} kicker={area?.name ?? ''} back={back} part={part} />
       <div class="dbody">
         <div class="dleft">
           <PhotoCarousel ownerType="spot" ownerId={spot.id} name={spot.name} />
@@ -185,7 +185,7 @@ export function MoveSpot({ spot, areas, onClose }: { spot: Spot; areas: readonly
           <select id="mv-area" class="field" value={to} onChange={(e) => setTo((e.currentTarget as HTMLSelectElement).value)}>
             {others.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.name} ({a.letter})
+                {a.name}
               </option>
             ))}
           </select>

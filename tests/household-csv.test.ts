@@ -149,7 +149,7 @@ describe('the other record files', () => {
   });
 
   it('areas and tags keep their order within each part (Household first)', () => {
-    const areas = [area({ id: 'a1', part: 'holiday', name: 'Storage room', letter: 'S', order: 0 }), area({ id: 'a2', part: 'household', name: 'Garage', letter: 'G', order: 1 }), area({ id: 'a3', part: 'household', name: 'Attic', letter: 'A', order: 0 })];
+    const areas = [area({ id: 'a1', part: 'holiday', name: 'Storage room', code: 'S', order: 0 }), area({ id: 'a2', part: 'household', name: 'Garage', code: 'G', order: 1 }), area({ id: 'a3', part: 'household', name: 'Attic', code: 'A', order: 0 })];
     expect(parseAreas(serializeAreas(areas)).list.map((a) => [a.part, a.name, a.order])).toEqual([
       ['household', 'Attic', 0],
       ['household', 'Garage', 1],

@@ -63,10 +63,12 @@ The routine that kept the FRC app's data safe:
 
 ## 5. Changing the database (the risky part)
 
-- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 3):
+- The schema is versioned in `src/data/db.ts` (`SCHEMA_VERSION`, currently 4):
   - v1 was H1;
   - v2 is H2a, with its upgrade from v1 (`tests/upgrade-h1.test.ts`);
-  - v3 is H3, the two parts, with its upgrade from v2 (`tests/upgrade-v2.test.ts` and part 1 of `scripts/h3-ui-check.mjs`).
+  - v3 is H3, the two parts, with its upgrade from v2 (`tests/upgrade-v2.test.ts` and part 1 of `scripts/h3-ui-check.mjs`);
+  - v4 turns area letters into codes (ATTIC-04). It exists because the first 0.1.3 build, with letters, was merged and deployed before the area-code change (`tests/upgrade-v3.test.ts`). On a phone coming from v2 it changes nothing.
+- After merging a PR, don't push more commits to its branch: they won't reach `main` (2026-11-03, the area-code change). Start a new branch from `main` and open a new PR.
 - Add a new `this.version(n)` with an `.upgrade()`; never edit an old one once a phone has real data.
 - A table whose primary key changes needs a new table name: `photos` → `pictures` (H2a), and `categories` → `categoryList`, `tags` → `tagList` (H3, keyed by part and name).
 - The 0.1.2 → 0.1.3 conversion lives in `src/domain/parts.ts` (`fromV2`), so the upgrade and restoring a 0.1.2 backup can't drift apart. 0.1.1 backups are no longer read.

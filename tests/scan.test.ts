@@ -15,7 +15,7 @@ const items = [
 ];
 // Both parts: a Holiday bin and a Household bin and spot (letters and codes are unique across parts).
 const places = {
-  areas: [area({ id: 'ar-store', part: 'holiday', letter: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', letter: 'G' })],
+  areas: [area({ id: 'ar-store', part: 'holiday', code: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', code: 'G' })],
   spots: [spot({ id: 'sp-rack1', areaId: 'ar-store', name: 'Rack 1' }), spot({ id: 'sp-peg', areaId: 'ar-garage', name: 'Pegboard' })],
   bins: [bin({ id: 'bn-S2', code: 'S-02', part: 'holiday', spotId: 'sp-rack1' }), bin({ id: 'bn-G3', code: 'G-03', part: 'household', name: 'Cords', spotId: 'sp-peg' })],
 };

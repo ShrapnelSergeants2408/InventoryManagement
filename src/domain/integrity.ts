@@ -1,6 +1,6 @@
 // A whole household's data checked as one (restore, first setup): every record valid, every
 // link pointing at a record that exists in the same part, and names and codes unique where §3
-// says so: names within a part, area letters and bin codes across both parts.
+// says so: names within a part, area codes and bin codes across both parts.
 import { binCodeKey } from './places';
 import { isPart } from './validate';
 import { PART_NAME, nameKey, type Part, type Area, type Bin, type Category, type Item, type PhotoInfo, type Season, type Spot, type Tag } from './types';
@@ -46,7 +46,7 @@ export function checkData(d: HouseholdData): string[] {
   const ids = [...d.areas, ...d.spots, ...d.bins, ...d.seasons, ...d.items, ...d.photos].map((r) => r.id);
   dupes(ids, (x) => x.toLowerCase(), (x) => `id ${x} is used more than once`, out);
   dupes(d.areas, (a) => `${a.part}\n${nameKey(a.name)}`, (a, f) => `area "${a.name}" is listed twice in ${partName(a.part)} (also "${f.name}")`, out);
-  dupes(d.areas, (a) => a.letter, (a, f) => `areas "${f.name}" and "${a.name}" both use the letter ${a.letter}`, out);
+  dupes(d.areas, (a) => a.code, (a, f) => `areas "${f.name}" and "${a.name}" both use the code ${a.code}`, out);
   dupes(d.spots, (s) => `${s.areaId}\n${nameKey(s.name)}`, (s) => `spot "${s.name}" is listed twice in its area`, out);
   dupes(d.bins, (b) => binCodeKey(b.code), (b, f) => `bin code ${b.code} is used by two bins ("${f.name}" and "${b.name}")`, out);
   dupes(d.seasons, (s) => nameKey(s.name), (s) => `season "${s.name}" is listed twice`, out);

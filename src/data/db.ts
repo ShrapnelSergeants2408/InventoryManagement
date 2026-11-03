@@ -5,7 +5,7 @@
 import Dexie, { type Table, type Transaction } from 'dexie';
 import { convertH1, itemFromH1 } from '../domain/h1';
 import { ID_PREFIX, newId } from '../domain/ids';
-import { fromV2, type V2Data } from '../domain/parts';
+import { fromV2, lettersToCodes, type V2Data } from '../domain/parts';
 import { nameKey, type Area, type Bin, type Category, type Item, type Part, type PhotoInfo, type Season, type Spot, type Tag } from '../domain/types';
 
 export { UNSORTED_AREA } from '../domain/h1';
@@ -46,7 +46,7 @@ export interface SettingRow {
 export const DB_NAME = 'home-inventory';
 
 /** The schema this code was built for. Stored as a setting so an older copy can tell. */
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const SCHEMA_KEY = 'schemaVersion';
 
 export class InventoryDb extends Dexie {
@@ -98,7 +98,24 @@ export class InventoryDb extends Dexie {
         tags: null,
       })
       .upgrade(upgradeFromV2);
+    // H3 follow-up (0.1.3, area codes). The first 0.1.3 build gave areas one-letter `letter`s;
+    // they become codes from their names, and their bins are renamed (A-04 → ATTIC-04). A phone
+    // coming from v2 already has codes (the v3 upgrade above makes them), so this changes nothing.
+    this.version(4).stores({}).upgrade(upgradeLettersToCodes);
   }
+}
+
+async function upgradeLettersToCodes(tx: Transaction): Promise<void> {
+  const areas = await tx.table<Area & { letter?: string }>('areas').toArray();
+  const lettered = areas.filter((a) => typeof a.letter === 'string' && typeof a.code !== 'string');
+  if (lettered.length === 0) return;
+  const bins = await tx.table<Bin>('bins').toArray();
+  const coded = lettersToCodes(
+    lettered.map((a) => ({ ...a, letter: a.letter! })),
+    bins,
+  );
+  await tx.table('areas').bulkPut(coded.areas);
+  await tx.table('bins').bulkPut(coded.bins.filter((b, i) => b !== bins[i]));
 }
 
 /**

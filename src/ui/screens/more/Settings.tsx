@@ -4,6 +4,7 @@ import { REMINDER_DAYS_MAX, setSettings } from '../../../data/settings';
 import { BackButton, TopBar } from '../../components/common';
 import { useDb, useSettings } from '../../data-hooks';
 import { href } from '../../shell/router';
+import { getPart } from '../../part';
 import { showToast } from '../../shell/toast';
 
 export function SettingsScreen() {
@@ -39,7 +40,7 @@ export function SettingsScreen() {
     <>
       <TopBar
         title="Settings"
-        back={<BackButton label="More" fallback={href.tab('more')} />}
+        back={<BackButton label="More" fallback={href.tab(getPart(), 'more')} />}
         actions={
           <button type="button" class="btn pri" disabled={!dirty || busy} onClick={() => void save()}>
             Save

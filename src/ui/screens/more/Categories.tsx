@@ -15,9 +15,11 @@ import { itemsIn, moveTargets, placeLabel, type CategoryPlace } from '../../../d
 import type { Category, Item } from '../../../domain/types';
 import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useSnapshot } from '../../data-hooks';
+import { useDb, usePartSnapshot } from '../../data-hooks';
+import { PART_NAME, type Part } from '../../../domain/types';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { getPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { EntryDialog } from './EntryDialog';
@@ -41,13 +43,13 @@ function heldText(names: readonly string[]): string {
   return names.length > 2 ? `${shown} and ${names.length - 2} more` : shown;
 }
 
-export function CategoriesScreen() {
+export function CategoriesScreen({ part }: { part: Part }) {
   const db = useDb();
-  const live = useSnapshot();
+  const { live, snap } = usePartSnapshot(part);
   const [open, setOpen] = useState<Open>(null);
   const [reorder, setReorder] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const back = <BackButton label="More" fallback={href.tab('more')} />;
+  const back = <BackButton label="More" fallback={href.tab(getPart(), 'more')} />;
 
   if (live.state === 'error') {
     return (
@@ -57,7 +59,6 @@ export function CategoriesScreen() {
       </>
     );
   }
-  const snap = live.state === 'ready' ? live.value : null;
   const cats = snap?.categories ?? [];
   const items = snap?.items ?? [];
   const subCount = cats.reduce((n, c) => n + c.subcategories.length, 0);
@@ -73,7 +74,7 @@ export function CategoriesScreen() {
     <>
       <TopBar
         title="Categories"
-        subtitle={snap ? `${plural(cats.length, 'category', 'categories')} · ${plural(subCount, 'subcategory', 'subcategories')} · ${plural(items.length, 'item')}` : 'Loading…'}
+        subtitle={snap ? `${PART_NAME[part]} · ${plural(cats.length, 'category', 'categories')} · ${plural(subCount, 'subcategory', 'subcategories')} · ${plural(items.length, 'item')}` : 'Loading…'}
         back={back}
         actions={
           <button type="button" class="btn pri" disabled={!snap} onClick={() => setOpen({ kind: 'addCategory' })}>
@@ -100,7 +101,7 @@ export function CategoriesScreen() {
               <div class="cgroup" key={c.name}>
                 <div class="crow">
                   {reorder && (
-                    <UpDown name={c.name} first={ci === 0} last={ci === cats.length - 1} onMove={(d) => void moveCategory(db, c.name, d).catch(fail)} />
+                    <UpDown name={c.name} first={ci === 0} last={ci === cats.length - 1} onMove={(d) => void moveCategory(db, part, c.name, d).catch(fail)} />
                   )}
                   <button type="button" class="ib plain" aria-expanded={open} aria-label={`${open ? 'Collapse' : 'Expand'} ${c.name}`} onClick={() => toggle(c.name)}>
                     <Icon name={open ? 'chevDown' : 'chevRight'} />
@@ -123,7 +124,7 @@ export function CategoriesScreen() {
                     {c.subcategories.map((s, si) => (
                       <div class="subrow" key={s}>
                         {reorder && (
-                          <UpDown name={s} first={si === 0} last={si === c.subcategories.length - 1} onMove={(d) => void moveSubcategory(db, c.name, s, d).catch(fail)} />
+                          <UpDown name={s} first={si === 0} last={si === c.subcategories.length - 1} onMove={(d) => void moveSubcategory(db, part, c.name, s, d).catch(fail)} />
                         )}
                         <div class="grow">
                           <strong>{s}</strong> <span class="small muted">{plural(itemsIn(items, c.name, s).length, 'item')}</span>
@@ -160,7 +161,7 @@ export function CategoriesScreen() {
           submitLabel="Add category"
           onClose={() => setOpen(null)}
           onSubmit={async (v) => {
-            const name = await addCategory(db, v.name);
+            const name = await addCategory(db, part, v.name);
             setOpen(null);
             showToast(`Added “${name}”.`);
           }}
@@ -175,7 +176,7 @@ export function CategoriesScreen() {
           submitLabel="Add subcategory"
           onClose={() => setOpen(null)}
           onSubmit={async (v) => {
-            const name = await addSubcategory(db, open.category, v.name);
+            const name = await addSubcategory(db, part, open.category, v.name);
             setExpanded((prev) => new Set(prev).add(open.category));
             setOpen(null);
             showToast(`Added “${name}” to ${open.category}.`);
@@ -191,14 +192,14 @@ export function CategoriesScreen() {
           onRename={async (name) => {
             const { category, subcategory } = open.t;
             if (subcategory === undefined) {
-              const renamed = await renameCategory(db, category, name);
+              const renamed = await renameCategory(db, part, category, name);
               setExpanded((prev) => {
                 if (!prev.has(category)) return prev;
                 const next = new Set(prev);
                 next.delete(category);
                 return next.add(renamed);
               });
-            } else await renameSubcategory(db, category, subcategory, name);
+            } else await renameSubcategory(db, part, category, subcategory, name);
             setOpen(null);
             showToast('Renamed.');
           }}
@@ -212,7 +213,7 @@ export function CategoriesScreen() {
           onClose={() => setOpen(null)}
           onRemove={async (to) => {
             const { category, subcategory } = open.t;
-            const moved = subcategory === undefined ? await removeCategory(db, category, to) : await removeSubcategory(db, category, subcategory, to);
+            const moved = subcategory === undefined ? await removeCategory(db, part, category, to) : await removeSubcategory(db, part, category, subcategory, to);
             setOpen(null);
             showToast(moved && to ? `Moved ${plural(moved, 'item')} to ${placeLabel(to)} and removed “${label(open.t)}”.` : `Removed “${label(open.t)}”.`);
           }}

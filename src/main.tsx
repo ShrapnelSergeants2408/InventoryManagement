@@ -7,6 +7,7 @@ import './styles/base.css';
 import './styles/app.css';
 import './styles/labels.css';
 import './styles/scan.css';
+import './styles/parts.css';
 import { render } from 'preact';
 import { App } from './ui/App';
 import { startServiceWorker } from './ui/shell/UpdateBanner';

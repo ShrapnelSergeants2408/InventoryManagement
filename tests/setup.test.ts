@@ -5,7 +5,8 @@ import { InventoryDb } from '../src/data/db';
 import { addItem } from '../src/data/items';
 import { addArea, addSpot } from '../src/data/places';
 import { loadSnapshot, setQuantity } from '../src/data/inventory';
-import { DEFAULT_CATEGORIES, SETUP_DONE, emptyStart, ensurePersistentStorage, isSetUp, requestPersistentStorage, startInventory } from '../src/data/setup';
+import { SETUP_DONE, emptyStart, ensurePersistentStorage, isSetUp, requestPersistentStorage, startInventory } from '../src/data/setup';
+import { DEFAULT_CATEGORIES } from '../src/domain/parts';
 import { DEFAULT_SEASONS } from '../src/domain/places';
 import { readRestoreFile } from '../src/io/restore';
 import { item } from './helpers';
@@ -21,7 +22,7 @@ const newDb = () => {
 };
 const EMPTY = { categories: [], tags: [] };
 
-describe('first launch: start fresh (SPEC v2.0 §12.5)', () => {
+describe('first launch: start fresh (SPEC v3.0 §12.5)', () => {
   it('the default categories and seasons, no areas, items or photos; setup marked done in the same step', async () => {
     const db = newDb();
     expect(await isSetUp(db)).toBe(false);
@@ -33,8 +34,13 @@ describe('first launch: start fresh (SPEC v2.0 §12.5)', () => {
     expect(await db.pictures.count()).toBe(0);
     expect(snap.seasons.map((s) => [s.name, s.color, s.order])).toEqual(DEFAULT_SEASONS.map((s, i) => [s.name, s.color, i]));
     expect(snap.seasons.every((s) => /^se-/.test(s.id))).toBe(true);
-    expect(snap.categories.map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES]);
-    expect(snap.categories[0]).toEqual({ name: 'Decorations', order: 0, subcategories: [] });
+    // Default dates (§3): Christmas Nov 25 to Jan 6.
+    expect(snap.seasons.find((s) => s.name === 'Christmas')).toMatchObject({ setupFrom: '11-25', takedownBy: '01-06' });
+    expect(snap.seasons.every((s) => s.setupFrom !== '' && s.takedownBy !== '')).toBe(true);
+    // Both parts' default categories; "Other" is in both.
+    expect(snap.categories.filter((c) => c.part === 'household').map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES.household]);
+    expect(snap.categories.filter((c) => c.part === 'holiday').map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES.holiday]);
+    expect(snap.categories.find((c) => c.part === 'holiday')).toEqual({ part: 'holiday', name: 'Ornaments', order: 0, subcategories: [] });
     expect(await isSetUp(db)).toBe(true);
     expect((await db.settings.get(SETUP_DONE))?.value).toBe(1234);
   });
@@ -42,7 +48,7 @@ describe('first launch: start fresh (SPEC v2.0 §12.5)', () => {
   it('never runs again once setup is done, so it can never replace the household’s data', async () => {
     const db = newDb();
     await startInventory(db, emptyStart(), 1);
-    await addItem(db, item({ id: 'it-KEEP0001', quantity: 2 }));
+    await addItem(db, item({ id: 'it-KEEP0001', category: 'Ornaments', quantity: 2 }));
     await setQuantity(db, 'it-KEEP0001', 7);
     await expect(startInventory(db, emptyStart(), 2)).rejects.toThrow(/already set up/);
     const snap = await loadSnapshot(db);
@@ -55,7 +61,7 @@ describe('first launch: restore a backup file', () => {
   it('a full backup from another phone arrives whole: quantities, places, photos and lists', async () => {
     const other = newDb();
     await startInventory(other, emptyStart(), 1);
-    const attic = await addArea(other, { name: 'Attic' });
+    const attic = await addArea(other, 'holiday', { name: 'Attic' });
     const shelf = await addSpot(other, attic.id, { name: 'Shelf B' });
     await addItem(other, item({ id: 'it-SNOWMAN2', name: 'Snowman lights', category: 'Lights', spotId: shelf.id, quantity: 4 }), 2, {
       add: [{ full: new Blob([new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3])], { type: 'image/jpeg' }), thumb: null }],
@@ -72,7 +78,7 @@ describe('first launch: restore a backup file', () => {
     expect(snap.items).toEqual([{ ...item({ id: 'it-SNOWMAN2', name: 'Snowman lights', category: 'Lights', spotId: shelf.id, quantity: 4 }), hasPhoto: true }]);
     expect(snap.spots.map((l) => l.name)).toEqual(['Shelf B']);
     expect(snap.seasons).toHaveLength(10);
-    expect(snap.categories.map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES]);
+    expect(snap.categories.map((c) => c.name)).toEqual([...DEFAULT_CATEGORIES.household, ...DEFAULT_CATEGORIES.holiday]);
     expect(await isSetUp(fresh)).toBe(true);
   });
 });

@@ -1,27 +1,41 @@
-// Hash routes, so a reload under any hosting sub-path never 404s.
+// Hash routes, so a reload under any hosting sub-path never 404s. Tab screens carry their part
+// (SPEC v3.0 F21): #/holiday/season, #/household/find?q=…; other screens use the record's part
+// or the part in use.
 import { useEffect, useState } from 'preact/hooks';
+import type { Part } from '../../domain/types';
 
-export type Tab = 'inventory' | 'scan' | 'labels' | 'more';
+export type Tab = 'season' | 'find' | 'browse' | 'scan' | 'lists' | 'more';
+
+/** Each part's tab bar (§10): five tabs, Scan in the middle of both. */
+export const PART_TABS: Readonly<Record<Part, readonly Tab[]>> = {
+  household: ['find', 'browse', 'scan', 'lists', 'more'],
+  holiday: ['season', 'find', 'scan', 'lists', 'more'],
+};
+
+/** A part's home tab (§10): Find in Household, Season in Holiday. */
+export const homeTab = (part: Part): Tab => PART_TABS[part][0]!;
 
 export type ManagedList = 'categories' | 'places' | 'seasons' | 'tags';
 
 export type Route =
-  | { tab: Tab; screen: 'tab' }
-  | { tab: 'inventory'; screen: 'item'; id: string }
-  | { tab: 'inventory'; screen: 'edit'; id: string }
+  /** `part` null: the part in use (an address without one, e.g. the app's start page). */
+  | { tab: Tab; screen: 'tab'; part: Part | null; q: string }
+  | { tab: 'find'; screen: 'item'; id: string }
+  | { tab: 'find'; screen: 'edit'; id: string }
   /** `home`: a bin or spot id the new item starts in (Add item here), or ''. */
-  | { tab: 'inventory'; screen: 'add'; name: string; barcode: string; home: string }
-  | { tab: 'inventory'; screen: 'bin'; id: string }
-  | { tab: 'inventory'; screen: 'bin-edit'; id: string }
+  | { tab: 'find'; screen: 'add'; name: string; barcode: string; home: string }
+  | { tab: 'find'; screen: 'bin'; id: string }
+  | { tab: 'find'; screen: 'bin-edit'; id: string }
   /** A new bin on a spot (`spot`), or in an area with no spot (`area`), or neither. */
-  | { tab: 'inventory'; screen: 'bin-add'; spot: string; area: string }
-  | { tab: 'inventory'; screen: 'spot'; id: string }
-  | { tab: 'labels'; screen: 'labels'; ids: string[] }
+  | { tab: 'find'; screen: 'bin-add'; spot: string; area: string }
+  | { tab: 'find'; screen: 'spot'; id: string }
+  /** `ids`: records chosen before opening (Print label on a card); [] for the Labels screen. */
+  | { tab: 'more'; screen: 'labels'; ids: string[] }
   | { tab: 'more'; screen: ManagedList }
   | { tab: 'more'; screen: 'backup' }
   | { tab: 'more'; screen: 'settings' };
 
-const TABS: readonly Tab[] = ['inventory', 'scan', 'labels', 'more'];
+const TABS: readonly Tab[] = ['season', 'find', 'browse', 'scan', 'lists', 'more'];
 const LISTS: readonly ManagedList[] = ['categories', 'places', 'seasons', 'tags'];
 
 export function parseHash(hash: string): Route {
@@ -33,37 +47,38 @@ export function parseHash(hash: string): Route {
       return p;
     }
   });
+  const q = new URLSearchParams(query);
   if (parts[0] === 'item' && parts[1]) {
-    return parts[2] === 'edit' ? { tab: 'inventory', screen: 'edit', id: parts[1] } : { tab: 'inventory', screen: 'item', id: parts[1] };
+    return parts[2] === 'edit' ? { tab: 'find', screen: 'edit', id: parts[1] } : { tab: 'find', screen: 'item', id: parts[1] };
   }
-  if (parts[0] === 'add') {
-    const q = new URLSearchParams(query);
-    return { tab: 'inventory', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '', home: q.get('home') ?? '' };
-  }
+  if (parts[0] === 'add') return { tab: 'find', screen: 'add', name: q.get('name') ?? '', barcode: q.get('barcode') ?? '', home: q.get('home') ?? '' };
   if (parts[0] === 'bin' && parts[1]) {
-    return parts[2] === 'edit' ? { tab: 'inventory', screen: 'bin-edit', id: parts[1] } : { tab: 'inventory', screen: 'bin', id: parts[1] };
+    return parts[2] === 'edit' ? { tab: 'find', screen: 'bin-edit', id: parts[1] } : { tab: 'find', screen: 'bin', id: parts[1] };
   }
-  if (parts[0] === 'new-bin') {
-    const q = new URLSearchParams(query);
-    return { tab: 'inventory', screen: 'bin-add', spot: q.get('spot') ?? '', area: q.get('area') ?? '' };
-  }
-  if (parts[0] === 'spot' && parts[1]) return { tab: 'inventory', screen: 'spot', id: parts[1] };
-  if (parts[0] === 'labels' && query) {
-    const ids = (new URLSearchParams(query).get('ids') ?? '').split(',').filter(Boolean);
-    if (ids.length) return { tab: 'labels', screen: 'labels', ids };
-  }
+  if (parts[0] === 'new-bin') return { tab: 'find', screen: 'bin-add', spot: q.get('spot') ?? '', area: q.get('area') ?? '' };
+  if (parts[0] === 'spot' && parts[1]) return { tab: 'find', screen: 'spot', id: parts[1] };
+  if (parts[0] === 'labels') return { tab: 'more', screen: 'labels', ids: (q.get('ids') ?? '').split(',').filter(Boolean) };
   if (parts[0] === 'more') {
     const list = LISTS.find((l) => l === parts[1]);
     if (list) return { tab: 'more', screen: list };
     if (parts[1] === 'backup') return { tab: 'more', screen: 'backup' };
     if (parts[1] === 'settings') return { tab: 'more', screen: 'settings' };
   }
-  const tab = TABS.find((t) => t === parts[0]);
-  return { tab: tab ?? 'inventory', screen: 'tab' };
+  const part = parts[0] === 'household' || parts[0] === 'holiday' ? parts[0] : null;
+  const name = part ? parts[1] : parts[0];
+  const tab = TABS.find((t) => t === name);
+  // A tab the part doesn't have (Season in Household) opens the part's home; Holiday's Browse is
+  // reached from its Find tab.
+  if (part && tab && (PART_TABS[part].includes(tab) || (part === 'holiday' && tab === 'browse'))) return { tab, screen: 'tab', part, q: q.get('q') ?? '' };
+  if (part) return { tab: homeTab(part), screen: 'tab', part, q: '' };
+  // Before 0.1.3: #/inventory, #/scan, #/more…, without a part.
+  if (tab === 'scan' || tab === 'more') return { tab, screen: 'tab', part: null, q: '' };
+  return { tab: 'find', screen: 'tab', part: null, q: '' };
 }
 
 export const href = {
-  tab: (t: Tab) => `#/${t}`,
+  tab: (part: Part, t: Tab, q = '') => `#/${part}/${t}${q ? `?${new URLSearchParams({ q })}` : ''}`,
+  home: (part: Part) => `#/${part}/${homeTab(part)}`,
   item: (id: string) => `#/item/${encodeURIComponent(id)}`,
   edit: (id: string) => `#/item/${encodeURIComponent(id)}/edit`,
   add: (name = '', barcode = '', home = '') => {
@@ -82,7 +97,7 @@ export const href = {
     return q.size ? `#/new-bin?${q}` : '#/new-bin';
   },
   spot: (id: string) => `#/spot/${encodeURIComponent(id)}`,
-  labels: (ids: string[]) => `#/labels?${new URLSearchParams({ ids: ids.join(',') })}`,
+  labels: (ids: string[] = []) => (ids.length ? `#/labels?${new URLSearchParams({ ids: ids.join(',') })}` : '#/labels'),
   list: (l: ManagedList) => `#/more/${l}`,
   backup: '#/more/backup',
   settings: '#/more/settings',

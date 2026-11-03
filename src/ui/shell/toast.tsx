@@ -1,13 +1,24 @@
-// One-line messages (e.g. a save that failed). v0.16: shown just below the screen's top bar, not
-// at the bottom where the main buttons are (Save & next, Skip for now), and never in the way:
-// taps go through it to what's underneath, and any tap hides it.
+// One-line messages (e.g. a save that failed). Shown just below the screen's top bar, not at the
+// bottom where the main buttons are, and never in the way: taps go through it to what's
+// underneath, and any tap elsewhere hides it. A toast may carry one action ("Undo", F21), which
+// is the only part of it that takes a tap.
 import { useEffect, useRef, useState } from 'preact/hooks';
 
-type Listener = (msg: string) => void;
+export interface ToastAction {
+  label: string;
+  run: () => void;
+}
+
+interface Toast {
+  message: string;
+  action: ToastAction | null;
+}
+
+type Listener = (t: Toast) => void;
 const listeners = new Set<Listener>();
 
-export function showToast(message: string): void {
-  for (const l of listeners) l(message);
+export function showToast(message: string, action: ToastAction | null = null): void {
+  for (const l of listeners) l({ message, action });
 }
 
 /** Where the toast goes: 12 px below the visible top bar, measured from the app frame. */
@@ -19,16 +30,17 @@ function topBelowHeader(host: HTMLElement | null): number | null {
 }
 
 export function ToastHost() {
-  const [msg, setMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<Toast | null>(null);
   const [top, setTop] = useState<number | null>(null);
   const host = useRef<HTMLDivElement>(null);
+  const actionRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const l: Listener = (m) => {
+    const l: Listener = (t) => {
       setTop(topBelowHeader(host.current));
-      setMsg(m);
+      setToast(t);
       clearTimeout(timer);
-      timer = setTimeout(() => setMsg(null), 6000);
+      timer = setTimeout(() => setToast(null), 6000);
     };
     listeners.add(l);
     return () => {
@@ -37,17 +49,34 @@ export function ToastHost() {
     };
   }, []);
   useEffect(() => {
-    if (msg === null) return;
-    // The tap still reaches its button; it only hides the message.
-    const hide = () => setMsg(null);
+    if (toast === null) return;
+    // The tap still reaches its button; it only hides the message (unless it's the action).
+    const hide = (e: Event) => {
+      if (actionRef.current && e.target instanceof Node && actionRef.current.contains(e.target)) return;
+      setToast(null);
+    };
     document.addEventListener('pointerdown', hide, true);
     return () => document.removeEventListener('pointerdown', hide, true);
-  }, [msg]);
+  }, [toast]);
   return (
     <div ref={host} class="toast-host" role="status" aria-live="polite" style={top === null ? undefined : { top: `${top}px`, bottom: 'auto' }}>
-      {msg && (
-        <div class="toast">
-          <span>{msg}</span>
+      {toast && (
+        <div class={toast.action ? 'toast act' : 'toast'}>
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              ref={actionRef}
+              type="button"
+              class="toast-btn"
+              onClick={() => {
+                const run = toast.action!.run;
+                setToast(null);
+                run();
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
     </div>

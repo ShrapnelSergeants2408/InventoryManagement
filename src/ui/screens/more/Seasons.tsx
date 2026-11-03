@@ -1,17 +1,20 @@
-// More › Seasons and More › Tags (F11): add, rename, reorder (▲/▼) and remove. A season or tag
-// in use asks to confirm, naming how many items and bins have it, and is cleared from them.
+// More › Seasons (Holiday, F11, F23) and More › Tags (each part's own): add, rename, reorder
+// (▲/▼) and remove. A season has a color and its setup and takedown dates each year. A season or
+// tag in use asks to confirm, naming how many items and bins have it, and is cleared from them.
 import type { ComponentChildren } from 'preact';
 import { useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { addSeason, addTag, moveSeason, moveTag, nextSeasonColor, removeSeason, removeTag, renameTag, updateSeason } from '../../../data/lists';
 import { checkName } from '../../../domain/lists';
-import { SEASON_COLORS, nameKey, type Season, type SeasonColor } from '../../../domain/types';
+import { defaultDates, windowText } from '../../../domain/seasons';
+import { PART_NAME, SEASON_COLORS, nameKey, type Part, type Season, type SeasonColor } from '../../../domain/types';
 import { tagProblem } from '../../../domain/validate';
 import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useSnapshot } from '../../data-hooks';
+import { useDb, usePartSnapshot, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
+import { getPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { EntryDialog } from './EntryDialog';
@@ -24,7 +27,7 @@ function ListFrame(props: { title: string; subtitle: string; addLabel: string; o
       <TopBar
         title={props.title}
         subtitle={props.subtitle}
-        back={<BackButton label="More" fallback={href.tab('more')} />}
+        back={<BackButton label="More" fallback={href.tab(getPart(), 'more')} />}
         actions={
           <button type="button" class="btn pri" onClick={props.onAdd}>
             <Icon name="plus" />
@@ -98,7 +101,7 @@ export function SeasonsScreen() {
   const list = snap?.seasons ?? [];
   return (
     <ListFrame title="Seasons" subtitle={snap ? plural(list.length, 'season') : 'Loading…'} addLabel="Add season" onAdd={() => setOpen({ kind: 'edit', season: null })} reorder={reorder} setReorder={setReorder} canReorder={list.length > 1}>
-      <p class="small muted lockline">Each item and bin has at most one season. The order here is the order seasons are shown in.</p>
+      <p class="small muted lockline">Each Holiday item and bin has at most one season. The dates are each year’s setup and takedown; the Season tab shows the seasons on now.</p>
       {!snap ? (
         <StateMessage icon="season" title="Loading…" />
       ) : (
@@ -111,6 +114,7 @@ export function SeasonsScreen() {
                 {reorder ? <UpDown name={s.name} first={i === 0} last={i === list.length - 1} move={(d) => void moveSeason(db, s.id, d).catch(fail)} /> : <span class={`swatch c-${s.color}`} aria-hidden="true" />}
                 <div class="grow">
                   <span class={`chip season c-${s.color}`}>{s.name}</span> <span class="small muted">{use.items + use.bins ? [use.items ? plural(use.items, 'item') : '', use.bins ? plural(use.bins, 'bin') : ''].filter(Boolean).join(' · ') : 'Not used yet'}</span>
+                  <div class="small muted">{windowText(s) || 'No dates'}</div>
                   {s.setupNotes && <div class="small muted">{s.setupNotes}</div>}
                 </div>
                 {!reorder && (
@@ -151,6 +155,8 @@ function SeasonDialog({ season, seasons, onClose }: { season: Season | null; sea
   const [name, setName] = useState(season?.name ?? '');
   const [color, setColor] = useState<SeasonColor>(season?.color ?? nextSeasonColor(seasons.map((s) => s.color)));
   const [notes, setNotes] = useState(season?.setupNotes ?? '');
+  const [from, setFrom] = useState(season?.setupFrom ?? '');
+  const [by, setBy] = useState(season?.takedownBy ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const check = checkName(name, seasons.map((s) => s.name), 'Season', season?.name);
@@ -159,10 +165,12 @@ function SeasonDialog({ season, seasons, onClose }: { season: Season | null; sea
     if (!check.ok || busy) return;
     setBusy(true);
     try {
-      if (season) await updateSeason(db, season.id, { name, color, setupNotes: notes });
+      // A new season with blank dates and a default name ("Easter") takes the default dates.
+      const dates = !season && from.trim() === '' && by.trim() === '' ? defaultDates(name) : { setupFrom: from, takedownBy: by };
+      if (season) await updateSeason(db, season.id, { name, color, setupNotes: notes, ...dates });
       else {
-        const s = await addSeason(db, { name, color });
-        if (notes.trim()) await updateSeason(db, s.id, { name: s.name, color, setupNotes: notes });
+        const s = await addSeason(db, { name, color, ...dates });
+        if (notes.trim()) await updateSeason(db, s.id, { name: s.name, color, setupNotes: notes, setupFrom: s.setupFrom, takedownBy: s.takedownBy });
       }
       showToast(season ? 'Saved.' : `Added “${name.trim()}”.`);
       onClose();
@@ -190,6 +198,20 @@ function SeasonDialog({ season, seasons, onClose }: { season: Season | null; sea
             ))}
           </div>
           <span class={`chip season c-${color}`}>{name.trim() || 'Preview'}</span>
+        </div>
+        <div class="row2">
+          <div>
+            <label class="lbl" for="se-from">
+              Setup from <span class="lbl-opt">(month-day)</span>
+            </label>
+            <input id="se-from" class="field mono" value={from} placeholder={defaultDates(name).setupFrom || '11-25'} autoComplete="off" inputMode="numeric" onInput={(e) => setFrom((e.currentTarget as HTMLInputElement).value)} />
+          </div>
+          <div>
+            <label class="lbl" for="se-by">
+              Take down by <span class="lbl-opt">(month-day)</span>
+            </label>
+            <input id="se-by" class="field mono" value={by} placeholder={defaultDates(name).takedownBy || '01-06'} autoComplete="off" inputMode="numeric" onInput={(e) => setBy((e.currentTarget as HTMLInputElement).value)} />
+          </div>
         </div>
         <div>
           <label class="lbl" for="se-notes">
@@ -220,17 +242,16 @@ const tagUse = (snap: InventorySnapshot, name: string) => {
   return { items: snap.items.filter((i) => has(i.tags)).length, bins: snap.bins.filter((b) => has(b.tags)).length };
 };
 
-export function TagsScreen() {
+export function TagsScreen({ part }: { part: Part }) {
   const db = useDb();
-  const live = useSnapshot();
+  const { live, snap } = usePartSnapshot(part);
   const [open, setOpen] = useState<{ kind: 'add' } | { kind: 'rename'; name: string } | { kind: 'remove'; name: string } | null>(null);
   const [reorder, setReorder] = useState(false);
   if (live.state === 'error') return <StorageError error={live.error} />;
-  const snap = live.state === 'ready' ? live.value : null;
   const list = snap?.tags ?? [];
   const names = list.map((t) => t.name);
   return (
-    <ListFrame title="Tags" subtitle={snap ? plural(list.length, 'tag') : 'Loading…'} addLabel="Add tag" onAdd={() => setOpen({ kind: 'add' })} reorder={reorder} setReorder={setReorder} canReorder={list.length > 1}>
+    <ListFrame title="Tags" subtitle={snap ? `${PART_NAME[part]} · ${plural(list.length, 'tag')}` : 'Loading…'} addLabel="Add tag" onAdd={() => setOpen({ kind: 'add' })} reorder={reorder} setReorder={setReorder} canReorder={list.length > 1}>
       <p class="small muted lockline">Free labels for items and bins (Fragile, Outdoor, Kids’ room…). A tag typed on an item or bin is added here too.</p>
       {!snap ? (
         <StateMessage icon="tag" title="Loading…" />
@@ -241,7 +262,7 @@ export function TagsScreen() {
             const use = tagUse(snap, t.name);
             return (
               <div class="lrow" key={t.name}>
-                {reorder ? <UpDown name={t.name} first={i === 0} last={i === list.length - 1} move={(d) => void moveTag(db, t.name, d).catch(fail)} /> : <Icon name="tag" />}
+                {reorder ? <UpDown name={t.name} first={i === 0} last={i === list.length - 1} move={(d) => void moveTag(db, part, t.name, d).catch(fail)} /> : <Icon name="tag" />}
                 <div class="grow">
                   <span class="ln">{t.name}</span> <span class="small muted">{use.items + use.bins ? [use.items ? plural(use.items, 'item') : '', use.bins ? plural(use.bins, 'bin') : ''].filter(Boolean).join(' · ') : 'Not used yet'}</span>
                 </div>
@@ -274,8 +295,8 @@ export function TagsScreen() {
           onSubmit={async (v) => {
             const p = tagProblem(v.name);
             if (p) throw new Error(p.charAt(0).toUpperCase() + p.slice(1) + '.');
-            if (open.kind === 'add') await addTag(db, v.name);
-            else await renameTag(db, open.name, v.name);
+            if (open.kind === 'add') await addTag(db, part, v.name);
+            else await renameTag(db, part, open.name, v.name);
             setOpen(null);
             showToast(open.kind === 'add' ? `Added “${v.name}”.` : 'Saved.');
           }}
@@ -288,7 +309,7 @@ export function TagsScreen() {
           {...tagUse(snap, open.name)}
           onClose={() => setOpen(null)}
           onRemove={async () => {
-            await removeTag(db, open.name);
+            await removeTag(db, part, open.name);
             setOpen(null);
             showToast(`Removed “${open.name}”.`);
           }}

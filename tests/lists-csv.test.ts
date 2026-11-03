@@ -1,29 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { parseH1Locations } from '../src/io/h1-backup';
 import { completeCategories, parseCategoriesCsv, serializeCategoriesCsv, spellLikeLists } from '../src/io/lists-csv';
 import { item } from './helpers';
-
-describe('H1 locations.csv (read only, for restoring an H1 backup)', () => {
-  it('sorts by order, then file position for blank orders, and renumbers from 0; keeps notes', () => {
-    const r = parseH1Locations('name,notes,order\r\nB,,5\r\nC,blue tote,\r\nA,,2\r\n');
-    expect(r.list).toEqual([
-      { name: 'A', notes: '', order: 0 },
-      { name: 'B', notes: '', order: 1 },
-      { name: 'C', notes: 'blue tote', order: 2 },
-    ]);
-  });
-  it('a name listed twice (ignoring capitals) is a problem', () => {
-    expect(parseH1Locations('name\r\nShelf\r\nshelf\r\n').problems.map((p) => p.message)).toEqual(['location "shelf" is listed twice (first on row 2)']);
-  });
-});
 
 describe('categories.csv (spec-questions Q3)', () => {
   it('round-trips order, subcategory order and empty categories', () => {
     const list = [
-      { name: 'Structure', order: 0, subcategories: ['Tubing', 'Plate & Sheet'] },
-      { name: 'Motors', order: 1, subcategories: [] },
-      { name: 'New, empty', order: 2, subcategories: [] },
-      { name: 'Pit & Safety', order: 3, subcategories: ['Safety', 'Empty sub'] },
+      { part: 'holiday' as const, name: 'Structure', order: 0, subcategories: ['Tubing', 'Plate & Sheet'] },
+      { part: 'holiday' as const, name: 'Motors', order: 1, subcategories: [] },
+      { part: 'holiday' as const, name: 'New, empty', order: 2, subcategories: [] },
+      { part: 'holiday' as const, name: 'Pit & Safety', order: 3, subcategories: ['Safety', 'Empty sub'] },
     ];
     const back = parseCategoriesCsv(serializeCategoriesCsv(list));
     expect(back.problems).toEqual([]);
@@ -46,10 +31,10 @@ describe('categories.csv (spec-questions Q3)', () => {
     'Public Relations,Buttons,2',
   ].join('\n');
   const expected = [
-    { name: 'Electrical', order: 0, subcategories: ['Control System', 'Sensors'] },
-    { name: 'Pneumatics', order: 1, subcategories: ['Accumulation', 'Cylinders'] },
-    { name: 'Assemblies', order: 2, subcategories: [] },
-    { name: 'Public Relations', order: 3, subcategories: ['Labels', 'Buttons'] },
+    { part: 'household' as const, name: 'Electrical', order: 0, subcategories: ['Control System', 'Sensors'] },
+    { part: 'household' as const, name: 'Pneumatics', order: 1, subcategories: ['Accumulation', 'Cylinders'] },
+    { part: 'household' as const, name: 'Assemblies', order: 2, subcategories: [] },
+    { part: 'household' as const, name: 'Public Relations', order: 3, subcategories: ['Labels', 'Buttons'] },
   ];
 
   it("reads the starter catalog's layout: category order from its first row, subcategories in row order", () => {
@@ -58,17 +43,17 @@ describe('categories.csv (spec-questions Q3)', () => {
     expect(r.list).toEqual(expected);
   });
 
-  it('reads the v0.7 backup layout to the same list, and writes the v0.7 layout', () => {
+  it('a file without a part column (0.1.2) reads as Household; written with the part first (§7)', () => {
     const v07 = serializeCategoriesCsv(expected);
     expect(v07.trim().split(/\r?\n/)).toEqual([
-      'category,subcategory,order',
-      'Electrical,Control System,0',
-      'Electrical,Sensors,0',
-      'Pneumatics,Accumulation,1',
-      'Pneumatics,Cylinders,1',
-      'Assemblies,,2',
-      'Public Relations,Labels,3',
-      'Public Relations,Buttons,3',
+      'part,category,subcategory,order',
+      'household,Electrical,Control System,0',
+      'household,Electrical,Sensors,0',
+      'household,Pneumatics,Accumulation,1',
+      'household,Pneumatics,Cylinders,1',
+      'household,Assemblies,,2',
+      'household,Public Relations,Labels,3',
+      'household,Public Relations,Buttons,3',
     ]);
     expect(parseCategoriesCsv(v07).list).toEqual(parseCategoriesCsv(seedLayout).list);
   });
@@ -82,8 +67,8 @@ describe('categories.csv (spec-questions Q3)', () => {
 
 describe('spellLikeLists', () => {
   const categories = [
-    { name: 'Motors', order: 0, subcategories: ['Brushless'] },
-    { name: 'Fasteners', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Motors', order: 0, subcategories: ['Brushless'] },
+    { part: 'holiday' as const, name: 'Fasteners', order: 1, subcategories: [] },
   ];
 
   it("rewrites category and subcategory to the list's spelling, ignoring capitals", () => {
@@ -114,8 +99,8 @@ describe('completing the category list from items (§7)', () => {
   it('appends categories and subcategories in first-appearance order', () => {
     const r = completeCategories([], items);
     expect(r.list).toEqual([
-      { name: 'Motion', order: 0, subcategories: ['Bearings', 'Collars'] },
-      { name: 'Structure', order: 1, subcategories: ['Tubing'] },
+      { part: 'holiday' as const, name: 'Motion', order: 0, subcategories: ['Bearings', 'Collars'] },
+      { part: 'holiday' as const, name: 'Structure', order: 1, subcategories: ['Tubing'] },
     ]);
   });
 });

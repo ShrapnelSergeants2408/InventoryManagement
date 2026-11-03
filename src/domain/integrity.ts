@@ -1,7 +1,9 @@
 // A whole household's data checked as one (restore, first setup): every record valid, every
-// link pointing at a record that exists, and names and codes unique where §3 says so.
+// link pointing at a record that exists in the same part, and names and codes unique where §3
+// says so: names within a part, area letters and bin codes across both parts.
 import { binCodeKey } from './places';
-import { nameKey, type Area, type Bin, type Category, type Item, type PhotoInfo, type Season, type Spot, type Tag } from './types';
+import { isPart } from './validate';
+import { PART_NAME, nameKey, type Part, type Area, type Bin, type Category, type Item, type PhotoInfo, type Season, type Spot, type Tag } from './types';
 import { validateArea, validateBin, validateItem, validateSeason, validateSpot, type FieldError } from './validate';
 
 export interface HouseholdData {
@@ -43,31 +45,39 @@ export function checkData(d: HouseholdData): string[] {
 
   const ids = [...d.areas, ...d.spots, ...d.bins, ...d.seasons, ...d.items, ...d.photos].map((r) => r.id);
   dupes(ids, (x) => x.toLowerCase(), (x) => `id ${x} is used more than once`, out);
-  dupes(d.areas, (a) => nameKey(a.name), (a, f) => `area "${a.name}" is listed twice (also "${f.name}")`, out);
+  dupes(d.areas, (a) => `${a.part}\n${nameKey(a.name)}`, (a, f) => `area "${a.name}" is listed twice in ${partName(a.part)} (also "${f.name}")`, out);
   dupes(d.areas, (a) => a.letter, (a, f) => `areas "${f.name}" and "${a.name}" both use the letter ${a.letter}`, out);
   dupes(d.spots, (s) => `${s.areaId}\n${nameKey(s.name)}`, (s) => `spot "${s.name}" is listed twice in its area`, out);
   dupes(d.bins, (b) => binCodeKey(b.code), (b, f) => `bin code ${b.code} is used by two bins ("${f.name}" and "${b.name}")`, out);
   dupes(d.seasons, (s) => nameKey(s.name), (s) => `season "${s.name}" is listed twice`, out);
-  dupes(d.tags, (t) => nameKey(t.name), (t) => `tag "${t.name}" is listed twice`, out);
-  dupes(d.categories, (c) => nameKey(c.name), (c) => `category "${c.name}" is listed twice`, out);
+  for (const r of [...d.tags, ...d.categories]) if (!isPart(r.part)) out.push(`list entry "${r.name}" has part "${String(r.part)}"`);
+  dupes(d.tags, (t) => `${t.part}\n${nameKey(t.name)}`, (t) => `tag "${t.name}" is listed twice in ${partName(t.part)}`, out);
+  dupes(d.categories, (c) => `${c.part}\n${nameKey(c.name)}`, (c) => `category "${c.name}" is listed twice in ${partName(c.part)}`, out);
 
-  const areas = new Set(d.areas.map((a) => a.id));
-  const spots = new Set(d.spots.map((s) => s.id));
-  const bins = new Set(d.bins.map((b) => b.id));
+  // Every link points at a record that's there, in the same part (§3: nothing links across parts).
+  const areaPart = new Map(d.areas.map((a) => [a.id, a.part]));
+  const spotPart = new Map(d.spots.map((s) => [s.id, areaPart.get(s.areaId)]));
+  const binPart = new Map(d.bins.map((b) => [b.id, b.part]));
   const seasons = new Set(d.seasons.map((s) => s.id));
   const items = new Set(d.items.map((i) => i.id));
-  const cats = new Set(d.categories.map((c) => nameKey(c.name)));
-  for (const s of d.spots) if (!areas.has(s.areaId)) out.push(`spot "${s.name}" is in area ${s.areaId}, which isn't there`);
+  const cats = new Set(d.categories.map((c) => `${c.part}\n${nameKey(c.name)}`));
+  const across = (what: string, part: Part, home: Part | undefined) => `${what} is in ${partName(part)}, but its home is in ${partName(home)}`;
+  for (const s of d.spots) if (!areaPart.has(s.areaId)) out.push(`spot "${s.name}" is in area ${s.areaId}, which isn't there`);
   for (const b of d.bins) {
-    if (b.spotId && !spots.has(b.spotId)) out.push(`bin ${b.code} is on spot ${b.spotId}, which isn't there`);
+    if (b.spotId && !spotPart.has(b.spotId)) out.push(`bin ${b.code} is on spot ${b.spotId}, which isn't there`);
+    else if (b.spotId && spotPart.get(b.spotId) !== b.part) out.push(across(`bin ${b.code}`, b.part, spotPart.get(b.spotId)));
     if (b.seasonId && !seasons.has(b.seasonId)) out.push(`bin ${b.code} has season ${b.seasonId}, which isn't there`);
   }
   for (const i of d.items) {
-    if (i.binId && !bins.has(i.binId)) out.push(`item "${i.name}" is in bin ${i.binId}, which isn't there`);
-    if (i.spotId && !spots.has(i.spotId)) out.push(`item "${i.name}" is on spot ${i.spotId}, which isn't there`);
+    if (i.binId && !binPart.has(i.binId)) out.push(`item "${i.name}" is in bin ${i.binId}, which isn't there`);
+    else if (i.binId && binPart.get(i.binId) !== i.part) out.push(across(`item "${i.name}"`, i.part, binPart.get(i.binId)));
+    if (i.spotId && !spotPart.has(i.spotId)) out.push(`item "${i.name}" is on spot ${i.spotId}, which isn't there`);
+    else if (i.spotId && spotPart.get(i.spotId) !== i.part) out.push(across(`item "${i.name}"`, i.part, spotPart.get(i.spotId)));
     if (i.seasonId && !seasons.has(i.seasonId)) out.push(`item "${i.name}" has season ${i.seasonId}, which isn't there`);
-    if (!cats.has(nameKey(i.category))) out.push(`item "${i.name}" has category "${i.category}", which isn't in the category list`);
+    if (!cats.has(`${i.part}\n${nameKey(i.category)}`)) out.push(`item "${i.name}" has category "${i.category}", which isn't in the ${partName(i.part)} category list`);
   }
+  const spots = new Set(spotPart.keys());
+  const bins = new Set(binPart.keys());
   const owners: Record<PhotoInfo['ownerType'], Set<string>> = { item: items, bin: bins, spot: spots, season: seasons };
   for (const p of d.photos) {
     const set = owners[p.ownerType];
@@ -77,16 +87,19 @@ export function checkData(d: HouseholdData): string[] {
   return out;
 }
 
-/** Tag names the records use that the Tags list doesn't have, in first-appearance order. */
-export function unlistedTags(d: Pick<HouseholdData, 'items' | 'bins' | 'tags'>): string[] {
-  const known = new Set(d.tags.map((t) => nameKey(t.name)));
-  const out: string[] = [];
+/** Tags the records use that their part's Tags list doesn't have, in first-appearance order (order 0). */
+export function unlistedTags(d: Pick<HouseholdData, 'items' | 'bins' | 'tags'>): Tag[] {
+  const key = (part: Part, name: string) => `${part}\n${nameKey(name)}`;
+  const known = new Set(d.tags.map((t) => key(t.part, t.name)));
+  const out: Tag[] = [];
   for (const r of [...d.bins, ...d.items]) {
     for (const t of r.tags) {
-      if (known.has(nameKey(t))) continue;
-      known.add(nameKey(t));
-      out.push(t);
+      if (known.has(key(r.part, t))) continue;
+      known.add(key(r.part, t));
+      out.push({ part: r.part, name: t, order: 0 });
     }
   }
   return out;
 }
+
+const partName = (p: Part | undefined) => (p && isPart(p) ? PART_NAME[p] : 'no part');

@@ -2,6 +2,7 @@
 // in-place database upgrade and restoring an H1 backup. Pure.
 import { ID_PREFIX, newId } from './ids';
 import { DEFAULT_SEASONS } from './places';
+import { defaultDates } from './seasons';
 import { blankItem, nameKey, type Area, type Item, type Season, type Spot } from './types';
 
 /** The area H1 locations move into on upgrade or when an H1 backup is restored (Dan, 2026-11-02). */
@@ -31,10 +32,10 @@ export function convertH1(
     return v;
   };
   const sorted = [...locations].sort((a, b) => a.order - b.order);
-  const area: Area | null = sorted.length === 0 ? null : { id: id(ID_PREFIX.area), name: UNSORTED_AREA.name, letter: UNSORTED_AREA.letter, order: 0, notes: 'Moved here from the old location list. Move each spot to its real area.' };
+  const area: Area | null = sorted.length === 0 ? null : { id: id(ID_PREFIX.area), part: 'household', name: UNSORTED_AREA.name, letter: UNSORTED_AREA.letter, order: 0, notes: 'Moved here from the old location list. Move each spot to its real area.' };
   const spots: Spot[] = area ? sorted.map((l, order) => ({ id: id(ID_PREFIX.spot), areaId: area.id, name: l.name.trim(), order, notes: l.notes })) : [];
   const byKey = new Map(spots.map((s) => [nameKey(s.name), s.id]));
-  const seasons: Season[] = DEFAULT_SEASONS.map((s, order) => ({ id: id(ID_PREFIX.season), name: s.name, color: s.color, order, setupNotes: '' }));
+  const seasons: Season[] = DEFAULT_SEASONS.map((s, order) => ({ id: id(ID_PREFIX.season), name: s.name, color: s.color, order, ...defaultDates(s.name), setupNotes: '' }));
   return { area, spots, spotIdFor: (location) => (location.trim() === '' ? '' : (byKey.get(nameKey(location)) ?? '')), seasons };
 }
 

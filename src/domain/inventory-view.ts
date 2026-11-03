@@ -65,7 +65,7 @@ function categoryOrder(categories: readonly Category[], items: readonly Item[]):
   for (const it of items) {
     if (!known.has(it.category)) {
       known.add(it.category);
-      out.push({ name: it.category, order: out.length, subcategories: [] });
+      out.push({ part: it.part, name: it.category, order: out.length, subcategories: [] });
     }
   }
   return out;
@@ -163,7 +163,8 @@ export function filterOptions(items: readonly Item[], categories: readonly Categ
   if (usedAreas.has('')) areas.push('');
   const usedSeasons = new Set(items.map((i) => itemSeasonId(i, ix)));
   const seasonIds = [...seasons].sort((a, b) => a.order - b.order).filter((s) => usedSeasons.has(s.id)).map((s) => s.id);
-  if (usedSeasons.has('')) seasonIds.push('');
+  // A part without seasons (Household) has no season filter at all.
+  if (usedSeasons.has('') && seasons.length > 0) seasonIds.push('');
   const usedTags = new Map<string, string>();
   for (const i of items) for (const t of i.tags) if (!usedTags.has(nameKey(t))) usedTags.set(nameKey(t), t);
   const tagNames = [...tags].sort((a, b) => a.order - b.order).filter((t) => usedTags.delete(nameKey(t.name))).map((t) => t.name);

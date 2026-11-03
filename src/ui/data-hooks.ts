@@ -1,12 +1,14 @@
 // Live data for screens: Dexie liveQuery re-runs the query whenever a table it read changes.
 import { liveQuery } from 'dexie';
 import { createContext } from 'preact';
-import { useContext, useEffect, useState } from 'preact/hooks';
+import { useContext, useEffect, useMemo, useState } from 'preact/hooks';
 import type { InventoryDb } from '../data/db';
 import { loadSnapshot, type InventorySnapshot } from '../data/inventory';
 import { getThumbnail, photosOf } from '../data/photos';
 import { STORAGE_PERSISTED_EVENT } from '../data/setup';
 import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
+import { partView } from '../domain/parts';
+import type { Part } from '../domain/types';
 import { makeThumbnail } from '../io/image';
 
 export const DbContext = createContext<InventoryDb | null>(null);
@@ -30,6 +32,14 @@ export function useSnapshot(): Live<InventorySnapshot> {
     return () => sub.unsubscribe();
   }, [db]);
   return live;
+}
+
+/** One part's records (F21) and both parts' (`all`, for scanning and the other part's count), live. */
+export function usePartSnapshot(part: Part): { live: Live<InventorySnapshot>; snap: InventorySnapshot | null; all: InventorySnapshot | null } {
+  const live = useSnapshot();
+  const all = live.state === 'ready' ? live.value : null;
+  const snap = useMemo(() => (all ? partView(all, part) : null), [all, part]);
+  return { live, snap, all };
 }
 
 /** Device settings, live; defaults until loaded or if the read fails. */

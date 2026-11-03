@@ -6,8 +6,8 @@
 // published Avery templates for 5160 and 5163. For 22805 the 4 × 6 grid of 1½ in squares
 // is centred on the page. Check each against a real sheet with a test print before relying
 // on it; the alignment nudge corrects small offsets.
-import { indexPlaces, itemAreaId, itemPath, pathText, type Places } from './places';
-import type { Category, Item } from './types';
+import { binContents, indexPlaces, itemAreaId, itemPath, pathText, type Places } from './places';
+import type { Bin, Category, Item, SeasonColor, Spot } from './types';
 
 export type LabelContent = 'name-location' | 'name-location-category' | 'short-name' | 'name';
 
@@ -41,9 +41,9 @@ export interface LabelLayout {
 export const PAGE = { w: 8.5, h: 11 } as const;
 
 export const SHEET_LAYOUTS: readonly LabelLayout[] = [
-  { id: 'avery-5160', name: 'Avery 5160-compatible', short: 'Avery 5160', desc: '1 × 2⅝ in · 30 per sheet · small QR, name, location', cols: 3, rows: 10, w: 2.625, h: 1, left: 0.1875, top: 0.5, pitchX: 2.75, pitchY: 1, qr: 0.8, content: 'name-location', flow: 'row', plain: false, textPt: 8 },
-  { id: 'avery-5163', name: 'Avery 5163-compatible', short: 'Avery 5163', desc: '2 × 4 in · 10 per sheet · large QR, name, location, category', cols: 2, rows: 5, w: 4, h: 2, left: 0.15625, top: 0.5, pitchX: 4.1875, pitchY: 2, qr: 1.7, content: 'name-location-category', flow: 'row', plain: false, textPt: 13 },
-  { id: 'avery-22805', name: 'Avery 22805-compatible', short: 'Avery 22805', desc: '1½ in square · 24 per sheet · QR, short name', cols: 4, rows: 6, w: 1.5, h: 1.5, left: 0.6875, top: 0.6875, pitchX: 1.875, pitchY: 1.625, qr: 1.05, content: 'short-name', flow: 'column', plain: false, textPt: 8 },
+  { id: 'avery-5160', name: 'Avery 5160-compatible', short: 'Avery 5160', desc: '1 × 2⅝ in · 30 per sheet · small QR; bin code and name, or a name', cols: 3, rows: 10, w: 2.625, h: 1, left: 0.1875, top: 0.5, pitchX: 2.75, pitchY: 1, qr: 0.8, content: 'name-location', flow: 'row', plain: false, textPt: 8 },
+  { id: 'avery-5163', name: 'Avery 5163-compatible', short: 'Avery 5163', desc: '2 × 4 in · 10 per sheet · bins: large code, season, contents; items: name and place', cols: 2, rows: 5, w: 4, h: 2, left: 0.15625, top: 0.5, pitchX: 4.1875, pitchY: 2, qr: 1.7, content: 'name-location-category', flow: 'row', plain: false, textPt: 13 },
+  { id: 'avery-22805', name: 'Avery 22805-compatible', short: 'Avery 22805', desc: '1½ in square · 24 per sheet · QR; bin code or short name', cols: 4, rows: 6, w: 1.5, h: 1.5, left: 0.6875, top: 0.6875, pitchX: 1.875, pitchY: 1.625, qr: 1.05, content: 'short-name', flow: 'column', plain: false, textPt: 8 },
 ];
 
 export const PLAIN_ID = 'plain';
@@ -177,21 +177,58 @@ export function planSheets(l: LabelLayout, count: number, start = 0, nudge: Nudg
 /** Number of sheets `count` labels need from start position `start`. */
 export const sheetsNeeded = (l: LabelLayout, count: number, start = 0) => (count <= 0 ? 0 : Math.ceil((count + clampStart(l, start)) / perSheet(l)));
 
-// ── Label text (SPEC §9 "Label content") ──
+// ── Label text (SPEC v3.0 §9 "Label content") ──
+
+/** What one label shows: the QR's record, a big code (bins), the name, extra lines, a season chip. */
+export interface LabelFace {
+  id: string;
+  code: string | null;
+  name: string;
+  extra: string[];
+  chip: { name: string; color: SeasonColor } | null;
+}
+
+/** A record to print a label for, with what its label needs. */
+export type LabelTarget =
+  | { kind: 'item'; item: Item; path: string }
+  | { kind: 'bin'; bin: Bin; contents: readonly string[]; season: { name: string; color: SeasonColor } | null }
+  | { kind: 'spot'; spot: Spot; areaName: string };
+
+/** Contents lines on a bin label (§9): up to `max`, then "+ n more". */
+export function contentsLines(lines: readonly string[], max = 6): string[] {
+  return lines.length <= max ? [...lines] : [...lines.slice(0, max), `+ ${lines.length - max} more`];
+}
 
 /**
- * The text printed next to the QR: the name, then the extra lines the layout has room for.
- * `path` is the item's home as one line (§4), '' for none.
+ * A label's face for a layout (§9 table). The large layout (5163) carries the most: a bin's code,
+ * name, season chip and contents; a spot's area › name; an item's name and path. 5160 and plain
+ * paper: code and name, spot name, item name. 22805 squares: bin code, spot name, item name.
  */
+export function labelFace(t: LabelTarget, content: LabelContent): LabelFace {
+  const large = content === 'name-location-category';
+  if (t.kind === 'bin') {
+    if (content === 'short-name') return { id: t.bin.id, code: t.bin.code, name: '', extra: [], chip: null };
+    return { id: t.bin.id, code: t.bin.code, name: t.bin.name, extra: large ? contentsLines(t.contents) : [], chip: large ? t.season : null };
+  }
+  if (t.kind === 'spot') return { id: t.spot.id, code: null, name: large && t.areaName ? `${t.areaName} › ${t.spot.name}` : t.spot.name, extra: [], chip: null };
+  return { id: t.item.id, code: null, name: t.item.name, extra: large && t.path ? [t.path] : [], chip: null };
+}
+
+/** The contents summary as stored on a printed label (§4): one line per item, all of them. */
+export const binSummary = (items: readonly Item[], binId: string) => binContents(items, binId).join('\n');
+
+export type LabelState = 'none' | 'current' | 'stale';
+
+/** Whether a bin's printed label still matches what's in it (§4 "Label out of date"). */
+export function binLabelState(bin: Pick<Bin, 'id' | 'labelPrintedAt' | 'labelContents'>, items: readonly Item[]): LabelState {
+  if (bin.labelPrintedAt === null) return 'none';
+  return (bin.labelContents ?? '') === binSummary(items, bin.id) ? 'current' : 'stale';
+}
+
+/** The item label text kept for callers that print items only. */
 export function labelText(item: Item, content: LabelContent, path = ''): { name: string; extra: string[] } {
-  const extra: string[] = [];
-  if (content === 'name-location' || content === 'name-location-category') {
-    if (path) extra.push(path);
-  }
-  if (content === 'name-location-category') {
-    extra.push(item.subcategory ? `${item.category} › ${item.subcategory}` : item.category);
-  }
-  return { name: item.name, extra };
+  const f = labelFace({ kind: 'item', item, path }, content);
+  return { name: f.name, extra: f.extra };
 }
 
 // ── Choosing items (Labels step 1) ──
@@ -227,4 +264,36 @@ export function labelGroups(items: readonly Item[], categories: readonly Categor
   const groups = names.map((name) => ({ name, items: items.filter((i) => i.category === name) }));
   for (const name of [...new Set(items.map((i) => i.category).filter((k) => !known.has(k)))]) groups.push({ name, items: items.filter((i) => i.category === name) });
   return groups.filter((g) => g.items.length > 0);
+}
+
+// ── Choosing bins and spots (Labels step 1, §9) ──
+
+export interface PlaceGroup<T> {
+  key: string;
+  name: string;
+  list: T[];
+}
+
+const byCode = (a: Bin, b: Bin) => a.code.localeCompare(b.code, 'en-US', { numeric: true });
+
+/** Bins grouped for choosing labels: by area in walk order ("No spot" last), or by season (Holiday, "No season" last). */
+export function binLabelGroups(places: Places, seasons: readonly { id: string; name: string; order: number }[], by: 'area' | 'season'): PlaceGroup<Bin>[] {
+  const ix = indexPlaces(places);
+  if (by === 'season') {
+    const groups = [...seasons].sort((a, b) => a.order - b.order).map((s) => ({ key: s.id, name: s.name, list: places.bins.filter((b) => b.seasonId === s.id).sort(byCode) }));
+    groups.push({ key: 'none', name: 'No season', list: places.bins.filter((b) => !b.seasonId || !seasons.some((s) => s.id === b.seasonId)).sort(byCode) });
+    return groups.filter((g) => g.list.length > 0);
+  }
+  const areaOf = (b: Bin) => (b.spotId ? ix.spot.get(b.spotId)?.areaId : undefined);
+  const groups = [...places.areas].sort((a, b) => a.order - b.order).map((a) => ({ key: a.id, name: a.name, list: places.bins.filter((b) => areaOf(b) === a.id).sort(byCode) }));
+  groups.push({ key: 'none', name: 'No spot', list: places.bins.filter((b) => areaOf(b) === undefined).sort(byCode) });
+  return groups.filter((g) => g.list.length > 0);
+}
+
+/** Spots grouped by area, in walk order. */
+export function spotLabelGroups(places: Places): PlaceGroup<Spot>[] {
+  return [...places.areas]
+    .sort((a, b) => a.order - b.order)
+    .map((a) => ({ key: a.id, name: a.name, list: places.spots.filter((s) => s.areaId === a.id).sort((x, y) => x.order - y.order) }))
+    .filter((g) => g.list.length > 0);
 }

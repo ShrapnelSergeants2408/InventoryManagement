@@ -1,5 +1,6 @@
 // Small shared pieces: empty/error states, top bar, back button, check box, toggle.
 import type { ComponentChildren } from 'preact';
+import { PART_NAME, type Part } from '../../domain/types';
 import { Icon, type IconName } from '../icons';
 import { goBack } from '../shell/router';
 
@@ -36,9 +37,11 @@ export function TopBar(props: {
   children?: ComponentChildren;
   /** At the right end: only the screen's one main button (Add, Save). */
   actions?: ComponentChildren;
+  /** A detail screen's record part: the bar takes the part's color and names it (F21). */
+  part?: Part;
 }) {
   return (
-    <header class="top">
+    <header class={props.part ? 'top tint' : 'top'}>
       {props.back}
       <div class={props.kicker !== undefined ? 'top-title grow' : 'top-title'}>
         {props.kicker !== undefined && <span class="small muted">{props.kicker}</span>}
@@ -48,6 +51,7 @@ export function TopBar(props: {
       {props.children}
       {props.search !== undefined && <div class="top-sl">{props.search}</div>}
       {props.actions}
+      {props.part && <span class="ptag">{PART_NAME[props.part]}</span>}
     </header>
   );
 }

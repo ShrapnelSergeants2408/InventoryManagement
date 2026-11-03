@@ -1,10 +1,12 @@
-// IndexedDB schema (SPEC v2.0 §2, §3). Database `home-inventory`: v1 was H1's flat locations,
-// v2 (H2a) is Area › Spot › Bin › Item with seasons, tags and several photos per record.
+// IndexedDB schema (SPEC v3.0 §2, §3). Database `home-inventory`: v1 was H1's flat locations,
+// v2 (H2a) is Area › Spot › Bin › Item with seasons, tags and several photos per record, v3 (H3)
+// splits everything into the Household and Holiday parts.
 // Never edit a version once a phone has data in it (HANDOFF §5); add the next one.
 import Dexie, { type Table, type Transaction } from 'dexie';
 import { convertH1, itemFromH1 } from '../domain/h1';
 import { ID_PREFIX, newId } from '../domain/ids';
-import { nameKey, type Area, type Bin, type Category, type Item, type PhotoInfo, type Season, type Spot, type Tag } from '../domain/types';
+import { fromV2, type V2Data } from '../domain/parts';
+import { nameKey, type Area, type Bin, type Category, type Item, type Part, type PhotoInfo, type Season, type Spot, type Tag } from '../domain/types';
 
 export { UNSORTED_AREA } from '../domain/h1';
 
@@ -20,6 +22,7 @@ export type BinRow = Bin;
 export type SeasonRow = Season;
 export type CategoryRow = Category;
 
+/** A Tags list entry, keyed by part and name ignoring capitals. */
 export interface TagRow extends Tag {
   key: string;
 }
@@ -43,7 +46,7 @@ export interface SettingRow {
 export const DB_NAME = 'home-inventory';
 
 /** The schema this code was built for. Stored as a setting so an older copy can tell. */
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 export const SCHEMA_KEY = 'schemaVersion';
 
 export class InventoryDb extends Dexie {
@@ -52,9 +55,11 @@ export class InventoryDb extends Dexie {
   spots!: Table<SpotRow, string>;
   bins!: Table<BinRow, string>;
   seasons!: Table<SeasonRow, string>;
-  tags!: Table<TagRow, string>;
+  /** Both parts' Tags lists (v3; v2's `tags` was keyed by name alone). */
+  tagList!: Table<TagRow, [Part, string]>;
   pictures!: Table<PhotoRow, string>;
-  categories!: Table<CategoryRow, string>;
+  /** Both parts' Categories lists (v3; v2's `categories` was keyed by name alone, and "Other" is in both parts). */
+  categoryList!: Table<CategoryRow, [Part, string]>;
   settings!: Table<SettingRow, string>;
 
   constructor(name = DB_NAME) {
@@ -81,7 +86,43 @@ export class InventoryDb extends Dexie {
         locations: null,
       })
       .upgrade(upgradeFromH1);
+    // H3 (0.1.3). Lists keyed by part need new tables (a new primary key needs a new table).
+    this.version(3)
+      .stores({
+        items: 'id, part, category, binId, spotId, seasonId, barcode',
+        areas: 'id, part, order',
+        bins: 'id, part, code, spotId, seasonId',
+        categoryList: '[part+name], part',
+        tagList: '[part+key], part',
+        categories: null,
+        tags: null,
+      })
+      .upgrade(upgradeFromV2);
   }
+}
+
+/**
+ * 0.1.2 → 0.1.3 (§3, "Upgrading a 0.1.2 phone"): everything goes to Household, the seasons move
+ * to Holiday with their default dates, and Holiday gets its default categories. The same
+ * conversion as restoring a 0.1.2 backup (`fromV2`).
+ */
+async function upgradeFromV2(tx: Transaction): Promise<void> {
+  const old: V2Data = {
+    items: await tx.table('items').toArray(),
+    areas: await tx.table('areas').toArray(),
+    spots: [],
+    bins: await tx.table('bins').toArray(),
+    seasons: await tx.table('seasons').toArray(),
+    tags: (await tx.table<{ key: string; name: string; order: number }>('tags').toArray()).map(({ name, order }) => ({ name, order })),
+    categories: await tx.table('categories').toArray(),
+  };
+  const d = fromV2(old);
+  await tx.table('items').bulkPut(d.items);
+  await tx.table('areas').bulkPut(d.areas);
+  await tx.table('bins').bulkPut(d.bins);
+  await tx.table('seasons').bulkPut(d.seasons);
+  await tx.table('tagList').bulkAdd(d.tags.map(toTagRow));
+  await tx.table('categoryList').bulkAdd(d.categories);
 }
 
 interface H1Item {
@@ -164,6 +205,9 @@ export function fromItemRow(row: ItemRow): Item {
   const { updatedAt: _u, ...item } = row;
   return item;
 }
+
+/** A Tags list row's primary key. */
+export const tagKey = (part: Part, name: string): [Part, string] => [part, nameKey(name)];
 
 export function toTagRow(t: Tag): TagRow {
   return { ...t, key: nameKey(t.name) };

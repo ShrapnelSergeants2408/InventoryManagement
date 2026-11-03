@@ -24,9 +24,9 @@ afterEach(() => db?.close());
 const base = {
   ...household(),
   categories: [
-    { name: 'Pneumatics', order: 0, subcategories: ['Air Supply', 'Valves'] },
-    { name: 'Motors', order: 1, subcategories: [] },
-    { name: 'Empty', order: 2, subcategories: [] },
+    { part: 'holiday' as const, name: 'Pneumatics', order: 0, subcategories: ['Air Supply', 'Valves'] },
+    { part: 'holiday' as const, name: 'Motors', order: 1, subcategories: [] },
+    { part: 'holiday' as const, name: 'Empty', order: 2, subcategories: [] },
   ],
 };
 const seedItems = () => [
@@ -51,7 +51,7 @@ describe('addItem (F6)', () => {
     const s = await snap();
     expect(s.items.find((i) => i.id === 'it-NEW00001')).toEqual(added);
     expect(s.categories[0]!.subcategories).toEqual(['Air Supply', 'Valves', 'Fittings']);
-    expect(s.tags).toEqual([{ name: 'Fragile', order: 0 }]);
+    expect(s.tags).toEqual([{ part: 'holiday', name: 'Fragile', order: 0 }]);
     expect(await getRecentHomes(db)).toEqual(['bn-xmas4']);
     expect(await lastChange()).toBe(99);
   });
@@ -108,11 +108,11 @@ describe('deleteItem (F8)', () => {
 describe('categories (F9)', () => {
   it('add category and subcategory; duplicates rejected (subcategories within their category)', async () => {
     await setup();
-    await addCategory(db, 'Tools');
-    await expect(addCategory(db, 'motors')).rejects.toThrow(/already in the list/);
-    await addSubcategory(db, 'Motors', 'Brushless');
-    await addSubcategory(db, 'Empty', 'Valves'); // same name in another category is fine
-    await expect(addSubcategory(db, 'Pneumatics', 'valves')).rejects.toThrow(/already in the list/);
+    await addCategory(db, 'holiday', 'Tools');
+    await expect(addCategory(db, 'holiday', 'motors')).rejects.toThrow(/already in the list/);
+    await addSubcategory(db, 'holiday', 'Motors', 'Brushless');
+    await addSubcategory(db, 'holiday', 'Empty', 'Valves'); // same name in another category is fine
+    await expect(addSubcategory(db, 'holiday', 'Pneumatics', 'valves')).rejects.toThrow(/already in the list/);
     const s = await snap();
     expect(s.categories.map((c) => [c.name, c.order, c.subcategories])).toEqual([
       ['Pneumatics', 0, ['Air Supply', 'Valves']],
@@ -124,7 +124,7 @@ describe('categories (F9)', () => {
 
   it('rename moves the items with it and keeps the list position', async () => {
     await setup();
-    await renameCategory(db, 'Pneumatics', 'Air');
+    await renameCategory(db, 'holiday', 'Pneumatics', 'Air');
     const s = await snap();
     expect(s.categories.map((c) => c.name)).toEqual(['Air', 'Motors', 'Empty']);
     expect(s.categories[0]!.subcategories).toEqual(['Air Supply', 'Valves']);
@@ -133,21 +133,21 @@ describe('categories (F9)', () => {
 
   it('rename subcategory moves its items', async () => {
     await setup();
-    await renameSubcategory(db, 'Pneumatics', 'Valves', 'Solenoids');
+    await renameSubcategory(db, 'holiday', 'Pneumatics', 'Valves', 'Solenoids');
     expect((await snap()).categories[0]!.subcategories).toEqual(['Air Supply', 'Solenoids']);
     expect((await getItem(db, 'v1'))!.subcategory).toBe('Solenoids');
   });
 
   it('remove is blocked until empty; with a destination the items move first (mockup 7g)', async () => {
     await setup();
-    await expect(removeSubcategory(db, 'Pneumatics', 'Valves', null)).rejects.toThrow('still holds 1 item');
-    expect(await removeSubcategory(db, 'Pneumatics', 'Valves', { category: 'Pneumatics', subcategory: 'Air Supply' })).toBe(1);
+    await expect(removeSubcategory(db, 'holiday', 'Pneumatics', 'Valves', null)).rejects.toThrow('still holds 1 item');
+    expect(await removeSubcategory(db, 'holiday', 'Pneumatics', 'Valves', { category: 'Pneumatics', subcategory: 'Air Supply' })).toBe(1);
     expect((await getItem(db, 'v1'))!.subcategory).toBe('Air Supply');
     expect((await snap()).categories[0]!.subcategories).toEqual(['Air Supply']);
 
-    await expect(removeCategory(db, 'Pneumatics', null)).rejects.toThrow('still holds 2 items');
-    await expect(removeCategory(db, 'Pneumatics', { category: 'Pneumatics', subcategory: '' })).rejects.toThrow(/outside/);
-    expect(await removeCategory(db, 'Pneumatics', { category: 'Motors', subcategory: '' })).toBe(2);
+    await expect(removeCategory(db, 'holiday', 'Pneumatics', null)).rejects.toThrow('still holds 2 items');
+    await expect(removeCategory(db, 'holiday', 'Pneumatics', { category: 'Pneumatics', subcategory: '' })).rejects.toThrow(/outside/);
+    expect(await removeCategory(db, 'holiday', 'Pneumatics', { category: 'Motors', subcategory: '' })).toBe(2);
     const s = await snap();
     expect(s.categories.map((c) => [c.name, c.order])).toEqual([['Motors', 0], ['Empty', 1]]);
     expect(s.items.filter((i) => i.category === 'Motors')).toHaveLength(3);
@@ -156,29 +156,29 @@ describe('categories (F9)', () => {
   it('an item stored with other capitals still counts, edits and follows a rename', async () => {
     await setup([...seedItems(), item({ id: 'lc', category: 'pneumatics', subcategory: 'valves' })]);
     // Remove is blocked: the item counts as in Pneumatics › Valves.
-    await expect(removeSubcategory(db, 'Pneumatics', 'Valves', null)).rejects.toThrow('still holds 2 items');
-    await expect(removeCategory(db, 'Pneumatics', null)).rejects.toThrow('still holds 3 items');
+    await expect(removeSubcategory(db, 'holiday', 'Pneumatics', 'Valves', null)).rejects.toThrow('still holds 2 items');
+    await expect(removeCategory(db, 'holiday', 'Pneumatics', null)).rejects.toThrow('still holds 3 items');
     // An edit (notes only) saves, and takes the list's spelling without adding a "valves" subcategory.
     const before = (await getItem(db, 'lc'))!;
     const saved = await updateItem(db, before, { ...before, notes: 'checked' }, 60);
     expect(saved).toMatchObject({ category: 'Pneumatics', subcategory: 'Valves', notes: 'checked' });
     expect((await snap()).categories[0]!.subcategories).toEqual(['Air Supply', 'Valves']);
     // A rename moves it too.
-    await renameCategory(db, 'Pneumatics', 'Air');
+    await renameCategory(db, 'holiday', 'Pneumatics', 'Air');
     expect((await getItem(db, 'lc'))!.category).toBe('Air');
   });
 
   it('an empty category or subcategory is removed without a destination', async () => {
     await setup();
-    expect(await removeCategory(db, 'Empty', null)).toBe(0);
-    await addSubcategory(db, 'Motors', 'Brushed');
-    expect(await removeSubcategory(db, 'Motors', 'Brushed', null)).toBe(0);
+    expect(await removeCategory(db, 'holiday', 'Empty', null)).toBe(0);
+    await addSubcategory(db, 'holiday', 'Motors', 'Brushed');
+    expect(await removeSubcategory(db, 'holiday', 'Motors', 'Brushed', null)).toBe(0);
     expect((await snap()).categories.map((c) => c.name)).toEqual(['Pneumatics', 'Motors']);
   });
 
   it('a failed move leaves everything unchanged', async () => {
     await setup();
-    await expect(removeCategory(db, 'Pneumatics', { category: 'Motors', subcategory: 'Nope' })).rejects.toThrow(/isn't a subcategory/);
+    await expect(removeCategory(db, 'holiday', 'Pneumatics', { category: 'Motors', subcategory: 'Nope' })).rejects.toThrow(/isn't a subcategory/);
     const s = await snap();
     expect(s.categories).toHaveLength(3);
     expect(s.items.filter((i) => i.category === 'Pneumatics')).toHaveLength(2);
@@ -186,8 +186,8 @@ describe('categories (F9)', () => {
 
   it('▲/▼ reorders categories and subcategories', async () => {
     await setup();
-    await moveCategory(db, 'Empty', -1);
-    await moveSubcategory(db, 'Pneumatics', 'Valves', -1);
+    await moveCategory(db, 'holiday', 'Empty', -1);
+    await moveSubcategory(db, 'holiday', 'Pneumatics', 'Valves', -1);
     const s = await snap();
     expect(s.categories.map((c) => c.name)).toEqual(['Pneumatics', 'Empty', 'Motors']);
     expect(s.categories[0]!.subcategories).toEqual(['Valves', 'Air Supply']);

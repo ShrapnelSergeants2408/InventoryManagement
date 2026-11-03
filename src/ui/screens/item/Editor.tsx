@@ -1,5 +1,7 @@
 // Add and edit an item (F16): one form. Nothing is stored until Save, including photos taken or
-// removed here. Status (out, lent) is changed by its own actions in later milestones (H5, H6).
+// removed here. Status (out, lent) is changed by its own actions in later milestones (H4–H8). The
+// form works in the item's part (a new item: its home's part, else the part in use); moving it to
+// the other part is Move on its card (F7).
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { addItem, getRecentHomes, updateItem } from '../../../data/items';
@@ -7,8 +9,9 @@ import type { InventorySnapshot } from '../../../data/inventory';
 import type { NewPhoto } from '../../../data/photos';
 import { ID_PREFIX, newId } from '../../../domain/ids';
 import { buildItem, draftFromItem, newDraft, type FormError, type ItemDraft } from '../../../domain/item-form';
+import { partOfRecord, partView } from '../../../domain/parts';
 import { indexPlaces, itemPath, NO_HOME, pathText } from '../../../domain/places';
-import { CONDITIONS, nameKey, type Condition, type Item } from '../../../domain/types';
+import { CONDITIONS, nameKey, type Condition, type Item, type Part } from '../../../domain/types';
 import { TopBar } from '../../components/common';
 import { CONDITION_LABEL } from '../../components/chips';
 import { Dialog, DialogActions } from '../../components/Dialog';
@@ -18,6 +21,7 @@ import { ScanDialog } from '../../components/ScanDialog';
 import { forgetThumbnail, useDb, usePhotos, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { goBack, href, openedFrom, replaceRoute } from '../../shell/router';
+import { getPart, useRecordPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
 import { DeleteItemButton } from './DeleteItem';
@@ -27,7 +31,7 @@ const NEW = '__new';
 
 export function EditorScreen(props: { mode: 'add'; name: string; barcode?: string; home?: string } | { mode: 'edit'; id: string }) {
   const live = useSnapshot();
-  const fallback = props.mode === 'edit' ? href.item(props.id) : href.tab('inventory');
+  const fallback = props.mode === 'edit' ? href.item(props.id) : href.home(getPart());
   const cancel = (
     <button type="button" class="btn" onClick={() => goBack(fallback)}>
       <Icon name="close" />
@@ -55,11 +59,12 @@ export function EditorScreen(props: { mode: 'add'; name: string; barcode?: strin
   if (props.mode === 'edit') {
     const item = live.value.items.find((i) => i.id === props.id);
     if (!item) return <ItemMissing id={props.id} back={cancel} />;
-    return <Form snap={live.value} base={item} startName="" fallback={fallback} />;
+    return <Form all={live.value} part={item.part} base={item} startName="" fallback={fallback} />;
   }
   // "Add item here" names a bin or spot that may have gone meanwhile.
   const home = props.home && (live.value.bins.some((b) => b.id === props.home) || live.value.spots.some((s) => s.id === props.home)) ? props.home : '';
-  return <Form snap={live.value} base={null} startName={props.name} startBarcode={props.barcode ?? ''} startHome={home} fallback={fallback} />;
+  const part: Part = (home && partOfRecord(live.value, home)) || getPart();
+  return <Form all={live.value} part={part} base={null} startName={props.name} startBarcode={props.barcode ?? ''} startHome={home} fallback={fallback} />;
 }
 
 /** Field-level message under an input. */
@@ -79,9 +84,11 @@ interface PendingPhoto extends NewPhoto {
   url: string;
 }
 
-function Form(props: { snap: InventorySnapshot; base: Item | null; startName: string; startBarcode?: string; startHome?: string; fallback: string }) {
+function Form(props: { all: InventorySnapshot; part: Part; base: Item | null; startName: string; startBarcode?: string; startHome?: string; fallback: string }) {
   const db = useDb();
-  const { snap } = props;
+  const { part } = props;
+  const snap = partView(props.all, part);
+  useRecordPart(part);
   const adding = props.base === null;
   // The editor works on the item as it was when opened; later list changes don't reset the form.
   const [base] = useState(props.base);
@@ -130,9 +137,9 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
 
   const save = async () => {
     if (busy) return;
-    const taken = new Set(snap.items.map((i) => i.id));
+    const taken = new Set(props.all.items.map((i) => i.id));
     const id = base ? base.id : newId(ID_PREFIX.item, (x) => taken.has(x));
-    const r = buildItem(tagText.trim() ? { ...d, tags: [...d.tags, tagText] } : d, { id, base, categories: snap.categories });
+    const r = buildItem(tagText.trim() ? { ...d, tags: [...d.tags, tagText] } : d, { id, base, categories: snap.categories, part });
     if (!r.ok) {
       setErrors(r.errors);
       document.querySelector('.fbody')?.scrollTo({ top: 0 });
@@ -161,6 +168,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   return (
     <>
       <TopBar
+        part={part}
         title={adding ? 'Add item' : d.name.trim() || base!.name}
         kicker={adding ? 'New item' : base!.id}
         back={
@@ -340,7 +348,8 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
             </div>
 
             <div class="card sec">
-              <h2 class="h2">Season, tags and notes</h2>
+              <h2 class="h2">{part === 'holiday' ? 'Season, tags and notes' : 'Tags and notes'}</h2>
+              {part === 'holiday' && (
               <Field id="sea" label="Season" optional>
                 <select id="sea" class="field" value={d.seasonId} onChange={(e) => set({ seasonId: (e.currentTarget as HTMLSelectElement).value })}>
                   <option value="">{binSeason ? `Same as its bin (${binSeason.name})` : 'None'}</option>
@@ -351,6 +360,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
                   ))}
                 </select>
               </Field>
+              )}
               <Field id="tg" label="Tags" optional>
                 <div class="chips-row">
                   {d.tags.map((t) => (

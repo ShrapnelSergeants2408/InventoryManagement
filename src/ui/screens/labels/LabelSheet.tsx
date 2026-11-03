@@ -1,9 +1,9 @@
-// One letter page of QR labels (SPEC §9), positioned in inches. The same component draws the
-// on-screen preview (scaled) and the printed pages, so the preview is what prints.
-import { labelText, PAGE, type LabelBox, type LabelLayout } from '../../../domain/labels';
+// One letter page of QR labels (SPEC v3.0 §9), positioned in inches. The same component draws the
+// on-screen preview (scaled) and the printed pages, so the preview is what prints. A label shows
+// its face (domain/labels): a bin's code large, the name, a season chip, extra lines.
+import { PAGE, type LabelBox, type LabelFace, type LabelLayout } from '../../../domain/labels';
 import { qrMatrix, qrPath } from '../../../domain/qr';
 import { qrPayload } from '../../../domain/scan';
-import type { Item } from '../../../domain/types';
 
 const inch = (n: number) => `${n}in`;
 
@@ -17,20 +17,25 @@ export function QrSvg({ text, size }: { text: string; size: number }) {
   );
 }
 
-function Label({ layout, box, item, path }: { layout: LabelLayout; box: LabelBox; item: Item; path: string }) {
-  const t = labelText(item, layout.content, path);
+function Label({ layout, box, face }: { layout: LabelLayout; box: LabelBox; face: LabelFace }) {
   return (
     <div
       class={`lab ${layout.flow}${layout.plain ? ' cut' : ''}`}
       data-slot={box.slot}
-      data-id={item.id}
+      data-id={face.id}
       style={{ left: inch(box.x), top: inch(box.y), width: inch(box.w), height: inch(box.h) }}
     >
-      <QrSvg text={qrPayload(item.id)} size={layout.qr} />
+      <QrSvg text={qrPayload(face.id)} size={layout.qr} />
       <div class="lab-t" style={{ fontSize: `${layout.textPt}pt` }}>
-        <span class="lab-n">{t.name}</span>
-        {t.extra.map((x) => (
-          <span key={x} class="lab-x">
+        {face.code && (
+          <span class="lab-code" style={{ fontSize: `${Math.round(layout.textPt * (face.name ? 2.6 : 2.4))}pt` }}>
+            {face.code}
+          </span>
+        )}
+        {face.name && <span class="lab-n">{face.name}</span>}
+        {face.chip && <span class="lab-chip">{face.chip.name}</span>}
+        {face.extra.map((x, k) => (
+          <span key={k} class="lab-x">
             {x}
           </span>
         ))}
@@ -42,8 +47,7 @@ function Label({ layout, box, item, path }: { layout: LabelLayout; box: LabelBox
 /** A printed page: labels, or (test print) the outline and number of every label position. */
 export function SheetPage(props: {
   layout: LabelLayout;
-  /** `path`: the item's home as one line (§4), '' for none. */
-  labels: { box: LabelBox; item: Item; path: string }[];
+  labels: { box: LabelBox; face: LabelFace }[];
   /** Used labels at the start of the first sheet (preview only: shown hatched). */
   skipped?: LabelBox[];
   outlines?: LabelBox[];
@@ -54,8 +58,8 @@ export function SheetPage(props: {
       {props.skipped?.map((b) => (
         <div key={`s${b.slot}`} class="lab used" style={{ left: inch(b.x), top: inch(b.y), width: inch(b.w), height: inch(b.h) }} />
       ))}
-      {props.labels.map(({ box, item, path }) => (
-        <Label key={box.slot} layout={props.layout} box={box} item={item} path={path} />
+      {props.labels.map(({ box, face }) => (
+        <Label key={box.slot} layout={props.layout} box={box} face={face} />
       ))}
       {props.outlines?.map((b) => (
         <div key={`o${b.slot}`} class="lab outline" data-slot={b.slot} style={{ left: inch(b.x), top: inch(b.y), width: inch(b.w), height: inch(b.h) }}>

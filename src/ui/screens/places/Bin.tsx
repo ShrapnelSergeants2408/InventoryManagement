@@ -1,14 +1,17 @@
-// Bin detail and editor (SPEC v2.0 §3, F7, §6). Detail: photos, where it is, season and tags,
-// what's in it, and Add item here, Move bin, Edit, Delete. Bin labels come in H2b (F10).
+// Bin detail and editor (SPEC v3.0 §3, F7, F10, §6). Detail: photos, where it is, season (Holiday)
+// and tags, what's in it, its label ("Label out of date" with Reprint, §4), and Add item here,
+// Print label, Move bin (also to the other part), Edit, Delete. The top bar shows the bin's part.
 import type { ComponentChildren } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { addBin, deleteBin, moveBin, suggestBinCode, updateBin } from '../../../data/places';
 import { noteViewed } from '../../../data/prefs';
 import { formatDateTime } from '../../../domain/dates';
+import { binLabelState } from '../../../domain/labels';
+import { partView } from '../../../domain/parts';
 import { binContents, binLabel, indexPlaces, pathText, spotPath, tidyBinCode } from '../../../domain/places';
 import { BIN_CODE_PATTERN } from '../../../domain/validate';
-import { nameKey, type Bin, type BinState, type Item } from '../../../domain/types';
+import { nameKey, type Bin, type BinState, type Item, type Part } from '../../../domain/types';
 import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { ConditionChip, Qty, SeasonChip, StatusChip } from '../../components/chips';
 import { Dialog, DialogActions } from '../../components/Dialog';
@@ -17,6 +20,7 @@ import { PhotoCarousel } from '../../components/PhotoCarousel';
 import { useDb, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { goBack, href, openedFrom, replaceRoute } from '../../shell/router';
+import { getPart, useRecordPart } from '../../part';
 import { showToast } from '../../shell/toast';
 import { Thumb } from '../inventory/ItemRow';
 import { Breadcrumbs } from '../item/Detail';
@@ -77,7 +81,7 @@ export function ItemLinks({ items, empty }: { items: readonly Item[]; empty: str
 
 export function BinScreen({ id }: { id: string }) {
   const live = useSnapshot();
-  const back = <BackButton fallback={href.tab('inventory')} />;
+  const back = <BackButton fallback={href.home(getPart())} />;
   if (live.state === 'error') return <StorageError error={live.error} />;
   if (live.state === 'loading') return <Loading title="Bin" back={back} />;
   const bin = live.value.bins.find((b) => b.id === id);
@@ -89,7 +93,9 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
   const db = useDb();
   const [open, setOpen] = useState<'move' | 'delete' | null>(null);
   useEffect(() => noteViewed(bin.id), [bin.id]);
+  useRecordPart(bin.part);
   const ix = indexPlaces(snap);
+  const labelState = binLabelState(bin, snap.items);
   const spot = bin.spotId ? ix.spot.get(bin.spotId) : undefined;
   const where = spot ? spotPath(spot, ix) : [];
   const season = snap.seasons.find((s) => s.id === bin.seasonId);
@@ -98,7 +104,7 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
 
   return (
     <>
-      <TopBar title={binLabel(bin)} kicker={where.length ? pathText(where) : 'No spot'} back={back} />
+      <TopBar title={binLabel(bin)} kicker={where.length ? pathText(where) : 'No spot'} back={back} part={bin.part} />
       <div class="dbody">
         <div class="dleft">
           <PhotoCarousel ownerType="bin" ownerId={bin.id} name={binLabel(bin)} />
@@ -106,6 +112,10 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
             <a class="btn pri lg" href={href.add('', '', bin.id)}>
               <Icon name="plus" />
               Add item here
+            </a>
+            <a class="btn lg" href={href.labels([bin.id])}>
+              <Icon name="print" />
+              {labelState === 'none' ? 'Print label' : 'Reprint label'}
             </a>
             <button type="button" class="btn lg" onClick={() => setOpen('move')}>
               <Icon name="pin" />
@@ -142,13 +152,27 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
           <div class="card box kv">
             <span class="lbl">Where</span>
             <Breadcrumbs parts={where} empty="No spot" />
-            <span class="lbl">Season</span>
-            <span class={season ? '' : 'muted'}>{season?.name ?? 'None'}</span>
+            {bin.part === 'holiday' && (
+              <>
+                <span class="lbl">Season</span>
+                <span class={season ? '' : 'muted'}>{season?.name ?? 'None'}</span>
+              </>
+            )}
             <span class="lbl">Label</span>
-            <span class="muted">{bin.labelPrintedAt === null ? 'Not printed yet (bin labels come in the next version)' : `Printed ${formatDateTime(new Date(bin.labelPrintedAt))}`}</span>
+            <span class="muted">{bin.labelPrintedAt === null ? 'Not printed yet' : `Printed ${formatDateTime(new Date(bin.labelPrintedAt))}`}</span>
             <span class="lbl">Notes</span>
             <span class={bin.notes ? 'notes' : 'muted'}>{bin.notes || 'No notes'}</span>
           </div>
+          {labelState === 'stale' && (
+            <div class="stale" role="note">
+              <span>
+                <strong>Label out of date.</strong> What's in the bin changed since its label was printed.
+              </span>
+              <a class="btn" href={href.labels([bin.id])}>
+                Reprint
+              </a>
+            </div>
+          )}
           <div class="card box">
             <h2 class="h2">In this bin · {plural(items.length, 'item')}</h2>
             <ItemLinks items={items} empty="Nothing in it yet. Add item here puts things in it." />
@@ -164,7 +188,9 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
 
       {open === 'move' && (
         <HomePicker
-          snap={snap}
+          snap={partView(snap, bin.part)}
+          all={snap}
+          part={bin.part}
           mode="bin"
           title={`Move ${bin.code} to…`}
           current={bin.spotId}
@@ -173,7 +199,8 @@ function BinDetail({ bin, snap, back }: { bin: Bin; snap: InventorySnapshot; bac
             await moveBin(db, bin.id, spotId);
             setOpen(null);
             const to = spotId ? ix.spot.get(spotId) : undefined;
-            showToast(`Moved ${bin.code} to ${to ? pathText(spotPath(to, ix)) : 'no spot'}. Its code stays ${bin.code}.`);
+            const moved = await moveBinResult(snap, to?.areaId);
+            showToast(`Moved ${bin.code} to ${to ? pathText(spotPath(to, ix)) : 'no spot'}${moved && moved !== bin.part ? ` in ${moved === 'holiday' ? 'Holiday' : 'Household'}` : ''}. Its code stays ${bin.code}.`);
           }}
         />
       )}
@@ -193,7 +220,7 @@ function DeleteBin({ bin, items, spotName, onClose }: { bin: Bin; items: Item[];
     try {
       await deleteBin(db, bin.id, what);
       showToast(`Deleted ${binLabel(bin)}${n ? (what === 'delete' ? ` and ${plural(n, 'item')}` : `; ${plural(n, 'item')} moved to ${spotName ?? 'No home yet'}`) : ''}.`);
-      replaceRoute(href.tab('inventory'));
+      replaceRoute(href.home(getPart()));
     } catch (e) {
       showToast(`Couldn't delete: ${e instanceof Error ? e.message : String(e)}`);
       setBusy(false);
@@ -260,16 +287,22 @@ export function BinEditorScreen(props: { mode: 'add'; spot: string; area: string
   if (props.mode === 'edit') {
     const bin = snap.bins.find((b) => b.id === props.id);
     if (!bin) return <Missing what="Bin" id={props.id} back={back} />;
-    return <BinForm snap={snap} base={bin} start={{ ...bin, tags: bin.tags.join('; '), areaId: '' }} fallback={fallback} />;
+    return <BinForm all={snap} part={bin.part} base={bin} start={{ ...bin, tags: bin.tags.join('; '), areaId: '' }} fallback={fallback} />;
   }
+  // A new bin is in its spot's part (Add bin here), or the area's, else the part in use.
   const spot = snap.spots.find((s) => s.id === props.spot);
-  const areaId = spot?.areaId ?? (snap.areas.some((a) => a.id === props.area) ? props.area : (snap.areas[0]?.id ?? ''));
-  return <BinForm snap={snap} base={null} start={{ name: '', code: '', spotId: spot?.id ?? '', areaId, seasonId: '', tags: '', state: 'stored', notes: '' }} fallback={fallback} />;
+  const areaPart = (id: string | undefined) => snap.areas.find((a) => a.id === id)?.part;
+  const part: Part = areaPart(spot?.areaId) ?? areaPart(props.area) ?? getPart();
+  const mine = snap.areas.filter((a) => a.part === part);
+  const areaId = spot?.areaId ?? (mine.some((a) => a.id === props.area) ? props.area : (mine[0]?.id ?? ''));
+  return <BinForm all={snap} part={part} base={null} start={{ name: '', code: '', spotId: spot?.id ?? '', areaId, seasonId: '', tags: '', state: 'stored', notes: '' }} fallback={fallback} />;
 }
 
-function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinDraft; fallback: string }) {
+function BinForm(props: { all: InventorySnapshot; part: Part; base: Bin | null; start: BinDraft; fallback: string }) {
   const db = useDb();
-  const { snap, base } = props;
+  const { base, part } = props;
+  const snap = partView(props.all, part);
+  useRecordPart(part);
   const [d, setD] = useState<BinDraft>(props.start);
   const [suggested, setSuggested] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
@@ -287,7 +320,8 @@ function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinD
 
   const code = d.code.trim() === '' ? (suggested ?? '') : tidyBinCode(d.code);
   const codeBad = code !== '' && !BIN_CODE_PATTERN.test(code);
-  const clash = snap.bins.find((b) => b.id !== base?.id && tidyBinCode(b.code) === code);
+  // Codes are unique across both parts (§3).
+  const clash = props.all.bins.find((b) => b.id !== base?.id && tidyBinCode(b.code) === code);
   const ready = d.name.trim() !== '' && code !== '' && !codeBad && !clash;
   const tags = d.tags
     .split(';')
@@ -298,8 +332,8 @@ function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinD
     setBusy(true);
     setError(null);
     try {
-      const fields = { code, name: d.name, spotId: d.spotId, seasonId: d.seasonId, tags, state: d.state, notes: d.notes };
-      const saved = base ? await updateBin(db, base.id, fields) : await addBin(db, { ...fields, areaId: d.areaId });
+      const fields = { code, name: d.name, spotId: d.spotId, seasonId: part === 'holiday' ? d.seasonId : '', tags, state: d.state, notes: d.notes };
+      const saved = base ? await updateBin(db, base.id, { ...fields, part: base.part }) : await addBin(db, { ...fields, part, areaId: d.areaId });
       showToast(base ? 'Saved.' : `Added ${binLabel(saved)}.`);
       if (base && openedFrom() === href.bin(saved.id)) history.back();
       else replaceRoute(href.bin(saved.id));
@@ -313,6 +347,7 @@ function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinD
     <>
       <TopBar
         title={base ? `Edit ${base.code}` : 'Add bin'}
+        part={part}
         back={
           <button type="button" class="btn" onClick={() => goBack(props.fallback)}>
             <Icon name="close" />
@@ -367,11 +402,12 @@ function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinD
             </label>
             <input id="bc" class={codeBad || clash ? 'field bad mono' : 'field mono'} value={d.code} placeholder={suggested ?? 'e.g. A-04'} autoComplete="off" onInput={(e) => set({ code: (e.currentTarget as HTMLInputElement).value })} />
             {codeBad && <div class="err">A code is an area letter, a dash and a number, like A-04.</div>}
-            {clash && <div class="err">{code} is already on “{clash.name}”.</div>}
+            {clash && <div class="err">{code} is already on “{clash.name}”{clash.part !== part ? ` in ${clash.part === 'holiday' ? 'Holiday' : 'Household'}` : ''}.</div>}
             {!base && d.code.trim() === '' && suggested && <div class="small muted">Leave blank for {suggested}, the next code in this area.</div>}
             {!base && !suggested && snap.areas.length === 0 && <div class="err">Add an area first (More › Areas & spots), so the bin gets a code.</div>}
           </div>
           <div class="row2">
+            {part === 'holiday' && (
             <div>
               <label class="lbl" for="bs">
                 Season <span class="lbl-opt">(optional)</span>
@@ -385,6 +421,7 @@ function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinD
                 ))}
               </select>
             </div>
+            )}
             <div>
               <label class="lbl" for="bst">
                 State
@@ -425,4 +462,9 @@ function BinForm(props: { snap: InventorySnapshot; base: Bin | null; start: BinD
       )}
     </>
   );
+}
+
+/** The part a moved bin ended up in: its new spot's area's (undefined for no spot). */
+async function moveBinResult(snap: InventorySnapshot, areaId: string | undefined): Promise<Part | undefined> {
+  return areaId ? snap.areas.find((a) => a.id === areaId)?.part : undefined;
 }

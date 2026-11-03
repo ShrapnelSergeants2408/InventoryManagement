@@ -37,7 +37,7 @@ const seed = () => [
 async function setup() {
   db = new InventoryDb(`pl-${Math.random()}`);
   const h = household();
-  await replaceAll(db, dataset({ ...h, bins: h.bins.map((b) => (b.id === 'bn-spare' ? { ...b, tags: ['Outdoor'] } : b)), items: seed(), tags: [{ name: 'Outdoor', order: 0 }] }), 1);
+  await replaceAll(db, dataset({ ...h, bins: h.bins.map((b) => (b.id === 'bn-spare' ? { ...b, tags: ['Outdoor'] } : b)), items: seed(), tags: [{ part: 'holiday', name: 'Outdoor', order: 0 }] }), 1);
 }
 
 const snap = () => loadSnapshot(db);
@@ -51,12 +51,12 @@ async function consistent() {
 describe('areas (F11)', () => {
   it('add: end of walk order, letter from the name, names and letters unique', async () => {
     await setup();
-    const a = await addArea(db, { name: ' Utility room ', notes: ' furnace ' }, 9);
+    const a = await addArea(db, 'holiday', { name: ' Utility room ', notes: ' furnace ' }, 9);
     expect(a).toMatchObject({ name: 'Utility room', letter: 'U', order: 3, notes: 'furnace' });
-    expect((await addArea(db, { name: 'Upstairs' })).letter).toBe('P');
-    await expect(addArea(db, { name: 'attic' })).rejects.toThrow(/already in the list/);
-    await expect(addArea(db, { name: 'Shed', letter: 'g' })).rejects.toThrow(/G is already used by “Garage”/);
-    await expect(addArea(db, { name: 'Shed', letter: '7' })).rejects.toThrow(/one letter/);
+    expect((await addArea(db, 'holiday', { name: 'Upstairs' })).letter).toBe('P');
+    await expect(addArea(db, 'holiday', { name: 'attic' })).rejects.toThrow(/already in the list/);
+    await expect(addArea(db, 'holiday', { name: 'Shed', letter: 'g' })).rejects.toThrow(/G is already used by “Garage”/);
+    await expect(addArea(db, 'holiday', { name: 'Shed', letter: '7' })).rejects.toThrow(/one letter/);
     expect((await getSettings(db)).lastChangeAt).toBeGreaterThanOrEqual(9);
     await consistent();
   });
@@ -139,8 +139,8 @@ describe('bins (§3, F7)', () => {
     expect(b1.code).toBe('A-06');
     const b2 = await addBin(db, { code: '', name: 'Tools tote', spotId: '', seasonId: '', tags: [], state: 'stored', notes: '', areaId: 'ar-garage' });
     expect(b2.code).toBe('G-01');
-    expect((await addBin(db, { code: 'g7', name: 'Odd', spotId: '', seasonId: '', tags: [], state: 'stored', notes: '' })).code).toBe('G-07');
-    await expect(addBin(db, { code: 'a-4', name: 'Clash', spotId: '', seasonId: '', tags: [], state: 'stored', notes: '' })).rejects.toThrow(/A-04 is already on “Christmas 4”/);
+    expect((await addBin(db, { part: 'holiday', code: 'g7', name: 'Odd', spotId: '', seasonId: '', tags: [], state: 'stored', notes: '' })).code).toBe('G-07');
+    await expect(addBin(db, { part: 'holiday', code: 'a-4', name: 'Clash', spotId: '', seasonId: '', tags: [], state: 'stored', notes: '' })).rejects.toThrow(/A-04 is already on “Christmas 4”/);
     await expect(addBin(db, { code: '', name: 'Nowhere', spotId: '', seasonId: '', tags: [], state: 'stored', notes: '' })).rejects.toThrow(/Choose a spot or an area/);
     expect((await snap()).tags.map((t) => t.name)).toEqual(['Outdoor', 'Fragile']);
     await consistent();
@@ -149,7 +149,7 @@ describe('bins (§3, F7)', () => {
   it('edit keeps the label fields; Move bin changes only its spot and keeps its code', async () => {
     await setup();
     await db.bins.update('bn-xmas4', { labelPrintedAt: 5, labelContents: 'Snowman lights ~40' });
-    const b = await updateBin(db, 'bn-xmas4', { code: 'A-04', name: 'Christmas 4: lights', spotId: 'sp-shelfB', seasonId: 'se-xmas', tags: [], state: 'out', notes: '' });
+    const b = await updateBin(db, 'bn-xmas4', { part: 'holiday', code: 'A-04', name: 'Christmas 4: lights', spotId: 'sp-shelfB', seasonId: 'se-xmas', tags: [], state: 'out', notes: '' });
     expect(b).toMatchObject({ name: 'Christmas 4: lights', state: 'out', labelPrintedAt: 5, labelContents: 'Snowman lights ~40' });
     const moved = await moveBin(db, 'bn-xmas4', 'sp-peg');
     expect(moved).toMatchObject({ code: 'A-04', spotId: 'sp-peg' });
@@ -216,7 +216,7 @@ describe('seasons (F11)', () => {
     const s = await addSeason(db, { name: 'Easter' });
     expect(s).toMatchObject({ color: 'gold', order: 2 });
     await expect(addSeason(db, { name: 'easter' })).rejects.toThrow(/already in the list/);
-    await updateSeason(db, s.id, { name: 'Easter', color: 'purple', setupNotes: ' eggs on the porch ' });
+    await updateSeason(db, s.id, { name: 'Easter', color: 'purple', setupNotes: ' eggs on the porch ', setupFrom: '3/20', takedownBy: 'apr 30' });
     await moveSeason(db, s.id, -2);
     expect((await snap()).seasons.map((x) => [x.name, x.color, x.setupNotes])).toEqual([
       ['Easter', 'purple', 'eggs on the porch'],
@@ -239,16 +239,16 @@ describe('seasons (F11)', () => {
 describe('tags (F11)', () => {
   it('add (no ";"), rename everywhere ignoring capitals, ▲/▼, remove everywhere', async () => {
     await setup();
-    await addTag(db, 'Fragile');
-    await expect(addTag(db, 'a;b')).rejects.toThrow(/can’t contain ";"/);
-    await expect(addTag(db, 'fragile')).rejects.toThrow(/already in the list/);
-    await renameTag(db, 'OUTDOOR', 'Yard');
+    await addTag(db, 'holiday', 'Fragile');
+    await expect(addTag(db, 'holiday', 'a;b')).rejects.toThrow(/can’t contain ";"/);
+    await expect(addTag(db, 'holiday', 'fragile')).rejects.toThrow(/already in the list/);
+    await renameTag(db, 'holiday', 'OUTDOOR', 'Yard');
     let s = await snap();
     expect(s.items.map((i) => [i.id, i.tags])).toEqual([['i-bin', ['Yard']], ['i-none', ['Yard']], ['i-spot', []]]);
     expect(s.bins.find((b) => b.id === 'bn-spare')!.tags).toEqual(['Yard']);
-    await moveTag(db, 'Fragile', -1);
+    await moveTag(db, 'holiday', 'Fragile', -1);
     expect((await snap()).tags.map((t) => t.name)).toEqual(['Fragile', 'Yard']);
-    expect(await removeTag(db, 'yard')).toEqual({ items: 2, bins: 1 });
+    expect(await removeTag(db, 'holiday', 'yard')).toEqual({ items: 2, bins: 1 });
     s = await snap();
     expect(s.tags.map((t) => t.name)).toEqual(['Fragile']);
     expect(s.items.every((i) => i.tags.length === 0)).toBe(true);

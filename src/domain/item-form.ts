@@ -3,7 +3,7 @@
 import { kindOfId } from './ids';
 import { centsToPlain, parsePrice } from './money';
 import { tagProblem, isIsoDate, parseWholeNumber } from './validate';
-import { blankItem, nameKey, type Category, type Condition, type Item } from './types';
+import { blankItem, nameKey, type Category, type Condition, type Item, type Part } from './types';
 
 export interface ItemDraft {
   name: string;
@@ -74,6 +74,8 @@ export interface BuildContext {
   id: string;
   /** The item as loaded into the editor, or null when adding. */
   base: Item | null;
+  /** A new item's part (an edit keeps the item's). */
+  part?: Part;
   categories: readonly Category[];
 }
 
@@ -140,7 +142,7 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
 
   if (errors.length > 0) return { ok: false, errors };
 
-  const base = ctx.base ?? blankItem(ctx.id, name, cat!.name);
+  const base = ctx.base ?? blankItem(ctx.id, name, cat!.name, ctx.part);
   const item: Item = {
     ...base,
     id: ctx.id,
@@ -151,7 +153,8 @@ export function buildItem(d: ItemDraft, ctx: BuildContext): BuildResult {
     spotId: kind === 'spot' ? d.home : '',
     quantity,
     approx: d.approx,
-    seasonId: d.seasonId,
+    // Seasons are Holiday only (§3).
+    seasonId: base.part === 'holiday' ? d.seasonId : '',
     tags,
     condition: d.condition,
     conditionNote: d.condition === 'ok' ? '' : d.conditionNote.trim(),

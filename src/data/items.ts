@@ -1,12 +1,15 @@
-// Item add, edit, delete, move, split and duplicate (SPEC v2.0 F7, F16). Each runs in one
-// transaction with the list updates it implies, so a failure leaves the phone unchanged.
+// Item add, edit, delete, move, split and duplicate (SPEC v3.0 F7, F16). Each runs in one
+// transaction with the list updates it implies, so a failure leaves the phone unchanged. An
+// item's home, category and tags are always in its own part (§3).
 import { ID_PREFIX, newId } from '../domain/ids';
 import { mergeEdit } from '../domain/item-form';
 import { pushRecent } from '../domain/lists';
+import { itemToPart } from '../domain/parts';
 import { QR_PREFIX, barcodeKey, cleanCode } from '../domain/scan';
-import { nameKey, type Item } from '../domain/types';
+import { PART_NAME, nameKey, type Item, type Part } from '../domain/types';
 import { validateItem } from '../domain/validate';
 import { fromItemRow, toItemRow, type InventoryDb } from './db';
+import { ensureCategories } from './lists';
 import { addTagsToList } from './places';
 import { NO_PHOTO_EDITS, applyPhotoEdits, copyPhotos, deletePhotosOf, type PhotoEdits } from './photos';
 
@@ -33,20 +36,32 @@ export const homeId = (i: Pick<Item, 'binId' | 'spotId'>) => i.binId || i.spotId
 async function fitToLists(db: InventoryDb, given: Item): Promise<Item> {
   const errors = validateItem(given);
   if (errors.length > 0) fail(errors.map((e) => e.message).join('; '));
-  if (given.binId && !(await db.bins.get(given.binId))) fail('That bin was deleted meanwhile.');
-  if (given.spotId && !(await db.spots.get(given.spotId))) fail('That spot was removed meanwhile.');
+  const homePart = await partOfHome(db, given);
+  if (homePart !== null && homePart !== given.part) fail(`That home is in ${PART_NAME[homePart]}; use Move to move the item there.`);
   if (given.seasonId && !(await db.seasons.get(given.seasonId))) fail('That season was removed meanwhile.');
 
-  const cat = (await db.categories.get(given.category)) ?? (await db.categories.toArray()).find((c) => nameKey(c.name) === nameKey(given.category));
-  if (!cat) fail(`category "${given.category}" isn't in the category list`);
+  const cat =
+    (await db.categoryList.get([given.part, given.category])) ??
+    (await db.categoryList.where('part').equals(given.part).toArray()).find((c) => nameKey(c.name) === nameKey(given.category));
+  if (!cat) fail(`category "${given.category}" isn't in the ${PART_NAME[given.part]} category list`);
   let item: Item = { ...given, category: cat.name };
   if (item.subcategory !== '') {
     const listed = cat.subcategories.find((s) => nameKey(s) === nameKey(item.subcategory));
     if (listed) item = { ...item, subcategory: listed };
-    else await db.categories.put({ ...cat, subcategories: [...cat.subcategories, item.subcategory] });
+    else await db.categoryList.put({ ...cat, subcategories: [...cat.subcategories, item.subcategory] });
   }
-  await addTagsToList(db, item.tags);
+  await addTagsToList(db, item.part, item.tags);
   return item;
+}
+
+/** The part of an item's home (its bin's, or its spot's area's); null for no home. */
+async function partOfHome(db: InventoryDb, home: Pick<Item, 'binId' | 'spotId'>): Promise<Part | null> {
+  if (home.binId) return ((await db.bins.get(home.binId)) ?? fail('That bin was deleted meanwhile.')).part;
+  if (home.spotId) {
+    const spot = (await db.spots.get(home.spotId)) ?? fail('That spot was removed meanwhile.');
+    return ((await db.areas.get(spot.areaId)) ?? fail('That spot’s area was removed meanwhile.')).part;
+  }
+  return null;
 }
 
 async function touch(db: InventoryDb, now: number, home = ''): Promise<void> {
@@ -54,7 +69,7 @@ async function touch(db: InventoryDb, now: number, home = ''): Promise<void> {
   if (home !== '') await db.settings.put({ key: RECENT_HOMES, value: pushRecent(await getRecentHomes(db), home, 6) });
 }
 
-const TABLES = (db: InventoryDb) => [db.items, db.pictures, db.categories, db.bins, db.spots, db.seasons, db.tags, db.settings];
+const TABLES = (db: InventoryDb) => [db.items, db.pictures, db.categoryList, db.areas, db.bins, db.spots, db.seasons, db.tagList, db.settings];
 
 /** Adds a new item, with photos taken in the form. The id must be unused. */
 export async function addItem(db: InventoryDb, item: Item, now = Date.now(), photos: PhotoEdits = NO_PHOTO_EDITS): Promise<Item> {
@@ -104,19 +119,23 @@ export const homeFields = (to: Home): Pick<Item, 'binId' | 'spotId'> =>
 
 /**
  * Move (F7): gives the chosen items a new home in one transaction. Items already there stay
- * as they are. Returns how many items changed.
+ * as they are. A home in the other part moves the items to that part (§3): season, displays and
+ * tags cleared, category matched by name, else "Other". Returns how many items changed.
  */
 export async function moveItemsHome(db: InventoryDb, ids: readonly string[], to: Home, now = Date.now()): Promise<number> {
-  return db.transaction('rw', [db.items, db.bins, db.spots, db.settings], async () => {
+  return db.transaction('rw', [db.items, db.areas, db.bins, db.spots, db.categoryList, db.settings], async () => {
     if (ids.length === 0) fail('Choose at least one item to move.');
     const fields = homeFields(to);
-    if (fields.binId && !(await db.bins.get(fields.binId))) fail('That bin was deleted meanwhile.');
-    if (fields.spotId && !(await db.spots.get(fields.spotId))) fail('That spot was removed meanwhile.');
+    const part = await partOfHome(db, fields);
     const unique = [...new Set(ids)];
     const rows = await db.items.bulkGet(unique);
     const gone = rows.filter((r) => !r).length;
     if (gone > 0) fail(`${gone} of the chosen items ${gone === 1 ? 'was' : 'were'} deleted meanwhile. Nothing was moved.`);
-    const moving = rows.filter((r) => r!.binId !== fields.binId || r!.spotId !== fields.spotId).map((r) => ({ ...r!, ...fields, updatedAt: now }));
+    const categories = part ? await db.categoryList.where('part').equals(part).toArray() : [];
+    const moving = rows
+      .filter((r) => r!.binId !== fields.binId || r!.spotId !== fields.spotId)
+      .map((r) => toItemRow({ ...(part ? itemToPart(fromItemRow(r!), part, categories) : fromItemRow(r!)), ...fields }, now));
+    if (part) await ensureCategories(db, part, moving.map((i) => i.category));
     await db.items.bulkPut(moving);
     await touch(db, now, homeId(fields));
     return moving.length;

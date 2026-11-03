@@ -1,20 +1,23 @@
-// Inventory (home): grouped list, rows with a quantity stepper, search and recently viewed (F1),
-// filters (F2), Select and bulk Move to a bin or spot (F7) or Category…. H2b adds Find and the
-// By place and By season views.
+// Browse (SPEC v3.0 F2): one part's items By place, By category or (Holiday) By season, as a
+// collapsible list with a quantity stepper on each row, filters, and Select with bulk Move to a
+// bin or spot (F7) or Category…. The view, filters and open groups are remembered per part.
+// Searching is Find's job (F1).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { adjustQuantity, setQuantity } from '../../../data/inventory';
 import { getRecentHomes, moveItemsHome } from '../../../data/items';
 import { changeItemsCategory } from '../../../data/lists';
-import { loadExpanded, loadFilters, loadRecent, saveExpanded, saveFilters } from '../../../data/prefs';
+import { loadBrowseBy, loadExpanded, loadFilters, saveBrowseBy, saveExpanded, saveFilters } from '../../../data/prefs';
+import { buildBrowseView, type BrowseBy, type BrowseView, type GroupLine } from '../../../domain/browse';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
-import { buildInventoryView, filterOptions, type InventoryView } from '../../../domain/inventory-view';
+import { filterOptions } from '../../../domain/inventory-view';
 import { placeLabel } from '../../../domain/lists';
 import { indexPlaces, itemPath, NO_HOME, pathText, type PlaceIndex } from '../../../domain/places';
 import { keepExisting, selectState, withIds } from '../../../domain/selection';
-import type { Item } from '../../../domain/types';
-import { CheckBox, StateMessage, TopBar, plural } from '../../components/common';
+import type { Item, Part } from '../../../domain/types';
+import { CheckBox, StateMessage, plural } from '../../components/common';
 import { HomePicker } from '../../components/HomePicker';
-import { useDb, useSnapshot } from '../../data-hooks';
+import { PartSwitch } from '../../components/PartSwitch';
+import { useDb, usePartSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -51,15 +54,20 @@ function Skeleton() {
   );
 }
 
-export function InventoryScreen() {
+const VIEWS: Readonly<Record<BrowseBy, string>> = { place: 'By place', category: 'By category', season: 'By season' };
+
+export function BrowseScreen({ part }: { part: Part }) {
   const db = useDb();
-  const live = useSnapshot();
-  const [query, setQuery] = useState('');
-  const [filters, setFilters] = useState<Filters>(() => loadFilters());
-  const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded());
+  const { live, snap, all } = usePartSnapshot(part);
+  const query = '';
+  const [by, setByState] = useState<BrowseBy>(() => loadBrowseBy(part));
+  const setBy = (b: BrowseBy) => {
+    setByState(b);
+    saveBrowseBy(part, b);
+  };
+  const [filters, setFilters] = useState<Filters>(() => loadFilters(part));
+  const [expanded, setExpanded] = useState<Set<string>>(() => loadExpanded(part));
   const [panelOpen, setPanelOpen] = useState(false);
-  // Recently viewed: offered while the search box is focused and empty.
-  const [searching, setSearching] = useState(false);
   // Select mode: checkboxes on rows and group headers, then Move to….
   const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState<Set<string>>(new Set());
@@ -67,22 +75,16 @@ export function InventoryScreen() {
   const [recentHomes, setRecentHomes] = useState<string[]>([]);
   useEffect(() => void getRecentHomes(db).then(setRecentHomes), [db, moveOpen]);
 
-  useEffect(() => saveFilters(filters), [filters]);
-  useEffect(() => saveExpanded(expanded), [expanded]);
+  useEffect(() => saveFilters(part, filters), [part, filters]);
+  useEffect(() => saveExpanded(part, expanded), [part, expanded]);
 
-  const snap = live.state === 'ready' ? live.value : null;
   const view = useMemo(
-    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, places: snap, seasons: snap.seasons, query, filters, expanded }) : null),
-    [snap, query, filters, expanded],
+    () => (snap ? buildBrowseView({ items: snap.items, categories: snap.categories, places: snap, seasons: snap.seasons, query, filters, expanded }, by) : null),
+    [snap, query, filters, expanded, by],
   );
   const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap, snap.seasons, snap.tags) : null), [snap]);
   const ix = useMemo(() => (snap ? indexPlaces(snap) : null), [snap]);
   const where = (i: Item) => (ix ? pathText(itemPath(i, ix)) : '');
-  const recent = useMemo(() => {
-    if (!snap || !searching || query !== '') return [];
-    const byId = new Map(snap.items.map((i) => [i.id, i]));
-    return loadRecent().flatMap((id) => byId.get(id) ?? []);
-  }, [snap, searching, query]);
   // Items deleted while selecting drop out of the selection.
   const selected = useMemo(() => (snap ? keepExisting(picked, snap.items) : picked), [snap, picked]);
 
@@ -97,10 +99,19 @@ export function InventoryScreen() {
     });
   }, [options]);
 
+  const head = (children?: preact.ComponentChildren) => (
+    <header class="phead top">
+      <PartSwitch part={part} />
+      <div class="prow">
+        <h1 class="h1">Browse</h1>
+        {children}
+      </div>
+    </header>
+  );
   if (live.state === 'error') {
     return (
       <>
-        <TopBar title="Inventory" subtitle="Storage unavailable" />
+        {head()}
         <StorageError error={live.error} />
       </>
     );
@@ -112,10 +123,7 @@ export function InventoryScreen() {
       if (!next.delete(key)) next.add(key);
       return next;
     });
-  const clearAll = () => {
-    setQuery('');
-    setFilters({ ...NO_FILTERS });
-  };
+  const clearAll = () => setFilters({ ...NO_FILTERS });
   const nFilters = activeFilterCount(filters);
   const endSelect = () => {
     setSelecting(false);
@@ -126,73 +134,42 @@ export function InventoryScreen() {
 
   return (
     <>
-      <TopBar
-        title="Inventory"
-        subtitle={summary}
-        search={
-        <div class="searchwrap">
-          <Icon name="search" />
-          <input
-            class="field"
-            type="search"
-            aria-label="Search inventory"
-            placeholder="Search name, place, season, tags, notes…"
-            value={query}
-            onInput={(e) => setQuery((e.currentTarget as HTMLInputElement).value)}
-            onFocus={() => setSearching(true)}
-            onBlur={() => setSearching(false)}
-            autoComplete="off"
-            spellcheck={false}
-          />
-          {query && (
-            <button type="button" class="clr" aria-label="Clear search" onClick={() => setQuery('')}>
-              <Icon name="close" />
-            </button>
-          )}
-          {recent.length > 0 && (
-            // pointerdown keeps the box focused, so the tap reaches the link before the list closes.
-            <nav class="recent" aria-label="Recently viewed" onPointerDown={(e) => e.preventDefault()}>
-              <span class="lbl">Recently viewed</span>
-              {recent.map((i) => (
-                <a key={i.id} class="recent-i" href={href.item(i.id)}>
-                  <Thumb itemId={i.id} hasPhoto={i.hasPhoto} />
-                  <span class="recent-t">
-                    <strong>{i.name}</strong>
-                    <span class="small muted">
-                      {placeLabel(i)} · {where(i)}
-                    </span>
-                  </span>
-                </a>
-              ))}
-            </nav>
-          )}
-        </div>
-        }
-      >
-        <button type="button" class="btn" onClick={() => setPanelOpen(true)}>
-          <Icon name="filter" />
-          {nFilters ? `Filters (${nFilters})` : 'Filters'}
-        </button>
-        {selecting ? (
-          <button type="button" class="btn pri" onClick={endSelect}>
-            Done
+      {head(
+        <>
+          <button type="button" class="btn" onClick={() => setPanelOpen(true)}>
+            <Icon name="filter" />
+            {nFilters ? `Filters (${nFilters})` : 'Filters'}
           </button>
-        ) : (
-          <>
-            <button type="button" class="btn" disabled={!snap || snap.items.length === 0} onClick={() => setSelecting(true)}>
-              <Icon name="check" />
-              Select
+          {selecting ? (
+            <button type="button" class="btn pri" onClick={endSelect}>
+              Done
             </button>
-            <a class="btn pri" href={href.add()}>
-              <Icon name="plus" />
-              Add item
-            </a>
-          </>
-        )}
-      </TopBar>
-
+          ) : (
+            <>
+              <button type="button" class="btn" disabled={!snap || snap.items.length === 0} onClick={() => setSelecting(true)}>
+                <Icon name="check" />
+                Select
+              </button>
+              <a class="btn pri" href={href.add()}>
+                <Icon name="plus" />
+                Add
+              </a>
+            </>
+          )}
+        </>,
+      )}
+      <div class="vsw chips-row" role="tablist" aria-label="View" style={{ padding: '10px 16px 0' }}>
+        {(part === 'holiday' ? (['season', 'place', 'category'] as const) : (['place', 'category'] as const)).map((b) => (
+          <button key={b} type="button" role="tab" aria-selected={by === b} class={by === b ? 'fchip on' : 'fchip'} onClick={() => setBy(b)}>
+            {VIEWS[b]}
+          </button>
+        ))}
+        <span class="small muted" style={{ alignSelf: 'center' }}>
+          {summary}
+        </span>
+      </div>
       <BackupBanner />
-      <QuickFilters view={view} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} ix={ix} seasonName={(id) => snap?.seasons.find((s) => s.id === id)?.name} />
+      <QuickFilters view={view} part={part} filters={filters} query={query} setFilters={setFilters} openPanel={() => setPanelOpen(true)} clearAll={clearAll} ix={ix} seasonName={(id) => snap?.seasons.find((s) => s.id === id)?.name} />
       {selecting && view && (
         <SelectBar
           count={selected.size}
@@ -219,7 +196,7 @@ export function InventoryScreen() {
       ) : snap.items.length === 0 ? (
         <StateMessage
           icon="inventory"
-          title="No items yet"
+          title={`No items in ${part === 'holiday' ? 'Holiday' : 'Household'} yet`}
           actions={
             <a class="btn pri" href={href.add()}>
               <Icon name="plus" />
@@ -227,27 +204,21 @@ export function InventoryScreen() {
             </a>
           }
         >
-          <p class="state-text">Add the first item, or restore a backup in More › Backup & restore.</p>
+          <p class="state-text">{snap.areas.length === 0 ? 'Add your areas and spots in More › Areas & spots first, then the items in them.' : 'Add the first item, or restore a backup in More › Backup & restore.'}</p>
         </StateMessage>
       ) : view.filtering && view.shown === 0 ? (
         <StateMessage
           icon="search"
-          title={query.trim() ? `No items match “${query.trim()}”` : 'No items match these filters'}
+          title="No items match these filters"
           actions={
             <>
-              <button type="button" class="btn" onClick={clearAll}>
-                Clear search and filters
+              <button type="button" class="btn pri" onClick={clearAll}>
+                Clear filters
               </button>
-              <a class="btn pri" href={href.add(query.trim())}>
-                <Icon name="plus" />
-                {query.trim() ? `Add “${query.trim()}” as a new item` : 'Add an item'}
-              </a>
             </>
           }
         >
-          <p class="state-text">
-            Search looks at names, places, seasons, tags, categories, notes, barcodes and serials. Try fewer letters.
-          </p>
+          <p class="state-text">To search by name, use Find.</p>
         </StateMessage>
       ) : (
         <List view={view} toggle={toggle} where={where} select={selecting ? { selected, set: (ids, on) => setPicked(withIds(selected, ids, on)) } : null} />
@@ -256,6 +227,8 @@ export function InventoryScreen() {
       {moveOpen === 'home' && snap && ix && chosen.length > 0 && (
         <HomePicker
           snap={snap}
+          all={all ?? undefined}
+          part={part}
           mode="item"
           title={`Move ${plural(chosen.length, 'item')} to…`}
           current={chosen.length === 1 ? chosen[0]!.binId || chosen[0]!.spotId : '\u0000'}
@@ -299,7 +272,8 @@ export function InventoryScreen() {
 }
 
 function QuickFilters(props: {
-  view: InventoryView | null;
+  view: BrowseView | null;
+  part: Part;
   filters: Filters;
   query: string;
   setFilters: (f: Filters) => void;
@@ -322,10 +296,12 @@ function QuickFilters(props: {
         Area: {area}
         <Icon name="chevDown" />
       </button>
-      <button type="button" class={tog(f.season !== null)} onClick={props.openPanel}>
-        Season: {season}
-        <Icon name="chevDown" />
-      </button>
+      {props.part === 'holiday' && (
+        <button type="button" class={tog(f.season !== null)} onClick={props.openPanel}>
+          Season: {season}
+          <Icon name="chevDown" />
+        </button>
+      )}
       {(props.query.trim() !== '' || activeFilterCount(f) > 0) && (
         <button type="button" class="fchip link" onClick={props.clearAll}>
           Clear all
@@ -343,7 +319,7 @@ interface Selection {
   set: (ids: readonly string[], on: boolean) => void;
 }
 
-function List({ view, toggle, where, select }: { view: InventoryView; toggle: (key: string) => void; where: (i: Item) => string; select: Selection | null }) {
+function List({ view, toggle, where, select }: { view: BrowseView; toggle: (key: string) => void; where: (i: Item) => string; select: Selection | null }) {
   const db = useDb();
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
@@ -363,6 +339,7 @@ function List({ view, toggle, where, select }: { view: InventoryView; toggle: (k
           if (select) return <SelectRow key={ln.item.id} item={ln.item} where={where(ln.item)} select={select} />;
           return <ItemRow key={ln.item.id} item={ln.item} where={where(ln.item)} onStep={onStep} onSet={onSet} />;
         }
+        if (ln.kind === 'group') return <GroupHeader key={ln.key} ln={ln} filtering={view.filtering} toggle={toggle} select={select} />;
         const isCat = ln.kind === 'category';
         const sub = view.filtering ? `${ln.matching} of ${plural(ln.total, 'item')} match` : plural(ln.total, 'item');
         if (select) {
@@ -409,7 +386,7 @@ function List({ view, toggle, where, select }: { view: InventoryView; toggle: (k
       <div class="list-foot small muted">
         {view.filtering
           ? `${plural(view.shown, 'matching item')}`
-          : 'Tap a category to expand or collapse it — the app remembers which are open. Tap an item for its detail card.'}
+          : 'Tap a group to open or close it; the app remembers which are open. Tap an item for its detail card.'}
       </div>
     </div>
   );
@@ -430,6 +407,53 @@ function SelectRow({ item, where, select }: { item: Item; where: string; select:
           </span>
         </span>
       </button>
+    </div>
+  );
+}
+
+const GROUP_LINK: Partial<Record<GroupLine['type'], (id: string) => string>> = { spot: href.spot, bin: href.bin };
+
+/** A place or season group (F2): tap to open or close it; its spot or bin opens with "Open". */
+function GroupHeader({ ln, filtering, toggle, select }: { ln: GroupLine; filtering: boolean; toggle: (key: string) => void; select: Selection | null }) {
+  const sub = filtering ? `${ln.matching} of ${plural(ln.total, 'item')}` : plural(ln.total, 'item');
+  const link = ln.id ? GROUP_LINK[ln.type]?.(ln.id) : undefined;
+  const cls = `ghdr l${Math.min(ln.level, 2)}`;
+  if (select) {
+    const state = selectState(ln.ids, select.selected);
+    return (
+      <div class={`${cls} sel`}>
+        <button
+          type="button"
+          class="cb grow"
+          role="checkbox"
+          aria-checked={state === 'on' ? 'true' : state === 'some' ? 'mixed' : 'false'}
+          disabled={ln.ids.length === 0}
+          onClick={() => select.set(ln.ids, state !== 'on')}
+        >
+          <CheckBox state={state} />
+          <span class="gn">{ln.name}</span>
+          <span class="hc small muted">{sub}</span>
+        </button>
+        {!filtering && (
+          <button type="button" class="exp" aria-expanded={ln.expanded} aria-label={`${ln.expanded ? 'Close' : 'Open'} ${ln.name}`} onClick={() => toggle(ln.key)}>
+            <Icon name={ln.expanded ? 'chevDown' : 'chevRight'} />
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div class={cls}>
+      <button type="button" class="ghdr-t grow" aria-expanded={ln.expanded} disabled={filtering} onClick={() => toggle(ln.key)}>
+        <Icon name={ln.expanded ? 'chevDown' : 'chevRight'} />
+        <span class="gn">{ln.name}</span>
+        <span class="hc small muted">{sub}</span>
+      </button>
+      {link && (
+        <a class="gopen" href={link}>
+          Open
+        </a>
+      )}
     </div>
   );
 }

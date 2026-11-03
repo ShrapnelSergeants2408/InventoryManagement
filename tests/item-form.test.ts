@@ -4,10 +4,10 @@ import { blankItem, type Category } from '../src/domain/types';
 import { item } from './helpers';
 
 const categories: Category[] = [
-  { name: 'Decorations', order: 0, subcategories: ['Ornaments', 'Garland'] },
-  { name: 'Tools', order: 1, subcategories: [] },
+  { part: 'holiday' as const, name: 'Decorations', order: 0, subcategories: ['Ornaments', 'Garland'] },
+  { part: 'holiday' as const, name: 'Tools', order: 1, subcategories: [] },
 ];
-const ctx = (over: Partial<BuildContext> = {}): BuildContext => ({ id: 'it-ABCDEFGH', base: null, categories, ...over });
+const ctx = (over: Partial<BuildContext> = {}): BuildContext => ({ id: 'it-ABCDEFGH', base: null, categories, part: 'holiday', ...over });
 
 const filled = (over: Partial<ItemDraft> = {}): ItemDraft => ({ ...newDraft('Decorations', 'Snowman lights'), ...over });
 
@@ -21,7 +21,7 @@ describe('buildItem — add', () => {
     const r = buildItem(filled({ home: 'bn-XMAS0004', notes: ' left strand dim ' }), ctx());
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.item).toEqual({ ...blankItem('it-ABCDEFGH', 'Snowman lights', 'Decorations'), binId: 'bn-XMAS0004', notes: 'left strand dim' });
+    expect(r.item).toEqual({ ...blankItem('it-ABCDEFGH', 'Snowman lights', 'Decorations', 'holiday'), binId: 'bn-XMAS0004', notes: 'left strand dim' });
     expect(r.newSubcategory).toBeNull();
   });
 
@@ -44,6 +44,13 @@ describe('buildItem — add', () => {
       ctx(),
     );
     expect(r.ok && r.item).toMatchObject({ approx: true, quantity: 40, seasonId: 'se-XMAS0001', tags: ['Fragile', 'Outdoor'], condition: 'needs repair', conditionNote: 'left strand dead', value: 124950, purchaseDate: '2024-11-30', model: 'M1', serial: 'S2', warrantyUntil: '2027-11-30' });
+  });
+
+  it('a new item takes the given part; a Household item never keeps a season (§3)', () => {
+    const r = buildItem(filled({ seasonId: 'se-XMAS0001' }), ctx({ part: 'household' }));
+    expect(r.ok && [r.item.part, r.item.seasonId]).toEqual(['household', '']);
+    const h = buildItem(filled({ seasonId: 'se-XMAS0001' }), ctx());
+    expect(h.ok && [h.item.part, h.item.seasonId]).toEqual(['holiday', 'se-XMAS0001']);
   });
 
   it('a condition back to OK clears its note; a blank value is none', () => {

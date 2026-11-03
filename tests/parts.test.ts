@@ -7,9 +7,9 @@ import { findIn } from '../src/domain/find';
 import { binToPart, DEFAULT_CATEGORIES, fromV2, itemToPart, partOfRecord, partView } from '../src/domain/parts';
 import { area, bin, categories, item, season, spot } from './helpers';
 
-/** Holiday: Storage room (S) › Rack 1 › S-02 Christmas lights. Household: Garage (G) › Pegboard › G-03 Cords. */
+/** Holiday: Storage room › Rack 1 › S-02 Christmas lights. Household: Garage (G) › Pegboard › G-03 Cords. */
 function twoParts() {
-  const areas = [area({ id: 'ar-store', part: 'holiday', name: 'Storage room', letter: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', letter: 'G' })];
+  const areas = [area({ id: 'ar-store', part: 'holiday', name: 'Storage room', code: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', code: 'G' })];
   const spots = [spot({ id: 'sp-rack', areaId: 'ar-store', name: 'Rack 1' }), spot({ id: 'sp-peg', areaId: 'ar-garage', name: 'Pegboard' })];
   const bins = [bin({ id: 'bn-s2', part: 'holiday', code: 'S-02', name: 'Christmas lights', spotId: 'sp-rack', seasonId: 'se-xmas' }), bin({ id: 'bn-g3', part: 'household', code: 'G-03', name: 'Cords & cables', spotId: 'sp-peg' })];
   const items = [
@@ -69,9 +69,9 @@ describe('0.1.2 data in two parts (§3 "Upgrading a 0.1.2 phone")', () => {
       return o as Omit<T, K>;
     };
     const v2 = {
-      areas: [strip(area({ id: 'ar-1' }), 'part')],
+      areas: [{ ...strip(area({ id: 'ar-1', name: 'Storage room' }), 'part', 'code'), letter: 'A' }],
       spots: [spot({ id: 'sp-1', areaId: 'ar-1' })],
-      bins: [strip(bin({ id: 'bn-1', spotId: 'sp-1', seasonId: 'se-1' }), 'part')],
+      bins: [strip(bin({ id: 'bn-1', spotId: 'sp-1', seasonId: 'se-1', code: 'A-07', labelPrintedAt: 5, labelContents: 'x' }), 'part'), strip(bin({ id: 'bn-2', code: 'Q-01' }), 'part')],
       items: [strip(item({ id: 'i-1', binId: 'bn-1', seasonId: 'se-1' }), 'part', 'displayId', 'outDisplayId', 'checkedAt')],
       seasons: [strip(season({ id: 'se-1', name: 'Easter' }), 'setupFrom', 'takedownBy')],
       tags: [{ name: 'Fragile', order: 0 }],
@@ -79,8 +79,11 @@ describe('0.1.2 data in two parts (§3 "Upgrading a 0.1.2 phone")', () => {
       photos: [],
     };
     const d = fromV2(v2);
-    expect(d.areas[0]!.part).toBe('household');
-    expect(d.bins[0]).toMatchObject({ part: 'household', seasonId: '' });
+    expect(d.areas[0]).toMatchObject({ part: 'household', code: 'STORAGE' });
+    expect('letter' in d.areas[0]!).toBe(false);
+    // A bin of a known letter is renamed and its label counts as not printed; another keeps its code.
+    expect(d.bins[0]).toMatchObject({ part: 'household', seasonId: '', code: 'STORAGE-07', labelPrintedAt: null, labelContents: null });
+    expect(d.bins[1]!.code).toBe('Q-01');
     expect(d.items[0]).toMatchObject({ part: 'household', seasonId: '', displayId: '', outDisplayId: '', checkedAt: null, binId: 'bn-1' });
     expect(d.seasons[0]).toMatchObject({ name: 'Easter', setupFrom: '03-20', takedownBy: '04-30' });
     expect(d.tags).toEqual([{ part: 'household', name: 'Fragile', order: 0 }]);
@@ -128,11 +131,11 @@ describe('Browse (F2)', () => {
 
   it('by place: Area › Spot › Bin, collapsed until opened; empty places still listed', () => {
     const closed = buildBrowseView(input(), 'place');
-    expect(groups(closed.lines)).toEqual(['Storage room (S) (2)']);
+    expect(groups(closed.lines)).toEqual(['Storage room (2)']);
     const keys = closed.lines.map((l) => (l as GroupLine).key);
     const rack = JSON.stringify(['place', 'sp-rack']);
     const s2 = JSON.stringify(['place', 'bn-s2']);
-    expect(groups(buildBrowseView(input([...keys, rack, s2]), 'place').lines)).toEqual(['Storage room (S) (2)', '  Rack 1 (2)', '    S-02 Christmas lights (2)', '  item Icicle lights', '  item Outdoor extension cord']);
+    expect(groups(buildBrowseView(input([...keys, rack, s2]), 'place').lines)).toEqual(['Storage room (2)', '  Rack 1 (2)', '    S-02 Christmas lights (2)', '  item Icicle lights', '  item Outdoor extension cord']);
     expect(closed.shownIds).toEqual(['i-icicle', 'i-ext']);
   });
 
@@ -140,7 +143,7 @@ describe('Browse (F2)', () => {
     const extra = { ...d, bins: [...d.bins, bin({ id: 'bn-x', code: 'S-09', name: 'Spare', spotId: '' })], items: [...d.items, item({ id: 'i-loose', name: 'Wreath', spotId: 'sp-rack' }), item({ id: 'i-none', name: 'Star' })] };
     const v = buildBrowseView({ ...input(), items: extra.items, places: extra, filters: { ...NO_FILTERS, status: 'stored' } }, 'place');
     expect(groups(v.lines)).toEqual([
-      'Storage room (S) (3)',
+      'Storage room (3)',
       '  Rack 1 (3)',
       '    S-02 Christmas lights (2)',
       '  item Icicle lights',

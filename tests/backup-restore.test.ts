@@ -37,9 +37,9 @@ const TRICKY = 'Goes on the "big" mantel, left side.\nLine two, with a comma\r\n
  */
 function phoneData(): ReplaceAllInput {
   const areas = [
-    area({ id: 'ar-ATTIC001', name: 'Attic', letter: 'A', order: 0, notes: 'pull-down "ladder"' }),
-    area({ id: 'ar-GARAGE01', part: 'household', name: 'Garage', letter: 'G', order: 0 }),
-    area({ id: 'ar-EMPTY001', name: 'Basement', letter: 'B', order: 1 }),
+    area({ id: 'ar-ATTIC001', name: 'Attic', code: 'A', order: 0, notes: 'pull-down "ladder"' }),
+    area({ id: 'ar-GARAGE01', part: 'household', name: 'Garage', code: 'G', order: 0 }),
+    area({ id: 'ar-EMPTY001', name: 'Basement', code: 'B', order: 1 }),
   ];
   const spots = [
     spot({ id: 'sp-SHELFB01', areaId: 'ar-ATTIC001', name: 'Shelf B', order: 0, notes: TRICKY }),
@@ -234,7 +234,8 @@ describe('older backups (SPEC v3.0 §3, §7)', () => {
     await applyRestore(db, plan);
     const s = await loadSnapshot(db);
     expect(s.areas.map((a) => [a.part, a.name])).toEqual([['household', 'Attic']]);
-    expect(s.bins).toEqual([expect.objectContaining({ part: 'household', code: 'A-04', seasonId: '', tags: ['Fragile'] })]);
+    expect(s.bins).toEqual([expect.objectContaining({ part: 'household', code: 'ATTIC-04', seasonId: '', tags: ['Fragile'] })]);
+    expect(s.areas.map((a) => a.code)).toEqual(['ATTIC']);
     expect(s.items).toEqual([expect.objectContaining({ part: 'household', binId: 'bn-XMAS0004', seasonId: '', tags: ['Fragile'], hasPhoto: true })]);
     expect(s.seasons).toEqual([expect.objectContaining({ id: 'se-XMAS0001', name: 'Christmas', setupFrom: '11-25', takedownBy: '01-06', setupNotes: 'mantel first' })]);
     expect(s.categories.filter((c) => c.part === 'household').map((c) => c.name)).toEqual(['Decorations', 'Other']);

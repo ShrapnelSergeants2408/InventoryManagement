@@ -6,7 +6,11 @@ import { defaultDates } from './seasons';
 import { blankItem, nameKey, type Area, type Item, type Season, type Spot } from './types';
 
 /** The area H1 locations move into on upgrade or when an H1 backup is restored (Dan, 2026-11-02). */
-export const UNSORTED_AREA = { name: 'Unsorted', code: 'UNSORTED' } as const;
+/** Written by the v1 → v2 upgrade with v2's one-letter `letter`; v2 → v3 then makes it UNSORTED. */
+export const UNSORTED_AREA = { name: 'Unsorted', letter: 'U' } as const;
+
+/** An area as schema v2 stored it. */
+export type V2Area = Omit<Area, 'code'> & { letter: string };
 
 /** The fields an H1 item had. */
 export interface H1ItemFields {
@@ -24,7 +28,7 @@ export interface H1ItemFields {
 export function convertH1(
   locations: readonly { name: string; notes: string; order: number }[],
   random: () => number = Math.random,
-): { area: Area | null; spots: Spot[]; spotIdFor: (location: string) => string; seasons: Season[] } {
+): { area: V2Area | null; spots: Spot[]; spotIdFor: (location: string) => string; seasons: Season[] } {
   const taken = new Set<string>();
   const id = (prefix: string) => {
     const v = newId(prefix, (x) => taken.has(x), random);
@@ -32,7 +36,7 @@ export function convertH1(
     return v;
   };
   const sorted = [...locations].sort((a, b) => a.order - b.order);
-  const area: Area | null = sorted.length === 0 ? null : { id: id(ID_PREFIX.area), part: 'household', name: UNSORTED_AREA.name, code: UNSORTED_AREA.code, order: 0, notes: 'Moved here from the old location list. Move each spot to its real area.' };
+  const area: V2Area | null = sorted.length === 0 ? null : { id: id(ID_PREFIX.area), part: 'household', name: UNSORTED_AREA.name, letter: UNSORTED_AREA.letter, order: 0, notes: 'Moved here from the old location list. Move each spot to its real area.' };
   const spots: Spot[] = area ? sorted.map((l, order) => ({ id: id(ID_PREFIX.spot), areaId: area.id, name: l.name.trim(), order, notes: l.notes })) : [];
   const byKey = new Map(spots.map((s) => [nameKey(s.name), s.id]));
   const seasons: Season[] = DEFAULT_SEASONS.map((s, order) => ({ id: id(ID_PREFIX.season), name: s.name, color: s.color, order, ...defaultDates(s.name), setupNotes: '' }));

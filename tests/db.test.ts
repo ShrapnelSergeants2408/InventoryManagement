@@ -26,7 +26,7 @@ describe('replaceAll', () => {
     fresh();
     await replaceAll(db, dataset({ items: [item({ id: 'keep' })] }));
     await expect(replaceAll(db, dataset({ items: [item({ id: 'x', binId: 'bn-gone' })] }))).rejects.toThrow(/bin bn-gone, which isn't there/);
-    await expect(replaceAll(db, dataset({ areas: [area({ id: 'a1', letter: 'A' }), area({ id: 'a2', name: 'Other', letter: 'A' })] }))).rejects.toThrow(/both use the letter A/);
+    await expect(replaceAll(db, dataset({ areas: [area({ id: 'a1', code: 'A' }), area({ id: 'a2', name: 'Other', code: 'A' })] }))).rejects.toThrow(/both use the code A/);
     expect((await loadSnapshot(db)).items.map((i) => i.id)).toEqual(['keep']);
   });
 

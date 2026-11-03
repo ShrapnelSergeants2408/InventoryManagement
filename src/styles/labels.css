@@ -67,7 +67,7 @@
 .lab.column .lab-n { -webkit-line-clamp: 2; }
 .lab-x { font-size: .85em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 /* H3 bin labels (§9): the code large, the season as an outlined chip (prints in black and white). */
-.lab-code { font-family: var(--font-display); font-weight: 700; line-height: 1; letter-spacing: .01em; }
+.lab-code { font-family: var(--font-display); font-weight: 700; line-height: 1; letter-spacing: .01em; white-space: nowrap; overflow: hidden; }
 .lab-chip { align-self: flex-start; font-weight: 700; font-size: .85em; padding: 0 .45em; border: 1px solid #000; border-radius: 999px; }
 .lab.column .lab-code { text-align: center; }
 .lab.cut { outline: .01in dashed #888; outline-offset: -.005in; }

@@ -1040,3 +1040,32 @@ SPEC v3.0 (PR #6) and the H3 mockups (approved 2026-11-03).
 - Medium for the look of the screens H7 still reworks (item, bin and spot detail, the editor, Labels). They work at phone width but use stopgap layouts.
 
 **Next:** Dan reviews the PR and details (a)–(l). Before installing 0.1.3, make a Full backup on the phone. Then the phone check in `docs/reviews/H3.md`, then H4 (Holiday setup, target ~Nov 24).
+
+## 2026-11-03 (midday) — H3 follow-up: area codes from names; (a)–(l) accepted
+
+**SESSION IDENTITY**
+Same day, after PR #7 opened. Dan: "lets switch areas to area names and not letters so they are more descriptive. decisions a-l." Asked to choose a code form; he chose "Short name + number" (ATTIC-04) and accepted (a)–(l). The work was interrupted by the usage limit once and finished with "continue the area-code change".
+
+**DATES & TIMES**
+2026-11-03, about 12:20 onwards CST. The exact end time was not recorded.
+
+**WORK COMPLETED**
+- Area `letter` became `code` (1–8 letters, from the name, unique across parts); bin codes are CODE-NN.
+- The 0.1.2 upgrade and restore rename bins (A-04 → ATTIC-04) and mark them not printed.
+- Areas & spots, the bin editor and labels use the codes; long codes shrink on labels.
+- Tests and the H3 browser check updated.
+- SPEC §3, §7 and the decision log (area codes; (a)–(l) accepted), the H3 review file.
+
+**DELIVERABLES PRODUCED**
+Commits on `h3-two-parts` (PR #7).
+
+**PREDECESSORS/CONTEXT**
+H3 (0.1.3), PR #7.
+
+**EVIDENCE**
+Unit tests 464/464; build clean; H3 browser check 57/57 PASS, no console errors.
+
+**CONFIDENCE**
+High: the rename runs through the same `fromV2` conversion the independent review checked, and it's covered by the upgrade, restore and browser tests.
+
+**Next:** Dan merges PR #7; check that the deploy ran; Full backup on the phone before installing 0.1.3; then the phone check in `docs/reviews/H3.md`, then H4.

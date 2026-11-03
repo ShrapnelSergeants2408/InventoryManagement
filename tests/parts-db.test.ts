@@ -21,7 +21,7 @@ async function setup() {
   await replaceAll(
     db,
     dataset({
-      areas: [area({ id: 'ar-store', part: 'holiday', name: 'Storage room', letter: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', letter: 'G' }), area({ id: 'ar-shed', part: 'household', name: 'Shed', letter: 'H' })],
+      areas: [area({ id: 'ar-store', part: 'holiday', name: 'Storage room', code: 'S' }), area({ id: 'ar-garage', part: 'household', name: 'Garage', code: 'G' }), area({ id: 'ar-shed', part: 'household', name: 'Shed', code: 'H' })],
       spots: [spot({ id: 'sp-rack', areaId: 'ar-store', name: 'Rack 1' }), spot({ id: 'sp-peg', areaId: 'ar-garage', name: 'Pegboard' }), spot({ id: 'sp-shelf', areaId: 'ar-shed', name: 'Shelf' })],
       seasons: [season({ id: 'se-xmas' })],
       bins: [bin({ id: 'bn-s2', part: 'holiday', code: 'S-02', spotId: 'sp-rack', seasonId: 'se-xmas', tags: ['Fragile'] }), bin({ id: 'bn-g3', part: 'household', code: 'G-03', name: 'Cords', spotId: 'sp-peg' })],
@@ -41,14 +41,16 @@ async function setup() {
 const snap = () => loadSnapshot(db);
 const consistent = async () => expect(checkData({ ...(await snap()), photos: [] })).toEqual([]);
 
-describe('areas: names per part, letters across both (§3)', () => {
-  it('the same name in each part is fine; a letter used in the other part is refused, naming the part', async () => {
+describe('areas: names per part, codes across both (§3)', () => {
+  it('the same name in each part is fine; a code used in the other part is refused, naming the part', async () => {
     await setup();
+    // Holiday already has a "Storage room" (code S); Household may have one too.
     const a = await addArea(db, 'household', { name: 'Storage room' });
-    // S is Holiday's; the next free letter of the name is T.
-    expect([a.part, a.letter]).toEqual(['household', 'T']);
     await expect(addArea(db, 'household', { name: 'storage ROOM' })).rejects.toThrow(/already in the list/);
-    await expect(addArea(db, 'holiday', { name: 'Attic', letter: 'g' })).rejects.toThrow(/G is already used by “Garage” in Household/);
+    // STORAGE is taken now, so a "Storage closet" gets the next one.
+    const b = await addArea(db, 'household', { name: 'Storage closet' });
+    expect([a.part, a.code, b.code]).toEqual(['household', 'STORAGE', 'STORAGEC']);
+    await expect(addArea(db, 'holiday', { name: 'Attic', code: 'g' })).rejects.toThrow(/G is already used by “Garage” in Household/);
     await consistent();
   });
 

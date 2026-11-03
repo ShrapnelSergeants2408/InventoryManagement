@@ -114,7 +114,7 @@ export function PlacesScreen({ part }: { part: Part }) {
                         </button>
                       </span>
                     ) : (
-                      <span class="letter" aria-label={`Letter ${a.code}`}>
+                      <span class="letter acode" aria-label={`Code ${a.code}`}>
                         {a.code}
                       </span>
                     )}

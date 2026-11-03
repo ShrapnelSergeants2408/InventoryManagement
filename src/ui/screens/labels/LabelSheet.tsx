@@ -17,6 +17,11 @@ export function QrSvg({ text, size }: { text: string; size: number }) {
   );
 }
 
+/** The bin code's size: large, shrinking past 8 characters so STORAGE-12 still fits on one line. */
+export function codePt(textPt: number, code: string, withName: boolean): number {
+  return Math.round(textPt * (withName ? 2.6 : 2.4) * Math.min(1, 8 / code.length));
+}
+
 function Label({ layout, box, face }: { layout: LabelLayout; box: LabelBox; face: LabelFace }) {
   return (
     <div
@@ -28,7 +33,7 @@ function Label({ layout, box, face }: { layout: LabelLayout; box: LabelBox; face
       <QrSvg text={qrPayload(face.id)} size={layout.qr} />
       <div class="lab-t" style={{ fontSize: `${layout.textPt}pt` }}>
         {face.code && (
-          <span class="lab-code" style={{ fontSize: `${Math.round(layout.textPt * (face.name ? 2.6 : 2.4))}pt` }}>
+          <span class="lab-code" style={{ fontSize: `${codePt(layout.textPt, face.code, face.name !== '')}pt` }}>
             {face.code}
           </span>
         )}

@@ -41,7 +41,8 @@ describe('upgrade from H1 (schema v1 → v2 → v3)', () => {
 
     const areas = await db.areas.toArray();
     expect(areas).toHaveLength(1);
-    expect(areas[0]).toMatchObject({ part: 'household', name: UNSORTED_AREA.name, letter: 'U', order: 0 });
+    expect(areas[0]).toMatchObject({ part: 'household', name: UNSORTED_AREA.name, code: 'UNSORTED', order: 0 });
+    expect('letter' in areas[0]!).toBe(false);
     const spots = (await db.spots.toArray()).sort((a, b) => a.order - b.order);
     // Walk order kept; a location only an item used comes last.
     expect(spots.map((s) => [s.name, s.notes, s.order, s.areaId])).toEqual([

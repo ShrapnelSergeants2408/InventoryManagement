@@ -971,3 +971,30 @@ Unit 405/405 (29 files); build clean; H2a browser check 35/35 PASS including the
 High for the upgrade, backup round trip and restore safety (unit and browser tested). Medium for the screen details, which H3 reworks. The cause of the Dexie early-commit seen with bin and spot photos wasn't isolated; the rewritten code is tested.
 
 **Next:** Dan merges PR #3, then the H2a PR. Before installing 0.1.2 on the phone, make a Full backup. Then the phone check in `docs/reviews/H2a.md`, confirm (a)–(k), then H2b.
+
+## 2026-11-03 (morning) — Deploy fix, redesign interview, SPEC v3.0 draft
+
+**SESSION IDENTITY**
+Continued from the H2a session. Dan: "it looks like the app isn't updating on the iphone. it is still showing version 2.0.0-h1". After the fix Dan saw 0.1.2, then: "I am looking at a redesign before we continue. I am going to split this into 2 apps … or possibly 2 apps in one with a home screen slider … Which would work easier? Interview me". Then: "go ahead and draft SPEC v3.0".
+
+**DATES & TIMES**
+2026-11-02 evening (deploy fix) to 2026-11-03, about 10:40 local (SPEC draft).
+
+**WORK COMPLETED**
+- Deploy: PR #4 (H2a) had been stacked on PR #3's branch and merged into it after #3 had merged, so 0.1.1 and H2a never reached `main`; merges to `main` also started no Pages deploy. PR #5 brought them onto `main`; 0.1.2 reached the phone.
+- Interview (four rounds of questions): one app with a Household | Holiday switch; completely separate storage; seasons Holiday only; Holiday adds displays, setup/takedown lists, condition checks with a to-buy list, a season calendar; family on both parts with live sync, offline first, Cloudflare free tier, emailed codes kept; split before sync; Holiday usable for Christmas setup by late Nov; current data is test data.
+- SPEC v3.0 drafted on branch `spec-v3` (parts in the data model, new records Display, Season task, Season run, To-buy line; F21–F25; two tab bars; §7 columns; milestones H3–H9 with targets; 8 open questions in §17). HANDOFF updated (users, roadmap, no stacked PRs, check the deploy after a merge).
+
+**DELIVERABLES PRODUCED**
+- `docs/SPEC.md` v3.0 (draft), `docs/HANDOFF.md`, this entry. PR on `spec-v3`.
+
+**PREDECESSORS/CONTEXT**
+H2a (0.1.2) merged and on the phone. Old H2b is folded into H3.
+
+**EVIDENCE**
+Documentation only; no code changed, so no tests were run.
+
+**CONFIDENCE**
+High that the draft records Dan's answers. The proposed details (letters across parts, default categories and dates, moving between parts, the setup-list order, the `.ics` calendar, the upgrade, the targets) are mine and listed in SPEC §17 for Dan.
+
+**Next:** Dan reviews SPEC v3.0 and answers §17; then H3 starts with mockups.

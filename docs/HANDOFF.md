@@ -2,7 +2,7 @@
 
 For whoever looks after the app next: Dan, or a future Claude Code session. It covers what the app is, where everything lives and how to change it safely.
 
-Written 2026-11-02, updated at app version 0.1.2 (SPEC v2.0, milestone H2a of H0–H7).
+Written 2026-11-02, updated 2026-11-03 at app version 0.1.2 (SPEC v3.0 draft: the app is splitting into Household and Holiday parts; next milestone H3 of H0–H9).
 
 ---
 
@@ -13,9 +13,9 @@ A household inventory web app (PWA): what's in each bin and on each shelf, with 
 | | |
 |---|---|
 | **Code** | GitHub, `dhiebert-whs/HouseholdInventory` (`upstream` remote = the FRC app, for reference only; nothing is merged back) |
-| **Users** | Dan and Ann, each on an iPhone, the app added to the home screen from Safari |
-| **Where the data lives (now)** | In each phone's browser storage (IndexedDB via Dexie, database `home-inventory`). Until H4 there is **no sync**: each phone has its own copy, and backups are the only way to move data |
-| **Where it's going** | H4 adds a Cloudflare Worker + D1 + R2 server and sync between the two phones (SPEC §12) |
+| **Users** | The family, each on an iPhone, the app added to the home screen from Safari |
+| **Where the data lives (now)** | In each phone's browser storage (IndexedDB via Dexie, database `home-inventory`). Until H5 there is **no sync**: each phone has its own copy, and backups are the only way to move data |
+| **Where it's going** | H3 splits the app into Household and Holiday parts with a switch; H4 adds the Holiday setup workflow; H5 adds a Cloudflare Worker + D1 + R2 server and sync between phones (SPEC v3.0 §12, §15) |
 | **Stack** | TypeScript, Preact, Vite; Dexie; Papa Parse (CSV), JSZip, a QR library, a barcode scanner with the zxing fallback (iPhone Safari has no BarcodeDetector); Vitest |
 
 ## 2. Where everything is
@@ -53,12 +53,13 @@ It prints one PASS, FAIL or INFO line per check and exits 1 if anything failed. 
 The routine that kept the FRC app's data safe:
 
 1. **Spec first.** Write the change into `docs/SPEC.md` (decision log, features). Anything undecided goes to Dan as a question before coding.
-2. **Branch** from `main` (`h2-short-name`). Never commit to `main` directly.
+2. **Branch** from `main` (`h2-short-name`). Never commit to `main` directly. Don't stack a branch on another open PR's branch: on 2026-11-02 that left H2a merged into a side branch instead of `main`.
 3. **Build it with tests.** Rules go in `src/domain` with unit tests; screens in `src/ui`. A change to stored data or backup files needs a round-trip test (export, then restore, with nothing lost).
 4. **Raise the version:** `APP_VERSION` in `src/io/backup.ts` and `package.json`; the browser check expects it.
 5. **Check it:** `npm test`, `npm run build`, a new `scripts/h<n>-ui-check.mjs` (copy the latest), and the earlier checks still in `scripts/`.
 6. **Write `docs/reviews/H<n>.md`** with what was built, the evidence, the details you decided ("for Dan to confirm") and the phone check steps. Add a session-log entry.
 7. **Open a pull request** on `dhiebert-whs/HouseholdInventory` (not upstream).
+8. **After Dan merges,** check that a deploy ran: `gh run list -R dhiebert-whs/HouseholdInventory`. On 2026-11-02 merges to `main` started no run; if none starts, `gh workflow run "Deploy to GitHub Pages" -R dhiebert-whs/HouseholdInventory --ref main` (with Dan's go-ahead).
 
 ## 5. Changing the database (the risky part)
 

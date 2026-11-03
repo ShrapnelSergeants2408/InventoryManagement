@@ -7,9 +7,9 @@ import type { InventorySnapshot } from '../../../data/inventory';
 import { addArea, addSpot, moveArea, moveSpot, removeArea, updateArea } from '../../../data/places';
 import { SUGGESTED_AREAS } from '../../../domain/parts';
 import { checkName } from '../../../domain/lists';
-import { binLabel, defaultLetter } from '../../../domain/places';
+import { binLabel, defaultAreaCode } from '../../../domain/places';
 import { PART_NAME, nameKey, type Area, type Part, type Spot } from '../../../domain/types';
-import { isAreaLetter } from '../../../domain/validate';
+import { isAreaCode } from '../../../domain/validate';
 import { BackButton, StateMessage, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, usePartSnapshot } from '../../data-hooks';
@@ -54,7 +54,7 @@ export function PlacesScreen({ part }: { part: Part }) {
   const quickAdd = async (name: string) => {
     try {
       const a = await addArea(db, part, { name });
-      showToast(`Added ${a.name} (${a.letter}).`);
+      showToast(`Added ${a.name} (${a.code}).`);
     } catch (e) {
       fail(e);
     }
@@ -80,7 +80,7 @@ export function PlacesScreen({ part }: { part: Part }) {
       </TopBar>
       <div class="mlist">
         <p class="small muted lockline">
-          The order is the <strong>walk order</strong>. An area’s letter starts the codes of bins made there (A-01, A-02…).
+          The order is the <strong>walk order</strong>. An area’s code starts the codes of bins made there (ATTIC-01, ATTIC-02…).
         </p>
         {!snap ? (
           <StateMessage icon="area" title="Loading…" />
@@ -114,8 +114,8 @@ export function PlacesScreen({ part }: { part: Part }) {
                         </button>
                       </span>
                     ) : (
-                      <span class="letter" aria-label={`Letter ${a.letter}`}>
-                        {a.letter}
+                      <span class="letter" aria-label={`Letter ${a.code}`}>
+                        {a.code}
                       </span>
                     )}
                     <div class="grow">
@@ -238,7 +238,7 @@ export function PlacesScreen({ part }: { part: Part }) {
 function AreaDialog({ part, area, areas, allAreas, onClose }: { part: Part; area: Area | null; areas: readonly Area[]; allAreas: readonly Area[]; onClose: () => void }) {
   const db = useDb();
   const [name, setName] = useState(area?.name ?? '');
-  const [letter, setLetter] = useState(area?.letter ?? '');
+  const [letter, setLetter] = useState(area?.code ?? '');
   const [notes, setNotes] = useState(area?.notes ?? '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -246,17 +246,17 @@ function AreaDialog({ part, area, areas, allAreas, onClose }: { part: Part; area
   // Letters are unique across both parts, so every bin code is (§3).
   const otherLetters = allAreas.filter((a) => a.id !== area?.id);
   const check = checkName(name, others.map((a) => a.name), 'Area');
-  const shownLetter = letter.trim().toUpperCase() || defaultLetter(name, otherLetters.map((a) => a.letter)) || '';
-  const letterTaken = otherLetters.find((a) => a.letter === shownLetter);
-  const letterBad = shownLetter !== '' && !isAreaLetter(shownLetter);
+  const shownLetter = letter.trim().toUpperCase() || defaultAreaCode(name, otherLetters.map((a) => a.code)) || '';
+  const letterTaken = otherLetters.find((a) => a.code === shownLetter);
+  const letterBad = shownLetter !== '' && !isAreaCode(shownLetter);
   const ok = check.ok && shownLetter !== '' && !letterTaken && !letterBad;
   const save = async (e: Event) => {
     e.preventDefault();
     if (!ok || busy) return;
     setBusy(true);
     try {
-      if (area) await updateArea(db, area.id, { name, letter: shownLetter, notes });
-      else await addArea(db, part, { name, letter: shownLetter, notes });
+      if (area) await updateArea(db, area.id, { name, code: shownLetter, notes });
+      else await addArea(db, part, { name, code: shownLetter, notes });
       showToast(area ? 'Saved.' : `Added ${name.trim()} (${shownLetter}).`);
       onClose();
     } catch (err) {
@@ -277,16 +277,16 @@ function AreaDialog({ part, area, areas, allAreas, onClose }: { part: Part; area
         </div>
         <div>
           <label class="lbl" for="ar-letter">
-            Letter <span class="lbl-opt">(starts its bin codes)</span>
+            Code <span class="lbl-opt">(starts its bin codes, e.g. ATTIC-04)</span>
           </label>
-          <input id="ar-letter" class={letterTaken || letterBad ? 'field bad mono' : 'field mono'} maxLength={1} value={letter} placeholder={shownLetter || 'A'} autoComplete="off" onInput={(e) => setLetter((e.currentTarget as HTMLInputElement).value)} />
+          <input id="ar-letter" class={letterTaken || letterBad ? 'field bad mono' : 'field mono'} maxLength={8} value={letter} placeholder={shownLetter || 'A'} autoComplete="off" onInput={(e) => setLetter((e.currentTarget as HTMLInputElement).value)} />
           {letterTaken && (
             <div class="err">
               {shownLetter} is already used by “{letterTaken.name}”{letterTaken.part !== part ? ` in ${PART_NAME[letterTaken.part]}` : ''}.
             </div>
           )}
-          {letterBad && <div class="err">One letter A–Z.</div>}
-          {area && nameKey(shownLetter) !== nameKey(area.letter) && <div class="small muted">Bins made here from now on get {shownLetter}-codes; existing bins keep their codes.</div>}
+          {letterBad && <div class="err">1 to 8 letters A–Z.</div>}
+          {area && nameKey(shownLetter) !== nameKey(area.code) && <div class="small muted">Bins made here from now on get {shownLetter}-codes; existing bins keep their codes.</div>}
         </div>
         <div>
           <label class="lbl" for="ar-notes">
@@ -347,7 +347,7 @@ function RemoveArea({ area, snap, onClose }: { area: Area; snap: InventorySnapsh
             <select class="field" aria-label="Move its spots to" value={to} onChange={(e) => setTo((e.currentTarget as HTMLSelectElement).value)}>
               {others.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.name} ({a.letter})
+                  {a.name} ({a.code})
                 </option>
               ))}
             </select>

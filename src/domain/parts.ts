@@ -2,7 +2,7 @@
 // one part's view of the data, moving an item or bin to the other part, and reading 0.1.2
 // (schema v2) data, which had no parts. Pure, so it is unit-tested.
 import { ID_PREFIX, newId } from './ids';
-import { DEFAULT_SEASONS } from './places';
+import { DEFAULT_SEASONS, defaultAreaCode, splitBinCode } from './places';
 import { defaultDates } from './seasons';
 import { nameKey, type Area, type Bin, type Category, type Item, type Part, type Season, type Spot, type Tag } from './types';
 
@@ -106,7 +106,8 @@ type V2<T, Added extends keyof T> = Omit<T, Added> & Partial<Pick<T, Added>>;
 /** Records as 0.1.2 stored or backed them up: no parts, no season dates, fewer item fields. */
 export interface V2Data {
   items: V2<Item, 'part' | 'displayId' | 'outDisplayId' | 'checkedAt'>[];
-  areas: V2<Area, 'part'>[];
+  /** 0.1.2 areas had a one-letter `letter` where 0.1.3 has `code`. */
+  areas: (Omit<Area, 'part' | 'code'> & { letter: string })[];
   spots: Spot[];
   bins: V2<Bin, 'part'>[];
   seasons: V2<Season, 'setupFrom' | 'takedownBy'>[];
@@ -126,11 +127,30 @@ export type FromV2<D> = Omit<D, keyof V2Data> & { items: Item[]; areas: Area[]; 
 export function fromV2<D extends V2Data>(d: D): FromV2<D> {
   const household: Part = 'household';
   const categories: Category[] = [...d.categories].sort((a, b) => a.order - b.order).map((c, order) => ({ ...c, part: household, order }));
+  // Letters become codes from the area names (Dan, 2026-11-03), in walk order: Attic's A → ATTIC.
+  const taken: string[] = [];
+  const codeOf = new Map<string, string>();
+  const areas: Area[] = [...d.areas]
+    .sort((a, b) => a.order - b.order)
+    .map(({ letter, ...a }) => {
+      const code = defaultAreaCode(a.name, taken) ?? letter;
+      taken.push(code);
+      codeOf.set(letter, code);
+      return { ...a, part: household, code };
+    });
+  // Bin codes follow (A-04 → ATTIC-04). A renamed bin's printed label no longer matches, so it
+  // counts as not printed yet.
+  const bins: Bin[] = d.bins.map(({ ...b }) => {
+    const p = splitBinCode(b.code);
+    const code = p && codeOf.get(p.area);
+    const moved = code ? { code: `${code}-${String(p!.number).padStart(2, '0')}`, labelPrintedAt: null, labelContents: null } : {};
+    return { ...b, ...moved, part: household, seasonId: '' };
+  });
   return {
     ...d,
-    areas: d.areas.map((a) => ({ ...a, part: household })),
+    areas: d.areas.map((a) => areas.find((x) => x.id === a.id)!),
     spots: [...d.spots],
-    bins: d.bins.map((b) => ({ ...b, part: household, seasonId: '' })),
+    bins,
     items: d.items.map((i) => ({ ...i, part: household, seasonId: '', displayId: '', outDisplayId: '', checkedAt: null })),
     seasons: d.seasons.map((s) => {
       const dates = defaultDates(s.name);

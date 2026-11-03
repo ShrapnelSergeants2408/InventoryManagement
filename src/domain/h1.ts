@@ -6,7 +6,7 @@ import { defaultDates } from './seasons';
 import { blankItem, nameKey, type Area, type Item, type Season, type Spot } from './types';
 
 /** The area H1 locations move into on upgrade or when an H1 backup is restored (Dan, 2026-11-02). */
-export const UNSORTED_AREA = { name: 'Unsorted', letter: 'U' } as const;
+export const UNSORTED_AREA = { name: 'Unsorted', code: 'UNSORTED' } as const;
 
 /** The fields an H1 item had. */
 export interface H1ItemFields {
@@ -32,7 +32,7 @@ export function convertH1(
     return v;
   };
   const sorted = [...locations].sort((a, b) => a.order - b.order);
-  const area: Area | null = sorted.length === 0 ? null : { id: id(ID_PREFIX.area), part: 'household', name: UNSORTED_AREA.name, letter: UNSORTED_AREA.letter, order: 0, notes: 'Moved here from the old location list. Move each spot to its real area.' };
+  const area: Area | null = sorted.length === 0 ? null : { id: id(ID_PREFIX.area), part: 'household', name: UNSORTED_AREA.name, code: UNSORTED_AREA.code, order: 0, notes: 'Moved here from the old location list. Move each spot to its real area.' };
   const spots: Spot[] = area ? sorted.map((l, order) => ({ id: id(ID_PREFIX.spot), areaId: area.id, name: l.name.trim(), order, notes: l.notes })) : [];
   const byKey = new Map(spots.map((s) => [nameKey(s.name), s.id]));
   const seasons: Season[] = DEFAULT_SEASONS.map((s, order) => ({ id: id(ID_PREFIX.season), name: s.name, color: s.color, order, ...defaultDates(s.name), setupNotes: '' }));

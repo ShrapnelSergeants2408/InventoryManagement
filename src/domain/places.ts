@@ -1,4 +1,4 @@
-// Areas, spots and bins (SPEC v2.0 §3, §4): bin codes, area letters, an item's path and season,
+// Areas, spots and bins (SPEC v3.0 §3, §4): area codes, bin codes, an item's path and season,
 // and a bin's contents summary. Pure, so it is unit-tested.
 import { BIN_CODE_PATTERN } from './validate';
 import { nameKey, type Area, type Bin, type Item, type Season, type Spot } from './types';
@@ -24,31 +24,46 @@ export function indexPlaces(p: Places): PlaceIndex {
   };
 }
 
-// ── Area letters ──
+// ── Area codes (Dan, 2026-11-03: names, not letters) ──
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
+/** Letters only, so a bin code's number can never run into it ("ATTIC4" is ATTIC-04). */
+export const AREA_CODE_MAX = 8;
+
+/** The name's words in capitals, accents dropped, letters only. */
+function nameWords(name: string): string[] {
+  return name
+    .normalize('NFD')
+    .toUpperCase()
+    .split(/[^A-Z]+/)
+    .filter(Boolean);
+}
+
 /**
- * A new area's letter (§3): the first letter of its name that's free, else the first free
- * letter A–Z. Null when all 26 are taken.
+ * A new area's code (§3): the first word of its name ("Storage room" → STORAGE, at most 8
+ * letters). Taken (codes are unique across both parts): the word with the other words' initials
+ * ("STORAGER"), then the first 7 letters and A–Z. Null when nothing is free.
  */
-export function defaultLetter(name: string, taken: readonly string[]): string | null {
+export function defaultAreaCode(name: string, taken: readonly string[]): string | null {
   const used = new Set(taken.map((t) => t.toUpperCase()));
-  const fromName = [...name.toUpperCase()].filter((c) => LETTERS.includes(c));
-  for (const c of [...fromName, ...LETTERS]) if (!used.has(c)) return c;
-  return null;
+  const words = nameWords(name);
+  const first = (words[0] ?? 'AREA').slice(0, AREA_CODE_MAX);
+  const initials = words.slice(1).map((w) => w[0]).join('');
+  const candidates = [first, (first.slice(0, AREA_CODE_MAX - initials.length) + initials).slice(0, AREA_CODE_MAX), ...[...LETTERS].map((l) => first.slice(0, AREA_CODE_MAX - 1) + l)];
+  return candidates.find((c) => c !== '' && !used.has(c)) ?? null;
 }
 
 // ── Bin codes ──
 
 /**
  * A typed bin code, tidied: capitals, spaces dropped, the dash added and the number padded to
- * two digits ("a4" → "A-04", "b 12" → "B-12"). Anything else comes back trimmed and upper-cased,
- * for validation to refuse.
+ * two digits ("attic4" → "ATTIC-04", "garage 12" → "GARAGE-12"). Anything else comes back trimmed
+ * and upper-cased, for validation to refuse.
  */
 export function tidyBinCode(raw: string): string {
   const s = raw.trim().toUpperCase().replace(/\s+/g, '');
-  const m = /^([A-Z])-?(\d+)$/.exec(s);
+  const m = /^([A-Z]+)-?(\d+)$/.exec(s);
   if (!m) return s;
   const n = String(Number(m[2]));
   return `${m[1]}-${n.padStart(2, '0')}`;
@@ -56,23 +71,29 @@ export function tidyBinCode(raw: string): string {
 
 export const binCodeKey = (code: string) => tidyBinCode(code);
 
+/** The area code and number of a bin code, or null. */
+export function splitBinCode(code: string): { area: string; number: number } | null {
+  if (!BIN_CODE_PATTERN.test(code)) return null;
+  const at = code.lastIndexOf('-');
+  return { area: code.slice(0, at), number: Number(code.slice(at + 1)) };
+}
+
 /** The number in a bin code, or null. */
 export function binNumber(code: string): number | null {
-  return BIN_CODE_PATTERN.test(code) ? Number(code.slice(2)) : null;
+  return splitBinCode(code)?.number ?? null;
 }
 
 /**
- * The next code for a new bin in an area (§3, D4): the area letter and one more than the
- * highest number used with that letter, so a deleted bin's code isn't handed out again.
+ * The next code for a new bin in an area (§3, D4): the area code and one more than the highest
+ * number used with that code, so a deleted bin's code isn't handed out again.
  */
-export function nextBinCode(letter: string, codes: readonly string[]): string {
+export function nextBinCode(areaCode: string, codes: readonly string[]): string {
   let max = 0;
   for (const c of codes) {
-    if (c.charAt(0) !== letter) continue;
-    const n = binNumber(c);
-    if (n !== null && n > max) max = n;
+    const p = splitBinCode(c);
+    if (p && p.area === areaCode && p.number > max) max = p.number;
   }
-  return `${letter}-${String(max + 1).padStart(2, '0')}`;
+  return `${areaCode}-${String(max + 1).padStart(2, '0')}`;
 }
 
 /** Codes compare ignoring capitals and padding ("a-4" is "A-04"). */

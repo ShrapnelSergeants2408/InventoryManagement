@@ -175,7 +175,7 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   if (format === 'v2') {
     // Season dates came with 0.1.3: the conversion gives each season its default dates.
     const seasons = out.seasons.map(({ setupFrom: _f, takedownBy: _t, ...rest }) => rest);
-    Object.assign(out, fromV2({ ...out, seasons }));
+    Object.assign(out, fromV2({ ...out, seasons, areas: out.areas.map(({ code, ...a }) => ({ ...a, letter: code })) }));
     warnings.push('This backup is from version 0.1.2: everything in it goes to Household, and its seasons to Holiday.');
   }
 

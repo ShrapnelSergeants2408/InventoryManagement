@@ -8,14 +8,14 @@ export const PARTS: readonly Part[] = ['household', 'holiday'];
 export const PART_NAME: Readonly<Record<Part, string>> = { household: 'Household', holiday: 'Holiday' };
 export const otherPart = (p: Part): Part => (p === 'household' ? 'holiday' : 'household');
 
-/** A room or zone (Attic, Garage…). Its letter starts the codes of bins made there. */
+/** A room or zone (Attic, Garage…). Its code starts the codes of bins made there (ATTIC-04). */
 export interface Area {
   id: string;
   part: Part;
   /** Unique within the part, ignoring capitals. */
   name: string;
-  /** One letter A–Z, unique across both parts (so every bin code is). */
-  letter: string;
+  /** 1–8 capital letters ("ATTIC"), unique across both parts, so every bin code is (Dan, 2026-11-03). */
+  code: string;
   /** Walk order, 0-based. */
   order: number;
   notes: string;
@@ -36,7 +36,7 @@ export type BinState = 'stored' | 'out';
 /** A labelled container. */
 export interface Bin {
   id: string;
-  /** "A-04": area letter + number, unique across both parts. Kept when the bin moves. */
+  /** "ATTIC-04": area code + number, unique across both parts. Kept when the bin moves. */
   code: string;
   name: string;
   /** Always stored; must match its spot's area's part when it has a spot. */

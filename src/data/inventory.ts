@@ -12,7 +12,7 @@ const byPartOrder = <T extends { part: string; order: number }>(a: T, b: T) => (
 
 /** Both parts' records; a screen takes its part's with `partView`. Lists are in order within each part. */
 export async function loadSnapshot(db: InventoryDb): Promise<InventorySnapshot> {
-  return db.transaction('r', [db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.categoryList], async () => ({
+  return db.transaction('r', [db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.categoryList, db.displays, db.seasonTasks, db.seasonRuns], async () => ({
     items: (await db.items.toArray()).map(fromItemRow),
     areas: (await db.areas.toArray()).sort(byPartOrder),
     spots: (await db.spots.toArray()).sort(byOrder),
@@ -20,6 +20,9 @@ export async function loadSnapshot(db: InventoryDb): Promise<InventorySnapshot> 
     seasons: (await db.seasons.toArray()).sort(byOrder),
     tags: (await db.tagList.toArray()).sort(byPartOrder).map(fromTagRow),
     categories: (await db.categoryList.toArray()).sort(byPartOrder),
+    displays: (await db.displays.toArray()).sort(byOrder),
+    seasonTasks: (await db.seasonTasks.toArray()).sort(byOrder),
+    seasonRuns: await db.seasonRuns.toArray(),
   }));
 }
 
@@ -47,7 +50,7 @@ export interface ReplaceAllInput extends HouseholdData {
 export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = Date.now()): Promise<number> {
   const problems = checkData(input);
   if (problems.length > 0) throw new Error(problems.slice(0, 5).join('; ') + (problems.length > 5 ? `; and ${problems.length - 5} more` : ''));
-  const tables = [db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.pictures, db.categoryList, db.settings];
+  const tables = [db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.pictures, db.categoryList, db.displays, db.seasonTasks, db.seasonRuns, db.settings];
   return db.transaction('rw', tables, async () => {
     const keep = new Set(input.missingImages ?? []);
     const kept = new Map((await db.pictures.bulkGet([...keep])).flatMap((r) => (r ? [[r.id, r] as const] : [])));
@@ -61,13 +64,16 @@ export async function replaceAll(db: InventoryDb, input: ReplaceAllInput, now = 
       }
     }
     const withPhoto = new Set(rows.filter((r) => r.ownerType === 'item').map((r) => r.ownerId));
-    await Promise.all([db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.pictures, db.categoryList].map((t) => t.clear()));
+    await Promise.all([db.items, db.areas, db.spots, db.bins, db.seasons, db.tagList, db.pictures, db.categoryList, db.displays, db.seasonTasks, db.seasonRuns].map((t) => t.clear()));
     await db.areas.bulkAdd(input.areas);
     await db.spots.bulkAdd(input.spots);
     await db.bins.bulkAdd(input.bins);
     await db.seasons.bulkAdd(input.seasons);
     await db.tagList.bulkAdd(input.tags.map(toTagRow));
     await db.categoryList.bulkAdd(input.categories);
+    await db.displays.bulkAdd(input.displays);
+    await db.seasonTasks.bulkAdd(input.seasonTasks);
+    await db.seasonRuns.bulkAdd(input.seasonRuns);
     await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: withPhoto.has(i.id) }, now)));
     await db.pictures.bulkAdd(rows);
     await db.settings.put({ key: 'lastChangeAt', value: now });

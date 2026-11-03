@@ -1,6 +1,6 @@
 // Season dates (SPEC v3.0 §3 Season, §4 "Seasons on now", F23): each season's window runs from
 // setupFrom to takedownBy every year ("MM-DD"), wrapping over New Year. Pure, so it is unit-tested.
-import type { Season } from './types';
+import type { Season, SeasonRun } from './types';
 
 /** Default windows (§3), by default season name. Dan adjusts them in More › Seasons. */
 export const DEFAULT_SEASON_DATES: Readonly<Record<string, { setupFrom: string; takedownBy: string }>> = {
@@ -94,8 +94,10 @@ export interface SeasonNow {
   window: Window;
   /** Setup starts today. */
   startsToday: boolean;
-  /** Days until takedownBy (0 = today). */
+  /** Days until takedownBy (0 = today; negative once a run outlasts its window). */
   daysLeft: number;
+  /** This year's run when it's underway (setting up, up, taking down), else null. */
+  run: SeasonRun | null;
 }
 
 export interface SeasonCalendar {
@@ -107,19 +109,30 @@ export interface SeasonCalendar {
   comingUp: { season: Season; window: Window }[];
 }
 
+const UNDERWAY = new Set<SeasonRun['phase']>(['setting up', 'up', 'taking down']);
+/** A setup or takedown in progress needs action first; a season that's simply up waits for its date. */
+const BUSY = new Set<SeasonRun['phase']>(['setting up', 'taking down']);
+
 /**
- * The Holiday home (§4, F23): every season whose window contains today, led by the one needing
- * action soonest: a setup starting today first, then the nearest takedown date. Season runs
- * (setup underway, H4) will move a season into the lead the same way.
+ * The Holiday home (§4, F23): every season whose window contains today, or whose run is underway
+ * (H4: a setup started early, or a takedown running late). Led by the one needing action soonest:
+ * a setup or takedown in progress, or a setup starting today, then the nearest takedown date.
  */
-export function seasonCalendar(seasons: readonly Season[], today: Date, comingUp = 3): SeasonCalendar {
+export function seasonCalendar(seasons: readonly Season[], today: Date, comingUp = 3, runs: readonly SeasonRun[] = []): SeasonCalendar {
   const on: SeasonNow[] = [];
   for (const season of seasons) {
-    const window = windowNow(season, today);
-    if (!window) continue;
-    on.push({ season, window, startsToday: daysBetween(window.start, today) === 0, daysLeft: daysBetween(today, window.end) });
+    const run = runs.filter((r) => r.seasonId === season.id && UNDERWAY.has(r.phase)).sort((a, b) => b.year - a.year)[0] ?? null;
+    const dates = run ? { setupFrom: run.setupFrom || season.setupFrom, takedownBy: run.takedownBy || season.takedownBy } : season;
+    const window = run ? windowStarting(dates, run.year) : windowNow(season, today);
+    if (window) on.push({ season, window, startsToday: daysBetween(window.start, today) === 0, daysLeft: daysBetween(today, window.end), run });
+    else if (run) {
+      // A season without dates whose setup was started anyway: on until it's taken down.
+      const t = midnight(today);
+      on.push({ season, window: { start: t, end: t }, startsToday: false, daysLeft: 0, run });
+    }
   }
-  on.sort((a, b) => Number(b.startsToday) - Number(a.startsToday) || a.daysLeft - b.daysLeft || a.season.order - b.season.order);
+  const urgent = (n: SeasonNow) => n.startsToday || (n.run !== null && BUSY.has(n.run.phase));
+  on.sort((a, b) => Number(urgent(b)) - Number(urgent(a)) || a.daysLeft - b.daysLeft || a.season.order - b.season.order);
   const onIds = new Set(on.map((n) => n.season.id));
   const next = seasons
     .filter((s) => !onIds.has(s.id))

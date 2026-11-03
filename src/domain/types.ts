@@ -125,6 +125,49 @@ export interface Season {
   setupNotes: string;
 }
 
+/** A place in or around the house where Holiday decorations are put out (F22). Not storage. */
+export interface Display {
+  id: string;
+  /** Unique, ignoring capitals. */
+  name: string;
+  /** Setup walk order, 0-based. */
+  order: number;
+  notes: string;
+}
+
+export type TaskPhase = 'setup' | 'takedown';
+export const TASK_PHASES: readonly TaskPhase[] = ['setup', 'takedown'];
+
+/** A line on a season's setup or takedown list that isn't a bin or an item (§3). */
+export interface SeasonTask {
+  id: string;
+  seasonId: string;
+  phase: TaskPhase;
+  text: string;
+  /** Position in its season's list for the phase, 0-based. */
+  order: number;
+}
+
+export type RunPhase = 'planned' | 'setting up' | 'up' | 'taking down' | 'done';
+export const RUN_PHASES: readonly RunPhase[] = ['planned', 'setting up', 'up', 'taking down', 'done'];
+
+/** One year's setup-to-takedown cycle of a season (§3): the progress not already in item and bin status. */
+export interface SeasonRun {
+  id: string;
+  seasonId: string;
+  /** The year the setup starts. One run per season per year. */
+  year: number;
+  /** This year's dates ("MM-DD"), or '' to use the season's. */
+  setupFrom: string;
+  takedownBy: string;
+  phase: RunPhase;
+  /** Season tasks ticked this run. */
+  doneTaskIds: string[];
+  /** ms since epoch, or null. */
+  startedAt: number | null;
+  finishedAt: number | null;
+}
+
 export interface Category {
   part: Part;
   name: string;
@@ -139,7 +182,8 @@ export interface Tag {
   order: number;
 }
 
-export type PhotoOwner = 'item' | 'bin' | 'spot' | 'season';
+export type PhotoOwner = 'item' | 'bin' | 'spot' | 'season' | 'display';
+export const PHOTO_OWNERS: readonly PhotoOwner[] = ['item', 'bin', 'spot', 'season', 'display'];
 export type PhotoKind = 'photo' | 'setup';
 
 /** A photo's record (§3); the image itself is stored beside it. */
@@ -148,6 +192,8 @@ export interface PhotoInfo {
   ownerType: PhotoOwner;
   ownerId: string;
   kind: PhotoKind;
+  /** A display's setup photo: the season it shows (F8). Absent or '' for none (photos before 0.1.4 have none). */
+  seasonId?: string;
   caption: string;
   /** Position in the owner's carousel; the first is the thumbnail. */
   order: number;

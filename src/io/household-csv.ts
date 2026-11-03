@@ -1,10 +1,10 @@
-// The record files of a full backup (SPEC v3.0 §7): areas, spots, bins, items, seasons, tags
-// and files (photo records). Columns are matched by header name; tags are separated by ";",
+// The record files of a full backup (SPEC v3.0 §7): areas, spots, bins, items, seasons, tags,
+// displays, season tasks and runs (0.1.4 on), and files (photo records). Columns are matched by header name; tags are separated by ";",
 // money is dollars with 2 decimals, dates and times are ISO, season dates MM-DD. A 0.1.2 backup
 // has no `part` columns; the reader reports that (`hasPart`) so the bundle can convert it.
 import { centsToPlain, parsePrice } from '../domain/money';
 import { isMonthDay } from '../domain/seasons';
-import { BIN_STATES, CONDITIONS, ITEM_STATUSES, PARTS, SEASON_COLORS, type Area, type Bin, type Item, type Part, type PhotoInfo, type Season, type Spot, type Tag } from '../domain/types';
+import { BIN_STATES, CONDITIONS, ITEM_STATUSES, PARTS, PHOTO_OWNERS, RUN_PHASES, SEASON_COLORS, TASK_PHASES, type Area, type Bin, type Display, type Item, type Part, type PhotoInfo, type Season, type SeasonRun, type SeasonTask, type Spot, type Tag } from '../domain/types';
 import { isIsoDate, parseWholeNumber } from '../domain/validate';
 import { cellGetter, readCsv, writeCsv, type CsvTable, type FileProblem } from './csv';
 
@@ -15,6 +15,9 @@ export const ITEMS_FILE = 'items.csv';
 export const SEASONS_FILE = 'seasons.csv';
 export const TAGS_FILE = 'tags.csv';
 export const FILES_FILE = 'files.csv';
+export const DISPLAYS_FILE = 'displays.csv';
+export const TASKS_FILE = 'season_tasks.csv';
+export const RUNS_FILE = 'season_runs.csv';
 
 export const AREA_COLUMNS = ['id', 'part', 'name', 'code', 'order', 'notes'] as const;
 /** 0.1.2 wrote the area's letter; read into `code` (one letter) for the conversion. */
@@ -27,7 +30,10 @@ export const ITEM_COLUMNS = [
 ] as const;
 export const SEASON_COLUMNS = ['id', 'name', 'order', 'color', 'setup_from', 'takedown_by', 'setup_notes'] as const;
 export const TAG_COLUMNS = ['part', 'name', 'order'] as const;
-export const FILE_COLUMNS = ['id', 'owner_type', 'owner_id', 'kind', 'caption', 'order', 'path'] as const;
+export const FILE_COLUMNS = ['id', 'owner_type', 'owner_id', 'kind', 'season_id', 'caption', 'order', 'path'] as const;
+export const DISPLAY_COLUMNS = ['id', 'name', 'order', 'notes'] as const;
+export const TASK_COLUMNS = ['id', 'season_id', 'phase', 'text', 'order'] as const;
+export const RUN_COLUMNS = ['id', 'season_id', 'year', 'setup_from', 'takedown_by', 'phase', 'done_task_ids', 'started_at', 'finished_at'] as const;
 
 // ── Writing ──
 
@@ -102,7 +108,22 @@ export function photoPathFor(id: string, type = 'image/jpeg'): string {
 }
 
 export const serializeFiles = (list: readonly PhotoInfo[], path: (p: PhotoInfo) => string) =>
-  writeCsv(FILE_COLUMNS, list.map((p) => [p.id, p.ownerType, p.ownerId, p.kind, p.caption, String(p.order), path(p)]));
+  writeCsv(FILE_COLUMNS, list.map((p) => [p.id, p.ownerType, p.ownerId, p.kind, p.seasonId ?? '', p.caption, String(p.order), path(p)]));
+
+export const serializeDisplays = (list: readonly Display[]) => writeCsv(DISPLAY_COLUMNS, sortByOrder(list).map((d, i) => [d.id, d.name, String(i), d.notes]));
+
+/** Tasks by season, then phase (setup first), then position; `order` is the position within its season and phase. */
+export const serializeTasks = (list: readonly SeasonTask[]) =>
+  writeCsv(
+    TASK_COLUMNS,
+    [...list].sort((a, b) => a.seasonId.localeCompare(b.seasonId) || TASK_PHASES.indexOf(a.phase) - TASK_PHASES.indexOf(b.phase) || a.order - b.order).map((t) => [t.id, t.seasonId, t.phase, t.text, String(t.order)]),
+  );
+
+export const serializeRuns = (list: readonly SeasonRun[]) =>
+  writeCsv(
+    RUN_COLUMNS,
+    [...list].sort((a, b) => a.seasonId.localeCompare(b.seasonId) || a.year - b.year).map((r) => [r.id, r.seasonId, String(r.year), r.setupFrom, r.takedownBy, r.phase, r.doneTaskIds.join('; '), timeCell(r.startedAt), timeCell(r.finishedAt)]),
+  );
 
 // ── Reading ──
 
@@ -192,6 +213,10 @@ class Row {
     const v = this.text(col);
     if (v !== '' && !isMonthDay(v)) this.errors.push(`${label} "${v}" must be a month and day (MM-DD)`);
     return v;
+  }
+  /** A `;`-separated list of ids, duplicates dropped. */
+  ids(col: string): string[] {
+    return [...new Set(this.text(col).split(';').map((x) => x.trim()).filter((x) => x !== ''))];
   }
   tags(col: string): string[] {
     const out: string[] = [];
@@ -342,13 +367,53 @@ export interface FileRow extends PhotoInfo {
 }
 
 export function parseFiles(text: string): Parsed<FileRow> {
-  return readTable(text, FILES_FILE, FILE_COLUMNS, ['id', 'owner_type', 'owner_id', 'path'], (r) => ({
+  return readTable(text, FILES_FILE, FILE_COLUMNS, ['id', 'owner_type', 'owner_id', 'path'], (r) => {
+    const row: FileRow = {
+      id: r.required('id', 'id'),
+      ownerType: r.oneOf('owner_type', PHOTO_OWNERS, 'item'),
+      ownerId: r.required('owner_id', 'owner_id'),
+      kind: r.oneOf('kind', ['photo', 'setup'] as const, 'photo'),
+      caption: r.long('caption'),
+      order: r.whole('order', 'order', 0)!,
+      path: r.required('path', 'path'),
+    };
+    const seasonId = r.text('season_id');
+    if (seasonId) row.seasonId = seasonId;
+    return row;
+  });
+}
+
+export function parseDisplays(text: string): Parsed<Display> {
+  const p = readTable(text, DISPLAYS_FILE, DISPLAY_COLUMNS, ['id', 'name'], (r) => ({
     id: r.required('id', 'id'),
-    ownerType: r.oneOf('owner_type', ['item', 'bin', 'spot', 'season'] as const, 'item'),
-    ownerId: r.required('owner_id', 'owner_id'),
-    kind: r.oneOf('kind', ['photo', 'setup'] as const, 'photo'),
-    caption: r.long('caption'),
-    order: r.whole('order', 'order', 0)!,
-    path: r.required('path', 'path'),
+    name: r.required('name', 'display name'),
+    order: r.whole('order', 'order', BLANK_ORDER)!,
+    notes: r.long('notes'),
+  }));
+  return { ...p, list: byOrderThenFile(p.list).map((d, order) => ({ ...d, order })) };
+}
+
+export function parseTasks(text: string): Parsed<SeasonTask> {
+  const p = readTable(text, TASKS_FILE, TASK_COLUMNS, ['id', 'season_id', 'phase', 'text'], (r) => ({
+    id: r.required('id', 'id'),
+    seasonId: r.required('season_id', 'season_id'),
+    phase: r.text('phase') === '' ? (r.errors.push('phase is required (setup or takedown)'), 'setup' as const) : r.oneOf('phase', TASK_PHASES, 'setup'),
+    text: r.required('text', 'task text'),
+    order: r.whole('order', 'order', BLANK_ORDER)!,
+  }));
+  return { ...p, list: renumberWithin(p.list, (t) => `${t.seasonId}\n${t.phase}`) };
+}
+
+export function parseRuns(text: string): Parsed<SeasonRun> {
+  return readTable(text, RUNS_FILE, RUN_COLUMNS, ['id', 'season_id', 'year', 'phase'], (r) => ({
+    id: r.required('id', 'id'),
+    seasonId: r.required('season_id', 'season_id'),
+    year: r.text('year') === '' ? (r.errors.push('year is required'), 0) : r.whole('year', 'year', 0)!,
+    setupFrom: r.monthDay('setup_from', 'setup from'),
+    takedownBy: r.monthDay('takedown_by', 'takedown by'),
+    phase: r.text('phase') === '' ? (r.errors.push('phase is required'), 'planned' as const) : r.oneOf('phase', RUN_PHASES, 'planned'),
+    doneTaskIds: r.ids('done_task_ids'),
+    startedAt: r.time('started_at', 'started at'),
+    finishedAt: r.time('finished_at', 'finished at'),
   }));
 }

@@ -166,6 +166,6 @@ describe('the other record files', () => {
   it('files.csv: owner type and kind are checked; the path is required', () => {
     const r = parseFiles('id,owner_type,owner_id,kind,caption,order,path\r\nph-1,bin,bn-1,photo,Inside,0,photos/ph-1.jpg\r\nph-2,shed,x,photo,,0,\r\n');
     expect(r.list).toEqual([{ id: 'ph-1', ownerType: 'bin', ownerId: 'bn-1', kind: 'photo', caption: 'Inside', order: 0, path: 'photos/ph-1.jpg' }]);
-    expect(r.problems.map((p) => p.message)).toEqual(['owner_type "shed" must be one of: item, bin, spot, season', 'path is required']);
+    expect(r.problems.map((p) => p.message)).toEqual(['owner_type "shed" must be one of: item, bin, spot, season, display', 'path is required']);
   });
 });

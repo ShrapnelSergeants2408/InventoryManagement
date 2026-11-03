@@ -16,11 +16,11 @@ export function newId(prefix: string, isTaken: (id: string) => boolean, random: 
 
 export const newItemId = (isTaken: (id: string) => boolean, random?: () => number) => newId(ITEM_PREFIX, isTaken, random);
 
-export const ID_PREFIX = { item: 'it-', area: 'ar-', spot: 'sp-', bin: 'bn-', season: 'se-', photo: 'ph-' } as const;
+export const ID_PREFIX = { item: 'it-', area: 'ar-', spot: 'sp-', bin: 'bn-', season: 'se-', photo: 'ph-', display: 'dp-', task: 'tk-', run: 'sr-' } as const;
 export type RecordKind = keyof typeof ID_PREFIX;
 
 /** Any record id this app makes (§3): a known prefix + 8 id characters. */
-export const RECORD_ID_PATTERN = /^(it|ar|sp|bn|se|ph)-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/;
+export const RECORD_ID_PATTERN = /^(it|ar|sp|bn|se|ph|dp|tk|sr)-[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/;
 
 /** The record kind an id names, by its prefix; null for anything else. */
 export function kindOfId(id: string): RecordKind | null {

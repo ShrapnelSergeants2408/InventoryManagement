@@ -1,12 +1,13 @@
 // IndexedDB schema (SPEC v3.0 §2, §3). Database `home-inventory`: v1 was H1's flat locations,
 // v2 (H2a) is Area › Spot › Bin › Item with seasons, tags and several photos per record, v3 (H3)
-// splits everything into the Household and Holiday parts.
+// splits everything into the Household and Holiday parts, v4 gives areas codes from their names,
+// v5 (H4) adds the Holiday setup: displays, season tasks and season runs.
 // Never edit a version once a phone has data in it (HANDOFF §5); add the next one.
 import Dexie, { type Table, type Transaction } from 'dexie';
 import { convertH1, itemFromH1 } from '../domain/h1';
 import { ID_PREFIX, newId } from '../domain/ids';
 import { fromV2, lettersToCodes, type V2Data } from '../domain/parts';
-import { nameKey, type Area, type Bin, type Category, type Item, type Part, type PhotoInfo, type Season, type Spot, type Tag } from '../domain/types';
+import { nameKey, type Area, type Bin, type Category, type Display, type Item, type Part, type PhotoInfo, type Season, type SeasonRun, type SeasonTask, type Spot, type Tag } from '../domain/types';
 
 export { UNSORTED_AREA } from '../domain/h1';
 
@@ -21,6 +22,9 @@ export type SpotRow = Spot;
 export type BinRow = Bin;
 export type SeasonRow = Season;
 export type CategoryRow = Category;
+export type DisplayRow = Display;
+export type SeasonTaskRow = SeasonTask;
+export type SeasonRunRow = SeasonRun;
 
 /** A Tags list entry, keyed by part and name ignoring capitals. */
 export interface TagRow extends Tag {
@@ -46,7 +50,7 @@ export interface SettingRow {
 export const DB_NAME = 'home-inventory';
 
 /** The schema this code was built for. Stored as a setting so an older copy can tell. */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 export const SCHEMA_KEY = 'schemaVersion';
 
 export class InventoryDb extends Dexie {
@@ -61,6 +65,9 @@ export class InventoryDb extends Dexie {
   /** Both parts' Categories lists (v3; v2's `categories` was keyed by name alone, and "Other" is in both parts). */
   categoryList!: Table<CategoryRow, [Part, string]>;
   settings!: Table<SettingRow, string>;
+  displays!: Table<DisplayRow, string>;
+  seasonTasks!: Table<SeasonTaskRow, string>;
+  seasonRuns!: Table<SeasonRunRow, string>;
 
   constructor(name = DB_NAME) {
     super(name);
@@ -102,6 +109,12 @@ export class InventoryDb extends Dexie {
     // they become codes from their names, and their bins are renamed (A-04 → ATTIC-04). A phone
     // coming from v2 already has codes (the v3 upgrade above makes them), so this changes nothing.
     this.version(4).stores({}).upgrade(upgradeLettersToCodes);
+    // H4 (0.1.4). New, empty tables; nothing stored changes. Photos may now carry a seasonId.
+    this.version(5).stores({
+      displays: 'id, order',
+      seasonTasks: 'id, seasonId',
+      seasonRuns: 'id, seasonId',
+    });
   }
 }
 

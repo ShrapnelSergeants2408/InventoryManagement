@@ -1,4 +1,5 @@
-// Reads a full backup ZIP into one in-memory bundle (SPEC v3.0 §7): the §7 files, or a 0.1.2
+// Reads a full backup ZIP into one in-memory bundle (SPEC v3.0 §7): the §7 files (a 0.1.3 backup
+// has no displays, season tasks or runs: they come back empty), or a 0.1.2
 // backup (no parts) converted the way the phone's upgrade converts its data (§3, "Upgrading").
 // 0.1.1 (H1) backups are no longer read. Nothing here touches the database; restore applies a
 // bundle later.
@@ -10,18 +11,24 @@ import { decodeCsvBytes, type FileProblem } from './csv';
 import {
   AREAS_FILE,
   BINS_FILE,
+  DISPLAYS_FILE,
   FILES_FILE,
   ITEMS_FILE,
+  RUNS_FILE,
   SEASONS_FILE,
   SPOTS_FILE,
   TAGS_FILE,
+  TASKS_FILE,
   parseAreas,
   parseBins,
+  parseDisplays,
   parseFiles,
   parseItems,
+  parseRuns,
   parseSeasons,
   parseSpots,
   parseTags,
+  parseTasks,
   type Parsed,
 } from './household-csv';
 import { CATEGORIES_FILE, parseCategoriesCsv } from './lists-csv';
@@ -39,6 +46,8 @@ export interface Manifest {
   spotCount?: number;
   binCount?: number;
   seasonCount?: number;
+  /** From 0.1.4. */
+  displayCount?: number;
   /** Records per part (§7, from 0.1.3). */
   parts?: Record<string, { items: number; areas: number; bins: number }>;
 }
@@ -154,6 +163,9 @@ export async function readBackupZip(data: ArrayBuffer | Uint8Array | Blob, onPho
   const bins = await read(BINS_FILE, parseBins);
   out.bins = bins.list;
   out.seasons = (await read(SEASONS_FILE, parseSeasons)).list;
+  out.displays = (await read(DISPLAYS_FILE, parseDisplays)).list;
+  out.seasonTasks = (await read(TASKS_FILE, parseTasks)).list;
+  out.seasonRuns = (await read(RUNS_FILE, parseRuns)).list;
   const tagsText = await text(TAGS_FILE);
   hasTags = tagsText !== null;
   out.tags = tagsText === null ? [] : take(parseTags(tagsText), TAGS_FILE);

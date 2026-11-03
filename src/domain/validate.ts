@@ -1,6 +1,6 @@
 // Field rules shared by the editors and every importer (SPEC v3.0 §3).
 import { isMonthDay } from './seasons';
-import { BIN_STATES, CONDITIONS, ITEM_STATUSES, PARTS, SEASON_COLORS, type Area, type Bin, type Item, type Part, type Season, type Spot } from './types';
+import { BIN_STATES, CONDITIONS, ITEM_STATUSES, PARTS, RUN_PHASES, SEASON_COLORS, TASK_PHASES, type Area, type Bin, type Display, type Item, type Part, type Season, type SeasonRun, type SeasonTask, type Spot } from './types';
 
 export const isPart = (p: unknown): p is Part => PARTS.includes(p as Part);
 const partError = (p: unknown): FieldError => ({ field: 'part', message: `part "${String(p)}" must be household or holiday` });
@@ -129,5 +129,37 @@ export function validateSeason(s: Season): FieldError[] {
     if (s[field] !== '' && !isMonthDay(s[field])) errors.push({ field, message: `${label} "${s[field]}" must be a month and day (MM-DD)` });
   }
   if ((s.setupFrom === '') !== (s.takedownBy === '')) errors.push({ field: 'takedownBy', message: 'a season needs both dates, or neither' });
+  return errors;
+}
+
+export function validateDisplay(d: Display): FieldError[] {
+  const errors: FieldError[] = [];
+  if (d.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
+  if (d.name.trim() === '') errors.push({ field: 'name', message: 'display name is required' });
+  return errors;
+}
+
+export function validateSeasonTask(t: SeasonTask): FieldError[] {
+  const errors: FieldError[] = [];
+  if (t.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
+  if (t.seasonId.trim() === '') errors.push({ field: 'seasonId', message: 'a season task needs a season' });
+  if (!TASK_PHASES.includes(t.phase)) errors.push({ field: 'phase', message: `task phase "${t.phase}" must be setup or takedown` });
+  if (t.text.trim() === '') errors.push({ field: 'text', message: 'task text is required' });
+  return errors;
+}
+
+export function validateSeasonRun(r: SeasonRun): FieldError[] {
+  const errors: FieldError[] = [];
+  if (r.id.trim() === '') errors.push({ field: 'id', message: 'id is required' });
+  if (r.seasonId.trim() === '') errors.push({ field: 'seasonId', message: 'a season run needs a season' });
+  if (!(Number.isSafeInteger(r.year) && r.year >= 2000 && r.year <= 2999)) errors.push({ field: 'year', message: `year "${r.year}" must be a year such as 2026` });
+  if (!RUN_PHASES.includes(r.phase)) errors.push({ field: 'phase', message: `run phase "${r.phase}" must be one of: ${RUN_PHASES.join(', ')}` });
+  for (const [field, label] of [['setupFrom', 'setup from'], ['takedownBy', 'takedown by']] as const) {
+    if (r[field] !== '' && !isMonthDay(r[field])) errors.push({ field, message: `${label} "${r[field]}" must be a month and day (MM-DD)` });
+  }
+  if ((r.setupFrom === '') !== (r.takedownBy === '')) errors.push({ field: 'takedownBy', message: 'a run gives both dates, or neither' });
+  for (const [field, label] of [['startedAt', 'started at'], ['finishedAt', 'finished at']] as const) {
+    if (r[field] !== null && !Number.isSafeInteger(r[field])) errors.push({ field, message: `${label} must be a time` });
+  }
   return errors;
 }

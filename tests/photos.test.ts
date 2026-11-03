@@ -153,7 +153,7 @@ describe('photos follow their records', () => {
     const [p] = await photosOf(db, 'a');
     const zip = await JSZip.loadAsync(await (await buildBackup(db, 'full', new Date(2026, 10, 2))).arrayBuffer());
     expect([...(await zip.file(`photos/${p!.id}.jpg`)!.async('uint8array'))]).toEqual([1, 2, 3]);
-    expect(await zip.file('files.csv')!.async('string')).toContain(`${p!.id},item,a,photo,,0,photos/${p!.id}.jpg`);
+    expect(await zip.file('files.csv')!.async('string')).toContain(`${p!.id},item,a,photo,,,0,photos/${p!.id}.jpg`);
   });
 });
 

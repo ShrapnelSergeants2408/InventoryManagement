@@ -32,8 +32,9 @@ const zipBytes = (z: JSZip) => z.generateAsync({ type: 'uint8array' });
 const TRICKY = 'Goes on the "big" mantel, left side.\nLine two, with a comma\r\nLine three: 6 × ¾″ hooks — ünïcödé 🎄';
 
 /**
- * Both parts using every field: areas, spots, bins, seasons, tags, records, photos on four kinds
- * of owner. Holiday: the Attic, Christmas and Halloween. Household: the Garage, the drill, a tote.
+ * Both parts using every field: areas, spots, bins, seasons, tags, records, photos on five kinds
+ * of owner. Holiday: the Attic, Christmas and Halloween, two displays, setup tasks and a run.
+ * Household: the Garage, the drill, a tote.
  */
 function phoneData(): ReplaceAllInput {
   const areas = [
@@ -64,6 +65,20 @@ function phoneData(): ReplaceAllInput {
     { id: 'ph-BIN00001', ownerType: 'bin' as const, ownerId: 'bn-XMAS0004', kind: 'photo' as const, caption: 'Inside', order: 0 },
     { id: 'ph-PEG00001', ownerType: 'spot' as const, ownerId: 'sp-PEGBRD01', kind: 'photo' as const, caption: '', order: 0 },
     { id: 'ph-SETUP001', ownerType: 'season' as const, ownerId: 'se-HALLOW01', kind: 'setup' as const, caption: 'Porch', order: 0 },
+    { id: 'ph-MANTEL01', ownerType: 'display' as const, ownerId: 'dp-MANTEL01', kind: 'setup' as const, seasonId: 'se-XMAS0001', caption: 'Garland left to right; stockings in age order', order: 0 },
+  ];
+  const displays = [
+    { id: 'dp-PORCH001', name: 'Front porch', order: 1, notes: '' },
+    { id: 'dp-MANTEL01', name: 'Mantel', order: 0, notes: TRICKY },
+  ];
+  const seasonTasks = [
+    { id: 'tk-LADDER01', seasonId: 'se-XMAS0001', phase: 'setup' as const, text: 'Get the ladder from the garage', order: 1 },
+    { id: 'tk-TEST0001', seasonId: 'se-XMAS0001', phase: 'setup' as const, text: 'Test light strands; replace "dead" ones', order: 0 },
+    { id: 'tk-WATER001', seasonId: 'se-XMAS0001', phase: 'takedown' as const, text: 'Recycle the tree', order: 0 },
+  ];
+  const seasonRuns = [
+    { id: 'sr-XMAS2026', seasonId: 'se-XMAS0001', year: 2026, setupFrom: '11-28', takedownBy: '01-04', phase: 'setting up' as const, doneTaskIds: ['tk-TEST0001'], startedAt: Date.UTC(2026, 10, 28, 15, 12), finishedAt: null },
+    { id: 'sr-HALL2026', seasonId: 'se-HALLOW01', year: 2026, setupFrom: '', takedownBy: '', phase: 'done' as const, doneTaskIds: [], startedAt: Date.UTC(2026, 9, 1), finishedAt: Date.UTC(2026, 10, 2) },
   ];
   const images = new Map<string, Blob>([
     ['ph-SNOW0001', jpeg(0xff, 0xd8, 0xff, 0x00, 0x01, 0x02, 0x0a, 0x0d, 0xff, 0xd9)],
@@ -72,6 +87,7 @@ function phoneData(): ReplaceAllInput {
     ['ph-BIN00001', jpeg(0xff, 0xd8, 4)],
     ['ph-PEG00001', jpeg(0xff, 0xd8, 5)],
     ['ph-SETUP001', jpeg(0xff, 0xd8, 6)],
+    ['ph-MANTEL01', jpeg(0xff, 0xd8, 7)],
   ]);
   const categories = [
     { part: 'holiday' as const, name: 'Lights', order: 0, subcategories: [] },
@@ -83,7 +99,7 @@ function phoneData(): ReplaceAllInput {
     { part: 'holiday' as const, name: 'Other', order: 3, subcategories: [] },
   ];
   const tags = [...(['Fragile', 'Outdoor', 'Heavy', 'Unused tag'] as const).map((name, order) => ({ part: 'holiday' as const, name, order })), { part: 'household' as const, name: 'Fragile', order: 0 }];
-  return { items, areas, spots, bins, seasons, tags, categories, photos, images };
+  return { items, areas, spots, bins, seasons, tags, categories, displays, seasonTasks, seasonRuns, photos, images };
 }
 
 async function planFor(db: InventoryDb, file: { name: string; bytes: Uint8Array }): Promise<RestorePlan> {
@@ -97,10 +113,10 @@ async function everything(db: InventoryDb) {
   const s = await loadSnapshot(db);
   const pics = await db.pictures.toArray();
   const photos = await Promise.all(
-    pics.sort((a, b) => a.id.localeCompare(b.id)).map(async (p) => ({ id: p.id, ownerType: p.ownerType, ownerId: p.ownerId, kind: p.kind, caption: p.caption, order: p.order, type: p.full.type, bytes: await blobBytes(p.full) })),
+    pics.sort((a, b) => a.id.localeCompare(b.id)).map(async (p) => ({ id: p.id, ownerType: p.ownerType, ownerId: p.ownerId, kind: p.kind, seasonId: p.seasonId ?? '', caption: p.caption, order: p.order, type: p.full.type, bytes: await blobBytes(p.full) })),
   );
   const byId = <T extends { id: string }>(l: T[]) => [...l].sort((a, b) => a.id.localeCompare(b.id));
-  return { ...s, items: byId(s.items), bins: byId(s.bins), photos };
+  return { ...s, items: byId(s.items), bins: byId(s.bins), seasonTasks: byId(s.seasonTasks), seasonRuns: byId(s.seasonRuns), photos };
 }
 
 describe('backup file names (§7)', () => {
@@ -122,18 +138,19 @@ describe('full backup ZIP (F18, §7)', () => {
     const zip = await JSZip.loadAsync(await buildBackup(db, 'full', new Date(2026, 10, 2, 12, 0)));
     const names = Object.keys(zip.files).filter((n) => !zip.files[n]!.dir).sort();
     expect(names).toEqual(
-      ['areas.csv', 'bins.csv', 'categories.csv', 'files.csv', 'items.csv', 'manifest.json', 'photos/ph-BIN00001.jpg', 'photos/ph-DRILL001.png', 'photos/ph-PEG00001.jpg', 'photos/ph-SETUP001.jpg', 'photos/ph-SNOW0001.jpg', 'photos/ph-SNOW0002.jpg', 'seasons.csv', 'spots.csv', 'tags.csv'].sort(),
+      ['areas.csv', 'bins.csv', 'categories.csv', 'displays.csv', 'files.csv', 'items.csv', 'manifest.json', 'photos/ph-BIN00001.jpg', 'photos/ph-DRILL001.png', 'photos/ph-MANTEL01.jpg', 'photos/ph-PEG00001.jpg', 'photos/ph-SETUP001.jpg', 'photos/ph-SNOW0001.jpg', 'photos/ph-SNOW0002.jpg', 'season_runs.csv', 'season_tasks.csv', 'seasons.csv', 'spots.csv', 'tags.csv'].sort(),
     );
     const manifest = JSON.parse(await zip.file('manifest.json')!.async('string'));
     expect(manifest).toMatchObject({
       app: 'Hiebert Home Inventory',
-      appVersion: '0.1.3',
+      appVersion: '0.1.4',
       itemCount: 4,
-      photoCount: 6,
+      photoCount: 7,
       areaCount: 3,
       spotCount: 3,
       binCount: 2,
       seasonCount: 2,
+      displayCount: 2,
       parts: { household: { items: 1, areas: 1, bins: 1 }, holiday: { items: 3, areas: 2, bins: 1 } },
     });
     const items = await zip.file('items.csv')!.async('string');
@@ -156,7 +173,7 @@ describe('full backup ZIP (F18, §7)', () => {
     const plan = await planFor(dst, await fileOf('b.zip', await buildBackup(src, 'full', new Date(2026, 10, 2, 12, 0))));
     expect(plan.format).toBe('v3');
     expect(plan.warnings).toEqual([]);
-    expect(await applyRestore(dst, plan, 9)).toBe(6);
+    expect(await applyRestore(dst, plan, 9)).toBe(7);
     const after = await everything(dst);
     expect(after).toEqual(before);
     expect(after.items.find((i) => i.id === 'it-SNOWMAN2')).toMatchObject({ notes: TRICKY, value: 2499, hasPhoto: true });
@@ -185,7 +202,7 @@ describe('full backup ZIP (F18, §7)', () => {
     for (const [name, f] of Object.entries(orig.files)) if (!f.dir) z.file(`backup folder/${name}`, await f.async('uint8array'));
     const dst = newDb();
     await applyRestore(dst, await planFor(dst, { name: 'x.zip', bytes: await zipBytes(z) }));
-    expect(await dst.pictures.count()).toBe(6);
+    expect(await dst.pictures.count()).toBe(7);
   });
 });
 

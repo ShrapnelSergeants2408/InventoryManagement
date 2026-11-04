@@ -121,7 +121,10 @@ function Form(props: { all: InventorySnapshot; part: Part; base: Item | null; st
   const subOptions = d.subcategory && !subs.some((s) => nameKey(s) === nameKey(d.subcategory)) ? [...subs, d.subcategory] : subs;
   const ix = indexPlaces(snap);
   const homeFields = { binId: d.home.startsWith(ID_PREFIX.bin) ? d.home : '', spotId: d.home.startsWith(ID_PREFIX.spot) ? d.home : '' };
-  const homeText = d.home ? pathText(itemPath(homeFields, ix)) : NO_HOME;
+  // The area on its own line above the spot and bin, so it's never cut off (Dan, 2026-11-04).
+  const homeParts = d.home ? itemPath(homeFields, ix) : [];
+  const homeArea = homeParts[0]?.kind === 'area' ? homeParts[0].label : '';
+  const homeText = homeArea && homeParts.length > 1 ? pathText(homeParts.slice(1)) : d.home ? pathText(homeParts) : NO_HOME;
   const binSeason = homeFields.binId ? snap.seasons.find((s) => s.id === ix.bin.get(homeFields.binId)?.seasonId) : undefined;
   const tagSuggestions = snap.tags.filter((t) => !d.tags.some((x) => nameKey(x) === nameKey(t.name)) && (tagText.trim() === '' || nameKey(t.name).includes(nameKey(tagText))));
 
@@ -297,7 +300,10 @@ function Form(props: { all: InventorySnapshot; part: Part; base: Item | null; st
             <Field id="home" label="Home" optional>
               <button id="home" type="button" class="btn field-btn" onClick={() => setPicking(true)}>
                 <Icon name="pin" />
-                <span class="grow">{homeText}</span>
+                <span class="grow">
+                  {homeArea && <span class="small muted block">{homeArea}</span>}
+                  {homeText}
+                </span>
                 <Icon name="chevRight" />
               </button>
               <FieldError errors={errors} field="home" />
@@ -456,6 +462,7 @@ function Form(props: { all: InventorySnapshot; part: Part; base: Item | null; st
       {picking && (
         <HomePicker
           snap={snap}
+          part={part}
           mode="item"
           title="Where does it live?"
           current={d.home}

@@ -2,7 +2,8 @@
 import { liveQuery } from 'dexie';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { InventoryDb } from '../../../data/db';
-import { loadSnapshot } from '../../../data/inventory';
+import { loadSnapshot, replaceAll } from '../../../data/inventory';
+import { sampleStart } from '../../../data/sample';
 import { formatBytes, formatDateTime } from '../../../domain/dates';
 import { daysSinceBackup } from '../../../domain/backup-reminder';
 import { buildDataCsv, type BackupKind } from '../../../io/backup';
@@ -10,7 +11,7 @@ import type { FileProblem } from '../../../io/csv';
 import { readRestoreFile, type RestorePlan } from '../../../io/restore';
 import { BackButton, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useNow, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
+import { forgetAllThumbnails, useDb, useNow, useSettings, useSnapshot, useStorageStatus, type StorageStatus } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
@@ -60,7 +61,7 @@ function usePicker(accept: string, onFile: (f: { name: string; bytes: Uint8Array
   return { el, open: () => input.current?.click() };
 }
 
-type Dlg = { kind: 'restore'; plan: RestorePlan } | { kind: 'problems'; title: string; fileName: string; problems: FileProblem[]; warnings: string[]; footer: string };
+type Dlg = { kind: 'sample' } | { kind: 'restore'; plan: RestorePlan } | { kind: 'problems'; title: string; fileName: string; problems: FileProblem[]; warnings: string[]; footer: string };
 
 export function BackupScreen() {
   const db = useDb();
@@ -185,6 +186,19 @@ export function BackupScreen() {
             {restorePicker.el}
           </section>
 
+          <section class="card bkcard" aria-labelledby="sm-h">
+            <h2 class="h2" id="sm-h">
+              Sample data (for testing)
+            </h2>
+            <p class="bk-p">
+              Replaces <strong>all</strong> inventory on this phone, both parts, with a made-up house: areas, spots, bins, items, displays and setup lists. Only while the app
+              is being built.
+            </p>
+            <button type="button" class="btn lg" disabled={!!busy || !phone} onClick={() => setDlg({ kind: 'sample' })}>
+              Load sample data…
+            </button>
+          </section>
+
         </div>
       </div>
 
@@ -195,11 +209,54 @@ export function BackupScreen() {
           </div>
         </div>
       )}
+      {dlg?.kind === 'sample' && phone && <SampleDialog db={db} phone={phone} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'restore' && phone && <RestoreDialog plan={dlg.plan} phone={phone} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'problems' && (
         <ProblemsDialog title={dlg.title} fileName={dlg.fileName} problems={dlg.problems} warnings={dlg.warnings} footer={dlg.footer} onClose={() => setDlg(null)} />
       )}
     </>
+  );
+}
+
+/** Replacing everything with the sample data: what goes, then a confirm. */
+function SampleDialog({ db, phone, onClose }: { db: InventoryDb; phone: PhoneNow; onClose: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const go = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const data = sampleStart();
+      await replaceAll(db, data);
+      forgetAllThumbnails();
+      showToast(`Sample data loaded: ${plural(data.items.length, 'item')} across both parts.`);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <Dialog label="Load sample data" role="alertdialog" onClose={() => !busy && onClose()}>
+      <h2 class="h2">Replace everything with sample data?</h2>
+      <p class="dlg-p">
+        This deletes the {plural(phone.items, 'item')}, {plural(phone.photos, 'photo')} and {plural(phone.areas, 'area')} on this phone, in both parts. Make a full backup first if
+        you want them back.
+      </p>
+      {error && (
+        <div class="err" role="alert">
+          {error}
+        </div>
+      )}
+      <DialogActions>
+        <button type="button" class="btn lg" data-autofocus disabled={busy} onClick={onClose}>
+          Cancel
+        </button>
+        <button type="button" class="btn danger lg" disabled={busy} onClick={() => void go()}>
+          Replace with sample data
+        </button>
+      </DialogActions>
+    </Dialog>
   );
 }
 

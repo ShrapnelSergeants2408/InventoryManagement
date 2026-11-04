@@ -8,7 +8,7 @@ import { replaceAll, type ReplaceAllInput } from './inventory';
 
 export const SETUP_DONE = 'setupDoneAt';
 
-export type StartChoice = 'restore' | 'empty';
+export type StartChoice = 'restore' | 'empty' | 'sample';
 
 /** Setup is done once the inventory's starting point has been chosen. */
 export async function isSetUp(db: InventoryDb): Promise<boolean> {

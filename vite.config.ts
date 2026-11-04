@@ -3,10 +3,10 @@ import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { cloudflare } from '@cloudflare/vite-plugin';
 
-// `cf build`, `cf dev` and `cf deploy` run Vite with CF_DELEGATION set. Only then is the Worker
+// `cf build`, `cf dev` and `cf deploy` run Vite with CLOUDFLARE_VITE_FORCE_BUILD_OUTPUT set. Only then is the Worker
 // (worker/index.ts, cloudflare.config.ts) built too, and the app goes to the fixed Build Output
 // folder instead of dist, so `npm run build` (GitHub Pages) is unchanged.
-const forCloudflare = !!process.env.CF_DELEGATION;
+const forCloudflare = !!process.env.CLOUDFLARE_VITE_FORCE_BUILD_OUTPUT;
 
 export default defineConfig({
   // Relative base so the build works under any hosting sub-path.

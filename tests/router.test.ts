@@ -47,11 +47,11 @@ describe('hash routes (SPEC v3.0 F21, §10)', () => {
     expect(parseHash(hash)).toEqual(route);
   });
 
-  it('five tabs in each part, Scan in the middle of both; homes are Find and Season', () => {
+  it('Household five tabs, Holiday six with its own Browse (Dan, 2026-11-04); homes are Find and Season', () => {
     expect(PART_TABS.household).toEqual(['find', 'browse', 'scan', 'lists', 'more']);
-    expect(PART_TABS.holiday).toEqual(['season', 'find', 'scan', 'lists', 'more']);
+    expect(PART_TABS.holiday).toEqual(['season', 'find', 'browse', 'scan', 'lists', 'more']);
     expect(PART_TABS.household.indexOf('scan')).toBe(2);
-    expect(PART_TABS.holiday.indexOf('scan')).toBe(2);
+    expect(PART_TABS.holiday.indexOf('scan')).toBe(3);
     expect(homeTab('household')).toBe('find');
     expect(homeTab('holiday')).toBe('season');
   });

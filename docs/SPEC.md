@@ -387,12 +387,13 @@ One file holds both parts.
 | Tab | Household | Holiday |
 |---|---|---|
 | 1 | **Find** (home): search, recently viewed | **Season** (home): the lead season's card with its phase and the next step (Start setup / Setup list / Start takedown / Takedown list), **Also now** (the other seasons on now, each with its next step), **Coming up** (F23) |
-| 2 | **Browse** (F2) | **Find**: search, recently viewed, Browse |
-| 3 | **Scan** (large center button) | **Scan** (large center button) |
-| 4 | **Lists**: Out on loan, Warranties ending, later Shopping | **Lists**: To buy (F24), Needs attention (F9), Out now (items `out`, by display) |
-| 5 | **More** | **More** |
+| 2 | **Browse** (F2) | **Find**: search, recently viewed, shortcuts into Browse |
+| 3 | **Scan** (large center button) | **Browse** (F2) |
+| 4 | **Lists**: Out on loan, Warranties ending, later Shopping | **Scan** (large button) |
+| 5 | **More** | **Lists**: To buy (F24), Needs attention (F9), Out now (items `out`, by display) |
+| 6 | | **More** |
 
-Both parts have five tabs so that Scan is the center button in the same place in both (Dan, 2026-11-03).
+Household has five tabs with Scan in the center. Holiday has six, adding its own Browse tab, so Scan sits just right of center there (Dan, 2026-11-04; replaces five tabs in both, 2026-11-03).
 
 **More** (per part): Areas & spots, Categories, Tags, Labels, Export & backup, Activity, Settings, About, Sign out; Holiday adds Seasons and Displays.
 
@@ -545,6 +546,7 @@ Same routine as HANDOFF §4: spec first, a branch per milestone from `main` (nev
 | 2026-11-03 | H3 mockups approved, with three additions: Household also gets five tabs (Find, Browse, Scan, Lists, More) so Scan sits in the center in both parts; the Holiday home shows every season on now (lead card plus Also now); the "Switched to …" toast has Undo. Part colors: Household rust #8a3315, Holiday evergreen #1f4d3a | Dan |
 | 2026-11-03 | H3 details (a)–(l) in `docs/reviews/H3.md` accepted | Dan |
 | 2026-11-03 | H4 details (a)–(n) in `docs/reviews/H4.md` accepted (Start setup any time, the home's lead order, setup-list and Unpack behavior, removing displays and seasons, setup photos, Put out / Put back on an item, the calendar file, Find by display) | Dan |
+| 2026-11-04 | Holiday gets its own **Browse** tab: six tabs (Season, Find, Browse, Scan, Lists, More), chosen over replacing Lists or Find. The home picker can add areas and spots and offers **Loose in** an area; sample data for testing until 1.0 | Dan |
 | 2026-11-03 | Areas get **codes from their names** instead of letters, so bin codes are descriptive: ATTIC-04, STORAGE-12 (1–8 letters, unique across parts, chosen from three options). Supersedes "area letters unique across both parts" (§17 answer 1) | Dan |
 
 ## 17. Open questions

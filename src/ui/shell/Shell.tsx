@@ -1,5 +1,5 @@
-// App frame (SPEC v3.0 §10, H3 mockups): the screen, then each part's bottom tab bar (five tabs,
-// labels under icons, Scan raised in the middle) in the part's color.
+// App frame (SPEC v3.0 §10, H3 mockups): the screen, then each part's bottom tab bar (labels under
+// icons, Scan raised; five tabs in Household, six in Holiday) in the part's color.
 import type { ComponentChildren } from 'preact';
 import type { Part } from '../../domain/types';
 import { Icon, type IconName } from '../icons';
@@ -17,12 +17,8 @@ const TAB_INFO: Readonly<Record<Tab, [string, IconName]>> = {
   more: ['More', 'moreDots'],
 };
 
-/** The tab shown as current: Holiday's Browse belongs to its Find tab. */
-const shownTab = (part: Part, tab: Tab): Tab => (PART_TABS[part].includes(tab) ? tab : 'find');
-
 export function Shell({ tab, children }: { tab: Tab; children: ComponentChildren }) {
   const part = usePart();
-  const on = shownTab(part, tab);
   return (
     <div class="app" data-part={part}>
       <main class="main">
@@ -33,7 +29,7 @@ export function Shell({ tab, children }: { tab: Tab; children: ComponentChildren
         {PART_TABS[part].map((t) => {
           const [label, icon] = TAB_INFO[t];
           return (
-            <a key={t} href={href.tab(part, t)} class={t === 'scan' ? 'tab scan-tab' : 'tab'} aria-current={t === on ? 'page' : undefined}>
+            <a key={t} href={href.tab(part, t)} class={t === 'scan' ? 'tab scan-tab' : 'tab'} aria-current={t === tab ? 'page' : undefined}>
               {t === 'scan' ? (
                 <span class="scan-btn">
                   <Icon name={icon} class="ic lg" />

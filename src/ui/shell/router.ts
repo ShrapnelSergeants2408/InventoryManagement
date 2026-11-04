@@ -6,10 +6,10 @@ import type { Part } from '../../domain/types';
 
 export type Tab = 'season' | 'find' | 'browse' | 'scan' | 'lists' | 'more';
 
-/** Each part's tab bar (§10): five tabs, Scan in the middle of both. */
+/** Each part's tab bar (§10): Household five tabs, Holiday six with its own Browse (Dan, 2026-11-04). */
 export const PART_TABS: Readonly<Record<Part, readonly Tab[]>> = {
   household: ['find', 'browse', 'scan', 'lists', 'more'],
-  holiday: ['season', 'find', 'scan', 'lists', 'more'],
+  holiday: ['season', 'find', 'browse', 'scan', 'lists', 'more'],
 };
 
 /** A part's home tab (§10): Find in Household, Season in Holiday. */
@@ -73,9 +73,8 @@ export function parseHash(hash: string): Route {
   const part = parts[0] === 'household' || parts[0] === 'holiday' ? parts[0] : null;
   const name = part ? parts[1] : parts[0];
   const tab = TABS.find((t) => t === name);
-  // A tab the part doesn't have (Season in Household) opens the part's home; Holiday's Browse is
-  // reached from its Find tab.
-  if (part && tab && (PART_TABS[part].includes(tab) || (part === 'holiday' && tab === 'browse'))) return { tab, screen: 'tab', part, q: q.get('q') ?? '' };
+  // A tab the part doesn't have (Season in Household) opens the part's home.
+  if (part && tab && PART_TABS[part].includes(tab)) return { tab, screen: 'tab', part, q: q.get('q') ?? '' };
   if (part) return { tab: homeTab(part), screen: 'tab', part, q: '' };
   // Before 0.1.3: #/inventory, #/scan, #/more…, without a part.
   if (tab === 'scan' || tab === 'more') return { tab, screen: 'tab', part: null, q: '' };

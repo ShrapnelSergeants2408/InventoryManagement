@@ -139,6 +139,13 @@ export function itemPath(item: Pick<Item, 'binId' | 'spotId'>, ix: PlaceIndex): 
 export const NO_HOME = 'No home yet';
 export const NO_SPOT = 'no spot';
 
+/**
+ * The spot for things kept loose in an area, with no shelf or bin of their own (Dan, 2026-11-04).
+ * An ordinary spot by this name, made the first time the home picker's "Loose in …" is chosen.
+ */
+export const LOOSE_SPOT = 'Loose';
+export const isLooseSpot = (s: Pick<Spot, 'name'>) => nameKey(s.name) === nameKey(LOOSE_SPOT);
+
 /** The path as one line. A bin with no spot reads "A-04 Christmas 4 (no spot)". */
 export function pathText(parts: readonly PathPart[]): string {
   if (parts.length === 0) return NO_HOME;

@@ -458,6 +458,7 @@ function BinForm(props: { all: InventorySnapshot; part: Part; base: Bin | null; 
       {picking && (
         <HomePicker
           snap={snap}
+          part={part}
           mode="bin"
           title="Where is the bin stored?"
           current={d.spotId}

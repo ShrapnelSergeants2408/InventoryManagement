@@ -655,6 +655,8 @@ button.mrow { width: 100%; border: 0; border-top: 1px solid #eee7de; font: inher
 .hp-row.in { margin-left: 28px; }
 .hp-row.on { border: 2px solid var(--ink); background: #f6f3ee; font-weight: 700; }
 .hp-row .ic { flex: none; }
+.hp-row.loose { border-style: dashed; }
+.hp-add { align-self: flex-start; }
 
 /* Bins, spots, areas */
 .bincode { font-family: var(--font-display); font-weight: 700; font-size: 44px; line-height: 1; letter-spacing: .02em; }

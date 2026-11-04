@@ -5,6 +5,7 @@
 import { useRef, useState } from 'preact/hooks';
 import { planInput } from '../../data/backup';
 import type { ReplaceAllInput } from '../../data/inventory';
+import { sampleStart } from '../../data/sample';
 import { emptyStart, requestPersistentStorage, startInventory, type StartChoice } from '../../data/setup';
 import { formatDateTime } from '../../domain/dates';
 import { APP_NAME } from '../../io/backup';
@@ -61,7 +62,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
       return;
     }
     setStage({ kind: 'saving' });
-    start('empty', emptyStart()).catch(fail);
+    start(choice, choice === 'sample' ? sampleStart() : emptyStart()).catch(fail);
   };
 
   const picked = async (f: File) => {
@@ -161,6 +162,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
     const options: Array<{ k: StartChoice; title: string; desc: string }> = [
       { k: 'empty', title: 'Start fresh', desc: 'Default categories for Household and Holiday, and the seasons with their dates; no items yet. Then add your Holiday and Household storage areas.' },
       { k: 'restore', title: 'Restore a backup file', desc: 'A full-backup ZIP made by this app, e.g. from another phone' },
+      { k: 'sample', title: 'Sample data (for testing)', desc: 'A made-up house in both parts: areas, spots, bins, items, displays and setup lists. Replace it later with Restore, or start fresh.' },
     ];
     body = (
       <div class="setup-start">
@@ -189,7 +191,7 @@ export function SetupScreen({ onDone }: { onDone: () => void }) {
         )}
         <div class="setup-acts">
           <button type="button" class="btn pri lg" onClick={go}>
-            {choice === 'restore' ? 'Choose a backup file…' : 'Start fresh'}
+            {choice === 'restore' ? 'Choose a backup file…' : choice === 'sample' ? 'Start with sample data' : 'Start fresh'}
             <Icon name="chevRight" />
           </button>
         </div>
@@ -217,7 +219,9 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
   const what =
     r.choice === 'restore'
       ? `${plural(r.items, 'item')} and ${plural(r.photos, 'photo')} from ${r.fileName ?? 'the backup'}`
-      : `${plural(r.categories, 'category', 'categories')} across both parts, and the default seasons; no items yet`;
+      : r.choice === 'sample'
+        ? `${plural(r.items, 'sample item')} across both parts, with areas, bins, displays and setup lists`
+        : `${plural(r.categories, 'category', 'categories')} across both parts, and the default seasons; no items yet`;
   const storage =
     r.persisted === true
       ? 'Persistent storage granted: works offline'
@@ -227,7 +231,7 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
       <span class="done-ic">
         <Icon name="check" />
       </span>
-      <h2 class="setup-h">{r.choice === 'restore' ? `Ready: ${plural(r.items, 'item')} restored` : 'Ready'}</h2>
+      <h2 class="setup-h">{r.choice === 'restore' ? `Ready: ${plural(r.items, 'item')} restored` : r.choice === 'sample' ? 'Ready: sample data loaded' : 'Ready'}</h2>
       <ul class="sdone">
         <li>
           <Icon name="check" />
@@ -239,7 +243,7 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
         </li>
       </ul>
       <div class="setup-acts">
-        {r.choice === 'restore' ? (
+        {r.choice !== 'empty' ? (
           <button type="button" class="btn pri lg" onClick={() => open(href.home(getPart()))}>
             Go to inventory
           </button>

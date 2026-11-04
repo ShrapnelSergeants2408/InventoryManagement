@@ -318,7 +318,7 @@ function SplitDialog({ item, snap, recent, onClose }: { item: Item; snap: Invent
   };
 
   if (picking) {
-    return <HomePicker snap={partView(snap, item.part)} mode="item" title="Put the new line in…" current={home} recent={recent} submitLabel="Choose" onClose={() => setPicking(false)} onPick={(to) => (setHome(to), setPicking(false))} />;
+    return <HomePicker snap={partView(snap, item.part)} part={item.part} mode="item" title="Put the new line in…" current={home} recent={recent} submitLabel="Choose" onClose={() => setPicking(false)} onPick={(to) => (setHome(to), setPicking(false))} />;
   }
   return (
     <Dialog label="Split this line" onClose={() => !busy && onClose()}>

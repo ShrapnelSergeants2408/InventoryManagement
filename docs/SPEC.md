@@ -21,7 +21,7 @@
 - **H1** (app 0.1.1, `docs/reviews/H1.md`): the FRC features stripped, rebranded.
 - **H2a** (app 0.1.2, `docs/reviews/H2a.md`): the v2.0 data model in one part — areas, spots, bins, seasons, tags, every item field, several photos, the §7 backup, F7, F11, F16. Find, Browse, bin and spot scanning and labels (old H2b) were not built.
 - **H3** (app 0.1.3, `docs/reviews/H3.md`; details (a)–(l) accepted, area codes from names added after review): schema v3 with the two parts and the 0.1.2 upgrade, F21 (switch, both tab bars, Undo toast), Set up for both parts, F1, F2, F3, F10 for bins, spots and items, F11 per part, season dates and the Season home (seasons on now, Coming up), the read-only Lists tabs, and the §7 part columns. Details decided along the way are listed there for Dan to confirm.
-- **H4** (app 0.1.4, `docs/reviews/H4.md`): schema v5 (displays, season tasks, season runs; photos may carry a season), F22 displays and the item's usual display, F25 Start setup and the setup list, season tasks, F5 Unpack and Put out / Put back on an item, F8 setup photos by season on displays, F23 runs on the Season home and the `.ics` file, and the §7 files for them. Details (a)–(n) are listed there for Dan to confirm. A run's own dates are stored but have no screen yet.
+- **H4** (app 0.1.4, `docs/reviews/H4.md`): schema v5 (displays, season tasks, season runs; photos may carry a season), F22 displays and the item's usual display, F25 Start setup and the setup list, season tasks, F5 Unpack and Put out / Put back on an item, F8 setup photos by season on displays, F23 runs on the Season home and the `.ics` file, and the §7 files for them. Details (a)–(n) there accepted by Dan. A run's own dates are stored but have no screen yet.
 
 ---
 
@@ -544,6 +544,7 @@ Same routine as HANDOFF §4: spec first, a branch per milestone from `main` (nev
 | 2026-11-03 | SPEC v3.0 §17 questions 1–8: every proposed answer accepted (area letters across parts, default categories and season dates, moving between parts, setup list order, `.ics` calendar, Holiday tab bar, 0.1.2 upgrade into Household, targets) | Dan |
 | 2026-11-03 | H3 mockups approved, with three additions: Household also gets five tabs (Find, Browse, Scan, Lists, More) so Scan sits in the center in both parts; the Holiday home shows every season on now (lead card plus Also now); the "Switched to …" toast has Undo. Part colors: Household rust #8a3315, Holiday evergreen #1f4d3a | Dan |
 | 2026-11-03 | H3 details (a)–(l) in `docs/reviews/H3.md` accepted | Dan |
+| 2026-11-03 | H4 details (a)–(n) in `docs/reviews/H4.md` accepted (Start setup any time, the home's lead order, setup-list and Unpack behavior, removing displays and seasons, setup photos, Put out / Put back on an item, the calendar file, Find by display) | Dan |
 | 2026-11-03 | Areas get **codes from their names** instead of letters, so bin codes are descriptive: ATTIC-04, STORAGE-12 (1–8 letters, unique across parts, chosen from three options). Supersedes "area letters unique across both parts" (§17 answer 1) | Dan |
 
 ## 17. Open questions

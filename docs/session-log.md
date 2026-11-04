@@ -1126,3 +1126,7 @@ H3 (PR #7) and the area-code change (PR #8); SPEC v3.0 §15 H4; the approved H3 
 - Medium for Add to Calendar on an iPhone: what iOS's share sheet does with an `.ics` file wasn't testable here (phone check step 8).
 
 **Next:** Dan reviews the PR and details (a)–(n); Full backup on the phone before installing 0.1.4; the phone check in `docs/reviews/H4.md`; then H5 (sync and sign-in).
+
+## 2026-11-03 (afternoon) — H4 merged and deployed; (a)–(n) accepted
+
+Dan: "merged. check deploy. decisions a-n accepted." PR #9 merged 14:41 CST. Its deploy run succeeded (1 m 15 s), and the live site serves 0.1.4 (checked in the bundle). Decisions (a)–(n) recorded in SPEC §16 and `docs/reviews/H4.md`. **Next:** Full backup on the phone, install 0.1.4, the phone check in `docs/reviews/H4.md` (step 8: the `.ics` on an iPhone), then H5.

@@ -62,7 +62,7 @@ _To fill in as the test runs._
 
 | Question | Result | Date | Notes |
 |----------|--------|------|-------|
-| 1. Sign-in from the home-screen app | Pass | 2026-11-05 | Steps 1–5 on Dan's iPhone |
+| 1. Sign-in from the home-screen app | Pass | 2026-11-05 | Steps 1–5 on Dan's iPhone. The home-screen app was already signed in (step 4), so it shares Safari's session; step 5 wasn't needed |
 | 2. Session lasts 30+ days | | | |
 | 3. Offline week | | | |
 

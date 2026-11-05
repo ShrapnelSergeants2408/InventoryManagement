@@ -27,8 +27,8 @@ If any of these fail, the fallback in §12.4 applies: the Worker sends its own c
 
 **Dan, in the Cloudflare dashboard (one time):**
 
-1. Register the account's **workers.dev subdomain**: Workers & Pages › onboarding (`dash.cloudflare.com/<account>/workers/onboarding`). The subdomain is part of the app's address.
-2. **Turn on Zero Trust** (Access): Zero Trust in the sidebar. Choose a team name and the **Free** plan (up to 50 users). Cloudflare may ask for a payment method even on the free plan.
+1. Register the account's **workers.dev subdomain**. Done: `dhiebert7251`, so the app is at `hiebert-home-inventory.dhiebert7251.workers.dev`.
+2. **Turn on Zero Trust** (Access) at `one.dash.cloudflare.com`, with a team name and the **Free** plan (up to 50 users). Done 2026-11-05: the login page is `hiebert-personal.cloudflareaccess.com`.
 
 **Claude, with the cf CLI, once those are done:**
 
@@ -36,6 +36,8 @@ If any of these fail, the fallback in §12.4 applies: the Worker sends its own c
 4. Add **One-time PIN** as a login method.
 5. Add a self-hosted Access application for the Worker's workers.dev address, with a **session duration of 1 month** (Access's longest) and a policy allowing the spike's email addresses.
 6. Check that `/api/whoami` without a session redirects to the Access login.
+
+Steps 3–6 done 2026-11-05: Access app "Hiebert Home Inventory", session 730h, One-time PIN only, policy "Spike emails" allowing dhiebert7251@gmail.com. An Access app on the workers.dev hostname had no effect; it works with a `worker` destination (the Worker's ID), which covers every address the Worker has. Signed out, `/`, `/sw.js` and `/api/whoami` all redirect to the login.
 
 Access settings live in Cloudflare, not in the repo. `cloudflare.config.ts`'s `access` option only fakes Access for `cf dev`.
 
@@ -60,7 +62,7 @@ _To fill in as the test runs._
 
 | Question | Result | Date | Notes |
 |----------|--------|------|-------|
-| 1. Sign-in from the home-screen app | | | |
+| 1. Sign-in from the home-screen app | Pass | 2026-11-05 | Steps 1–5 on Dan's iPhone |
 | 2. Session lasts 30+ days | | | |
 | 3. Offline week | | | |
 

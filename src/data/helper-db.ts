@@ -9,9 +9,11 @@ import {
   changeKey,
   inAssignment,
   mergeItemChange,
+  newHelperDevice,
   pendingId,
   unsentChanges,
   type HelperChange,
+  type HelperDevice,
   type HelperKit,
   type PendingItem,
   type PendingRecord,
@@ -34,12 +36,18 @@ export type HelperPendingRow = PendingItemRow & PendingRecord;
 const KIT_KEY = 'helperKit';
 const SENT_KEY = 'helperSent';
 const PENDING_SEQ = 'helperPendingSeq';
+const DEVICE_KEY = 'helperDevice';
 
 export interface SentState {
   /** ms since epoch of the last Send my counts, or null before the first. */
   at: number | null;
   /** The last counts file's sequence number (0 before the first). */
   sequence: number;
+  /**
+   * The last counts file's name while it is only in this device's Downloads and nobody has said
+   * it was sent on (v0.19). Absent after a share, or once confirmed.
+   */
+  saved?: string;
 }
 
 /**
@@ -82,22 +90,32 @@ export async function getKit(db: HelperDb): Promise<HelperKit | null> {
 
 export async function getSent(db: HelperDb): Promise<SentState> {
   const v = (await db.settings.get(SENT_KEY))?.value as Partial<SentState> | undefined;
-  return { at: typeof v?.at === 'number' ? v.at : null, sequence: typeof v?.sequence === 'number' ? v.sequence : 0 };
+  const sent: SentState = { at: typeof v?.at === 'number' ? v.at : null, sequence: typeof v?.sequence === 'number' ? v.sequence : 0 };
+  if (typeof v?.saved === 'string' && v.saved !== '') sent.saved = v.saved;
+  return sent;
+}
+
+/** The id this device got when it opened its kit; '' for a kit opened before v0.19. */
+export async function getDeviceId(db: HelperDb): Promise<string> {
+  const v = (await db.settings.get(DEVICE_KEY))?.value;
+  return typeof v === 'string' ? v : '';
 }
 
 /**
  * Opens a kit (§18.2): replaces everything on the helper with the kit's copy and forgets every
  * earlier change and pending item, in one transaction. The caller has already asked about
- * unsent counts.
+ * unsent counts. Every opening gets a new device id and its own block of new-item numbers
+ * (v0.19), so neither a second device nor a second kit can repeat a new item's id.
  */
-export async function joinKit(db: HelperDb, read: ReadKit, now = Date.now()): Promise<void> {
+export async function joinKit(db: HelperDb, read: ReadKit, now = Date.now(), device: HelperDevice = newHelperDevice()): Promise<void> {
   await db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.changes, db.pendingItems, db.pendingPhotos], async () => {
     await replaceAll(db, read.data, now, { orderLists: [] });
     await Promise.all([db.changes.clear(), db.pendingItems.clear(), db.pendingPhotos.clear(), db.settings.clear()]);
     await db.settings.bulkPut([
       { key: KIT_KEY, value: read.kit },
       { key: SENT_KEY, value: { at: null, sequence: 0 } satisfies SentState },
-      { key: PENDING_SEQ, value: 0 },
+      { key: PENDING_SEQ, value: device.pendingBase },
+      { key: DEVICE_KEY, value: device.id },
       { key: 'joinedAt', value: now },
     ]);
   });
@@ -124,6 +142,7 @@ export async function noteLocationAdded(db: HelperDb, name: string, now: number)
 /** Everything the Send screen and the counts file need, read together. */
 export interface HelperState {
   kit: HelperKit;
+  deviceId: string;
   sent: SentState;
   changes: HelperChange[];
   pending: PendingItem[];
@@ -137,7 +156,7 @@ export async function loadHelperState(db: HelperDb): Promise<HelperState | null>
     const sent = await getSent(db);
     const changes = (await db.changes.toArray()).map(({ key: _k, ...c }) => c as HelperChange);
     const pending = (await db.pendingItems.toArray()).map(fromPendingRow);
-    return { kit, sent, changes, pending, unsent: unsentChanges(changes, sent.at) };
+    return { kit, deviceId: await getDeviceId(db), sent, changes, pending, unsent: unsentChanges(changes, sent.at) };
   });
 }
 
@@ -201,9 +220,22 @@ export async function helperItems(db: HelperDb): Promise<Map<string, Item>> {
   return new Map((await db.items.toArray()).map((r) => [r.id, fromItemRow(r)]));
 }
 
-/** Records a send (§18.4): the time and the file's sequence number. */
-export async function markSent(db: HelperDb, sequence: number, at = Date.now()): Promise<void> {
-  await db.settings.put({ key: SENT_KEY, value: { at, sequence } satisfies SentState });
+/**
+ * Records a send (§18.4): the time and the file's sequence number. `saved` is the file's name
+ * when it only reached this device's Downloads (v0.19): the Send screen says so until
+ * `confirmSent`.
+ */
+export async function markSent(db: HelperDb, sequence: number, at = Date.now(), saved?: string): Promise<void> {
+  const value: SentState = saved ? { at, sequence, saved } : { at, sequence };
+  await db.settings.put({ key: SENT_KEY, value });
+}
+
+/** "I've sent it": the file saved to Downloads has gone on to the shop tablet (v0.19). */
+export async function confirmSent(db: HelperDb): Promise<void> {
+  await db.transaction('rw', db.settings, async () => {
+    const { at, sequence } = await getSent(db);
+    await db.settings.put({ key: SENT_KEY, value: { at, sequence } satisfies SentState });
+  });
 }
 
 /**

@@ -2,7 +2,7 @@
 // share sheet. "Last sent … · n changes not sent yet". Opening another kit and Leave helper
 // mode both ask about unsent changes first (§18.2).
 import { useState } from 'preact/hooks';
-import { helperItems, joinKit, leaveHelperMode, markSent, pendingPhotos, type HelperDb, type HelperState } from '../../data/helper-db';
+import { confirmSent, helperItems, joinKit, leaveHelperMode, markSent, pendingPhotos, type HelperDb, type HelperState } from '../../data/helper-db';
 import { formatDateTime, nowLocalIso } from '../../domain/dates';
 import { sendSummary } from '../../domain/helper-mode';
 import { buildCountsFile, countsFileName, type ReadKit } from '../../io/count-kit';
@@ -25,6 +25,8 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
   const [busy, setBusy] = useState(false);
   const [asking, setAsking] = useState<Asking>(null);
   const s = sendSummary(state.changes);
+  // The last counts file is only in this device's Downloads (v0.19).
+  const saved = state.sent.saved ?? null;
   const name = countsFileName(state.kit.helperName, new Date(now));
 
   /** Sends; true once the file reached the share sheet or Downloads. */
@@ -36,6 +38,7 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
       const sequence = state.sent.sequence + 1;
       const blob = await buildCountsFile({
         kit: state.kit,
+        deviceId: state.deviceId,
         sequence,
         createdAt: nowLocalIso(),
         changes: state.changes,
@@ -47,7 +50,8 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
       const file = countsFileName(state.kit.helperName, at);
       const result = await shareOrDownload(new File([blob], file, { type: 'application/zip' }), `Counts from ${state.kit.helperName}`);
       if (result === 'cancelled') return false;
-      await markSent(db, sequence, at.getTime());
+      // Saved to Downloads isn't sent (v0.19): the screen says so until "I've sent it".
+      await markSent(db, sequence, at.getTime(), result === 'downloaded' ? file : undefined);
       showToast(result === 'shared' ? `Sent ${file}.` : `Saved ${file} to Downloads. Send it to the shop tablet by Quick Share, Drive, email or Bluetooth.`);
       return true;
     } catch (e) {
@@ -102,10 +106,26 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
         <div class="card hlast">
           <Icon name="clock" class="ic xl" />
           <div class="grow">
-            <div class="hlast-h">{state.sent.at === null ? 'Not sent yet' : `Last sent ${formatDateTime(new Date(state.sent.at), new Date(now))}`}</div>
-            <div class="small muted">{state.unsent === 0 ? (state.sent.at === null ? 'Nothing counted yet' : 'Everything is sent') : `${plural(state.unsent, 'change')} not sent yet`}</div>
+            <div class="hlast-h">
+              {state.sent.at === null ? 'Not sent yet' : `${saved ? 'Saved to Downloads' : 'Last sent'} ${formatDateTime(new Date(state.sent.at), new Date(now))}`}
+            </div>
+            <div class="small muted">
+              {state.unsent === 0 ? (state.sent.at === null ? 'Nothing counted yet' : saved ? 'Not on the shop tablet yet' : 'Everything is sent') : `${plural(state.unsent, 'change')} not sent yet`}
+            </div>
           </div>
         </div>
+        {saved && (
+          <div class="hwarn hsaved" role="status">
+            <Icon name="low" />
+            <div class="grow">
+              <strong class="mono">{saved}</strong> is in this device’s Downloads. The shop tablet doesn’t have it yet: upload it to the team’s Drive folder, or send it by Quick Share or email.
+            </div>
+            <button type="button" class="btn" disabled={busy} onClick={() => void confirmSent(db).catch((e: unknown) => showToast(message(e)))}>
+              <Icon name="check" />
+              I’ve sent it
+            </button>
+          </div>
+        )}
         <div class="card hsum">
           {rows.map(([k, v]) => (
             <div key={k} class="hsum-r">
@@ -156,6 +176,10 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
                 <strong>
                   {plural(state.unsent, 'change')} {state.unsent === 1 ? 'hasn’t' : 'haven’t'} been sent
                 </strong> to the shop tablet. Send your counts first, or they’re lost.
+              </p>
+            ) : saved ? (
+              <p class="dlg-p">
+                This clears this device’s copy of the inventory. <strong>Your last counts file was only saved to Downloads.</strong> Make sure it reached the shop tablet first; the file itself stays in Downloads.
               </p>
             ) : (
               <p class="dlg-p">This clears this device’s copy of the inventory. Everything you counted was sent.</p>

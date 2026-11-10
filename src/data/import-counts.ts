@@ -2,7 +2,7 @@
 // recording first what Undo this import needs; Undo puts it all back. No PIN (§6): the preview
 // and Undo are the safety nets. Only the last import can be undone, and a restore or a fresh
 // setup forgets it.
-import { planImport, type CountFields, type CountsFile, type ImportChoices, type ImportPlan, type PlanInput } from '../domain/import-counts';
+import { kitDevices, planImport, type CountFields, type CountsFile, type ImportChoices, type ImportPlan, type PlanInput } from '../domain/import-counts';
 import { nameKey } from '../domain/types';
 import { fromHelperRow, fromItemRow, fromOrderRow, toLocationRow, type InventoryDb } from './db';
 import { onOrderMap } from '../domain/placed-orders';
@@ -25,6 +25,8 @@ export interface ImportUndo {
   pending: string[];
   /** Helper id → last_import_at before. */
   helpers: Array<[string, number | null]>;
+  /** Helper id → its kits' device ids before (v0.19; null = none recorded). Absent in an undo saved before v0.19. */
+  helperDevices?: Array<[string, Record<string, string[]> | null]>;
   /** Items received into since the import (F31): Undo leaves them as they are. Absent before v0.14. */
   received?: string[];
 }
@@ -93,11 +95,17 @@ export async function applyImport(db: InventoryDb, files: readonly CountsFile[],
 
     const helperIds = [...new Set(files.map((f) => f.meta.helperId))];
     const helpersBefore: Array<[string, number | null]> = [];
+    const devicesBefore: Array<[string, Record<string, string[]> | null]> = [];
+    // The devices each kit's files came from are remembered, so a second device is noticed in a later import too (v0.19).
+    const seen = kitDevices(files, (await db.helpers.toArray()).map(fromHelperRow));
     for (const id of helperIds) {
       const h = await db.helpers.get(id);
       if (!h) continue;
       helpersBefore.push([id, h.lastImportAt]);
-      await db.helpers.put({ ...h, lastImportAt: now });
+      devicesBefore.push([id, h.devices ?? null]);
+      const devices = { ...h.devices };
+      for (const k of seen) if (k.helperId === id && k.devices.size > 0) devices[k.kitId] = [...k.devices].sort();
+      await db.helpers.put(Object.keys(devices).length > 0 ? { ...h, lastImportAt: now, devices } : { ...h, lastImportAt: now });
     }
     const helperNames = [...new Set(files.map((f) => f.meta.helperName))];
     const undo: ImportUndo = {
@@ -109,6 +117,7 @@ export async function applyImport(db: InventoryDb, files: readonly CountsFile[],
       locations: added,
       pending: plan.pending.map((p) => p.id),
       helpers: helpersBefore,
+      helperDevices: devicesBefore,
     };
     await db.importUndo.clear();
     await db.importUndo.put(undo as unknown as { id: string });
@@ -182,9 +191,13 @@ export async function undoImport(db: InventoryDb, now = Date.now()): Promise<{ i
     // Walk order without gaps.
     const left = await db.locations.orderBy('order').toArray();
     await db.locations.bulkPut(left.map((l, i) => ({ ...l, order: i })));
+    const devicesBefore = new Map(undo.helperDevices ?? []);
     for (const [id, at] of undo.helpers) {
       const h = await db.helpers.get(id);
-      if (h) await db.helpers.put({ ...h, lastImportAt: at });
+      if (!h) continue;
+      const { devices: now_, ...rest } = h;
+      const was = devicesBefore.has(id) ? devicesBefore.get(id) : (now_ ?? null);
+      await db.helpers.put(was ? { ...rest, lastImportAt: at, devices: was } : { ...rest, lastImportAt: at });
     }
     await db.importUndo.clear();
     await db.settings.put({ key: 'lastChangeAt', value: now });

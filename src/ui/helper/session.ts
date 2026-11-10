@@ -12,6 +12,8 @@ export interface HelperSession {
   kit: HelperKit;
   /** "n changes not sent yet" (§18.4). */
   unsent: number;
+  /** The last counts file is only in this device's Downloads, not confirmed sent (v0.19). */
+  saved: boolean;
 }
 
 export const HelperContext = createContext<HelperSession | null>(null);

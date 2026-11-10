@@ -1,7 +1,7 @@
 // Helper mode on a helper device (SPEC §18.2–§18.4): what the kit says, which items are the
 // helper's to count, what goes in the cumulative counts file, and the "Add item not on the
 // list" rules. Pure, so the rules are unit-tested; data/helper-db.ts stores them.
-import type { GroupKind } from './helpers';
+import { newDeviceId, type GroupKind } from './helpers';
 import { NO_LOCATION } from './lists';
 import { parsePrice } from './money';
 import { QR_PREFIX, barcodeKey, cleanCode } from './scan';
@@ -180,7 +180,26 @@ export function sendSummary(changes: readonly HelperChange[]): SendSummary {
   };
 }
 
-/** Temporary id of a helper's new item (§18.3): `pending-<helper id>-<n>`, n from 1. */
+/**
+ * What a device gets each time it opens a kit (§18.2, v0.19): an id that goes into every counts
+ * file, so the shop tablet can tell when one kit was opened on two devices, and the number its
+ * new items are counted from, so their ids never repeat between devices or between kits.
+ */
+export interface HelperDevice {
+  id: string;
+  /** New items are numbered from pendingBase + 1. */
+  pendingBase: number;
+}
+
+/** Room for this many new items per opened kit before two devices' numbers could meet. */
+export const PENDING_BLOCK = 10_000;
+
+/** A new device id and a random six-digit block of new-item numbers. */
+export function newHelperDevice(random: () => number = Math.random): HelperDevice {
+  return { id: newDeviceId(random), pendingBase: (100_000 + Math.floor(random() * 900_000)) * PENDING_BLOCK };
+}
+
+/** Temporary id of a helper's new item (§18.3): `pending-<helper id>-<n>`, n from the device's block (v0.19; from 1 before). */
 export const pendingId = (helperId: string, n: number): string => `pending-${helperId}-${n}`;
 
 /** A new item a helper added (§18.3), as kept on the helper and written to new-items.csv (§18.4). */

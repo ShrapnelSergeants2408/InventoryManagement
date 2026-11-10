@@ -19,3 +19,17 @@ export function normalizeUrl(raw: string, label: string): UrlParse {
 export function safeHref(url: string): string | undefined {
   return /^https?:\/\/[^/]+/i.test(url.trim()) ? url.trim() : undefined;
 }
+
+/**
+ * The address a helper device opens to get this app (§18.1, v0.19): where this copy runs,
+ * without the screen it happens to be on. '' when `href` isn't an http(s) address.
+ */
+export function appAddress(href: string): string {
+  try {
+    const u = new URL(href);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '';
+    return u.origin + u.pathname.replace(/[^/]*$/, '');
+  } catch {
+    return '';
+  }
+}

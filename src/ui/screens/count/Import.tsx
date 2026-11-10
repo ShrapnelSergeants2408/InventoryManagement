@@ -54,7 +54,7 @@ export function ImportScreen() {
       }
     }
     // The same file picked twice is used once.
-    const next = [...files, ...ok.filter((o) => !files.some((x) => x.fileName === o.fileName && x.meta.sequence === o.meta.sequence && x.meta.helperId === o.meta.helperId))];
+    const next = [...files, ...ok.filter((o) => !files.some((x) => x.fileName === o.fileName && x.meta.sequence === o.meta.sequence && x.meta.helperId === o.meta.helperId && (x.meta.deviceId ?? '') === (o.meta.deviceId ?? '')))];
     setFiles(next);
     setRefused(bad);
     await replan(next, choices);

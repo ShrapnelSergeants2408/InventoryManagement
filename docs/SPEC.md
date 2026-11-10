@@ -1,7 +1,15 @@
-# FRC 2408 Inventory Management — Specification v0.18
+# FRC 2408 Inventory Management — Specification v0.19
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** Approved by Dan 2026-10-29 (v0.18; released as app version 1.0.0) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT
+**Status:** v0.18 approved by Dan 2026-10-29 (released as app version 1.0.0). **v0.19 (app version 1.1.0): details confirmed by Dan 2026-11-10** (`docs/reviews/M24.md`) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT · **v0.19:** 2026-11-10 CST
+
+**Changes in v0.19:** Three helper-device changes before the first full count (Dan, 2026-11-10: "lets do b1, b2, and b3 now before the count"; from `docs/proposals/2026-11-10-review-backlog.md`), built as M24:
+- **A device id for every opened kit** (§18.2, §18.4, §18.5). A helper device gets a new id each time it opens a kit, and writes it into every counts file. The shop tablet remembers which devices each kit's files came from and warns in the import preview when one kit was opened on two devices, or opened again on one. Before, nothing told them apart.
+- **New items never share an id** (§18.3). Each opened kit numbers its new items from its own random block, so a second device on the same kit, or a second kit for the same helper, can't repeat an id. Before, both started at 1 and the shop tablet skipped the second as "already here or already dealt with".
+- **Saved to Downloads is not "sent"** (§18.1, §18.4). When the browser can't open the share sheet for the ZIP (Chrome on Android), the helper's Send screen says the counts file is saved to Downloads and not on the shop tablet yet, until the student taps **I've sent it**; the Count screen and the Send tab remind them. On the shop tablet, Send count kit stays open to say the kit is in Downloads and hasn't gone to the helper.
+- **The app's address as a QR code** on the Helper devices screen (§18.1), so a student scans the shop tablet to open the app on a phone.
+- File formats: `counts.json` gains `device_id`. The format version stays 1, so a shop tablet and helpers on different versions still work together (§18.4).
+- Details Claude filled in, confirmed by Dan on 2026-11-10 (`docs/reviews/M24.md`): a device id is per opened kit, not per phone; two devices on one kit give a warning, not conflicts; the counts file format version stays 1; new-item numbers come from a random six-digit block per opened kit; "I've sent it" is the student's word; a kit saved to Downloads is still recorded as sent; where the QR card sits; the wording.
 
 **Changes in v0.18:** Cleanup of the findings earlier reviews left open (Dan, 2026-10-29: "fix 1-5 as a cleanup milestone"), built as M23:
 - A CSV inside a backup ZIP that isn't UTF-8 is read as Windows-1252 (Excel's plain "CSV"), as a loose CSV already was, with a warning naming the file (§7; M5 review finding 3).
@@ -282,6 +290,7 @@ Order lists are plans, not inventory: they never change on_hand, desired, spares
 | groups | yes | Assigned categories or locations (one kind per helper) |
 | allow_new_items | yes | Whether this helper may add items not on the list (default on) |
 | last_kit_at / last_import_at | no | Shown on the Helper devices screen |
+| devices | no | For each kit, the device ids its imported counts files came from (v0.19, §18.5) |
 
 Helpers are working records for one counting effort, not inventory: they aren't included in backups (§7), and a counts file from an unknown helper can still be imported after a warning (§18.5).
 
@@ -586,6 +595,8 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Dan: "fix 1-5 as a cleanup milestone" (the low-severity findings earlier reviews left open). v0.18 (M23) |
 | 2026-10-29 | Dan merged PR #38 (M23), confirmed details (a)–(d) and ran the tablet check: "details confirmed. merged. tablet checked." |
 | 2026-10-29 | Dan: "set this as version 1.0.0". `APP_VERSION` and `package.json` 1.0.0; SPEC stays v0.18 (no feature change). The tablet then starts fresh: site data cleared, first-launch setup (`docs/HANDOFF.md` §8) |
+| 2026-11-10 | Project review before the first full count (`docs/proposals/2026-11-10-review-backlog.md`). Dan: "lets do b1, b2, and b3 now before the count": a device id for every opened kit with a warning at import, new-item ids that never repeat, "saved to Downloads" shown as not sent, and the app's address as a QR code on Helper devices → v0.19, M24, `APP_VERSION` 1.1.0. Details Claude filled in are listed in `docs/reviews/M24.md` for Dan to confirm |
+| 2026-11-10 | Dan confirmed the M24 details (a)–(h) and decided against an independent review: "1 confirmed; 2 no review" |
 
 ## 17. UI conventions (from Stage 3)
 
@@ -622,6 +633,8 @@ Reference: Stage 3 mockup canvas and `stage3-design-notes.md`. Helper-device and
 Count-in start screen → **Helper devices**.
 - **Add helper:** name (unique), groups to count (categories, or locations once they exist; one kind per helper) and **Allow new items** (on by default). The screen shows every group with the helper(s) assigned to it and highlights unassigned groups. Assigning one group to two helpers is allowed after a warning ("both will count it; you'll settle differences on import").
 - **Send count kit:** builds the kit (§18.2) and opens the share sheet (Quick Share, Drive, email, Bluetooth, USB). **Include photos** is on by default (about 6 MB for the starter catalog); turn it off for slow transfers. A kit can be re-sent at any time. Each send gets a new kit id and records `last_kit_at`.
+- **Saved, not sent (v0.19):** when the browser can't share the ZIP and saves it to Downloads instead (Chrome on Android), the dialog stays open and says so: the file's name, that the helper doesn't have it yet, and how to send it (Files or Drive; the team's Drive folder, Quick Share or email). **Done** closes it. The kit is recorded either way.
+- **Open the app on a helper (v0.19):** the screen shows the app's own address as a QR code and in words, with "choose Join as a helper… not in a private tab". The address is where this copy of the app runs, without the screen it's on.
 - **Edit / remove helper:** changing groups or the new-items setting takes effect in the next kit. The name can't be changed once a kit has been sent, because imports use it to recognize the helper's earlier counts; create a new helper instead. Removing a helper doesn't touch counts already imported.
 
 ### 18.2 Count kit and joining (helper)
@@ -629,6 +642,8 @@ Count-in start screen → **Helper devices**.
 - `kit.json`: format version, kit id, helper id, helper name, created at (date-time), main tablet's app version, assigned groups (kind + names), allow_new_items.
 - `inventory.csv`: §7 format, with `v*_pack_price` and `v*_price_checked` left blank (helpers don't need prices).
 - `suppliers.csv`, `locations.csv`, `categories.csv`, and `photos/` (optional).
+
+**Device id (v0.19):** every time a device opens a kit it gets a new id (`dev-` and 5 characters) and its own block of numbers for new items (§18.3). The id goes into every counts file (§18.4). Opening the same kit on a second device, or again on the same one, gives a different id.
 
 **Joining:** on the helper, first launch → **Join as a helper** → choose the kit file. The helper shows its name and groups and is ready to count. If the helper already holds counts that haven't been sent, opening a new kit asks to **Send my counts first** or **Discard unsent counts** (destructive style, §17). **Leave helper mode** (on the Send screen) clears all helper data after the same check and returns to the first-launch choice.
 
@@ -640,19 +655,22 @@ Count-in start screen → **Helper devices**.
 - **Add item not on the list** (only if the kit allows new items; from the count screen and from an unknown scan):
   - Required: name, category, unit, on hand.
   - Optional: subcategory (existing or new), location, photo, barcode, notes, desired (default 0) and vendor option 1 (supplier from the list, part #, link, pack size, price).
+  - From v0.19 the number in the temporary id comes from the device's own block: a random six-digit number for each opened kit, then four digits counting from 0001 (e.g. `pending-hp-AB2CD-4821730001`). Ids therefore don't repeat between two devices on one kit or between two kits for one helper. Before v0.19 the number started at 1 for every kit.
   - The item is saved as **Pending** with a temporary id (`pending-<helper id>-<n>`). Pending items can't get QR labels until they're accepted on the main tablet.
 - A new item can't have a barcode that an existing item already has (the helper is told to count that item instead). The helper's Add item form is its own, smaller form: the fields above, no spares, one vendor option, no PIN.
 - Every saved count records `counted_at` (date-time with offset).
 
 ### 18.4 Sending counts (helper)
 Send tab → **Send my counts** builds `counts-<helper name>-<yyyy-mm-dd-hhmm>.zip` and opens the share sheet:
-- `counts.json`: format version, kit id, helper id, helper name, created at, file sequence number, app version.
+- `counts.json`: format version, kit id, helper id, helper name, created at, file sequence number, app version, device id (v0.19; blank from a kit opened before then). The format version stays 1: an older shop tablet ignores the device id.
 - `counts.csv`: `item_id, on_hand, counted_at, location, barcode, outside_assignment`. One row per item counted or changed since the kit was opened, with its latest values. Blank location or barcode means unchanged.
 - `new-items.csv`: `pending_id, name, category, subcategory, unit, on_hand, desired, location, barcode, notes, photo_file, counted_at, v1_supplier, v1_part_no, v1_url, v1_pack_size, v1_pack_price`.
 - `locations-new.csv`: `name` for locations created on the helper.
 - `photos/<pending id>.jpg` for new items with photos.
 
 In `counts.csv`, a blank `on_hand` and `counted_at` mean the item wasn't counted (only its location or barcode changed). `outside_assignment` is `yes` or blank.
+
+**Saved to Downloads is not sent (v0.19).** If the share sheet opens, the send is recorded as before ("Last sent <time>", "Everything is sent"). If the browser can't share the ZIP and saves it to Downloads (Chrome on Android), the Send screen reads "Saved to Downloads <time>" and "Not on the shop tablet yet", with a notice naming the file and how to send it on, and an **I've sent it** button that turns it into "Last sent". Until then the Send tab shows a "!" badge, the Count screen shows a navy reminder, and Leave helper mode and Open a new kit say the last file was only saved to Downloads. A later send replaces the state; unsent changes are counted as before.
 
 Each file is **cumulative**: it always carries everything since the kit, so a lost file is covered by the next one and sending again is always safe. The Send screen shows "Last sent <time> · n changes not sent yet", where each changed item, new location and new item counts once, however many times it changed. A navy banner on the Count screen reminds the student to send when unsent changes exist. Phones, iPhones in particular, may clear website data after several days without use, so helpers should send at the end of every session.
 
@@ -703,6 +721,8 @@ When several files are imported together, they're applied in order of counted_at
 - (i) Decided pending items (accepted, matched, combined away or discarded) are remembered, so importing the same file again never brings them back. A full restore of an older backup can bring back the pending items it holds.
 - (j) Accepting a pending item that has no supplier asks for one, as adding any item does (F6).
 
+**One kit on more than one device (v0.19).** Each kit is meant for one device. The shop tablet remembers, for each helper's kit, the device ids its imported files came from (Undo this import puts that back too). When the files being imported, together with those already imported, come from more than one device id for the same kit, the preview shows a warning: the kit was opened on that many devices, or opened again on one; where they counted the same item the newest count is used without asking; a second device should have its own helper. The counts apply as before: both devices count as the same helper, so a later count of an item replaces an earlier one with no conflict. Both devices' new items arrive as pending (§18.3). Files without a device id (from before v0.19) are never part of this warning.
+
 ### 18.6 Must-have tests for §18 (Vitest)
 - Every row of the §18.5 preview table, including a conflict between two helpers and the same helper sending twice.
 - Importing the same counts file twice changes nothing the second time.
@@ -712,6 +732,7 @@ When several files are imported together, they're applied in order of counted_at
 - Kit → helper → counts file → import round-trip, with notes containing commas and line breaks, photos on new items and a new location.
 - Date-only `last_counted` values from older files are read correctly.
 - Imported counts follow the count-round rule (F24): a count with counted_at on or after the "counting since" date counts toward the round; an earlier one doesn't.
+- v0.19 (`tests/helper-fixes-m24.test.ts`): one kit on two devices keeps both devices' new items and warns, in one import and across two; a second kit for the same helper doesn't lose its new items; Undo puts the remembered devices back; files without a device id never warn; a download is "saved" until confirmed or sent again.
 
 ### 18.7 Upgrading the existing v0.7 build (Stage 6)
 v0.7 is built (milestones 1–10) and verified in Stage 5. v0.8 is added to that build, not built from scratch.

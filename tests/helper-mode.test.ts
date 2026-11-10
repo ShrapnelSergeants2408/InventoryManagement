@@ -97,7 +97,7 @@ async function joined(over: Partial<Helper> = {}): Promise<HelperDb> {
   open.push(db);
   const read = await readCountKit(await kitBytes(over));
   if (!read.ok) throw new Error(read.problems.join('; '));
-  await joinKit(db, read.read, 1000);
+  await joinKit(db, read.read, 1000, { id: 'dev-TEST1', pendingBase: 0 });
   return db;
 }
 
@@ -472,7 +472,7 @@ describe('the counts file (§18.4)', () => {
   }
   async function build(db: HelperDb, sequence: number) {
     const state = (await loadHelperState(db))!;
-    return buildCountsFile({ kit: state.kit, sequence, createdAt: '2026-10-28T19:12:00-05:00', changes: state.changes, items: await helperItems(db), pending: state.pending, pendingPhotos: await pendingPhotos(db), now: new Date(2026, 9, 28, 19, 12) });
+    return buildCountsFile({ kit: state.kit, deviceId: state.deviceId, sequence, createdAt: '2026-10-28T19:12:00-05:00', changes: state.changes, items: await helperItems(db), pending: state.pending, pendingPhotos: await pendingPhotos(db), now: new Date(2026, 9, 28, 19, 12) });
   }
 
   it('the whole file: counts.json, counts.csv, new items with photo, new locations', async () => {
@@ -482,7 +482,7 @@ describe('the counts file (§18.4)', () => {
     await addPendingItem(db, (id, at) => ({ ...pendingBase, id, countedAt: at, location: 'Bin B', vendor: { supplier: 'REV', partNo: 'X, 1', url: '', packSize: 2, packPriceCents: 1999 } }), { full: jpeg(9), thumb: null }, 2100, '2026-10-28T18:40:00-05:00');
     const f = await read(await build(db, 1));
     expect(f.names).toEqual(['counts.csv', 'counts.json', 'locations-new.csv', 'new-items.csv', 'photos/', 'photos/pending-hp-AAAAA-1.jpg']);
-    expect(f.json).toEqual({ format: 'frc2408-counts', format_version: 1, kit_id: 'kit-TESTKIT1', helper_id: 'hp-AAAAA', helper_name: 'Maya’s phone', created_at: '2026-10-28T19:12:00-05:00', sequence: 1, app_version: APP_VERSION });
+    expect(f.json).toEqual({ format: 'frc2408-counts', format_version: 1, kit_id: 'kit-TESTKIT1', helper_id: 'hp-AAAAA', helper_name: 'Maya’s phone', created_at: '2026-10-28T19:12:00-05:00', sequence: 1, app_version: APP_VERSION, device_id: 'dev-TEST1' });
     expect(f.counts).toEqual([{ item_id: 'st-0002', on_hand: '40', counted_at: '2026-10-28T18:10:00-05:00', location: 'Bin B', barcode: '', outside_assignment: '' }]);
     expect(f.newItems).toEqual([
       {
@@ -584,7 +584,7 @@ describe('kit → helper → counts file round trip (§18.6)', () => {
     if (!check.ok) throw new Error(JSON.stringify(check.errors));
     await addPendingItem(db, (id, at) => ({ ...check.item, id, countedAt: at }), { full: jpeg(4), thumb: null }, 1700, '2026-10-28T18:45:00-05:00');
     const state = (await loadHelperState(db))!;
-    const blob = await buildCountsFile({ kit: state.kit, sequence: 1, createdAt: '2026-10-28T19:00:00-05:00', changes: state.changes, items: await helperItems(db), pending: state.pending, pendingPhotos: await pendingPhotos(db), now: new Date() });
+    const blob = await buildCountsFile({ kit: state.kit, deviceId: state.deviceId, sequence: 1, createdAt: '2026-10-28T19:00:00-05:00', changes: state.changes, items: await helperItems(db), pending: state.pending, pendingPhotos: await pendingPhotos(db), now: new Date() });
     const zip = await JSZip.loadAsync(await blob.arrayBuffer());
     const parse = async (n: string) => Papa.parse<Record<string, string>>((await zip.file(n)!.async('string')).replace(/^\uFEFF/, ''), { header: true, skipEmptyLines: true }).data;
     expect((await parse('counts.csv')).map((r) => [r.item_id, r.on_hand, r.location])).toEqual([['st-0001', '9', 'Shelf C']]);

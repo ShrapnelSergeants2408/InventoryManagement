@@ -62,7 +62,7 @@ export function HelperApp({ db, onLeft }: { db: HelperDb; onLeft: () => void }) 
   const state = live.state === 'ready' ? live.value : null;
   return (
     <DbContext.Provider value={db}>
-      <HelperContext.Provider value={state ? { kit: state.kit, unsent: state.unsent } : null}>
+      <HelperContext.Provider value={state ? { kit: state.kit, unsent: state.unsent, saved: state.sent.saved !== undefined } : null}>
         <div class="app happ">
           <div class="hbar" role="banner">
             <Icon name="phone" />
@@ -90,6 +90,7 @@ export function HelperApp({ db, onLeft }: { db: HelperDb; onLeft: () => void }) 
                 <span>
                   {label}
                   {t === 'send' && state && state.unsent > 0 && <span class="hbadge">{state.unsent}</span>}
+                  {t === 'send' && state && state.unsent === 0 && state.sent.saved !== undefined && <span class="hbadge" aria-label="saved, not sent yet">!</span>}
                 </span>
               </a>
             ))}

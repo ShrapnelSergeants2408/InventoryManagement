@@ -878,3 +878,38 @@ Dan: "write the hand-off guide and clean up unnecessary files (old deprecated lo
 Dan: "lets now set this as version 1.0.0", and asked how to start the tablet with a fresh database (no test data, helpers or orders). `APP_VERSION`, `package.json` and `package-lock.json` 1.0.0; the M16a and M17 checks expect it. `docs/HANDOFF.md` §8 gains "Starting completely fresh": clear the site's data in Chrome, then first-launch setup; a restore can't do it because it keeps the PIN, settings and helper list.
 
 **Later:** Dan, 2026-10-29: "merged. tablet reset and set up fresh." PR #41 merged; the Tab S8 runs 1.0.0, its test data cleared (site data), set up again with a new PIN and recovery code. From here the tablet holds the team's real inventory: test on a computer or a spare device, never on it.
+
+## 2026-11-10 (about 13:10–13:50 CST) — Project review, helper Getting Started guide, review backlog
+
+Dan asked for a review of the project (issues, efficiency, up to 10 suggestions), an interview, and a quick guide to counting with helpers; then what remains, and to add the suggestions to the list ("especially #3", the app-link QR code). Start time is approximate (the first test run was 13:15).
+
+**Dan's answers:** helpers are Android phones, iPhones and spare tablets; files move through a shared Drive folder on the team account, which the tablet is signed in to; one helper per device; a mentor guide with a student card; devices have internet in the shop.
+
+**Produced:** `docs/GETTING-STARTED-HELPERS.md`; `docs/proposals/2026-11-10-review-backlog.md` (helper-flow bugs A1–A4, suggestions B1–B10 with B3 first, upkeep C1–C5). No code changed.
+
+**Evidence:** unit 902 pass (1 skipped); build clean; `npm audit --omit=dev` 0. A throwaway test (deleted) showed one kit on two devices gives no conflict and drops the second device's new item. A2 is from reading the code only. A separate agent checked every app label quoted in the guide against `src/`; three wording differences were corrected.
+
+**Not checked:** the Drive app steps, the iPhone share menu and Android's Downloads behaviour on real devices.
+
+**Open:** nothing is approved for building. Future features: details D1–D24 and questions Q1–Q10 in `docs/proposals/future-features/` wait for Dan; the spec that goes first (foundations and tool checkout) wants a fresh-session review before building. The backlog needs Dan's choice of what to build and when.
+
+## 2026-11-10 (about 13:50–14:25 CST) — M24: helper fixes before the first count
+
+**SESSION IDENTITY**
+Same session. Dan asked what remained (nothing incomplete; the three future features wait on D1–D24 and Q1–Q10) and to add the suggestions to a list, then: "lets do b1, b2, and b3 now before the count". Branch `m24-helper-fixes` from `main` (`925a75f`).
+
+**WORK COMPLETED**
+SPEC v0.19. A device id for every opened kit, in `counts.json`; the shop tablet remembers each kit's devices and warns at import; new-item ids from a per-kit block, so they never repeat; "saved to Downloads" shown as not sent on the helper (with "I've sent it") and on the tablet's Send count kit dialog; the app's address as a QR code on Helper devices. `APP_VERSION` 1.1.0. The Getting Started guide updated for 1.1.0 and linked from HANDOFF §9.
+
+**DELIVERABLES PRODUCED**
+New: `tests/helper-fixes-m24.test.ts`, `scripts/m24-ui-check.mjs`, `docs/reviews/M24.md`, `docs/GETTING-STARTED-HELPERS.md`, `docs/proposals/2026-11-10-review-backlog.md`. Changed: `docs/SPEC.md`, `docs/HANDOFF.md`, `src/domain/{helpers,helper-mode,import-counts,url}.ts`, `src/data/{helper-db,import-counts}.ts`, `src/io/{backup,count-kit,counts-file}.ts`, `src/ui/helper/{HelperApp,HelperSend}.tsx`, `src/ui/helper/session.ts`, `src/ui/screens/count/{Count,Helpers,Import}.tsx`, `src/styles/{count,helper}.css`, `tests/{helper-mode,import-counts}.test.ts`, `scripts/{m16a,m16b,m17}-ui-check.mjs`, `package.json`, `package-lock.json`.
+
+**EVIDENCE**
+Type check and build clean. Unit 921 pass (1 skipped). Mutants 15/15. Browser: M24 20/20; regression M2–M24 840/840, all exit 0, clean consoles.
+
+**CONFIDENCE**
+High for the ids, the warning and Undo (unit tests, mutants, real IndexedDB in the browser). Medium for what Chrome on Android and the iPhone actually do with the ZIP, and for scanning the QR code with a phone, until the tablet check. Creation and checking were one session: an independent review in a fresh session is recommended before merging.
+
+**Next:** Dan decides on the independent review, confirms details (a)–(h) in `docs/reviews/M24.md`, merges the PR and runs the tablet check there before the count.
+
+**Later:** Dan, 2026-11-10: "1 confirmed; 2 no review". Details (a)–(h) are recorded as confirmed in `docs/reviews/M24.md` and SPEC v0.19; no independent review was run. PR #46 waits for Dan to merge, then the tablet check.

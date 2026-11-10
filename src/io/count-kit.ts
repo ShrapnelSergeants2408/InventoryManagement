@@ -182,10 +182,14 @@ export interface CountsJson {
   /** 1 for the first file sent from this kit, then 2, 3, … */
   sequence: number;
   app_version: string;
+  /** The device that opened the kit (v0.19). */
+  device_id: string;
 }
 
 export interface CountsInput {
   kit: HelperKit;
+  /** '' on a helper that opened its kit before v0.19. */
+  deviceId: string;
   sequence: number;
   createdAt: string;
   changes: readonly HelperChange[];
@@ -196,7 +200,7 @@ export interface CountsInput {
   now: Date;
 }
 
-export function countsJson(input: Pick<CountsInput, 'kit' | 'sequence' | 'createdAt'>): CountsJson {
+export function countsJson(input: Pick<CountsInput, 'kit' | 'sequence' | 'createdAt' | 'deviceId'>): CountsJson {
   return {
     format: COUNTS_FORMAT,
     format_version: COUNTS_FORMAT_VERSION,
@@ -206,6 +210,7 @@ export function countsJson(input: Pick<CountsInput, 'kit' | 'sequence' | 'create
     created_at: input.createdAt,
     sequence: input.sequence,
     app_version: APP_VERSION,
+    device_id: input.deviceId,
   };
 }
 

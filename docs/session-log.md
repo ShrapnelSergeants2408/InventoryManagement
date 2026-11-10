@@ -911,3 +911,5 @@ Type check and build clean. Unit 921 pass (1 skipped). Mutants 15/15. Browser: M
 High for the ids, the warning and Undo (unit tests, mutants, real IndexedDB in the browser). Medium for what Chrome on Android and the iPhone actually do with the ZIP, and for scanning the QR code with a phone, until the tablet check. Creation and checking were one session: an independent review in a fresh session is recommended before merging.
 
 **Next:** Dan decides on the independent review, confirms details (a)–(h) in `docs/reviews/M24.md`, merges the PR and runs the tablet check there before the count.
+
+**Later:** Dan, 2026-11-10: "1 confirmed; 2 no review". Details (a)–(h) are recorded as confirmed in `docs/reviews/M24.md` and SPEC v0.19; no independent review was run. PR #46 waits for Dan to merge, then the tablet check.

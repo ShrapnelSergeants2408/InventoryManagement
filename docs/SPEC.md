@@ -1,7 +1,7 @@
 # FRC 2408 Inventory Management — Specification v0.19
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
-**Status:** v0.18 approved by Dan 2026-10-29 (released as app version 1.0.0). **v0.19 (app version 1.1.0) is built and waits for Dan to confirm its details** (`docs/reviews/M24.md`) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT · **v0.19:** 2026-11-10 CST
+**Status:** v0.18 approved by Dan 2026-10-29 (released as app version 1.0.0). **v0.19 (app version 1.1.0): details confirmed by Dan 2026-11-10** (`docs/reviews/M24.md`) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT · **v0.19:** 2026-11-10 CST
 
 **Changes in v0.19:** Three helper-device changes before the first full count (Dan, 2026-11-10: "lets do b1, b2, and b3 now before the count"; from `docs/proposals/2026-11-10-review-backlog.md`), built as M24:
 - **A device id for every opened kit** (§18.2, §18.4, §18.5). A helper device gets a new id each time it opens a kit, and writes it into every counts file. The shop tablet remembers which devices each kit's files came from and warns in the import preview when one kit was opened on two devices, or opened again on one. Before, nothing told them apart.
@@ -9,7 +9,7 @@
 - **Saved to Downloads is not "sent"** (§18.1, §18.4). When the browser can't open the share sheet for the ZIP (Chrome on Android), the helper's Send screen says the counts file is saved to Downloads and not on the shop tablet yet, until the student taps **I've sent it**; the Count screen and the Send tab remind them. On the shop tablet, Send count kit stays open to say the kit is in Downloads and hasn't gone to the helper.
 - **The app's address as a QR code** on the Helper devices screen (§18.1), so a student scans the shop tablet to open the app on a phone.
 - File formats: `counts.json` gains `device_id`. The format version stays 1, so a shop tablet and helpers on different versions still work together (§18.4).
-- Details Claude filled in are listed in `docs/reviews/M24.md` for Dan to confirm.
+- Details Claude filled in, confirmed by Dan on 2026-11-10 (`docs/reviews/M24.md`): a device id is per opened kit, not per phone; two devices on one kit give a warning, not conflicts; the counts file format version stays 1; new-item numbers come from a random six-digit block per opened kit; "I've sent it" is the student's word; a kit saved to Downloads is still recorded as sent; where the QR card sits; the wording.
 
 **Changes in v0.18:** Cleanup of the findings earlier reviews left open (Dan, 2026-10-29: "fix 1-5 as a cleanup milestone"), built as M23:
 - A CSV inside a backup ZIP that isn't UTF-8 is read as Windows-1252 (Excel's plain "CSV"), as a loose CSV already was, with a warning naming the file (§7; M5 review finding 3).
@@ -596,6 +596,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Dan merged PR #38 (M23), confirmed details (a)–(d) and ran the tablet check: "details confirmed. merged. tablet checked." |
 | 2026-10-29 | Dan: "set this as version 1.0.0". `APP_VERSION` and `package.json` 1.0.0; SPEC stays v0.18 (no feature change). The tablet then starts fresh: site data cleared, first-launch setup (`docs/HANDOFF.md` §8) |
 | 2026-11-10 | Project review before the first full count (`docs/proposals/2026-11-10-review-backlog.md`). Dan: "lets do b1, b2, and b3 now before the count": a device id for every opened kit with a warning at import, new-item ids that never repeat, "saved to Downloads" shown as not sent, and the app's address as a QR code on Helper devices → v0.19, M24, `APP_VERSION` 1.1.0. Details Claude filled in are listed in `docs/reviews/M24.md` for Dan to confirm |
+| 2026-11-10 | Dan confirmed the M24 details (a)–(h) and decided against an independent review: "1 confirmed; 2 no review" |
 
 ## 17. UI conventions (from Stage 3)
 

@@ -132,7 +132,7 @@ export async function readCountsFile(name: string, bytes: Uint8Array | ArrayBuff
     ok: true,
     file: {
       fileName: name,
-      meta: { kitId: text('kit_id'), helperId: helper.id, helperName: helper.name, createdAt: createdAt!, sequence: sequence as number, appVersion: text('app_version') },
+      meta: { kitId: text('kit_id'), helperId: helper.id, helperName: helper.name, createdAt: createdAt!, sequence: sequence as number, appVersion: text('app_version'), deviceId: text('device_id') },
       counts: counts.counts,
       newItems: pend.items,
       newLocations,

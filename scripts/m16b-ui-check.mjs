@@ -220,7 +220,7 @@ try {
   check('nothing typed: name and on hand asked for, nothing saved', [await P(`return $$('.hadd .err').map((e) => norm(e.textContent))`), (await P(`return await idbAll('frc2408-helper', 'pendingItems')`)).length], [['Name is required.', 'On hand is required: how many are here?'], 0]);
   await P(`await type('#pn', 'Talon SRX, old model'); $('[aria-label="On hand plus one"]').click(); await settle(100); $('[aria-label="On hand plus one"]').click(); await settle(100); await pick('#pl', 'Bin Z'); await type('#pno', 'red bin, top\\nleft side'); await click('.hadd .btn', 'Add supplier'); await pick('#pvs', 'REV'); await type('#pvr', '45'); await click('.hadd-acts .btn', 'Save as pending'); await settle(800);`);
   const pend = await P(`return await idbAll('frc2408-helper', 'pendingItems')`);
-  check('saved as pending: id, fields, back to Count', [pend.map((p) => [p.id, p.name, p.onHand, p.location, p.barcode, p.notes, p.vendor?.supplier, p.vendor?.packPriceCents, p.helperName]), await P(`return [location.hash, toast()]`)], [[[`pending-${kitJson.helper_id}-1`, 'Talon SRX, old model', 2, 'Bin Z', '777000222', 'red bin, top\nleft side', 'REV', 4500, 'Maya’s phone']], ['#/count', 'Saved “Talon SRX, old model” as pending. It goes with your counts.']]);
+  check('saved as pending: id, fields, back to Count', [pend.map((p) => [p.id, p.name, p.onHand, p.location, p.barcode, p.notes, p.vendor?.supplier, p.vendor?.packPriceCents, p.helperName]), await P(`return [location.hash, toast()]`), new RegExp(`^pending-${kitJson.helper_id}-\\d{6}0001$`).test(pend[0]?.id ?? '')], [[[pend[0]?.id, 'Talon SRX, old model', 2, 'Bin Z', '777000222', 'red bin, top\nleft side', 'REV', 4500, 'Maya’s phone']], ['#/count', 'Saved “Talon SRX, old model” as pending. It goes with your counts.'], true]);
 
   // ── Send ──
   await P(`await go('#/send');`);
@@ -242,7 +242,7 @@ try {
     [elec[3].id, '', '', '', '999000111', ''],
   ].sort());
   const ni = await csvOf(z1, 'new-items.csv');
-  check('new-items.csv, locations-new.csv and the files in the ZIP', [ni.map((r) => [r.pending_id, r.name, r.on_hand, r.location, r.barcode, r.notes, r.v1_supplier, r.v1_pack_price, r.photo_file]), await csvOf(z1, 'locations-new.csv'), Object.keys(z1.files).sort()], [[[`pending-${kitJson.helper_id}-1`, 'Talon SRX, old model', '2', 'Bin Z', '777000222', 'red bin, top\nleft side', 'REV', '45.00', '']], [{ name: 'Bin Z' }], ['counts.csv', 'counts.json', 'locations-new.csv', 'new-items.csv']]);
+  check('new-items.csv, locations-new.csv and the files in the ZIP', [ni.map((r) => [r.pending_id, r.name, r.on_hand, r.location, r.barcode, r.notes, r.v1_supplier, r.v1_pack_price, r.photo_file]), await csvOf(z1, 'locations-new.csv'), Object.keys(z1.files).sort()], [[[pend[0]?.id, 'Talon SRX, old model', '2', 'Bin Z', '777000222', 'red bin, top\nleft side', 'REV', '45.00', '']], [{ name: 'Bin Z' }], ['counts.csv', 'counts.json', 'locations-new.csv', 'new-items.csv']]);
   await sleep(500);
   check('sent: Last sent today, everything is sent, the badge and reminder gone', await P(`return [/^Last sent today \\d+:\\d\\d [AP]M$/.test(norm($('.hlast-h').textContent)), norm($('.hlast .small').textContent), norm($('.hnav a[href="#/send"]').textContent), toast().startsWith('Sent counts-maya-s-phone-')]`), [true, 'Everything is sent', 'Send', true]);
   await P(`catchShare(); await click('.hsend-go .btn', 'Send my counts');`);

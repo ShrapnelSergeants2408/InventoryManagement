@@ -26,6 +26,8 @@ export interface Helper {
   /** ms since epoch of the last counts import from this helper (M16c), or null. */
   lastImportAt: number | null;
   created: number;
+  /** Kit id → the device ids counts files of that kit have come from (v0.19). Absent before the first such import. */
+  devices?: Record<string, string[]>;
 }
 
 /** What the add / edit form holds. */
@@ -164,6 +166,9 @@ function randomId(prefix: string, length: number, isTaken: (id: string) => boole
 
 /** "hp-" + 5 characters. Pending items a helper adds get "pending-<helper id>-<n>" (§18.3). */
 export const newHelperId = (isTaken: (id: string) => boolean, random: () => number = Math.random) => randomId('hp-', 5, isTaken, random);
+
+/** "dev-" + 5 characters: a new one every time a kit is opened on a device (§18.2, v0.19). */
+export const newDeviceId = (random: () => number = Math.random) => randomId('dev-', 5, () => false, random);
 
 /** "kit-" + 8 characters; a new one for every send (§18.1). */
 export const newKitId = (isTaken: (id: string) => boolean, random: () => number = Math.random) => randomId('kit-', 8, isTaken, random);

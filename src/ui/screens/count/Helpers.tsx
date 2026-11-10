@@ -20,6 +20,7 @@ import {
   type HelperDraft,
 } from '../../../domain/helpers';
 import { nameKey } from '../../../domain/types';
+import { appAddress } from '../../../domain/url';
 import { kitFileName } from '../../../io/count-kit';
 import { shareOrDownload } from '../../../io/share';
 import { BackButton, CheckBox, StateMessage, Toggle, TopBar, plural } from '../../components/common';
@@ -28,6 +29,7 @@ import { useDb, useHelpers, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
+import { QrSvg } from '../labels/LabelSheet';
 import { StorageError } from '../StorageError';
 
 type Open = { kind: 'add' } | { kind: 'edit'; h: Helper } | { kind: 'send'; h: Helper } | { kind: 'remove'; h: Helper } | null;
@@ -87,6 +89,7 @@ export function HelpersScreen() {
               <strong>No helpers yet.</strong> Add one for each device that will count, e.g. “Tablet 2 · Alex &amp; Jordan” or “Maya’s phone”.
             </div>
           )}
+          <AppLink />
           {list.map((h) => (
             <HelperCard key={h.id} h={h} snap={snap.value} onOpen={setOpen} />
           ))}
@@ -99,6 +102,26 @@ export function HelpersScreen() {
       {open?.kind === 'send' && <SendKitDialog h={open.h} items={snap.state === 'ready' ? snap.value.items.length : 0} onClose={() => setOpen(null)} />}
       {open?.kind === 'remove' && <RemoveHelper h={open.h} onClose={() => setOpen(null)} />}
     </>
+  );
+}
+
+/**
+ * How a helper device gets the app (§18.1, v0.19): a QR code of this copy's own address to scan
+ * with the phone's camera, and the address to type. Left out where the app has no web address.
+ */
+function AppLink() {
+  const address = appAddress(location.href);
+  if (address === '') return null;
+  return (
+    <div class="card happlink" aria-label="Open the app on a helper">
+      <QrSvg text={address} size={1.5} />
+      <div class="grow">
+        <h2 class="h2">Open the app on a helper</h2>
+        <div>Scan this code with the phone’s or tablet’s camera, or type the address into Chrome (Android) or Safari (iPhone):</div>
+        <strong class="mono happlink-a">{address.replace(/^https?:\/\//, '')}</strong>
+        <div class="small muted">Then choose “Join as a helper” and open the count kit you sent it. Not in a private tab.</div>
+      </div>
+    </div>
   );
 }
 
@@ -354,6 +377,8 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
   const [size, setSize] = useState<{ count: number; bytes: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  /** The kit's file name once it was saved to Downloads instead of shared. */
+  const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => {
     void db.photos.toArray().then(
       (rows) => setSize({ count: rows.length, bytes: rows.reduce((n, r) => n + r.full.size, 0) }),
@@ -375,13 +400,36 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
         return;
       }
       await recordKit(db, h.id, built);
-      showToast(result === 'shared' ? `Sent ${name}.` : `Saved ${name} to Downloads. Open Files to send it by Quick Share, Bluetooth or Drive.`);
+      // Saved to Downloads isn't sent (v0.19): the dialog stays to say what's left to do.
+      if (result === 'downloaded') {
+        setSaved(name);
+        setBusy(false);
+        return;
+      }
+      showToast(`Sent ${name}.`);
       props.onClose();
     } catch (e) {
       setFailure(`Couldn’t build the kit: ${message(e)}`);
       setBusy(false);
     }
   };
+
+  if (saved !== null) {
+    return (
+      <Dialog label="Count kit saved" onClose={props.onClose}>
+        <h2 class="h2">Saved to Downloads, not sent yet</h2>
+        <p class="dlg-p">
+          <strong class="mono">{saved}</strong> is in this tablet’s Downloads. “{h.name}” doesn’t have it yet.
+        </p>
+        <p class="dlg-p">Open Files or Drive and send it to the helper: upload it to the team’s Drive folder, or use Quick Share or email. Then open it on the helper with “Join as a helper”.</p>
+        <DialogActions>
+          <button type="button" class="btn pri lg" data-autofocus onClick={props.onClose}>
+            Done
+          </button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog label="Send count kit" onClose={() => !busy && props.onClose()}>

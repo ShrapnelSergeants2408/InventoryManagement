@@ -132,7 +132,7 @@ The app has no "erase everything" button on purpose. A restore keeps the PIN, se
 | Job | Where |
 |---|---|
 | Start of a season | More › Reminders & limits: **Season starts** (kickoff day), the **school-year budget**. Count › **Start a new count** for a fresh recount |
-| Big count with several devices | Count › **Helper devices**: add a helper per student or tablet, send each a count kit, then **Import counts**. Helpers should send at the end of every session (iPhones clear website data after a few days unused) |
+| Big count with several devices | Count › **Helper devices**: add a helper per student or tablet, send each a count kit, then **Import counts**. Helpers should send at the end of every session (iPhones clear website data after a few days unused). Step by step, with a card for students: `docs/GETTING-STARTED-HELPERS.md` |
 | Check prices before ordering | SPEC §10: export a data-only backup, ask Claude (with web search) for a price-update CSV, then More › Backup, restore & price import › **Price update import** (PIN) |
 | Record an order | Order list › a supplier's **Mark ordered…** (PIN); when parts arrive, the order's **Receive…** |
 | Spending report | Order › **History** › Spending summary; **Export CSV** or **Print summary** |

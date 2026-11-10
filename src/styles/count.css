@@ -144,3 +144,12 @@
   .hgroups { grid-template-columns: minmax(0, 1fr); }
   .hcard-b { padding-left: 0; }
 }
+
+/* Helper devices: the app's address as a QR code for the helper to scan (§18.1, v0.19). */
+.happlink { padding: 14px 18px; display: flex; gap: 18px; align-items: center; flex: none; }
+.happlink > .qr { flex: none; border: 1px solid var(--line-2); border-radius: 8px; }
+.happlink > .grow { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.happlink-a { font-size: 20px; overflow-wrap: anywhere; }
+@media (max-width: 560px) {
+  .happlink { flex-direction: column; align-items: flex-start; }
+}

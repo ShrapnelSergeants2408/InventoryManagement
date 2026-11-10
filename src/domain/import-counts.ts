@@ -21,6 +21,8 @@ export interface CountsMeta {
   createdAt: string;
   sequence: number;
   appVersion: string;
+  /** The device that opened the kit (v0.19); absent or '' in files from older versions. */
+  deviceId?: string;
 }
 
 /** One counts.csv row. `onHand` null: not counted, only the location or barcode changed (SPEC v0.11). */
@@ -132,6 +134,33 @@ export interface PlanInput {
   onOrder?: OnOrder;
 }
 
+export interface KitDevices {
+  helperId: string;
+  kitId: string;
+  helperName: string;
+  devices: Set<string>;
+}
+
+/**
+ * Per helper and kit, the device ids its counts files have come from: the ones remembered on
+ * the helper plus these files' (v0.19). More than one means the kit was opened on two devices,
+ * or opened again on one.
+ */
+export function kitDevices(files: readonly CountsFile[], helpers: readonly Helper[]): KitDevices[] {
+  const out = new Map<string, KitDevices>();
+  for (const f of files) {
+    const key = `${f.meta.helperId}|${f.meta.kitId}`;
+    let e = out.get(key);
+    if (!e) {
+      const h = helpers.find((x) => x.id === f.meta.helperId);
+      e = { helperId: f.meta.helperId, kitId: f.meta.kitId, helperName: h?.name ?? f.meta.helperName, devices: new Set(h?.devices?.[f.meta.kitId] ?? []) };
+      out.set(key, e);
+    }
+    if (f.meta.deviceId) e.devices.add(f.meta.deviceId);
+  }
+  return [...out.values()];
+}
+
 /** ms since epoch of a stored count time; NaN for blank. */
 export const stampMs = (s: string): number => (s === '' ? NaN : Date.parse(s.length === 10 ? `${s}T00:00:00` : s));
 
@@ -188,6 +217,12 @@ export function planImport(input: PlanInput, choices: ImportChoices = noChoices(
     if (!h) warnings.push(`${f.fileName}: from “${f.meta.helperName}”, a helper this tablet doesn’t have (removed, or set up on another tablet). Its counts can still be imported.`);
     else if (!kit) warnings.push(`${f.fileName}: from a count kit this tablet didn’t send to “${h.name}”. Its counts can still be imported.`);
     kitMs.set(f, kit ? stampMs(kit.createdAt) : null);
+  }
+
+  // ── One kit on several devices (v0.19): a warning; counts still apply, the newest of each item last ──
+  for (const k of kitDevices(sortedFiles, input.helpers)) {
+    if (k.devices.size > 1)
+      warnings.push(`The count kit for “${k.helperName}” was opened on ${k.devices.size} devices, or opened again on one. Where they counted the same item, the newest count is used without asking. Check that two people didn’t count the same items; a second device should have its own helper.`);
   }
 
   // ── Every count row, in counted_at order ──

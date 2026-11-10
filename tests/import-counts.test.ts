@@ -517,14 +517,14 @@ describe('kit → helper → counts file → import (§18.6 round trip)', () => 
     if (!kit.ok) throw new Error(kit.problems.join('; '));
     const h = new HelperDb(`round-helper-${++n}`);
     open.push(h);
-    await joinKit(h, kit.read, 1000);
+    await joinKit(h, kit.read, 1000, { id: 'dev-TEST1', pendingBase: 0 });
     await addLocation(h, 'Bin Q', '', 1100);
     await saveCount(h, 'A', 6, 'Bin Q', at('18:30'), 1200);
     await saveCount(h, 'H', 2, undefined, at('18:31'), 1300);
     await setBarcode(h, 'C', '4455', 1400);
     await addPendingItem(h, (id, countedAt) => ({ id, name: 'Talon SRX', category: 'Electrical', subcategory: 'Controllers', unit: 'each', onHand: 2, desired: 1, location: 'Bin Q', barcode: '777', notes: 'red bin, top\nleft side', countedAt, vendor: { supplier: 'REV', partNo: 'X, 1', url: '', packSize: 1, packPriceCents: 4500 }, hasPhoto: false }), { full: jpeg(5), thumb: null }, 1500, at('18:40'));
     const st = (await loadHelperState(h))!;
-    const blob = await buildCountsFile({ kit: st.kit, sequence: 1, createdAt: at('19:00'), changes: st.changes, items: await helperItems(h), pending: st.pending, pendingPhotos: await helperPhotos(h), now: new Date(2026, 9, 28, 19, 0) });
+    const blob = await buildCountsFile({ kit: st.kit, deviceId: st.deviceId, sequence: 1, createdAt: at('19:00'), changes: st.changes, items: await helperItems(h), pending: st.pending, pendingPhotos: await helperPhotos(h), now: new Date(2026, 9, 28, 19, 0) });
 
     const read = await readCountsFile('counts-maya.zip', new Uint8Array(await blob.arrayBuffer()));
     if (!read.ok) throw new Error(read.problems.join('; '));

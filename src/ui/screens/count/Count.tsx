@@ -362,7 +362,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
       {top}
       <div class="cbody">
         {helper ? (
-          <HelperStart groups={helper.kit.groups} kind={helper.kit.kind} items={mine.length} unsent={helper.unsent} allowNew={helper.kit.allowNewItems} />
+          <HelperStart groups={helper.kit.groups} kind={helper.kit.kind} items={mine.length} unsent={helper.unsent} saved={helper.saved} allowNew={helper.kit.allowNewItems} />
         ) : (
           <>
         <div class="card ctotal">
@@ -556,7 +556,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
 }
 
 /** The helper's start card (§18.3, §18.4): its groups, Add item not on the list, the send reminder. */
-function HelperStart(props: { groups: readonly string[]; kind: 'category' | 'location'; items: number; unsent: number; allowNew: boolean }) {
+function HelperStart(props: { groups: readonly string[]; kind: 'category' | 'location'; items: number; unsent: number; saved: boolean; allowNew: boolean }) {
   const many = props.groups.length !== 1;
   const what = props.kind === 'location' ? (many ? 'locations' : 'location') : many ? 'categories' : 'category';
   return (
@@ -565,6 +565,15 @@ function HelperStart(props: { groups: readonly string[]; kind: 'category' | 'loc
         <div class="banner hremind" role="status">
           <Icon name="upload" />
           <span class="grow">{plural(props.unsent, 'change')} not sent yet. Send your counts to the shop tablet before you leave.</span>
+          <a class="btn onb" href="#/send">
+            Send
+          </a>
+        </div>
+      )}
+      {props.unsent === 0 && props.saved && (
+        <div class="banner hremind" role="status">
+          <Icon name="upload" />
+          <span class="grow">Your counts file is saved in Downloads. The shop tablet doesn’t have it yet.</span>
           <a class="btn onb" href="#/send">
             Send
           </a>

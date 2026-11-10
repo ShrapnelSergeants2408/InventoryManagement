@@ -102,3 +102,8 @@
   .happ .dlg { max-width: calc(100vw - 24px); }
   .happ .dlg-actions { flex-wrap: wrap; }
 }
+
+/* Send: the counts file is only in Downloads (§18.4, v0.19). */
+.hsaved { align-items: center; flex-wrap: wrap; flex: none; overflow-wrap: anywhere; }
+.hsaved > .grow { flex: 1 1 260px; min-width: 0; }
+.hsaved > .btn { flex: none; }

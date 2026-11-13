@@ -48,7 +48,7 @@ export interface KitJson {
   created_at: string;
   /** The main tablet's app version. */
   app_version: string;
-  groups: { kind: GroupKind; names: string[] };
+  groups: { kind: GroupKind; names: string[]; /** Subcategories counted instead of the whole category (v0.22); left out when none. */ subcategories?: Record<string, string[]> };
   allow_new_items: boolean;
   /** The tablet's "counting since" date (YYYY-MM-DD) or '' (v0.20): the helper's progress counts from it, so items already counted this round stay counted. */
   count_since?: string;
@@ -95,7 +95,7 @@ export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt' |
     helper_name: h.name,
     created_at: input.createdAt,
     app_version: APP_VERSION,
-    groups: { kind: h.kind, names: [...h.groups] },
+    groups: { kind: h.kind, names: [...h.groups], ...(h.subcategories && Object.keys(h.subcategories).length > 0 ? { subcategories: h.subcategories } : {}) },
     allow_new_items: h.allowNewItems,
     ...(input.countSince !== undefined ? { count_since: input.countSince } : {}),
     ...(input.recountDays !== undefined ? { recount_days: input.recountDays } : {}),

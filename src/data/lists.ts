@@ -16,7 +16,7 @@ import {
 } from '../domain/lists';
 import { nameKey, type Item, type Location, type Supplier } from '../domain/types';
 import { normalizeUrl } from '../domain/url';
-import { renameGroup, type GroupKind } from '../domain/helpers';
+import { renameGroup, renameSubgroup, type GroupKind } from '../domain/helpers';
 import { fromHelperRow, fromItemRow, fromOrderRow, toHelperRow, toItemRow, toLocationRow, toOrderRow, toSupplierRow, type InventoryDb } from './db';
 import { isHelperDb, noteLocationAdded } from './helper-db';
 import { RECENT_LOCATIONS, getRecentLocations } from './items';
@@ -266,7 +266,7 @@ export async function addSubcategory(db: InventoryDb, category: string, name: st
 }
 
 export async function renameSubcategory(db: InventoryDb, category: string, oldName: string, name: string, now = Date.now()): Promise<string> {
-  return db.transaction('rw', db.categories, db.items, db.settings, async () => {
+  return db.transaction('rw', db.categories, db.items, db.settings, db.helpers, async () => {
     const cat = await categoryOrFail(db, category);
     const at = cat.subcategories.indexOf(oldName);
     if (at < 0) fail(`“${oldName}” isn't a subcategory of ${category}`);
@@ -276,6 +276,9 @@ export async function renameSubcategory(db: InventoryDb, category: string, oldNa
     subcategories[at] = checked.name;
     await db.categories.put({ ...cat, subcategories });
     await saveItems(db, renameSubcategoryItems(await allItems(db), category, oldName, checked.name), now);
+    // Helpers limited to this subcategory follow the new name (v0.22).
+    const changed = renameSubgroup((await db.helpers.toArray()).map(fromHelperRow), category, oldName, checked.name);
+    if (changed.length > 0) await db.helpers.bulkPut(changed.map(toHelperRow));
     await touch(db, now);
     return checked.name;
   });

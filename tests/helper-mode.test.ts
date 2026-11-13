@@ -120,6 +120,7 @@ const kitInfo = (over: Partial<HelperKit> = {}): HelperKit => ({
   countSince: '',
   kitsFolderUrl: '',
   countsFolderUrl: '',
+  subcategories: {},
   recountDays: null,
   ...over,
 });
@@ -130,7 +131,7 @@ describe('kit.json check (§18.2, §18.7)', () => {
   it('reads a kit from this app', () => {
     expect(checkKitJson(good)).toEqual({
       ok: true,
-      kit: { kitId: 'kit-1', helperId: 'hp-1', helperName: 'Maya', createdAt: good.created_at, appVersion: '0.4.0', kind: 'location', groups: ['Bin A', NO_LOCATION], allowNewItems: false, countSince: '', recountDays: null, kitsFolderUrl: '', countsFolderUrl: '' },
+      kit: { kitId: 'kit-1', helperId: 'hp-1', helperName: 'Maya', createdAt: good.created_at, appVersion: '0.4.0', kind: 'location', groups: ['Bin A', NO_LOCATION], allowNewItems: false, countSince: '', recountDays: null, kitsFolderUrl: '', countsFolderUrl: '', subcategories: {} },
     });
   });
 

@@ -2,10 +2,12 @@
 // Open a new kit. The kit is read and checked here; nothing is saved until the caller says so.
 import { useRef, useState } from 'preact/hooks';
 import { plural } from '../components/common';
+import { groupLabels } from '../../domain/helpers';
 import { readCountKit, type ReadKit } from '../../io/count-kit';
 import { Icon } from '../icons';
 
-const KIT_ACCEPT = '.zip,application/zip,application/x-zip-compressed';
+// No file-type filter (v0.22): on an iPhone a filter can leave out Google Drive and iCloud and offer
+// only the phone's own storage. Any file that isn't a kit is refused with a message after it is picked.
 
 export function KitPicker(props: { label: string; primary?: boolean; onRead: (read: ReadKit, fileName: string) => void }) {
   const file = useRef<HTMLInputElement>(null);
@@ -35,7 +37,6 @@ export function KitPicker(props: { label: string; primary?: boolean; onRead: (re
       <input
         ref={file}
         type="file"
-        accept={KIT_ACCEPT}
         class="vh"
         tabIndex={-1}
         aria-hidden="true"
@@ -75,7 +76,7 @@ export function KitSummary({ read }: { read: ReadKit }) {
     <div class="card sfile">
       <strong>{k.helperName}</strong>
       <span>
-        {k.kind === 'category' ? 'Categories' : 'Locations'}: {k.groups.join(', ')}
+        {k.kind === 'category' ? 'Categories' : 'Locations'}: {groupLabels(k).join(', ')}
       </span>
       <span class="small muted">
         {plural(read.data.items.length, 'item')} · {plural(read.data.photos.size, 'photo')} · {k.allowNewItems ? 'new items allowed' : 'no new items'}

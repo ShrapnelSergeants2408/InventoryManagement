@@ -2,7 +2,7 @@
 // helper's to count, what goes in the cumulative counts file, and the "Add item not on the
 // list" rules. Pure, so the rules are unit-tested; data/helper-db.ts stores them.
 import { folderUrlOrBlank } from './folder-links';
-import { newDeviceId, type GroupKind } from './helpers';
+import { inSubcategories, newDeviceId, subcategoriesOf, type GroupKind, type SubGroups } from './helpers';
 import { NO_LOCATION } from './lists';
 import { parsePrice } from './money';
 import { QR_PREFIX, barcodeKey, cleanCode } from './scan';
@@ -28,6 +28,8 @@ export interface HelperKit {
   appVersion: string;
   kind: GroupKind;
   groups: string[];
+  /** Subcategories counted instead of the whole category (v0.22); {} when none. */
+  subcategories: SubGroups;
   allowNewItems: boolean;
   /** The tablet's count round date when the kit was made (v0.20); '' when none or from an older tablet. */
   countSince: string;
@@ -41,6 +43,14 @@ export interface HelperKit {
 export type KitCheck = { ok: true; kit: HelperKit } | { ok: false; newer: boolean; message: string };
 
 const isText = (v: unknown): v is string => typeof v === 'string';
+
+/** The subcategory limits in kit.json: only category → list of text; anything else is ignored (v0.22). */
+function subGroupsOf(v: unknown): SubGroups {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return {};
+  const out: SubGroups = {};
+  for (const [k, list] of Object.entries(v)) if (Array.isArray(list) && list.length > 0 && list.every(isText)) out[k] = [...list];
+  return out;
+}
 
 /** Checks kit.json. A newer format is refused with "reload" (§18.7); anything malformed is refused. */
 export function checkKitJson(raw: unknown): KitCheck {
@@ -57,7 +67,7 @@ export function checkKitJson(raw: unknown): KitCheck {
       message: 'This count kit was made by a newer version of the app. Reload the app to update it (close it and open it again, or refresh the page), then open the kit again.',
     };
   }
-  const groups = k.groups as { kind?: unknown; names?: unknown } | undefined;
+  const groups = k.groups as { kind?: unknown; names?: unknown; subcategories?: unknown } | undefined;
   if (!isText(k.kit_id) || k.kit_id === '' || !isText(k.helper_id) || k.helper_id === '' || !isText(k.helper_name) || k.helper_name.trim() === '') return bad('kit.json has no kit or helper');
   if (!isText(k.created_at)) return bad('kit.json has no date');
   if (!groups || (groups.kind !== 'category' && groups.kind !== 'location') || !Array.isArray(groups.names) || !groups.names.every(isText)) return bad('kit.json has no groups');
@@ -71,6 +81,7 @@ export function checkKitJson(raw: unknown): KitCheck {
       appVersion: isText(k.app_version) ? k.app_version : '',
       kind: groups.kind,
       groups: [...(groups.names as string[])],
+      subcategories: subGroupsOf(groups.subcategories),
       allowNewItems: k.allow_new_items !== false,
       countSince: isText(k.count_since) && /^\d{4}-\d{2}-\d{2}$/.test(k.count_since) ? k.count_since : '',
       recountDays: typeof k.recount_days === 'number' && Number.isSafeInteger(k.recount_days) && k.recount_days >= 1 ? k.recount_days : null,
@@ -81,9 +92,14 @@ export function checkKitJson(raw: unknown): KitCheck {
 }
 
 /** Whether the item is in one of the helper's groups (§18.3). Items with no location are in "No location". */
-export function inAssignment(item: Pick<Item, 'category' | 'location'>, kit: Pick<HelperKit, 'kind' | 'groups'>): boolean {
+export function inAssignment(item: Pick<Item, 'category' | 'location'> & { subcategory?: string }, kit: Pick<HelperKit, 'kind' | 'groups'> & { subcategories?: SubGroups }): boolean {
   const mine = new Set(kit.groups.map(nameKey));
-  if (kit.kind === 'category') return mine.has(nameKey(item.category));
+  if (kit.kind === 'category') {
+    if (!mine.has(nameKey(item.category))) return false;
+    // Limited to some subcategories of this category (v0.22).
+    const subs = subcategoriesOf(kit, item.category);
+    return subs === null || inSubcategories(item, subs);
+  }
   return mine.has(nameKey(item.location === '' ? NO_LOCATION : item.location));
 }
 

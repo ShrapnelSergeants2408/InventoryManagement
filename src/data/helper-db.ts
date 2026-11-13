@@ -117,6 +117,9 @@ export async function joinKit(db: HelperDb, read: ReadKit, now = Date.now(), dev
       { key: PENDING_SEQ, value: device.pendingBase },
       { key: DEVICE_KEY, value: device.id },
       { key: 'joinedAt', value: now },
+      // The tablet's count round and recount age, so progress matches the tablet's (v0.20).
+      { key: 'countSince', value: read.kit.countSince },
+      ...(read.kit.recountDays === null ? [] : [{ key: 'recountDays', value: read.kit.recountDays }]),
     ]);
   });
 }

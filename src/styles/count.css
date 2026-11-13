@@ -146,6 +146,8 @@
 }
 
 /* Helper devices: the app's address as a QR code for the helper to scan (§18.1, v0.19). */
+.sendall { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; flex: none; }
+.hprog { display: block; }
 .happlink { padding: 14px 18px; display: flex; gap: 18px; align-items: center; flex: none; }
 .happlink > .qr { flex: none; border: 1px solid var(--line-2); border-radius: 8px; }
 .happlink > .grow { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -153,3 +155,12 @@
 @media (max-width: 560px) {
   .happlink { flex-direction: column; align-items: flex-start; }
 }
+
+/* Spot-check list after an import (v0.20) */
+.spot-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow: auto; }
+.spot-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 12px; border: 1px solid var(--line-2); border-radius: 8px; }
+.spot-name { font-weight: 700; overflow-wrap: anywhere; min-height: 48px; display: flex; align-items: center; }
+.spot-nums { text-align: right; font-size: 20px; }
+.spot-flags { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
+
+.cg-due { flex: none; white-space: nowrap; }

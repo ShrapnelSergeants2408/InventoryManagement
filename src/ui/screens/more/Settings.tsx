@@ -22,9 +22,10 @@ const HELP: Record<keyof NamedSettings, string> = {
   staleDays: 'Order-list prices checked longer ago than this are marked “Price n days old”.',
   unlockMinutes: 'How long mentor tools stay unlocked after the PIN. Takes effect the next time the PIN is entered.',
   overdueDays: 'An order not fully received this long after it was placed is marked “Overdue” in the order history and on the Inventory screen.',
+  recountDays: 'An item last counted longer ago than this is shown as due for a recount on the Count screen and the Inventory status strip. Items never counted aren’t included.',
 };
 
-const toDraft = (s: NamedSettings): SettingsDraft => ({ reminderDays: String(s.reminderDays), staleDays: String(s.staleDays), unlockMinutes: String(s.unlockMinutes), overdueDays: String(s.overdueDays) });
+const toDraft = (s: NamedSettings): SettingsDraft => ({ reminderDays: String(s.reminderDays), staleDays: String(s.staleDays), unlockMinutes: String(s.unlockMinutes), overdueDays: String(s.overdueDays), recountDays: String(s.recountDays) });
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 /** Days in a month, in a year that isn't a leap year (February 29 isn't offered). */

@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/ho
 import { adjustOnHand, setOnHand } from '../../../data/inventory';
 import { moveItemsTo } from '../../../data/lists';
 import { loadExpanded, loadFilters, loadRecent, saveExpanded, saveFilters } from '../../../data/prefs';
+import { localIsoDate } from '../../../domain/dates';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
 import { buildInventoryView, filterOptions, type InventoryView } from '../../../domain/inventory-view';
 import { placeLabel } from '../../../domain/lists';
@@ -11,7 +12,7 @@ import { keepExisting, selectState, withIds } from '../../../domain/selection';
 import type { Item } from '../../../domain/types';
 import type { ItemInfo } from '../../../domain/inventory-view';
 import { CheckBox, GroupChips, StateMessage, StatusChip, TopBar, plural } from '../../components/common';
-import { useDb, useOnOrder, useSnapshot } from '../../data-hooks';
+import { useDb, useOnOrder, useSettings, useSnapshot } from '../../data-hooks';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -68,10 +69,12 @@ export function InventoryScreen() {
   useEffect(() => saveFilters(filters), [filters]);
   useEffect(() => saveExpanded(expanded), [expanded]);
 
+  const settings = useSettings();
+  const today = localIsoDate();
   const snap = live.state === 'ready' ? live.value : null;
   const view = useMemo(
-    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded, onOrder }) : null),
-    [snap, query, filters, expanded, onOrder],
+    () => (snap ? buildInventoryView({ items: snap.items, categories: snap.categories, query, filters, expanded, onOrder, recount: { today, days: settings.recountDays } }) : null),
+    [snap, query, filters, expanded, onOrder, today, settings.recountDays],
   );
   const options = useMemo(() => (snap ? filterOptions(snap.items, snap.categories, snap.locations) : null), [snap]);
   const recent = useMemo(() => {
@@ -303,7 +306,7 @@ function QuickFilters(props: {
   clearAll: () => void;
 }) {
   const { filters: f, setFilters } = props;
-  const t = props.view?.totals ?? { needsOrder: 0, short: 0, low: 0, items: 0 };
+  const t = props.view?.totals ?? { needsOrder: 0, short: 0, low: 0, due: 0, items: 0 };
   const tog = (on: boolean) => (on ? 'fchip on' : 'fchip');
   const loc = f.location === null ? 'All' : f.location || NO_LOCATION_LABEL;
   return (
@@ -318,6 +321,9 @@ function QuickFilters(props: {
       <button type="button" class={tog(f.low)} aria-pressed={f.low} onClick={() => setFilters({ ...f, low: !f.low })}>
         <Icon name="low" />
         Low spares only · {t.low}
+      </button>
+      <button type="button" class={tog(f.due)} aria-pressed={f.due} onClick={() => setFilters({ ...f, due: !f.due })}>
+        Due for a recount · {t.due}
       </button>
       <button type="button" class={tog(f.category !== null)} onClick={props.openPanel}>
         Category: {f.category ?? 'All'}

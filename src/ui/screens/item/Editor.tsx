@@ -4,7 +4,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useMemo, useState } from 'preact/hooks';
 import { addItem, getRecentLocations, updateItem } from '../../../data/items';
-import { addLocation } from '../../../data/lists';
+import { addLocation, addSupplier } from '../../../data/lists';
 import { loadPending, pendingPhoto } from '../../../data/pending';
 import type { PhotoChange } from '../../../data/photos';
 import type { PendingRecord } from '../../../domain/helper-mode';
@@ -217,6 +217,9 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
       showToast(e instanceof Error ? e.message : String(e));
     }
   };
+
+  // Vendor fields are only editable once open (new item, or after the PIN), so adding a supplier here needs no further PIN.
+  const addNewSupplier = async (name: string) => (await addSupplier(db, { name, website: '', notes: '' })).name;
 
   const save = async () => {
     if (busy) return;
@@ -529,6 +532,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
                   canMakePreferred={!vLocked && (vendorsOpen || !adding)}
                   canRemove={!vLocked && d.vendors.length > 1}
                   suppliers={suppliers}
+                  onAddSupplier={addNewSupplier}
                   errors={errors}
                   onField={(f, value) => setVendor(i, f, value)}
                   onPreferred={() => set({ preferred: i })}
@@ -645,6 +649,8 @@ function VendorCard(props: {
   canMakePreferred: boolean;
   canRemove: boolean;
   suppliers: string[];
+  /** Adds the supplier to the list and returns its stored name. */
+  onAddSupplier: (name: string) => Promise<string>;
   errors: FormError[];
   onField: (f: keyof VendorDraft, value: string) => void;
   onPreferred: () => void;
@@ -658,6 +664,19 @@ function VendorCard(props: {
   const id = (x: string) => `v${n}-${x}`;
   const supplierOptions = v.supplier && !props.suppliers.includes(v.supplier) ? [...props.suppliers, v.supplier] : props.suppliers;
   const lock = locked && <Icon name="lock" class="ic" label="PIN-locked" />;
+  const [newSup, setNewSup] = useState<string | null>(null);
+  const supCheck = newSup === null || newSup.trim() === '' ? null : checkName(newSup, props.suppliers, 'Supplier');
+  const saveNewSupplier = async () => {
+    if (!supCheck || !supCheck.ok) return;
+    try {
+      const name = await props.onAddSupplier(supCheck.name);
+      props.onField('supplier', name);
+      setNewSup(null);
+      showToast(`Added supplier “${name}”.`);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e));
+    }
+  };
   return (
     <div class={props.preferred ? 'vopt pref' : 'vopt'} role="group" aria-label={`Vendor option ${n}`}>
       <div class="vhead">
@@ -678,14 +697,49 @@ function VendorCard(props: {
             Supplier <span class="req">*</span>
             {lock}
           </label>
-          <select id={id('sup')} class={cls('supplier')} disabled={locked} value={v.supplier} onChange={(e) => props.onField('supplier', (e.currentTarget as HTMLSelectElement).value)}>
+          <select id={id('sup')} class={cls('supplier')} disabled={locked} value={v.supplier} onChange={(e) => {
+              const picked = (e.currentTarget as HTMLSelectElement).value;
+              if (picked === NEW) {
+                setNewSup('');
+                return;
+              }
+              setNewSup(null);
+              props.onField('supplier', picked);
+            }}
+          >
             <option value="">Choose…</option>
             {supplierOptions.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
             ))}
+            <option value={NEW}>+ New supplier…</option>
           </select>
+          {newSup !== null && !locked && (
+            <>
+              <div class="inline-add">
+                <input
+                  class={supCheck && !supCheck.ok ? 'field bad' : 'field'}
+                  aria-label={`New supplier name for option ${n}`}
+                  value={newSup}
+                  onInput={(e) => setNewSup((e.currentTarget as HTMLInputElement).value)}
+                  onKeyDown={(e) => e.key === 'Enter' && void saveNewSupplier()}
+                  placeholder="New supplier name — e.g. Digi-Key"
+                  autoComplete="off"
+                  autoFocus
+                />
+                <button type="button" class="btn" disabled={!supCheck?.ok} onClick={() => void saveNewSupplier()}>
+                  Add
+                </button>
+              </div>
+              {supCheck && !supCheck.ok && (
+                <div class="err" role="alert">
+                  {supCheck.error}
+                </div>
+              )}
+              <div class="small muted hint">Add its website, rename or remove it in More › Suppliers.</div>
+            </>
+          )}
           <FieldError errors={props.errors} field={f('supplier')} />
         </div>
         <div>

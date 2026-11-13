@@ -55,6 +55,7 @@ export function loadFilters(store = browserStore()): Filters {
     needsOrder: o.needsOrder === true,
     short: o.short === true,
     low: o.low === true,
+    due: o.due === true,
     category: strOrNull(o.category),
     supplier: strOrNull(o.supplier),
     location: strOrNull(o.location),

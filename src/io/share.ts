@@ -33,8 +33,11 @@ export function downloadFile(file: File): void {
  * Opens the share sheet when the file can be shared; closing the sheet is 'cancelled'.
  * If sharing isn't possible (or fails for another reason), the file is downloaded instead.
  */
-export async function shareOrDownload(file: File, title: string, deps: ShareDeps = browserDeps()): Promise<ShareResult> {
-  const data: ShareData = { files: [file], title };
+export const shareOrDownload = (file: File, title: string, deps: ShareDeps = browserDeps()): Promise<ShareResult> => shareFilesOrDownload([file], title, deps);
+
+/** The same for several files at once: one share sheet holding all of them, or one download each (v0.20). */
+export async function shareFilesOrDownload(files: readonly File[], title: string, deps: ShareDeps = browserDeps()): Promise<ShareResult> {
+  const data: ShareData = { files: [...files], title };
   if (deps.share && deps.canShare?.(data)) {
     try {
       await deps.share(data);
@@ -44,6 +47,6 @@ export async function shareOrDownload(file: File, title: string, deps: ShareDeps
       // NotAllowedError (no user gesture) and the like: fall back to a download.
     }
   }
-  deps.download(file);
+  for (const file of files) deps.download(file);
   return 'downloaded';
 }

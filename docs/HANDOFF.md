@@ -65,7 +65,7 @@ A browser check runs on a built app: `npm run build`, then
 node scripts/m22-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
 ```
 
-It prints one PASS or FAIL line per check and exits 1 if anything failed. The full set (`m2` … `m23`) takes about 25 minutes. Don't rebuild or switch branches while it runs, because each check reads `dist/` and its own script when it starts. On Windows, pass folder arguments as Windows paths (`C:\...`, quoted if they contain spaces).
+It prints one PASS or FAIL line per check and exits 1 if anything failed. **To run them all, `npm run checks`** (`scripts/run-checks.mjs`; `npm run checks -- m3 m25` for some; `--jobs 4` is the default): it runs the scripts side by side, each with its own ports and Chrome, runs m10 (it rewrites `dist/`) alone at the end, and leaves out the two upgrade checks (they need an older build and a tablet backup as arguments; run them by hand), and prints one summary; each check's output is kept in a log file. Run in a row, the full set takes about 25 minutes. New checks start with `startCheck()` from `scripts/check-lib.mjs` and need their own two ports (a preview port and a Chrome port, not used by another script). Don't rebuild or switch branches while it runs, because each check reads `dist/` and its own script when it starts. On Windows, pass folder arguments as Windows paths (`C:\...`, quoted if they contain spaces).
 
 ## 5. How to make a change
 
@@ -74,7 +74,7 @@ This is the routine every milestone so far has followed. Keep to it: it's why th
 1. **Spec first.** Write the change into `docs/SPEC.md`: a new version at the top, the feature table, the decision log. Anything not decided goes to the person who owns the app (Dan) as a question before coding.
 2. **Branch** from `main` (`m24-short-name`). Never commit to `main` directly.
 3. **Build it with tests.** Rules go in `src/domain` with unit tests; screens in `src/ui`. A change to stored data or backup files needs a round-trip test (export, then restore, with nothing lost).
-4. **Raise the version:** `APP_VERSION` in `src/io/backup.ts`. Two browser checks expect it: update the version in `scripts/m16a-ui-check.mjs` and `scripts/m17-ui-check.mjs` too.
+4. **Raise the version:** `version` in `package.json`, and nowhere else. The app (`APP_VERSION`), the backup and kit files and the browser checks read it from there.
 5. **Check it:**
    - `npm test`.
    - `npm run build`.

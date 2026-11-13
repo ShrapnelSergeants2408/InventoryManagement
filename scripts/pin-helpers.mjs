@@ -23,6 +23,7 @@ export const PIN_H = `
     await pickShopTablet();
     await enterPin(pin);
     await enterPin(pin);
+    for (let i = 0; i < 100 && !$('.recovery input[type=checkbox]'); i++) await settle(100);
     $('.recovery input[type=checkbox]').click();
     await settle(150);
     byText('.recovery button', 'Next').click();

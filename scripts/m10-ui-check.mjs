@@ -183,7 +183,7 @@ try {
   const sw = await js(`const reg = await navigator.serviceWorker.ready; const keys = await caches.keys(); const urls = (await Promise.all(keys.map(async (k) => (await (await caches.open(k)).keys()).map((r) => new URL(r.url).pathname)))).flat(); return { active: !!reg.active, scope: new URL(reg.scope).pathname, urls }`);
   const has = (re) => sw.urls.some((u) => re.test(u));
   check('service worker active for the site', [sw.active, sw.scope], [true, '/']);
-  check('precached: page, JS, CSS, both font families (woff2), icons, logo, starter catalog ZIP, scanner .wasm, manifest', [has(/\/index\.html$/), has(/\/assets\/index-.*\.js$/), has(/\/assets\/index-.*\.css$/), has(/atkinson-hyperlegible.*\.woff2$/), has(/barlow-condensed.*\.woff2$/), has(/icon-192\.png$/), has(/icon-512\.png$/), has(/team-logo-512.*\.png$/), has(/frc2408-starter-catalog.*\.zip$/), has(/zxing_reader.*\.wasm$/), has(/manifest\.webmanifest$/)], Array(11).fill(true));
+  check('precached: page, JS, CSS, both font families (woff2), icons, logo, scanner .wasm, manifest (not the starter catalog ZIP, C2)', [has(/\/index\.html$/), has(/\/assets\/index-.*\.js$/), has(/\/assets\/index-.*\.css$/), has(/atkinson-hyperlegible.*\.woff2$/), has(/barlow-condensed.*\.woff2$/), has(/icon-192\.png$/), has(/icon-512\.png$/), has(/team-logo-512.*\.png$/), !has(/frc2408-starter-catalog.*\.zip$/), has(/zxing_reader.*\.wasm$/), has(/manifest\.webmanifest$/)], Array(11).fill(true));
   check('no .woff fallbacks precached (Chrome uses woff2)', sw.urls.filter((u) => /\.woff$/.test(u)), []);
 
   // ── A new version (deploy): banner with Reload / Later, never an automatic reload ──
@@ -217,14 +217,15 @@ try {
   await js(`$('.cathdr button, .cathdr')?.click(); await settle(800);`);
   check('offline: the logo shows', await js(`const i = $('.nav-logo img'); return i.complete && i.naturalWidth > 0`), true);
 
-  // Offline first launch: storage cleared, no server — the starter catalog still loads.
+  // Offline first launch (C2): the starter catalog isn't cached, so both starter choices say so and change nothing.
   await wipe();
   await js(`await pinSteps();`);
   await js(`await click('.sopt', 'Start empty'); await click('.setup-acts .btn', 'Start empty');`);
-  await waitFor(`document.querySelector('.sdone')`, 60000);
-  check('offline, start empty (9h): categories and suppliers only', await js(`return [norm($('.setup-h').textContent), sdone()[1], await idbCount('items'), await idbCount('categories'), await idbCount('suppliers'), $$('.setup-acts .btn').map((b) => norm(b.textContent))]`), ['Ready — an empty inventory', '11 categories and 9 suppliers; no items yet', 0, 11, 9, ['Add the first item', 'Go to inventory']]);
-  await js(`await click('.setup-acts .btn', 'Go to inventory'); await settle(600);`);
-  check('empty inventory: the app opens with no items', await js(`return [!$('.setup'), document.querySelectorAll('.row').length]`), [true, 0]);
+  await waitFor(`document.querySelector('.setup-start .pin-err')`, 60000);
+  check('offline, start empty: says the starter catalog needs a connection; nothing changed', await js(`return [norm($('.setup-start .pin-err').textContent), await idbCount('items'), await idbCount('categories')]`), ['Nothing was changed: the starter catalog is downloaded during setup (about 5 MB) and this device is offline. Connect to the internet and try again, or restore a backup file instead', 0, 0]);
+  await js(`await click('.sopt', 'Load the starter catalog'); await click('.setup-acts .btn', 'Load starter catalog');`);
+  await waitFor(`document.querySelector('.setup-start .pin-err')`, 60000);
+  check('offline, load the starter catalog: the same message', await js(`return [norm($('.setup-start .pin-err').textContent).includes('this device is offline'), await idbCount('items')]`), [true, 0]);
 
   await wipe();
   await js(`await pinSteps();`);
@@ -236,10 +237,22 @@ try {
   check('offline, restore a backup (Q2): the backup arrives whole', await js(`return [norm($('.setup-h').textContent), sdone()[1], await idbCount('items'), await idbCount('photos'), $$('.setup-acts .btn').map((b) => norm(b.textContent))]`), ['Ready — 129 items restored', '129 items and 128 photos from frc2408-backup-full-2026-10-18.zip', 129, 128, ['Open count-in', 'Go to inventory']]);
   await js(`await click('.setup-acts .btn', 'Go to inventory'); await settle(600);`);
 
+  // Back online: the starter catalog downloads during setup.
+  preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4330', '--strictPort'], { stdio: 'ignore' });
+  offline = false;
+  await waitFor(`fetch('http://localhost:4330/').then(() => true, () => false)`, 30000).catch(() => {});
+  await sleep(1000);
+  await wipe();
+  await js(`await pinSteps();`);
+  await js(`await click('.sopt', 'Start empty'); await click('.setup-acts .btn', 'Start empty');`);
+  await waitFor(`document.querySelector('.sdone')`, 60000);
+  check('online, start empty (9h): categories and suppliers only', await js(`return [norm($('.setup-h').textContent), sdone()[1], await idbCount('items'), await idbCount('categories'), await idbCount('suppliers'), $$('.setup-acts .btn').map((b) => norm(b.textContent))]`), ['Ready — an empty inventory', '11 categories and 9 suppliers; no items yet', 0, 11, 9, ['Add the first item', 'Go to inventory']]);
+  await js(`await click('.setup-acts .btn', 'Go to inventory'); await settle(600);`);
+  check('empty inventory: the app opens with no items', await js(`return [!$('.setup'), document.querySelectorAll('.row').length]`), [true, 0]);
   await wipe();
   await js(`await pinSteps(); await click('.setup-acts .btn', 'Load starter catalog');`);
   await waitFor(`document.querySelector('.sdone')`, 60000);
-  check('offline, load the starter catalog from the cache', await js(`return [norm($('.setup-h').textContent), await idbCount('items'), await idbCount('photos')]`), ['Ready — 129 items loaded', 129, 128]);
+  check('online, load the starter catalog (downloaded, not cached)', await js(`return [norm($('.setup-h').textContent), await idbCount('items'), await idbCount('photos')]`), ['Ready — 129 items loaded', 129, 128]);
   await js(`await click('.setup-acts .btn', 'Go to inventory'); await settle(600);`);
 
   // ── Storage error → Set up again (Q2) ──

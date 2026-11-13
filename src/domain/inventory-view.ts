@@ -1,5 +1,6 @@
 // The Inventory screen's grouped list (SPEC F1, F2, F4, F5): pure, so it is unit-tested.
-import { passesFilters, activeFilterCount, type Filters } from './filters';
+import { passesFilters, activeFilterCount, type Filters, type Recount } from './filters';
+import { dueCount } from './recount';
 import { compareSupplierNames, orderLineFor, type OrderLine } from './order';
 import { onOrderOf, type OnOrder } from './placed-orders';
 import { matchesTerms, queryTerms, searchText } from './search';
@@ -69,6 +70,8 @@ export type ListLine = CategoryLine | SubcategoryLine | ItemLine;
 export interface Totals extends StatusCounts {
   items: number;
   needsOrder: number;
+  /** Items due for a recount (v0.20); 0 when the view wasn't given the recount age. */
+  due: number;
 }
 
 export interface InventoryView {
@@ -151,13 +154,15 @@ export interface ViewInput {
   expanded: ReadonlySet<string>;
   /** Units on open placed orders, by item id (§4). */
   onOrder?: OnOrder;
+  /** Today and the Recount after days, for the "Due for a recount" filter (v0.20). */
+  recount?: Recount;
 }
 
 export function buildInventoryView(input: ViewInput): InventoryView {
   const terms = queryTerms(input.query);
   const filtering = terms.length > 0 || activeFilterCount(input.filters) > 0;
   const infos = input.items.map((item) => itemInfo(item, onOrderOf(input.onOrder, item.id)));
-  const passes = (i: ItemInfo) => passesFilters(i.item, input.filters, i.onOrder) && matchesTerms(searchText(i.item), terms);
+  const passes = (i: ItemInfo) => passesFilters(i.item, input.filters, i.onOrder, input.recount) && matchesTerms(searchText(i.item), terms);
 
   const lines: ListLine[] = [];
   let shown = 0;
@@ -212,7 +217,7 @@ export function buildInventoryView(input: ViewInput): InventoryView {
     filtering,
     shown: filtering ? shown : infos.length,
     shownIds,
-    totals: { items: infos.length, needsOrder: infos.filter((i) => i.order !== null).length, ...countStatus(infos) },
+    totals: { items: infos.length, needsOrder: infos.filter((i) => i.order !== null).length, due: input.recount ? dueCount(input.items, input.recount.today, input.recount.days) : 0, ...countStatus(infos) },
   };
 }
 

@@ -94,7 +94,7 @@ export interface PlanRow {
   outside: boolean;
   /** The item's count when this row is reached (after earlier rows). */
   before: Pick<CountFields, 'onHand' | 'lastCounted' | 'countedBy'> | null;
-  conflict: { choice: ConflictChoice | null; keep: number; helper: number; add: number } | null;
+  conflict: { choice: ConflictChoice | null; keep: number; helper: number; add: number; /** Two devices of one helper's kit counted it (v0.20). */ twoDevices: boolean } | null;
   /** apply: the item has none here · same · choice: a different one here. */
   location: { name: string; state: 'apply' | 'same' | 'choice'; current: string; choice: KeepOrUse } | null;
   /** taken: another item has this barcode, so it isn't used. */
@@ -222,7 +222,7 @@ export function planImport(input: PlanInput, choices: ImportChoices = noChoices(
   // ── One kit on several devices (v0.19): a warning; counts still apply, the newest of each item last ──
   for (const k of kitDevices(sortedFiles, input.helpers)) {
     if (k.devices.size > 1)
-      warnings.push(`The count kit for “${k.helperName}” was opened on ${k.devices.size} devices, or opened again on one. Where they counted the same item, the newest count is used without asking. Check that two people didn’t count the same items; a second device should have its own helper.`);
+      warnings.push(`The count kit for “${k.helperName}” was opened on ${k.devices.size} devices, or opened again on one. Where they counted the same item and the numbers differ, you choose which to keep. A second device should have its own helper.`);
   }
 
   // ── Every count row, in counted_at order ──
@@ -235,6 +235,9 @@ export function planImport(input: PlanInput, choices: ImportChoices = noChoices(
   const rows: PlanRow[] = [];
   // Files are cumulative (§18.4): a row already met in an earlier file of this import is skipped as applied.
   const met = new Set<string>();
+  // Who wrote each item's count in this import, to tell two devices of one kit apart (v0.20).
+  const wroteBy = new Map<string, { helper: string; device: string }>();
+  const devicesOf = new Map(kitDevices(sortedFiles, input.helpers).map((k) => [`${k.helperId}|${k.kitId}`, k.devices]));
   for (const { f, c } of all) {
     const helperName = f.meta.helperName;
     const key = `${nameKey(helperName)}|${c.itemId}|${c.countedAt}`;
@@ -260,20 +263,44 @@ export function planImport(input: PlanInput, choices: ImportChoices = noChoices(
       const hereMs = stampMs(s.lastCounted);
       const rowMs = stampMs(c.countedAt);
       const kit = kitMs.get(f) ?? null;
-      if (mine && hereMs >= rowMs) row.kind = 'applied';
+      // A newer count of an item another device of this kit counted, with a different number (v0.20):
+      // not "the same helper recounting", so it needs a choice. The earlier count is either from
+      // a file in this import, or (when this kit's devices are known to be several) already here.
+      const device = f.meta.deviceId ?? '';
+      const writer = wroteBy.get(c.itemId);
+      const others = [...(devicesOf.get(`${f.meta.helperId}|${f.meta.kitId}`) ?? [])].filter((x) => x !== device);
+      const twoDevices =
+        device !== '' &&
+        mine &&
+        hereMs < rowMs &&
+        s.onHand !== c.onHand &&
+        (writer ? writer.helper === nameKey(helperName) && writer.device !== '' && writer.device !== device : others.length > 0 && kit !== null && hereMs >= kit);
+      if (twoDevices) row.kind = 'conflict';
+      else if (mine && hereMs >= rowMs) row.kind = 'applied';
       else if (s.onHand === c.onHand) row.kind = 'same';
       else if (s.lastCounted === '' || mine || (kit !== null && hereMs < kit)) row.kind = 'apply';
       else row.kind = 'conflict';
 
-      if (row.kind === 'apply') Object.assign(s, { onHand: c.onHand, lastCounted: c.countedAt, countedBy: helperName });
-      else if (row.kind === 'same') {
+      const wrote = () => wroteBy.set(c.itemId, { helper: nameKey(helperName), device });
+      if (row.kind === 'apply') {
+        Object.assign(s, { onHand: c.onHand, lastCounted: c.countedAt, countedBy: helperName });
+        wrote();
+      } else if (row.kind === 'same') {
         // Applied quietly: last_counted takes the newer time (§18.5).
-        if (s.lastCounted === '' || rowMs > hereMs) Object.assign(s, { lastCounted: c.countedAt, countedBy: helperName });
+        if (s.lastCounted === '' || rowMs > hereMs) {
+          Object.assign(s, { lastCounted: c.countedAt, countedBy: helperName });
+          wrote();
+        }
       } else if (row.kind === 'conflict') {
         const choice = choices.conflicts[key] ?? null;
-        row.conflict = { choice, keep: s.onHand, helper: c.onHand, add: s.onHand + c.onHand };
-        if (choice === 'helper') Object.assign(s, { onHand: c.onHand, lastCounted: c.countedAt, countedBy: helperName });
-        else if (choice === 'add') Object.assign(s, { onHand: s.onHand + c.onHand, lastCounted: newer(s.lastCounted, c.countedAt), countedBy: helperName });
+        row.conflict = { choice, keep: s.onHand, helper: c.onHand, add: s.onHand + c.onHand, twoDevices };
+        if (choice === 'helper') {
+          Object.assign(s, { onHand: c.onHand, lastCounted: c.countedAt, countedBy: helperName });
+          wrote();
+        } else if (choice === 'add') {
+          Object.assign(s, { onHand: s.onHand + c.onHand, lastCounted: newer(s.lastCounted, c.countedAt), countedBy: helperName });
+          wrote();
+        }
       }
     }
     if (row.kind === 'applied') continue;

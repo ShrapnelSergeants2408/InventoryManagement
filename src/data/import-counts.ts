@@ -1,24 +1,33 @@
 // Import counts on the shop tablet (SPEC §18.5): Apply saves everything in one transaction,
 // recording first what Undo this import needs; Undo puts it all back. No PIN (§6): the preview
-// and Undo are the safety nets. Only the last import can be undone, and a restore or a fresh
-// setup forgets it.
+// and Undo are the safety nets. Every import keeps its own undo (v0.20); they are taken back
+// newest first, and a restore or a fresh setup forgets them all.
 import { kitDevices, planImport, type CountFields, type CountsFile, type ImportChoices, type ImportPlan, type PlanInput } from '../domain/import-counts';
 import { nameKey } from '../domain/types';
 import { fromHelperRow, fromItemRow, fromOrderRow, toLocationRow, type InventoryDb } from './db';
 import { onOrderMap } from '../domain/placed-orders';
 import { addPendingRows, decidedPending } from './pending';
 
-const UNDO_ID = 'last';
+/** Stored ids are `import-<seq>`; an undo saved before v0.20 has the id 'last' and no seq (it is the oldest). */
+const undoId = (seq: number) => `import-${seq}`;
 
 /** What Undo this import puts back (§18.5). */
 export interface ImportUndo {
-  id: typeof UNDO_ID;
+  id: string;
+  /** Order of the imports, 1 for the first since a restore or setup (v0.20). Absent in an undo saved before v0.20. */
+  seq?: number;
+  /** Read only: how many older imports can be undone after this one. */
+  earlier?: number;
   /** ms since epoch the import was applied. */
   at: number;
   fileNames: string[];
   helperNames: string[];
   /** Item id → its fields before the import. */
   items: Array<[string, CountFields]>;
+  /** Item id → its fields as the import saved them (v0.20; for the count report). Absent in an undo saved before v0.20. */
+  after?: Array<[string, CountFields]>;
+  /** Items counted outside their helper's groups, and applied (v0.20). */
+  outside?: string[];
   /** Locations the import added. */
   locations: string[];
   /** Pending items the import added. */
@@ -109,17 +118,19 @@ export async function applyImport(db: InventoryDb, files: readonly CountsFile[],
     }
     const helperNames = [...new Set(files.map((f) => f.meta.helperName))];
     const undo: ImportUndo = {
-      id: UNDO_ID,
+      id: undoId(((await allUndos(db)).at(-1)?.seq ?? 0) + 1),
+      seq: ((await allUndos(db)).at(-1)?.seq ?? 0) + 1,
       at: now,
       fileNames: files.map((f) => f.fileName),
       helperNames,
       items: [...plan.previous],
+      after: [...plan.changes],
+      outside: [...new Set(plan.rows.filter((r) => r.outside && (r.kind === 'apply' || r.kind === 'same' || (r.kind === 'conflict' && (r.conflict?.choice === 'helper' || r.conflict?.choice === 'add')))).map((r) => r.itemId))],
       locations: added,
       pending: plan.pending.map((p) => p.id),
       helpers: helpersBefore,
       helperDevices: devicesBefore,
     };
-    await db.importUndo.clear();
     await db.importUndo.put(undo as unknown as { id: string });
     await db.settings.put({ key: 'lastChangeAt', value: now });
     return {
@@ -137,21 +148,29 @@ export async function applyImport(db: InventoryDb, files: readonly CountsFile[],
   });
 }
 
-/** The import Undo would reverse, or null (none since the last restore or setup). */
+/** Every import that can still be undone, oldest first. */
+async function allUndos(db: InventoryDb): Promise<ImportUndo[]> {
+  const rows = (await db.importUndo.toArray()) as unknown as ImportUndo[];
+  return rows.sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0) || a.at - b.at);
+}
+
+/** The import Undo would reverse (the newest), or null (none since the last restore or setup). */
 export async function getImportUndo(db: InventoryDb): Promise<ImportUndo | null> {
-  const row = await db.importUndo.get(UNDO_ID);
-  return row ? (row as unknown as ImportUndo) : null;
+  const all = await allUndos(db);
+  const top = all.at(-1);
+  return top ? { ...top, earlier: all.length - 1 } : null;
 }
 
 /** Notes an item received into (F31), so Undo this import leaves it alone. Call inside the receive transaction. */
 export async function noteReceivedSinceImport(db: InventoryDb, itemIds: readonly string[]): Promise<void> {
-  const undo = await getImportUndo(db);
-  if (!undo) return;
-  const changed = new Set(undo.items.map(([id]) => id));
-  const received = new Set(undo.received ?? []);
-  const add = itemIds.filter((id) => changed.has(id) && !received.has(id));
-  if (add.length === 0) return;
-  await db.importUndo.put({ ...undo, received: [...received, ...add] } as unknown as { id: string });
+  // Every import that changed the item notes it: undoing any of them must leave it alone.
+  for (const undo of await allUndos(db)) {
+    const changed = new Set(undo.items.map(([id]) => id));
+    const received = new Set(undo.received ?? []);
+    const add = itemIds.filter((id) => changed.has(id) && !received.has(id));
+    if (add.length === 0) continue;
+    await db.importUndo.put({ ...undo, received: [...received, ...add] } as unknown as { id: string });
+  }
 }
 
 /** The items Undo this import would put back: changed by the import and not received into since. */
@@ -168,7 +187,7 @@ export const undoableItems = (undo: ImportUndo) => {
  */
 export async function undoImport(db: InventoryDb, now = Date.now()): Promise<{ items: number; kept: number; pending: number; locations: number }> {
   return db.transaction('rw', [db.items, db.locations, db.pendingItems, db.pendingPhotos, db.helpers, db.importUndo, db.settings], async () => {
-    const undo = await getImportUndo(db);
+    const undo = (await allUndos(db)).at(-1);
     if (!undo) throw new Error('there is no import to undo');
     let items = 0;
     const back = undoableItems(undo);
@@ -199,7 +218,7 @@ export async function undoImport(db: InventoryDb, now = Date.now()): Promise<{ i
       const was = devicesBefore.has(id) ? devicesBefore.get(id) : (now_ ?? null);
       await db.helpers.put(was ? { ...rest, lastImportAt: at, devices: was } : { ...rest, lastImportAt: at });
     }
-    await db.importUndo.clear();
+    await db.importUndo.delete(undo.id);
     await db.settings.put({ key: 'lastChangeAt', value: now });
     return { items, kept: undo.items.length - back.length, pending: stillPending.length, locations };
   });

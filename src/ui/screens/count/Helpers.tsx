@@ -2,7 +2,7 @@
 // which groups each counts (unassigned ones highlighted), and send each a count kit (§18.2).
 // No PIN anywhere here (§6).
 import { useEffect, useState } from 'preact/hooks';
-import { addHelper, buildKit, editHelper, recordKit, removeHelper } from '../../../data/helpers';
+import { addHelper, buildKit, editHelper, recordKit, recordKits, removeHelper, type BuiltKit } from '../../../data/helpers';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { formatBytes, formatDateTime } from '../../../domain/dates';
 import {
@@ -19,10 +19,11 @@ import {
   type Helper,
   type HelperDraft,
 } from '../../../domain/helpers';
+import { helperProgress } from '../../../domain/helper-progress';
 import { nameKey } from '../../../domain/types';
 import { appAddress } from '../../../domain/url';
 import { kitFileName } from '../../../io/count-kit';
-import { shareOrDownload } from '../../../io/share';
+import { shareFilesOrDownload, shareOrDownload } from '../../../io/share';
 import { BackButton, CheckBox, StateMessage, Toggle, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
 import { useDb, useHelpers, useSnapshot } from '../../data-hooks';
@@ -32,7 +33,7 @@ import { showToast } from '../../shell/toast';
 import { QrSvg } from '../labels/LabelSheet';
 import { StorageError } from '../StorageError';
 
-type Open = { kind: 'add' } | { kind: 'edit'; h: Helper } | { kind: 'send'; h: Helper } | { kind: 'remove'; h: Helper } | null;
+type Open = { kind: 'all' } | { kind: 'add' } | { kind: 'edit'; h: Helper } | { kind: 'send'; h: Helper } | { kind: 'remove'; h: Helper } | null;
 
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
@@ -90,6 +91,15 @@ export function HelpersScreen() {
             </div>
           )}
           <AppLink />
+          {list.length > 1 && (
+            <div class="sendall">
+              <button type="button" class="btn" onClick={() => setOpen({ kind: 'all' })}>
+                <Icon name="upload" />
+                Send all kits…
+              </button>
+              <span class="small muted">One share sheet for every helper’s kit.</span>
+            </div>
+          )}
           {list.map((h) => (
             <HelperCard key={h.id} h={h} snap={snap.value} onOpen={setOpen} />
           ))}
@@ -99,6 +109,7 @@ export function HelpersScreen() {
       {ready && (open?.kind === 'add' || open?.kind === 'edit') && (
         <HelperDialog editing={open.kind === 'edit' ? open.h : null} helpers={list} snap={snap.value} onClose={() => setOpen(null)} />
       )}
+      {open?.kind === 'all' && <SendAllDialog helpers={list} items={snap.state === 'ready' ? snap.value.items.length : 0} onClose={() => setOpen(null)} />}
       {open?.kind === 'send' && <SendKitDialog h={open.h} items={snap.state === 'ready' ? snap.value.items.length : 0} onClose={() => setOpen(null)} />}
       {open?.kind === 'remove' && <RemoveHelper h={open.h} onClose={() => setOpen(null)} />}
     </>
@@ -128,6 +139,7 @@ function AppLink() {
 function HelperCard(props: { h: Helper; snap: InventorySnapshot; onOpen: (o: Open) => void }) {
   const h = props.h;
   const kit = lastKit(h);
+  const progress = helperProgress(h, props.snap.items);
   const gone = missingGroups(h, groupChoices(h.kind, props.snap.categories, props.snap.locations));
   return (
     <div class="card hcard" aria-label={`Helper ${h.name}`}>
@@ -160,6 +172,15 @@ function HelperCard(props: { h: Helper; snap: InventorySnapshot; onOpen: (o: Ope
           </span>{' '}
           <strong>{h.groups.join(', ')}</strong>
         </div>
+        {progress && (
+          <div class="small hprog">
+            {h.lastImportAt === null ? 'Nothing imported yet' : `Last import ${formatDateTime(new Date(h.lastImportAt))}`} ·{' '}
+            <strong>
+              counted {progress.counted} of {progress.total}
+            </strong>{' '}
+            <span class="muted">(items in its groups, counted by this helper since the last kit)</span>
+          </div>
+        )}
         <div class="small">New items: {h.allowNewItems ? 'allowed (saved as pending for review here)' : 'not allowed'}</div>
         {gone.length > 0 && (
           <div class="hnote" role="status">
@@ -393,7 +414,7 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
     try {
       const now = new Date();
       const built = await buildKit(db, h.id, photos, now);
-      const name = kitFileName(h.name, now);
+      const name = kitFileName(h.name);
       const result = await shareOrDownload(new File([built.blob], name, { type: 'application/zip' }), `Count kit for ${h.name}`);
       if (result === 'cancelled') {
         setBusy(false);
@@ -457,6 +478,125 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
         <button type="button" class="btn pri lg" disabled={busy} onClick={() => void send()}>
           <Icon name="upload" />
           {busy ? 'Building the kit…' : 'Send count kit'}
+        </button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/** Send all kits (§18.1, v0.20): one share sheet holding one kit per ticked helper. */
+function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () => void }) {
+  const db = useDb();
+  const [ticked, setTicked] = useState<Set<string>>(() => new Set(props.helpers.map((h) => h.id)));
+  const [photos, setPhotos] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [failures, setFailures] = useState<string[]>([]);
+  /** File names once they were saved to Downloads instead of shared. */
+  const [saved, setSaved] = useState<string[] | null>(null);
+  const chosen = props.helpers.filter((h) => ticked.has(h.id));
+  const toggle = (id: string) => setTicked((prev) => new Set(prev.has(id) ? [...prev].filter((x) => x !== id) : [...prev, id]));
+
+  const send = async () => {
+    setBusy(true);
+    setFailures([]);
+    const now = new Date();
+    const built: Array<{ h: Helper; kit: BuiltKit; file: File }> = [];
+    const problems: string[] = [];
+    for (const h of chosen) {
+      try {
+        const kit = await buildKit(db, h.id, photos, now);
+        built.push({ h, kit, file: new File([kit.blob], kitFileName(h.name), { type: 'application/zip' }) });
+      } catch (e) {
+        problems.push(`${h.name}: ${message(e)}`);
+      }
+    }
+    // Nothing is shared while any kit couldn't be built: untick that helper or edit it first.
+    if (problems.length > 0) {
+      setFailures(problems);
+      setBusy(false);
+      return;
+    }
+    try {
+      const result = await shareFilesOrDownload(built.map((b) => b.file), 'Count kits');
+      if (result === 'cancelled') {
+        setBusy(false);
+        return;
+      }
+      await recordKits(db, built.map((b) => ({ helperId: b.h.id, kitId: b.kit.kitId, createdAt: b.kit.createdAt })));
+      if (result === 'downloaded') {
+        setSaved(built.map((b) => b.file.name));
+        setBusy(false);
+        return;
+      }
+      showToast(`Sent ${plural(built.length, 'kit')}.`);
+      props.onClose();
+    } catch (e) {
+      setFailures([`Couldn’t send the kits: ${message(e)}`]);
+      setBusy(false);
+    }
+  };
+
+  if (saved !== null) {
+    return (
+      <Dialog label="Count kits saved" onClose={props.onClose}>
+        <h2 class="h2">Saved to Downloads, not sent yet</h2>
+        <p class="dlg-p">These {plural(saved.length, 'kit')} are in this tablet’s Downloads. The helpers don’t have them yet:</p>
+        <ul class="dlg-list">
+          {saved.map((n) => (
+            <li key={n} class="mono">
+              {n}
+            </li>
+          ))}
+        </ul>
+        <p class="dlg-p">Open Files or Drive and send each one to its helper: upload them to the team’s Drive folder, or use Quick Share or email. Then open each on its helper with “Join as a helper”.</p>
+        <DialogActions>
+          <button type="button" class="btn pri lg" data-autofocus onClick={props.onClose}>
+            Done
+          </button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
+
+  return (
+    <Dialog label="Send all kits" onClose={() => !busy && props.onClose()}>
+      <h2 class="h2">Send count kits</h2>
+      <p class="dlg-p">Each ticked helper gets its own kit with all {plural(props.items, 'item')} and its own groups, in one share sheet. Prices are left out.</p>
+      <div class="hgroups" role="group" aria-label="Helpers to send a kit to">
+        {props.helpers.map((h) => {
+          const on = ticked.has(h.id);
+          const last = lastKit(h);
+          return (
+            <button key={h.id} type="button" class="cb hgroup" role="checkbox" aria-checked={on} disabled={busy} onClick={() => toggle(h.id)}>
+              <CheckBox state={on ? 'on' : 'off'} />
+              <span>
+                <strong>{h.name}</strong>
+                <span class="small muted"> · {last ? `last kit ${kitTime(last.createdAt)}` : 'no kit yet'}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <Toggle on={photos} disabled={busy} onClick={() => setPhotos(!photos)}>
+        Include photos. Turn off for slow transfers like Bluetooth.
+      </Toggle>
+      {failures.length > 0 && (
+        <div class="err" role="alert">
+          <div>
+            {failures.map((f) => (
+              <div key={f}>{f}</div>
+            ))}
+            <div>Nothing was sent. Edit those helpers, or untick them, and try again.</div>
+          </div>
+        </div>
+      )}
+      <DialogActions>
+        <button type="button" class="btn lg" disabled={busy} onClick={props.onClose}>
+          Cancel
+        </button>
+        <button type="button" class="btn pri lg" disabled={busy || chosen.length === 0} onClick={() => void send()}>
+          <Icon name="upload" />
+          {busy ? 'Building the kits…' : `Send ${plural(chosen.length, 'kit')}`}
         </button>
       </DialogActions>
     </Dialog>

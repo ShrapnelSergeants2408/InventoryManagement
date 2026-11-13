@@ -1,6 +1,6 @@
 # Review backlog — fixes and small features
 
-**Prepared:** 2026-11-10, from a review of the app at 1.0.0 (SPEC v0.18) · **Status:** B1, B2 and B3 built as M24 (SPEC v0.19, app 1.1.0; `docs/reviews/M24.md`), which fixes A2 and A3 and most of A1 (both devices' new items are kept and the import warns; where two devices counted the same item, the newest count is still used without a conflict). Everything else is a proposal, not approved or built
+**Prepared:** 2026-11-10, from a review of the app at 1.0.0 (SPEC v0.18) · **Status:** B1, B2 and B3 built as M24 (SPEC v0.19, app 1.1.0; `docs/reviews/M24.md`), which fixes A2 and A3 and most of A1 (both devices' new items are kept and the import warns; where two devices counted the same item, the newest count is still used without a conflict). A1 (two devices on one kit: a conflict), A4 (one undo per import), B4 (Send all kits), B5 (helper progress), B6 (count report), B7 (spot-check list), B8 (a new kit keeps the count round), B9 (cycle counts), B10 (help on the Send tab), C1 (pull request checks), C2 (starter catalog out of the offline cache), C3 (one version number), C4 (parallel check runner), C5 (audit fixes without breaking changes) and shorter kit file names are built as M25 (SPEC v0.20, app 1.2.0; `docs/reviews/M25.md`). Everything else is a proposal, not approved or built
 
 Smaller than the three future features in `future-features/`. None is in `docs/SPEC.md` yet; each needs a spec entry before it's built (HANDOFF §5). Dan's priority is marked.
 

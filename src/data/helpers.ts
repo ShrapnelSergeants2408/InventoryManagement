@@ -5,7 +5,9 @@ import { localIsoDateTime } from '../domain/dates';
 import { checkHelper, groupChoices, newHelperId, newKitId, sortHelpers, type Helper, type HelperDraft } from '../domain/helpers';
 import { buildCountKit } from '../io/count-kit';
 import { fromHelperRow, toHelperRow, type InventoryDb } from './db';
+import { getCountSince } from './count';
 import { loadSnapshot } from './inventory';
+import { getSettings } from './settings';
 
 export async function loadHelpers(db: InventoryDb): Promise<Helper[]> {
   return sortHelpers((await db.helpers.toArray()).map(fromHelperRow));
@@ -64,7 +66,7 @@ export interface BuiltKit {
  * file has been handed on.
  */
 export async function buildKit(db: InventoryDb, helperId: string, includePhotos: boolean, now = new Date()): Promise<BuiltKit> {
-  const { helper, snapshot, photos, kitIds } = await db.transaction('r', [db.helpers, db.items, db.suppliers, db.locations, db.categories, db.photos], async () => {
+  const { helper, snapshot, photos, kitIds, countSince, recountDays } = await db.transaction('r', [db.helpers, db.items, db.suppliers, db.locations, db.categories, db.photos, db.settings], async () => {
     const row = await db.helpers.get(helperId);
     if (!row) throw new Error('that helper was removed');
     const all = (await db.helpers.toArray()).map(fromHelperRow);
@@ -73,6 +75,8 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
       snapshot: await loadSnapshot(db),
       photos: includePhotos ? new Map((await db.photos.toArray()).map((p) => [p.itemId, p.full] as const)) : new Map<string, Blob>(),
       kitIds: new Set(all.flatMap((h) => h.kits.map((k) => k.id))),
+      countSince: await getCountSince(db),
+      recountDays: (await getSettings(db)).recountDays,
     };
   });
   const choices = groupChoices(helper.kind, snapshot.categories, snapshot.locations);
@@ -81,15 +85,22 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
   const kitId = newKitId((x) => kitIds.has(x));
   const createdAt = localIsoDateTime(now);
   const ids = new Set(snapshot.items.map((i) => i.id));
-  const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups }, kitId, createdAt, includePhotos, now });
+  const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups }, kitId, createdAt, includePhotos, now, countSince, recountDays });
   return { blob, kitId, createdAt, itemCount: snapshot.items.length, photoCount: [...photos.keys()].filter((id) => ids.has(id)).length };
 }
 
 /** A kit was handed on (shared or saved): record it, which also locks the helper's name (§18.1). */
 export async function recordKit(db: InventoryDb, helperId: string, kit: { kitId: string; createdAt: string }): Promise<void> {
+  await recordKits(db, [{ helperId, ...kit }]);
+}
+
+/** Several kits handed on together (Send all kits, v0.20): all recorded, or none. */
+export async function recordKits(db: InventoryDb, kits: ReadonlyArray<{ helperId: string; kitId: string; createdAt: string }>): Promise<void> {
   await db.transaction('rw', db.helpers, async () => {
-    const row = await db.helpers.get(helperId);
-    if (!row) throw new Error('that helper was removed');
-    await db.helpers.put({ ...row, kits: [...row.kits, { id: kit.kitId, createdAt: kit.createdAt }] });
+    for (const kit of kits) {
+      const row = await db.helpers.get(kit.helperId);
+      if (!row) throw new Error('that helper was removed');
+      await db.helpers.put({ ...row, kits: [...row.kits, { id: kit.kitId, createdAt: kit.createdAt }] });
+    }
   });
 }

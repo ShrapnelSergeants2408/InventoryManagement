@@ -32,10 +32,10 @@ const server = createServer((req, res) => {
   res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream', 'cache-control': 'no-store' });
   res.end(readFileSync(file));
 });
-await new Promise((r) => server.listen(4353, r));
-const ORIGIN = 'http://localhost:4353';
+await new Promise((r) => server.listen(4354, r));
+const ORIGIN = 'http://localhost:4354';
 
-const port = 9383;
+const port = 9384;
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
 track(proc);
 let target;

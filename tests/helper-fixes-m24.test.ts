@@ -123,10 +123,10 @@ describe('one kit opened on two devices (§18.5, v0.19)', () => {
     expect(plan.pending.map((p) => p.name).sort()).toEqual(['Fuse', 'Zip ties']);
     expect(plan.pendingSkipped).toBe(0);
     expect(plan.warnings).toEqual([expect.stringMatching(/count kit for “Maya” was opened on 2 devices/)]);
-    // Counts are unchanged from v0.18: the newest of each item is used.
-    expect([plan.counts.conflicts, plan.changes.get('A')?.onHand]).toEqual([0, 3]);
+    // v0.20: the two devices' different counts of A are a conflict, not "newest wins".
+    expect([plan.counts.conflicts, plan.rows.find((r) => r.kind === 'conflict')?.conflict?.twoDevices]).toEqual([1, true]);
 
-    await applyImport(db, files, noChoices(), 5000);
+    await applyImport(db, files, { ...noChoices(), conflicts: Object.fromEntries(plan.rows.filter((r) => r.kind === 'conflict').map((r) => [r.key, 'helper' as const])) }, 5000);
     expect((await loadPending(db)).map((p) => p.name).sort()).toEqual(['Fuse', 'Zip ties']);
   });
 
@@ -159,7 +159,8 @@ describe('one kit opened on two devices (§18.5, v0.19)', () => {
     expect((await db.helpers.get('hp-MAYA1'))!.devices).toEqual({ 'kit-ONE00001': ['dev-PHNE1', 'dev-PHNE2'] });
     await undoImport(db, 7000);
     expect((await db.helpers.get('hp-MAYA1'))!.devices).toEqual({ 'kit-ONE00001': ['dev-PHNE1'] });
-    expect(await getImportUndo(db)).toBe(null);
+    // v0.20: the first import can still be undone.
+    expect((await getImportUndo(db))?.at).toBe(5000);
   });
 
   it('Undo of the first such import leaves the helper with no devices field, as before', async () => {
@@ -239,5 +240,72 @@ describe('the app’s address for the Helper devices QR code (§18.1, v0.19)', (
     ['not an address', ''],
   ])('%s → %s', (href, want) => {
     expect(appAddress(href)).toBe(want);
+  });
+});
+
+describe('two devices of one kit, and one undo per import (v0.20)', () => {
+  const devices = async () => {
+    const read = await kit();
+    return [await phone(read, { id: 'dev-PHNE1', pendingBase: 10_000 }), await phone(read, { id: 'dev-PHNE2', pendingBase: 20_000 })] as const;
+  };
+  const chooseAll = (plan: Awaited<ReturnType<typeof previewImport>>, c: 'keep' | 'helper') => ({ ...noChoices(), conflicts: Object.fromEntries(plan.rows.filter((r) => r.kind === 'conflict').map((r) => [r.key, c])) });
+
+  it('different counts of one item from two devices are a conflict; the same number is not', async () => {
+    const [p1, p2] = await devices();
+    await saveCount(p1, 'A', 5, undefined, at('15:10'), 2000);
+    await saveCount(p1, 'B', 2, undefined, at('15:12'), 2000);
+    await saveCount(p2, 'A', 3, undefined, at('15:30'), 2000);
+    await saveCount(p2, 'B', 2, undefined, at('15:31'), 2000);
+    const files = [await countsFile(p1, 'a.zip'), await countsFile(p2, 'b.zip')];
+    const plan = await previewImport(await tablet(), files);
+    expect(plan.rows.filter((r) => r.kind === 'conflict').map((r) => [r.itemId, r.conflict?.keep, r.conflict?.helper])).toEqual([['A', 5, 3]]);
+    expect(plan.ready).toBe(false);
+    const keep = planImport({ files, items, locations: [], helpers: [maya()], knownPending: new Set() }, chooseAll(plan, 'keep'));
+    expect(keep.changes.get('A')?.onHand).toBe(5);
+    const later = planImport({ files, items, locations: [], helpers: [maya()], knownPending: new Set() }, chooseAll(plan, 'helper'));
+    expect(later.changes.get('A')?.onHand).toBe(3);
+  });
+
+  it('the second device is still caught when the first was imported earlier', async () => {
+    const [p1, p2] = await devices();
+    await saveCount(p1, 'A', 5, undefined, at('15:10'), 2000);
+    await saveCount(p2, 'A', 3, undefined, at('15:30'), 2000);
+    const db = await tablet();
+    await applyImport(db, [await countsFile(p1, 'a.zip')], noChoices(), 5000);
+    const plan = await previewImport(db, [await countsFile(p2, 'b.zip')]);
+    expect([plan.counts.conflicts, plan.ready]).toEqual([1, false]);
+  });
+
+  it('one device recounting an item over several files is still no conflict', async () => {
+    const [p1] = await devices();
+    await saveCount(p1, 'A', 5, undefined, at('15:10'), 2000);
+    const first = await countsFile(p1, 'a.zip', 1);
+    await saveCount(p1, 'A', 6, undefined, at('15:40'), 3000);
+    const second = await countsFile(p1, 'a2.zip', 2);
+    const db = await tablet();
+    await applyImport(db, [first], noChoices(), 5000);
+    const plan = await previewImport(db, [second]);
+    expect([plan.counts.conflicts, plan.changes.get('A')?.onHand]).toEqual([0, 6]);
+  });
+
+  it('every import keeps its own undo; they come back newest first, and a restore forgets them all', async () => {
+    const [p1] = await devices();
+    await saveCount(p1, 'A', 5, undefined, at('15:10'), 2000);
+    const first = await countsFile(p1, 'a.zip', 1);
+    await saveCount(p1, 'B', 2, undefined, at('15:40'), 3000);
+    const second = await countsFile(p1, 'a2.zip', 2);
+    const db = await tablet();
+    await applyImport(db, [first], noChoices(), 5000);
+    await applyImport(db, [second], noChoices(), 6000);
+    expect((await getImportUndo(db))?.at).toBe(6000);
+    expect((await getImportUndo(db))?.earlier).toBe(1);
+    await undoImport(db, 7000);
+    expect((await db.items.get('B'))!.onHand).toBe(0);
+    expect((await db.items.get('A'))!.onHand).toBe(5);
+    expect([(await getImportUndo(db))?.at, (await getImportUndo(db))?.earlier]).toEqual([5000, 0]);
+    await undoImport(db, 8000);
+    expect((await db.items.get('A'))!.onHand).toBe(0);
+    expect(await getImportUndo(db)).toBe(null);
+    await expect(undoImport(db, 9000)).rejects.toThrow(/no import to undo/);
   });
 });

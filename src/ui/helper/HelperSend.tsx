@@ -150,6 +150,19 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
             Creates <span class="mono">{name}</span> and opens the share menu.
           </p>
         </div>
+        <div class="card hmore hhow">
+          <h2 class="h2">How to send</h2>
+          <ol class="hhow-l">
+            <li>
+              Tap <strong>Send my counts</strong>. If a share menu opens, pick Drive, Quick Share or email.
+            </li>
+            <li>
+              If it says <strong>Saved to Downloads</strong>, upload the <span class="mono">counts-…zip</span> file to the team’s Drive folder › <strong>Counts</strong>, then tap <strong>I’ve sent it</strong>.
+            </li>
+            <li>Tell a mentor. Do this every time before you leave.</li>
+            <li>Next time, just open the app and keep counting. You don’t need a new kit.</li>
+          </ol>
+        </div>
         <div class="card hmore">
           <h2 class="h2">Another count kit</h2>
           <p class="small muted m0">Opening a new kit replaces everything on this device with the new kit’s copy.</p>

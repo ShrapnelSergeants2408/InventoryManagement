@@ -27,7 +27,7 @@ import {
 } from '../src/domain/helpers';
 import { NO_LOCATION } from '../src/domain/lists';
 import { APP_VERSION } from '../src/io/backup';
-import { KIT_FILE, KIT_FORMAT, KIT_FORMAT_VERSION, buildCountKit, kitFileName, withoutPrices } from '../src/io/count-kit';
+import { KIT_FILE, KIT_FORMAT, KIT_FORMAT_VERSION, buildCountKit, countsFileName, kitFileName, withoutPrices } from '../src/io/count-kit';
 import { parseInventoryCsv, serializeInventoryCsv } from '../src/io/inventory-csv';
 import { parseCategoriesCsv, parseLocationsCsv, parseSuppliersCsv } from '../src/io/lists-csv';
 import { readRestoreFile } from '../src/io/restore';
@@ -336,10 +336,16 @@ describe('count kit contents (§18.2)', () => {
     expect((await readRestoreFile({ name: 'inventory-backup.csv', bytes: backup }, priced)).ok).toBe(true);
   });
 
-  it('file name: count-kit-<helper name>-<yyyy-mm-dd-hhmm>.zip, safe for any device', () => {
-    expect(kitFileName('Tablet 2 · Alex & Jordan', new Date(2026, 9, 24, 18, 5))).toBe('count-kit-tablet-2-alex-jordan-2026-10-24-1805.zip');
-    expect(kitFileName('Maya’s phone / ../x', new Date(2026, 0, 2, 3, 4))).toBe('count-kit-maya-s-phone-x-2026-01-02-0304.zip');
-    expect(kitFileName('🤖', new Date(2026, 0, 2, 3, 4))).toBe('count-kit-2026-01-02-0304.zip');
+  it('file name: <helper name>_Helper.zip, capitals kept, safe for any device (v0.20)', () => {
+    expect(kitFileName('Bin A-B')).toBe('Bin_A-B_Helper.zip');
+    expect(kitFileName('Tablet 2 · Alex & Jordan')).toBe('Tablet_2_Alex_Jordan_Helper.zip');
+    expect(kitFileName('Maya’s phone / ../x')).toBe('Maya_s_phone_x_Helper.zip');
+    expect(kitFileName('A - B')).toBe('A_B_Helper.zip');
+    expect(kitFileName('🤖')).toBe('Helper.zip');
+    expect(kitFileName('Café')).toBe('Cafe_Helper.zip');
+  });
+  it('the counts file keeps its dated name', () => {
+    expect(countsFileName('Maya’s phone', new Date(2026, 0, 2, 3, 4))).toBe('counts-maya-s-phone-2026-01-02-0304.zip');
   });
 });
 

@@ -1,6 +1,7 @@
 // Count-in (F24): walk order, progress, the keypad and the group summary. Pure, so it is
 // unit-tested; the screen and the save live in ui/screens/count and data/count.ts.
 import { countedDate } from './dates';
+import { dueCount } from './recount';
 import { listOrder } from './inventory-view';
 import { NO_LOCATION } from './lists';
 import { buildOrderList } from './order';
@@ -39,6 +40,8 @@ export interface CountGroup {
   items: Item[];
   counted: number;
   action: GroupAction;
+  /** Items last counted longer ago than the Recount after setting (v0.20); 0 when no recount age is given. */
+  due: number;
 }
 
 export const groupAction = (counted: number, total: number): GroupAction => (counted === 0 ? 'start' : counted < total ? 'continue' : 'recount');
@@ -49,7 +52,7 @@ export const groupAction = (counted: number, total: number): GroupAction => (cou
  * (no location, or one that isn't in the list), items in list order inside each. Scan mode
  * tracks progress by category. Groups left empty by the desired-0 option are dropped.
  */
-export function countGroups(items: readonly Item[], categories: readonly Category[], locations: readonly Location[], mode: CountMode, skipZero: boolean, since = ''): CountGroup[] {
+export function countGroups(items: readonly Item[], categories: readonly Category[], locations: readonly Location[], mode: CountMode, skipZero: boolean, since = '', recount?: { today: string; days: number }): CountGroup[] {
   const ordered = listOrder(items, categories).filter((i) => inWalk(i, skipZero));
   const groups: Array<{ name: string; items: Item[] }> = [];
   if (mode === 'location') {
@@ -75,7 +78,7 @@ export function countGroups(items: readonly Item[], categories: readonly Categor
     .filter((g) => g.items.length > 0)
     .map((g) => {
       const counted = g.items.filter((i) => isCounted(i, since)).length;
-      return { ...g, counted, action: groupAction(counted, g.items.length) };
+      return { ...g, counted, action: groupAction(counted, g.items.length), due: recount ? dueCount(g.items, recount.today, recount.days) : 0 };
     });
 }
 

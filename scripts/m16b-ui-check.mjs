@@ -227,6 +227,7 @@ try {
   check('Send: not sent yet, what will go, the file name', await P(`return [norm($('.hlast').textContent), $$('.hsum-r').map((r) => [norm(r.firstElementChild.textContent), +r.lastElementChild.textContent]), /^Creates counts-maya-s-phone-\\d{4}-\\d\\d-\\d\\d-\\d{4}\\.zip and opens the share menu\\.$/.test(norm($('.hsend-go p').textContent))]`), ['Not sent yet6 changes not sent yet', [['Items counted', 3], ['Location changes', 1], ['Barcodes attached', 1], ['New locations', 1], ['New items (pending)', 1], ['Counted outside my groups', 1]], true]);
   check('phone Send screen: fits; targets ≥ 48 px', await P(`return [wide(), small()]`), [false, []]);
   await shot('09-send-phone');
+  check('Send: a How to send card with the four student-card steps', await P(`const c = $('.hhow'); return [norm(c.querySelector('.h2').textContent), c.querySelectorAll('li').length]`), ['How to send', 4]);
   await P(`catchShare(); await click('.hsend-go .btn', 'Send my counts');`);
   const c1 = await shared();
   const z1 = await JSZip.loadAsync(c1.bytes);

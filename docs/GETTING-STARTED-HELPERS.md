@@ -2,7 +2,7 @@
 
 For the first full count, with the shop tablet as the main device and students' Android phones, iPhones and spare tablets as helpers. Files move through one shared Google Drive folder owned by the team account.
 
-Written 2026-11-10 for app version 1.1.0 (More › About shows the version). The full rules are in `docs/SPEC.md` §18.
+Written 2026-11-10, updated 2026-11-12 for app version 1.2.0 (More › About shows the version). The full rules are in `docs/SPEC.md` §18.
 
 **How it works:** the shop tablet makes a **count kit** file for each helper. The helper opens the kit, counts, and makes a **counts file**. The tablet imports the counts files. Nothing syncs by itself: a count reaches the tablet only when its counts file is imported.
 
@@ -10,18 +10,18 @@ Written 2026-11-10 for app version 1.1.0 (More › About shows the version). The
 
 ## Rules that prevent lost counts
 
-1. **One kit, one device.** Don't open the same kit on two phones. Both count as the same helper, so where they count the same item the newer number replaces the older one without asking. The import warns when it sees this, and both phones' new items are kept, but a second phone should have its own helper and its own kit.
+1. **One kit, one device.** Don't open the same kit on two phones. Both count as the same helper. The import warns when it sees this, both phones' new items are kept, and where they counted the same item with different numbers you are asked which to keep. Still, a second phone should have its own helper and its own kit.
 2. **Saved to Downloads isn't sent.** On Android, **Send my counts** only saves the file to the phone's Downloads. The Send screen says "Saved to Downloads" and "Not on the shop tablet yet" until the student uploads the file to the Drive folder and taps **I've sent it**.
 3. **Send at the end of every session.** A phone can clear a website's data after a few days without use (iPhones especially). Counts not yet sent are lost with it.
 4. **Use the normal browser:** Chrome on Android, Safari on iPhone. Not a private or incognito tab, and not the browser built into another app (a link opened inside a chat app). Each of those keeps its own data, and some erase it.
 5. **Don't count a helper's groups on the shop tablet** while that helper is out. Two different numbers for one item become a conflict you settle by hand at import.
-6. **A new kit replaces everything on the device.** Send a helper another kit only when you changed its groups or its data was lost, and have the student send their counts first. The new kit's progress bar starts at zero.
+6. **A new kit replaces everything on the device.** Send a helper another kit only when you changed its groups or its data was lost, and have the student send their counts first. The new kit keeps the tablet's count round, so items already counted this round stay counted.
 
 ---
 
 ## Before the session (mentor, about 15 minutes)
 
-**0. Check the version.** More › About should show **1.1.0** or later. If it shows 1.0.0, update the tablet first (`docs/HANDOFF.md` §7). A phone that opens the app for the first time gets the current version by itself.
+**0. Check the version.** More › About should show **1.2.0** or later. If it shows 1.0.0, update the tablet first (`docs/HANDOFF.md` §7). A phone that opens the app for the first time gets the current version by itself.
 
 **1. Back up the tablet.** More › **Backup, restore & price import** › **Full backup (ZIP)**, and put it in Drive.
 
@@ -32,7 +32,7 @@ Written 2026-11-10 for app version 1.1.0 (More › About shows the version). The
 - Under **Categories** (or **Locations**), anything marked **Not assigned** has nobody counting it. Give it to a helper, or count it yourself on the tablet.
 
 **4. Send each kit.** On each helper card: **Send count kit** › **Send count kit**. Leave **Include photos** on (photos help students recognize parts).
-- The tablet saves `count-kit-<name>-<date>-<time>.zip` to its Downloads and says "Saved to Downloads, not sent yet". It doesn't open the share menu for this kind of file. Tap **Done**.
+- The tablet saves `<name>_Helper.zip` (e.g. `Bin_A-B_Helper.zip`) to its Downloads (with several helpers, **Send all kits…** makes every helper's kit in one go; Helper devices shows each helper's last import and how many items it has counted) and says "Saved to Downloads, not sent yet". It doesn't open the share menu for this kind of file. Tap **Done**.
 - When all kits are saved, open the Drive app › **+** › **Upload**, choose the kit files from Downloads, and put them in `Kits`.
 
 **5. Give students two things:**
@@ -73,7 +73,7 @@ Every counts file holds everything since the kit was opened, so sending again is
 
 ## Bringing counts into the tablet (mentor)
 
-1. Count › **Import counts** › **Choose counts files…**. Pick the files from Drive. **Pick every helper's file in one go:** only the last import can be undone, so one import covering all files keeps Undo useful.
+1. Count › **Import counts** › **Choose counts files…**. Pick the files from Drive. Picking every helper's file in one go is simplest; if you import in several rounds, each import has its own **Undo this import**, newest first.
 2. Read the preview. Nothing is saved yet.
    - **Will apply:** new counts.
    - **Conflicts:** an item counted twice with different numbers. Choose **Keep this tablet's**, **Use helper's** or **Add together** (for parts stored in two places). **Use newest for all** settles them all, and trusts each phone's clock.
@@ -90,7 +90,7 @@ Importing the same file twice changes nothing, so when in doubt, import again.
 ## Between sessions and at the end
 
 - **Next session:** students open the app and carry on. No new kit is needed. They send again at the end; you import the newer files.
-- **A device needs different groups?** Have the student send first and import that file. Then edit the helper, send it a new kit, and have the student open it from Send › **Open a new kit…**. The new kit carries the numbers already imported, but its progress bar starts at zero.
+- **A device needs different groups?** Have the student send first and import that file. Then edit the helper, send it a new kit, and have the student open it from Send › **Open a new kit…**. The new kit carries the numbers already imported, and items already counted this round show as counted.
 - **Count finished:** check that each helper's last file is imported, then on each device Send › **Leave helper mode**. Make a full backup on the tablet.
 - **Progress:** the tablet's Count screen shows each group's count and its helper. It moves only after an import.
 
@@ -99,10 +99,10 @@ Importing the same file twice changes nothing, so when in doubt, import again.
 | What you see | What to do |
 |---|---|
 | The phone doesn't ask "What is this device?" or looks out of date | Reload the page. On an iPhone, if that doesn't help, clear Safari's data for the site (send counts first if there are any) |
-| "This file isn't a count kit", "This is a counts file…" or "This is an inventory backup…" | The student picked the wrong file. Pick the `count-kit-…zip` |
+| "This file isn't a count kit", "This is a counts file…" or "This is an inventory backup…" | The student picked the wrong file. Pick the one named after the helper, like `Bin_A-B_Helper.zip` |
 | The kit file is greyed out in the picker | Download it to the phone first, then pick it from Downloads or Files |
-| A phone lost its data mid-count | Import the last file it sent, then send that helper a new kit. Only what wasn't sent needs recounting, but the new kit's progress starts at zero, so the student has to remember where they stopped |
-| Import warns a kit "was opened on 2 devices, or opened again on one" | Two phones used one kit, or a phone opened its kit a second time. Nothing is lost, but if two people counted the same items, the newer number won. Recount anything that looks wrong |
+| A phone lost its data mid-count | Import the last file it sent, then send that helper a new kit. Only what wasn't sent needs recounting; items imported earlier this round show as counted, so the student can pick up where they stopped |
+| Import warns a kit "was opened on 2 devices, or opened again on one" | Two phones used one kit, or a phone opened its kit a second time. Nothing is lost. Where two people counted the same item with different numbers, the preview asks which to keep (Keep the earlier / Use the later / Add together). Recount anything that looks wrong |
 | Import warns the file is "from a count kit this tablet didn't send" | It can still be imported. Check the preview with more care |
 | A student opened someone else's kit | Have them stop. Send › **Leave helper mode** (choose **Discard and leave** if it asks), then join with the right kit and recount |
 

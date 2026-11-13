@@ -192,7 +192,7 @@ try {
   await A.js(`await click('.imp-opt', 'Use helper’s'); await settle(300);`);
   check('chosen: Apply 3 counts, the order total estimate', await A.js(`return [norm(byText('.imp-side .btn', 'Apply').textContent), byText('.imp-side .btn', 'Apply').disabled, /^\\$[\\d,.]+ → \\$[\\d,.]+$/.test(norm($('.imp-money').textContent)), tiles('.imp-tiles6')[1]]`), ['Apply 3 counts', false, true, ['Conflicts', '1']]);
   await A.js(`await click('.imp-side .btn', 'Apply 3 counts'); await settle(1000);`);
-  check('summary: applied, settled, skipped, outside, new items', await A.js(`return [norm($('.done-h .h1').textContent), tiles('.imp-tiles'), $$('.imp .wacts .btn').map((b) => norm(b.textContent))]`), ['Counts from Maya’s phone applied', [['Applied', '3'], ['Conflicts settled', '1'], ['Skipped', '2'], ['Outside groups', '0'], ['New items waiting', '1']], ['1Review new items', 'Back up now', 'Undo this import', 'Done']]);
+  check('summary: applied, settled, skipped, outside, new items', await A.js(`return [norm($('.done-h .h1').textContent), tiles('.imp-tiles'), $$('.imp .wacts .btn').map((b) => norm(b.textContent))]`), ['Counts from Maya’s phone applied', [['Applied', '3'], ['Conflicts settled', '1'], ['Skipped', '2'], ['Outside groups', '0'], ['New items waiting', '1']], ['1Review new items', 'Back up now', 'Spot-check list 3', 'Count report (CSV)', 'Undo this import', 'Done']]);
   await A.shot('03-summary');
   const after = await A.js(`return await Promise.all(${JSON.stringify(ids)}.map(item))`);
   const STAMP = /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d[+-]\d\d:\d\d$/;

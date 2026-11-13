@@ -8,6 +8,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import qrcode from 'qrcode-generator';
 import { PIN_H } from './pin-helpers.mjs';
+import { APP_VERSION } from './app-version.mjs';
 
 const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
@@ -112,7 +113,7 @@ try {
 
   // ── App version (v0.9) ──
   await P(`await go('#/more');`);
-  check('More › About: the app version and when it was built', await P(`const r = byText('.mrow', 'App version'); return [norm(r.querySelector('.mt').textContent), /^Built [A-Z][a-z]{2} \\d{1,2}, \\d{4}, \\d{1,2}:\\d\\d [AP]M$/.test(norm(r.querySelector('.small').textContent))]`), ['App version 1.1.0', true]);
+  check('More › About: the app version and when it was built', await P(`const r = byText('.mrow', 'App version'); return [norm(r.querySelector('.mt').textContent), /^Built [A-Z][a-z]{2} \\d{1,2}, \\d{4}, \\d{1,2}:\\d\\d [AP]M$/.test(norm(r.querySelector('.small').textContent))]`), ['App version ' + APP_VERSION, true]);
   await shot('01-version');
 
   // ── Scan tab: an unknown bin code → Location not found → Add ──

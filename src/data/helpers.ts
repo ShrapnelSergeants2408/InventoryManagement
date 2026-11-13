@@ -60,13 +60,19 @@ export interface BuiltKit {
   photoCount: number;
 }
 
+/** The tablet's settings that travel in a kit: the recount age and the shared Drive folder links (v0.20, v0.21). */
+async function kitSettings(db: InventoryDb) {
+  const s = await getSettings(db);
+  return { recountDays: s.recountDays, kitsFolderUrl: s.kitsFolderUrl, countsFolderUrl: s.countsFolderUrl };
+}
+
 /**
  * Builds a count kit for one helper (§18.2) from the inventory as it is now, read in one
  * transaction so items and photos agree. Nothing is recorded until `recordKit`, after the
  * file has been handed on.
  */
 export async function buildKit(db: InventoryDb, helperId: string, includePhotos: boolean, now = new Date()): Promise<BuiltKit> {
-  const { helper, snapshot, photos, kitIds, countSince, recountDays } = await db.transaction('r', [db.helpers, db.items, db.suppliers, db.locations, db.categories, db.photos, db.settings], async () => {
+  const { helper, snapshot, photos, kitIds, countSince, recountDays, kitsFolderUrl, countsFolderUrl } = await db.transaction('r', [db.helpers, db.items, db.suppliers, db.locations, db.categories, db.photos, db.settings], async () => {
     const row = await db.helpers.get(helperId);
     if (!row) throw new Error('that helper was removed');
     const all = (await db.helpers.toArray()).map(fromHelperRow);
@@ -76,7 +82,7 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
       photos: includePhotos ? new Map((await db.photos.toArray()).map((p) => [p.itemId, p.full] as const)) : new Map<string, Blob>(),
       kitIds: new Set(all.flatMap((h) => h.kits.map((k) => k.id))),
       countSince: await getCountSince(db),
-      recountDays: (await getSettings(db)).recountDays,
+      ...(await kitSettings(db)),
     };
   });
   const choices = groupChoices(helper.kind, snapshot.categories, snapshot.locations);
@@ -85,7 +91,7 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
   const kitId = newKitId((x) => kitIds.has(x));
   const createdAt = localIsoDateTime(now);
   const ids = new Set(snapshot.items.map((i) => i.id));
-  const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups }, kitId, createdAt, includePhotos, now, countSince, recountDays });
+  const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups }, kitId, createdAt, includePhotos, now, countSince, recountDays, kitsFolderUrl, countsFolderUrl });
   return { blob, kitId, createdAt, itemCount: snapshot.items.length, photoCount: [...photos.keys()].filter((id) => ids.has(id)).length };
 }
 

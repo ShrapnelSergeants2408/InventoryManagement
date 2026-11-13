@@ -54,6 +54,9 @@ export interface KitJson {
   count_since?: string;
   /** The tablet's Recount after days (v0.20). */
   recount_days?: number;
+  /** Links to the team's shared Drive folders (v0.21), so the helper can open them. */
+  kits_folder_url?: string;
+  counts_folder_url?: string;
 }
 
 export interface KitInput {
@@ -72,6 +75,9 @@ export interface KitInput {
   countSince?: string;
   /** The tablet's Recount after setting (v0.20). */
   recountDays?: number;
+  /** The tablet's shared Drive folder links (v0.21); '' or left out for none. */
+  kitsFolderUrl?: string;
+  countsFolderUrl?: string;
 }
 
 /** Helpers don't need prices (§18.2): pack price and price checked are left blank. */
@@ -79,7 +85,7 @@ export function withoutPrices(item: Item): Item {
   return { ...item, vendors: item.vendors.map((v) => (v ? { ...v, packPriceCents: null, priceChecked: '' } : null)) as Item['vendors'] };
 }
 
-export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt' | 'countSince' | 'recountDays'>): KitJson {
+export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt' | 'countSince' | 'recountDays' | 'kitsFolderUrl' | 'countsFolderUrl'>): KitJson {
   const h = input.helper;
   return {
     format: KIT_FORMAT,
@@ -93,6 +99,8 @@ export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt' |
     allow_new_items: h.allowNewItems,
     ...(input.countSince !== undefined ? { count_since: input.countSince } : {}),
     ...(input.recountDays !== undefined ? { recount_days: input.recountDays } : {}),
+    ...(input.kitsFolderUrl ? { kits_folder_url: input.kitsFolderUrl } : {}),
+    ...(input.countsFolderUrl ? { counts_folder_url: input.countsFolderUrl } : {}),
   };
 }
 

@@ -1,6 +1,7 @@
 // Helper mode on a helper device (SPEC §18.2–§18.4): what the kit says, which items are the
 // helper's to count, what goes in the cumulative counts file, and the "Add item not on the
 // list" rules. Pure, so the rules are unit-tested; data/helper-db.ts stores them.
+import { folderUrlOrBlank } from './folder-links';
 import { newDeviceId, type GroupKind } from './helpers';
 import { NO_LOCATION } from './lists';
 import { parsePrice } from './money';
@@ -32,6 +33,9 @@ export interface HelperKit {
   countSince: string;
   /** The tablet's Recount after days (v0.20), or null from an older tablet. */
   recountDays: number | null;
+  /** The tablet's shared Drive folder links when the kit was made (v0.21); '' when none or from an older tablet. */
+  kitsFolderUrl: string;
+  countsFolderUrl: string;
 }
 
 export type KitCheck = { ok: true; kit: HelperKit } | { ok: false; newer: boolean; message: string };
@@ -70,6 +74,8 @@ export function checkKitJson(raw: unknown): KitCheck {
       allowNewItems: k.allow_new_items !== false,
       countSince: isText(k.count_since) && /^\d{4}-\d{2}-\d{2}$/.test(k.count_since) ? k.count_since : '',
       recountDays: typeof k.recount_days === 'number' && Number.isSafeInteger(k.recount_days) && k.recount_days >= 1 ? k.recount_days : null,
+      kitsFolderUrl: folderUrlOrBlank(k.kits_folder_url),
+      countsFolderUrl: folderUrlOrBlank(k.counts_folder_url),
     },
   };
 }

@@ -27,6 +27,8 @@ Written 2026-11-10, updated 2026-11-12 for app version 1.2.0 (More › About sho
 
 **2. Make the Drive folder.** In the team account's Drive, make a folder such as `Inventory count` with two folders inside: `Kits` and `Counts`. Share it so students can add files (Editor). Students need a Google account on their phone to upload.
 
+Then copy each folder's link (Drive › the folder › Share › Copy link) into **More › Reminders & limits › Shared Drive folders** on the tablet (mentor PIN): **Kits folder link** and **Counts folder link**. Helper devices then shows a QR code for the Kits folder that students can scan to reach their kit, and each kit carries both links, so a student's Send tab has **Open the Counts folder** (and **Open the Kits folder**) buttons. Import counts has **Open the Counts folder** too. Set the links before sending the kits.
+
 **3. Check the helpers.** Count › **Helper devices**.
 - One helper for each device, named so the student knows which is theirs.
 - Under **Categories** (or **Locations**), anything marked **Not assigned** has nobody counting it. Give it to a helper, or count it yourself on the tablet.
@@ -63,7 +65,7 @@ A navy **HELPER · name** bar stays at the top, with three tabs: **Count**, **Sc
 
 **Send (end of every session)**
 1. **Send** tab › **Send my counts**.
-2. **Android:** the file `counts-<name>-<date>-<time>.zip` is saved to Downloads. Open the Drive folder › `Counts` › **+** › **Upload** and choose it. Then go back to the app and tap **I've sent it**.
+2. **Android:** the file `counts-<name>-<date>-<time>.zip` is saved to Downloads. Tap **Open the Counts folder** on the Send tab (or open the Drive folder › `Counts`) › **+** › **Upload** and choose it. Then go back to the app and tap **I've sent it**.
    **iPhone:** the share menu opens. Choose **Drive** and the `Counts` folder, or **Save to Files** and then upload it from the Drive app.
 3. Tell the mentor it's uploaded.
 
@@ -112,7 +114,7 @@ Importing the same file twice changes nothing, so when in doubt, import again.
 
 **Counting parts with your phone**
 
-1. Open the Drive folder › **Kits**. Download the kit with **your helper's name**. Only you use this kit.
+1. Scan the **Kits folder** QR code on the shop tablet (or open the Drive folder › **Kits**). Download the kit with **your helper's name**. Only you use this kit.
 2. Scan the QR code on the shop tablet, or open **team2408.com/InventoryManagement** in Chrome (Android) or Safari (iPhone). Not a private tab.
 3. Tap **Join as a helper** › **Choose the count kit…** › your kit › **Start counting**.
 4. **Count** tab: tap **Start** on a group. Type how many are really there, then **Save & next**. Unsure? **Skip for now**.

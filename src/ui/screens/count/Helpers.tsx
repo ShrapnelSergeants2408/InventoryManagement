@@ -26,7 +26,8 @@ import { kitFileName } from '../../../io/count-kit';
 import { shareFilesOrDownload, shareOrDownload } from '../../../io/share';
 import { BackButton, CheckBox, StateMessage, Toggle, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useHelpers, useSnapshot } from '../../data-hooks';
+import { useDb, useHelpers, useSettings, useSnapshot } from '../../data-hooks';
+import { FolderLink } from '../../components/FolderLink';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -91,6 +92,7 @@ export function HelpersScreen() {
             </div>
           )}
           <AppLink />
+          <FolderCard />
           {list.length > 1 && (
             <div class="sendall">
               <button type="button" class="btn" onClick={() => setOpen({ kind: 'all' })}>
@@ -131,6 +133,34 @@ function AppLink() {
         <div>Scan this code with the phone’s or tablet’s camera, or type the address into Chrome (Android) or Safari (iPhone):</div>
         <strong class="mono happlink-a">{address.replace(/^https?:\/\//, '')}</strong>
         <div class="small muted">Then choose “Join as a helper” and open the count kit you sent it. Not in a private tab.</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The team's shared Drive folders (v0.21): a QR code and a button for the Kits folder, where
+ * helpers download their kit, and a button for the Counts folder. Set in More › Reminders & limits.
+ */
+function FolderCard() {
+  const s = useSettings();
+  if (s.kitsFolderUrl === '' && s.countsFolderUrl === '') {
+    return (
+      <p class="small muted lockline">
+        Tip: put the team’s Drive folder links in More › Reminders &amp; limits (mentor PIN). Each kit then carries them, so helpers can open the Kits and Counts folders in one tap.
+      </p>
+    );
+  }
+  return (
+    <div class="card happlink" aria-label="Shared Drive folders">
+      {s.kitsFolderUrl !== '' && <QrSvg text={s.kitsFolderUrl} size={1.5} />}
+      <div class="grow">
+        <h2 class="h2">Shared Drive folders</h2>
+        {s.kitsFolderUrl !== '' && <div>Kits: helpers scan this code, or open the link, to download their kit.</div>}
+        <div class="folder-acts">
+          <FolderLink url={s.kitsFolderUrl} label="Open the Kits folder" />
+          <FolderLink url={s.countsFolderUrl} label="Open the Counts folder" />
+        </div>
       </div>
     </div>
   );
@@ -393,6 +423,7 @@ function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: 
 
 function SendKitDialog(props: { h: Helper; items: number; onClose: () => void }) {
   const db = useDb();
+  const links = useSettings();
   const h = props.h;
   const [photos, setPhotos] = useState(true);
   const [size, setSize] = useState<{ count: number; bytes: number } | null>(null);
@@ -444,6 +475,7 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
         </p>
         <p class="dlg-p">Open Files or Drive and send it to the helper: upload it to the team’s Drive folder, or use Quick Share or email. Then open it on the helper with “Join as a helper”.</p>
         <DialogActions>
+          <FolderLink url={links.kitsFolderUrl} label="Open the Kits folder" />
           <button type="button" class="btn pri lg" data-autofocus onClick={props.onClose}>
             Done
           </button>
@@ -487,6 +519,7 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
 /** Send all kits (§18.1, v0.20): one share sheet holding one kit per ticked helper. */
 function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () => void }) {
   const db = useDb();
+  const links = useSettings();
   const [ticked, setTicked] = useState<Set<string>>(() => new Set(props.helpers.map((h) => h.id)));
   const [photos, setPhotos] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -550,6 +583,7 @@ function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () =>
         </ul>
         <p class="dlg-p">Open Files or Drive and send each one to its helper: upload them to the team’s Drive folder, or use Quick Share or email. Then open each on its helper with “Join as a helper”.</p>
         <DialogActions>
+          <FolderLink url={links.kitsFolderUrl} label="Open the Kits folder" />
           <button type="button" class="btn pri lg" data-autofocus onClick={props.onClose}>
             Done
           </button>

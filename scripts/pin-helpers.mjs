@@ -17,6 +17,13 @@ export const PIN_H = `
     shop.click();
     for (let i = 0; i < 100 && !$('.setup .pinpad'); i++) await settle(100);
   };
+  // A button that may not be on screen yet when the machine is busy (checks run side by side).
+  const waitBtn = async (sel, text) => {
+    for (let i = 0; i < 100 && !byText(sel, text); i++) await settle(100);
+    const b = byText(sel, text);
+    if (!b) throw new Error('no button ' + text + ' in ' + sel);
+    return b;
+  };
   const doSetup = async (pin = '${TEST_PIN}') => {
     for (let i = 0; i < 300 && !$('.setup'); i++) await settle(100);
     if (!$('.setup')) throw new Error('first-launch setup did not appear');
@@ -26,17 +33,17 @@ export const PIN_H = `
     for (let i = 0; i < 100 && !$('.recovery input[type=checkbox]'); i++) await settle(100);
     $('.recovery input[type=checkbox]').click();
     await settle(150);
-    byText('.recovery button', 'Next').click();
+    (await waitBtn('.recovery button', 'Next')).click();
     await finishStart();
   };
   // Setup step 3 (M10, 9h–9j): load the starter catalog, then Go to inventory.
   const finishStart = async () => {
     for (let i = 0; i < 100 && !$('.sopts'); i++) await settle(100);
     if (!$('.sopts')) throw new Error('setup step 3 did not appear');
-    byText('.setup-acts .btn', 'Load starter catalog').click();
+    (await waitBtn('.setup-acts .btn', 'Load starter catalog')).click();
     for (let i = 0; i < 600 && !$('.sdone'); i++) await settle(100);
     if (!$('.sdone')) throw new Error('the starter catalog did not finish loading');
-    byText('.setup-acts .btn', 'Go to inventory').click();
+    (await waitBtn('.setup-acts .btn', 'Go to inventory')).click();
     await settle(800);
   };
   // yes: the PIN, then lock again at once (unless stay), so every later PIN step asks (as the

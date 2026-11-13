@@ -9,7 +9,8 @@ import { formatCents } from '../../../domain/money';
 import { readCountsFile } from '../../../io/counts-file';
 import { BackButton, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
-import { useDb, useImportUndo, useSnapshot } from '../../data-hooks';
+import { useDb, useImportUndo, useSettings, useSnapshot } from '../../data-hooks';
+import { FolderLink } from '../../components/FolderLink';
 import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
@@ -24,6 +25,7 @@ const when = (stamp: string) => (stamp === '' ? 'never' : formatDateTime(new Dat
 type Refused = { name: string; newer: boolean; problems: string[] };
 
 export function ImportScreen() {
+  const links = useSettings();
   const db = useDb();
   const live = useSnapshot();
   const [files, setFiles] = useState<CountsFile[]>([]);
@@ -174,6 +176,7 @@ export function ImportScreen() {
                 Helpers send <span class="mono">counts-…zip</span> from their Send tab. Each file is checked first; nothing is saved until you see the preview and tap Apply.
               </p>
             </div>
+            <FolderLink url={links.countsFolderUrl} label="Open the Counts folder" />
             <button type="button" class="btn pri lg" disabled={reading} onClick={() => picker.current?.click()}>
               {reading ? 'Checking…' : 'Choose counts files…'}
             </button>

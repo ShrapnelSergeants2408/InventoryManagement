@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import { setSettings } from '../../../data/settings';
 import { formatIsoDate } from '../../../domain/dates';
+import { checkFolderUrl } from '../../../domain/folder-links';
 import { centsToPlain, parsePrice } from '../../../domain/money';
 import { isMonthDay } from '../../../domain/order-history';
 import { SETTING_LIMITS, checkSettings, type NamedSettings, type SettingsDraft } from '../../../domain/settings-limits';
@@ -26,6 +27,11 @@ const HELP: Record<keyof NamedSettings, string> = {
 };
 
 const toDraft = (s: NamedSettings): SettingsDraft => ({ reminderDays: String(s.reminderDays), staleDays: String(s.staleDays), unlockMinutes: String(s.unlockMinutes), overdueDays: String(s.overdueDays), recountDays: String(s.recountDays) });
+
+const FOLDER_ROWS: ReadonlyArray<[keyof FolderDraft, string, string, string]> = [
+  ['kits', 'set-kitsFolder', 'Kits folder link', 'Where count kits go for helpers to download. The Helper devices screen shows a link and a QR code for it, and each kit carries it, so a helper can open the folder from the Send tab.'],
+  ['counts', 'set-countsFolder', 'Counts folder link', 'Where helpers upload their counts files. Import counts and each helper’s Send tab have a button that opens it. Each kit carries it.'],
+];
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 /** Days in a month, in a year that isn't a leap year (February 29 isn't offered). */
@@ -55,6 +61,15 @@ function budgetOf(raw: string): { ok: true; cents: number | null } | { ok: false
   return p;
 }
 
+/** The two shared Drive folder links as typed (v0.21). */
+interface FolderDraft {
+  kits: string;
+  counts: string;
+}
+
+const toFolders = (s: { kitsFolderUrl: string; countsFolderUrl: string }): FolderDraft => ({ kits: s.kitsFolderUrl, counts: s.countsFolderUrl });
+const sameFolders = (a: FolderDraft, b: FolderDraft) => a.kits.trim() === b.kits.trim() && a.counts.trim() === b.counts.trim();
+
 export function SettingsScreen() {
   const db = useDb();
   const settings = useSettings();
@@ -64,11 +79,15 @@ export function SettingsScreen() {
   const savedHistory = toHistory(settings);
   const [hist, setHist] = useState<HistoryDraft | null>(null);
   const h = hist ?? savedHistory;
+  const savedFolders = toFolders(settings);
+  const [folders, setFolders] = useState<FolderDraft | null>(null);
+  const f = folders ?? savedFolders;
+  const [folderErrors, setFolderErrors] = useState<Partial<Record<keyof FolderDraft, string>>>({});
   const [errors, setErrors] = useState<Partial<Record<keyof NamedSettings, string>>>({});
   const [budgetError, setBudgetError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const d = draft ?? saved;
-  const dirty = (draft !== null && KEYS.some((k) => draft[k] !== saved[k])) || (hist !== null && !sameHistory(hist, savedHistory));
+  const dirty = (draft !== null && KEYS.some((k) => draft[k] !== saved[k])) || (hist !== null && !sameHistory(hist, savedHistory)) || (folders !== null && !sameFolders(folders, savedFolders));
 
   // Relocking leaves unsaved changes on screen; Save asks for the PIN again.
   useEffect(() => setErrors({}), [draft]);
@@ -78,13 +97,17 @@ export function SettingsScreen() {
     const b = budgetOf(h.budget);
     setBudgetError(b.ok ? null : b.error);
     if (!r.ok) setErrors(r.errors);
-    if (!r.ok || !b.ok) return;
+    const kitsUrl = checkFolderUrl(f.kits, 'The Kits folder link');
+    const countsUrl = checkFolderUrl(f.counts, 'The Counts folder link');
+    setFolderErrors({ ...(kitsUrl.ok ? {} : { kits: kitsUrl.error }), ...(countsUrl.ok ? {} : { counts: countsUrl.error }) });
+    if (!r.ok || !b.ok || !kitsUrl.ok || !countsUrl.ok) return;
     if (!(await gate('Changing settings needs the mentor PIN.'))) return;
     setBusy(true);
     try {
-      await setSettings(db, { ...r.value, seasonStart: h.seasonStart, schoolYearStart: monthDay(h), budgetCents: b.cents });
+      await setSettings(db, { ...r.value, seasonStart: h.seasonStart, schoolYearStart: monthDay(h), budgetCents: b.cents, kitsFolderUrl: kitsUrl.url, countsFolderUrl: countsUrl.url });
       setDraft(null);
       setHist(null);
+      setFolders(null);
       showToast('Settings saved.');
     } catch (e) {
       showToast(`Couldn’t save the settings: ${e instanceof Error ? e.message : String(e)}`);
@@ -151,6 +174,37 @@ export function SettingsScreen() {
               </div>
             );
           })}
+        </div>
+        <div class="setform card" aria-label="Shared folders">
+          <h2 class="h2">Shared Drive folders</h2>
+          {FOLDER_ROWS.map(([k, id, label, help]) => (
+            <div class="setrow" key={k}>
+              <label class="lbl" for={id}>
+                {label} <span class="lbl-opt">(optional)</span>
+                {!unlocked && <Icon name="lock" />}
+              </label>
+              <input
+                id={id}
+                class={folderErrors[k] ? 'field bad' : 'field'}
+                type="url"
+                inputMode="url"
+                value={f[k]}
+                placeholder="https://drive.google.com/drive/folders/…"
+                disabled={!unlocked || busy}
+                aria-invalid={folderErrors[k] ? 'true' : undefined}
+                aria-describedby={`${id}-help`}
+                onInput={(e) => setFolders({ ...f, [k]: (e.currentTarget as HTMLInputElement).value })}
+              />
+              <p class="small muted" id={`${id}-help`}>
+                {help}
+              </p>
+              {folderErrors[k] && (
+                <p class="set-err" role="alert">
+                  {folderErrors[k]}
+                </p>
+              )}
+            </div>
+          ))}
         </div>
         <div class="setform card" aria-label="Order history">
           <h2 class="h2">Order history</h2>

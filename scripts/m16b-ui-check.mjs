@@ -141,6 +141,10 @@ try {
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 30000);
   check('a device with an inventory never sees the question again', await P(`return [!$('.setup'), !$('.role-opt')]`), [true, true]);
 
+  // The shared Drive folder links (v0.21), set the way More › Reminders & limits stores them: the kit carries them.
+  await P(`await new Promise((res, rej) => { const r = indexedDB.open('frc2408-inventory'); r.onsuccess = () => { const d = r.result; const t = d.transaction('settings', 'readwrite'); t.objectStore('settings').put({ key: 'kitsFolderUrl', value: 'https://drive.google.com/drive/folders/KITS1' }); t.objectStore('settings').put({ key: 'countsFolderUrl', value: 'https://drive.google.com/drive/folders/COUNTS1' }); t.oncomplete = () => { d.close(); res(); }; t.onerror = () => rej(t.error); }; });`);
+  await P(`await go('#/count/helpers'); await settle(500);`);
+  check('Helper devices: a Shared Drive folders card with a QR code and links that open in a new tab', await P(`const c = $('[aria-label="Shared Drive folders"]'); return [!!c.querySelector('svg'), [...c.querySelectorAll('a')].map((a) => [norm(a.textContent), a.getAttribute('href'), a.target, a.rel])]`), [true, [['Open the Kits folder', 'https://drive.google.com/drive/folders/KITS1', '_blank', 'noopener noreferrer'], ['Open the Counts folder', 'https://drive.google.com/drive/folders/COUNTS1', '_blank', 'noopener noreferrer']]]);
   await P(`await go('#/count/helpers'); await click('.top .btn', 'Add helper'); await type('#hname', 'Maya’s phone'); $$('.hgroup').find((x) => norm(x.querySelector('strong').textContent) === 'Electrical').click(); await settle(150); await click('.dlg .btn', 'Add helper'); await settle(500);`);
   await P(`catchShare(); $$('.hcard').find((c) => norm(c.querySelector('.h2').textContent) === 'Maya’s phone').querySelector('.btn.pri').click(); await settle(600); await click('.dlg .btn', 'Send count kit');`);
   const kitFile = await shared();
@@ -228,6 +232,7 @@ try {
   check('phone Send screen: fits; targets ≥ 48 px', await P(`return [wide(), small()]`), [false, []]);
   await shot('09-send-phone');
   check('Send: a How to send card with the four student-card steps', await P(`const c = $('.hhow'); return [norm(c.querySelector('.h2').textContent), c.querySelectorAll('li').length]`), ['How to send', 4]);
+  check('Send: the kit brought both folder links; the buttons open them', await P(`return [[...$$('.hhow a'), ...$$('.hmore:not(.hhow) a')].map((a) => [norm(a.textContent), a.getAttribute('href')]), wide(), small()]`), [[['Open the Counts folder', 'https://drive.google.com/drive/folders/COUNTS1'], ['Open the Kits folder', 'https://drive.google.com/drive/folders/KITS1']], false, []]);
   await P(`catchShare(); await click('.hsend-go .btn', 'Send my counts');`);
   const c1 = await shared();
   const z1 = await JSZip.loadAsync(c1.bytes);

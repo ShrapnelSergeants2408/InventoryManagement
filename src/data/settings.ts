@@ -24,6 +24,10 @@ export interface Settings {
   recountDays: number;
   /** School-year budget in cents (v0.17), or null for none. */
   budgetCents: number | null;
+  /** Link to the shared Drive folder for count kits (v0.21), or ''. */
+  kitsFolderUrl: string;
+  /** Link to the shared Drive folder for counts files (v0.21), or ''. */
+  countsFolderUrl: string;
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -38,6 +42,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   overdueDays: 14,
   recountDays: 90,
   budgetCents: null,
+  kitsFolderUrl: '',
+  countsFolderUrl: '',
 };
 
 export async function getSettings(db: InventoryDb): Promise<Settings> {

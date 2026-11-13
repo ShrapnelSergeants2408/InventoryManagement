@@ -10,6 +10,7 @@ import { shareOrDownload } from '../../io/share';
 import { TopBar, plural } from '../components/common';
 import { Dialog, DialogActions } from '../components/Dialog';
 import { forgetAllThumbnails, useNow } from '../data-hooks';
+import { FolderLink } from '../components/FolderLink';
 import { Icon } from '../icons';
 import { showToast } from '../shell/toast';
 import { KitPicker, KitSummary } from './KitPicker';
@@ -152,6 +153,7 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
         </div>
         <div class="card hmore hhow">
           <h2 class="h2">How to send</h2>
+          <FolderLink url={state.kit.countsFolderUrl ?? ''} label="Open the Counts folder" />
           <ol class="hhow-l">
             <li>
               Tap <strong>Send my counts</strong>. If a share menu opens, pick Drive, Quick Share or email.
@@ -166,6 +168,7 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
         <div class="card hmore">
           <h2 class="h2">Another count kit</h2>
           <p class="small muted m0">Opening a new kit replaces everything on this device with the new kit’s copy.</p>
+          <FolderLink url={state.kit.kitsFolderUrl ?? ''} label="Open the Kits folder" />
           <KitPicker label="Open a new kit…" onRead={(read) => (state.unsent > 0 ? setAsking({ kind: 'kit', read }) : void openKit(read))} />
         </div>
         <div class="card hmore">

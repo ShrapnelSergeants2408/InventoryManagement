@@ -164,3 +164,4 @@
 .spot-flags { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; }
 
 .cg-due { flex: none; white-space: nowrap; }
+.folder-acts { display: flex; flex-wrap: wrap; gap: 10px; }

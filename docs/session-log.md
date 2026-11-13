@@ -934,3 +934,20 @@ High for the logic and screens (unit tests and real-browser checks). Medium for 
 **Next:** merge the PR, then the tablet check in `docs/reviews/M25.md`.
 
 **Later:** Dan, 2026-11-13: details confirmed; commit, push, PR. No independent review was run.
+
+## 2026-11-13 — M26: shared Drive folder links
+
+**SESSION IDENTITY**
+Same session. Dan: "new item - allow main to set default location for helper kit upload and count upload in order to avoid difficulty in finding the required files". Asked what "location" means (Android Chrome can't set a picker or download folder); Dan chose Drive folder links carried in the kit. Branch `m26-drive-folder-links`, stacked on `m25-new-supplier-and-import-fixes` (PR #47, not yet merged).
+
+**WORK COMPLETED**
+SPEC v0.21, app 1.3.0. Settings Kits folder link and Counts folder link (https only); Helper devices card with a QR code of the Kits link and Open buttons; Open the Counts folder on Import counts; Open the Kits folder in the saved-to-Downloads dialogs; both links in `kit.json` (optional) and buttons on the helper's Send tab. Getting Started guide updated.
+
+**EVIDENCE**
+Type check and build clean. Unit 967 pass (1 skipped). Browser: M26 10/10; `npm run checks` 28 scripts all pass (after a check expectation and a setup wait were fixed).
+
+**CONFIDENCE**
+High for the settings, the links and the kit field. Medium for how Drive opens from Chrome on a phone and the tablet until the tablet check.
+
+**Next:** Dan merges PR #47, then this branch gets its own PR (rebase onto main first if the merge changes the base).
+

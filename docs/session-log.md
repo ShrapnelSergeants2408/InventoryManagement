@@ -967,3 +967,19 @@ Type check and build clean. Unit 989 pass (1 skipped). Browser: M27 16/16; `npm 
 High for the rules and the tablet screens. Medium for a helper phone receiving a limited kit (unit-tested through `joinKit`, not driven in a browser).
 
 **Next:** Dan confirms details (a)–(h) in `docs/reviews/M27.md`; PR after M26 (#48) merges.
+
+## 2026-11-13 — M28: finding the kit in Google Drive from Join as a helper
+
+**SESSION IDENTITY**
+Same session. Dan, testing M27 on an iPhone: the file sheet still shows only iCloud Drive and On My iPhone, no Google Drive; asked for a way to scan the kit QR or navigate to the Drive folder in the browser. Branch `m28-kit-picker-drive` from `main` (after PR #49).
+
+**WORK COMPLETED**
+SPEC v0.23, app 1.5.0. Under Choose the count kit…: Open Google Drive (or the Kits folder once known) and Scan the Kits QR code (camera reads the tablet's Kits code, then Open the Kits folder). Getting Started guide updated.
+
+**EVIDENCE**
+Type check and build clean. Browser: M28 9/9 at phone width with a fake camera QR code; full `npm run checks`: every script clean (one duplicate button found and fixed).
+
+**CONFIDENCE**
+High for the screen and the scan flow in Chrome. Low for the iPhone's own behavior (the file sheet cannot be changed by the app; the download flow and camera permission on iOS are untested here).
+
+**Next:** Dan tests on the iPhone and confirms details (a)–(g) in `docs/reviews/M28.md`.

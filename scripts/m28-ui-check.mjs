@@ -72,7 +72,8 @@ try {
   check('Join as a helper: Choose the count kit, plus Open Google Drive and Scan the Kits QR code', await js(`return [norm($('.kitpick .btn.pri').textContent), norm($('.kitfind a').textContent), norm($('.kitfind button').textContent)]`), ['Choose the count kit…', 'Open Google Drive', 'Scan the Kits QR code']);
   check('Open Google Drive goes to Drive in a new tab', await js(`const a = $('.kitfind a'); return [a.getAttribute('href'), a.target, a.rel]`), ['https://drive.google.com/', '_blank', 'noopener noreferrer']);
   check('the page says what to do when Drive isn’t in the file list', await js(`return norm($('.kitfind .small').textContent).includes('open the Kits folder in Drive, download your kit, then choose it here from Downloads')`), true);
-  check('the picker has no file-type filter', await js(`return $('.kitpick input[type=file]').getAttribute('accept')`), null);
+  check('the picker is limited to ZIP files (no Photo Library)', await js(`return $('.kitpick input[type=file]').getAttribute('accept')`), '.zip,application/zip,application/x-zip-compressed');
+  check('the first-launch screen shows the app version', await js(`return /Version [0-9]+[.][0-9]+[.][0-9]+/.test(document.body.textContent)`), true);
   check('phone width: nothing wider than the screen; the buttons are at least 48 px tall', await js(`return [document.documentElement.scrollWidth <= innerWidth, [...document.querySelectorAll('.kitfind a, .kitfind button, .kitpick .btn')].every((b) => b.getBoundingClientRect().height >= 47.5)]`), [true, true]);
   await shot('01-join-kit-picker');
 

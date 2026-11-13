@@ -983,3 +983,19 @@ Type check and build clean. Browser: M28 9/9 at phone width with a fake camera Q
 High for the screen and the scan flow in Chrome. Low for the iPhone's own behavior (the file sheet cannot be changed by the app; the download flow and camera permission on iOS are untested here).
 
 **Next:** Dan tests on the iPhone and confirms details (a)–(g) in `docs/reviews/M28.md`.
+
+## 2026-11-13 — M29: kit picker filter and helper version
+
+**SESSION IDENTITY**
+Same session. Branch `m29-helper-version-filter` from `main` (after PR #50). Dan's iPhone feedback on M28.
+
+**WORK COMPLETED**
+SPEC v0.24, app 1.5.1. ZIP filter restored on the kit picker; version shown on the helper bar and first-launch screen; backlog D1 (Add items from a file) recorded.
+
+**EVIDENCE**
+Type check and build clean; M28 check 11/11. Full suite not re-run.
+
+**CONFIDENCE**
+High for the version display; the filter's effect on iOS's file sheet is untested here.
+
+**Next:** Dan retests on the iPhone; D1 needs a SPEC when requested.

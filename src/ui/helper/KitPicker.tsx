@@ -12,8 +12,8 @@ import { Icon } from '../icons';
 /** Where "Open Google Drive" goes when the helper doesn't know the team's Kits folder yet. */
 const DRIVE_HOME = 'https://drive.google.com/';
 
-// No file-type filter (v0.22): on an iPhone a filter can leave out Google Drive and iCloud and offer
-// only the phone's own storage. Any file that isn't a kit is refused with a message after it is picked.
+// A ZIP-only filter keeps iOS from offering Photo Library and Take Photo (v0.24); a file that isn't a kit is still refused with a message.
+const KIT_ACCEPT = '.zip,application/zip,application/x-zip-compressed';
 
 export function KitPicker(props: {
   label: string;
@@ -50,6 +50,7 @@ export function KitPicker(props: {
       <input
         ref={file}
         type="file"
+        accept={KIT_ACCEPT}
         class="vh"
         tabIndex={-1}
         aria-hidden="true"

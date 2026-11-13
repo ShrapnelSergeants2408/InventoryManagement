@@ -168,8 +168,7 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
         <div class="card hmore">
           <h2 class="h2">Another count kit</h2>
           <p class="small muted m0">Opening a new kit replaces everything on this device with the new kit’s copy.</p>
-          <FolderLink url={state.kit.kitsFolderUrl ?? ''} label="Open the Kits folder" />
-          <KitPicker label="Open a new kit…" onRead={(read) => (state.unsent > 0 ? setAsking({ kind: 'kit', read }) : void openKit(read))} />
+          <KitPicker label="Open a new kit…" kitsFolderUrl={state.kit.kitsFolderUrl ?? ''} onRead={(read) => (state.unsent > 0 ? setAsking({ kind: 'kit', read }) : void openKit(read))} />
         </div>
         <div class="card hmore">
           <h2 class="h2">Finished counting for good?</h2>

@@ -53,7 +53,7 @@ The student card at the end has these steps in short form.
 **Join (once per device)**
 1. Open the Drive folder › `Kits`, and download the kit with your helper's name to the phone.
 2. Open the app in Chrome (Android) or Safari (iPhone): scan the QR code on the shop tablet, or type the address. It asks **What is this device?**
-3. Tap **Join as a helper** › **Choose the count kit…** and pick the kit you downloaded.
+3. Tap **Join as a helper** › **Choose the count kit…** and pick the kit you downloaded. **iPhone:** if the file list shows no Google Drive, tap **Scan the Kits QR code** (scan the Kits code on the shop tablet) or **Open Google Drive**, download your kit there, then choose it from Downloads.
 4. Check the name and groups shown, then **Start counting**.
 
 A navy **HELPER · name** bar stays at the top, with three tabs: **Count**, **Scan**, **Send**. After this the app works without internet until it's time to send.
@@ -117,7 +117,7 @@ Importing the same file twice changes nothing, so when in doubt, import again.
 
 1. Scan the **Kits** QR code on the shop tablet (or open the Drive folder › **Kits**). Download the kit with **your helper's name**. Only you use this kit.
 2. Scan the QR code on the shop tablet, or open **team2408.com/InventoryManagement** in Chrome (Android) or Safari (iPhone). Not a private tab.
-3. Tap **Join as a helper** › **Choose the count kit…** › your kit › **Start counting**.
+3. Tap **Join as a helper** › **Choose the count kit…** › your kit › **Start counting**. (iPhone with no Google Drive in the list: tap **Scan the Kits QR code**, download your kit in Drive, then pick it from Downloads.)
 4. **Count** tab: tap **Start** on a group. Type how many are really there, then **Save & next**. Unsure? **Skip for now**.
 5. A part that isn't in the list: **Add item not on the list**.
 6. **Before you leave, every time:** **Send** tab › **Send my counts**, then upload the `counts-…zip` file to the Drive folder › **Counts**. If the app says "Saved to Downloads", tap **I've sent it** once it's uploaded. Tell a mentor.

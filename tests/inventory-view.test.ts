@@ -94,7 +94,7 @@ describe('SPEC F1 grouping', () => {
   });
 
   it('totals cover every item', () => {
-    expect(view().totals).toEqual({ items: 5, short: 1, low: 1, uncounted: 1, needsOrder: 2 });
+    expect(view().totals).toEqual({ items: 5, short: 1, low: 1, uncounted: 1, needsOrder: 2, due: 0 });
   });
 
   it('categories only items use are appended after the list', () => {
@@ -168,13 +168,13 @@ describe('starter catalog in the list (SPEC §12 numbers)', async () => {
   const v = buildInventoryView({ items: data.items, categories: data.categories, query: '', filters: NO_FILTERS, expanded: new Set() });
 
   it('header summary before the first count: 129 items · 0 short · 0 low spares · 129 not counted; 124 need ordering (v0.16)', () => {
-    expect(v.totals).toEqual({ items: 129, short: 0, low: 0, uncounted: 129, needsOrder: 124 });
+    expect(v.totals).toEqual({ items: 129, short: 0, low: 0, uncounted: 129, needsOrder: 124, due: 0 });
   });
 
   it('once counted at 0, the 124 items with a desired amount are short', () => {
     const counted = data.items.map((i) => ({ ...i, lastCounted: '2026-10-29T18:00-05:00' }));
     const cv = buildInventoryView({ items: counted, categories: data.categories, query: '', filters: NO_FILTERS, expanded: new Set() });
-    expect(cv.totals).toEqual({ items: 129, short: 124, low: 0, uncounted: 0, needsOrder: 124 });
+    expect(cv.totals).toEqual({ items: 129, short: 124, low: 0, uncounted: 0, needsOrder: 124, due: 0 });
   });
 
   it('11 category headers (§11, empty ones included) whose item counts add up to 129', () => {
@@ -202,5 +202,21 @@ describe('starter catalog in the list (SPEC §12 numbers)', async () => {
     const low = buildInventoryView({ items: data.items, categories: data.categories, query: '', filters: { ...NO_FILTERS, low: true }, expanded: new Set() });
     expect(low.shown).toBe(0);
     expect(low.lines).toEqual([]);
+  });
+});
+
+describe('Due for a recount filter (v0.20)', () => {
+  it('totals count the due items and the filter keeps only them', () => {
+    const items = [
+      item({ id: 'a', category: 'Motors', lastCounted: '2026-01-05T10:00-06:00' }),
+      item({ id: 'b', category: 'Motors', lastCounted: '2026-11-10T10:00-06:00' }),
+      item({ id: 'c', category: 'Motors', lastCounted: '' }),
+    ];
+    const categories: Category[] = [{ name: 'Motors', order: 0, subcategories: [] }];
+    const base = { items, categories, query: '', expanded: new Set<string>(), recount: { today: '2026-11-13', days: 90 } };
+    expect(buildInventoryView({ ...base, filters: { ...NO_FILTERS } }).totals.due).toBe(1);
+    const v = buildInventoryView({ ...base, filters: { ...NO_FILTERS, due: true } });
+    expect([v.shown, v.filtering]).toEqual([1, true]);
+    expect(buildInventoryView({ ...base, recount: undefined, filters: { ...NO_FILTERS } }).totals.due).toBe(0);
   });
 });

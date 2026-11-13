@@ -26,12 +26,12 @@ const order = (id: string, placedOn: string, over: Partial<PlacedOrder> = {}): P
   ...over,
 });
 
-const base = { pending: 0, items: [], onOrder: new Map(), today: '2026-10-29', staleDays: 90, overdueDays: 14 };
+const base = { pending: 0, items: [], onOrder: new Map(), today: '2026-10-29', staleDays: 90, overdueDays: 14, recountDays: 90 };
 
 describe('shop status strip (v0.17)', () => {
   it('nothing open, pending or stale: the strip is hidden', () => {
     const s = shopStatus({ ...base, orders: [order('a', '2026-10-01', { lines: [line({ received: 1 })] }), order('b', '2026-10-01', { cancelled: true })] });
-    expect(s).toEqual({ open: 0, overdue: 0, pending: 0, staleLines: 0, pricedLines: 0 });
+    expect(s).toEqual({ open: 0, overdue: 0, pending: 0, staleLines: 0, pricedLines: 0, due: 0 });
     expect(hasShopStatus(s)).toBe(false);
   });
 

@@ -1,12 +1,21 @@
 // Inventory filters (SPEC F5).
 import { orderLineFor } from './order';
+import { isDue } from './recount';
 import { itemStatus } from './status';
 import { nameKey, preferredVendorOf, type Item } from './types';
+
+/** What "due for a recount" is measured against: today (YYYY-MM-DD) and the Recount after days. */
+export interface Recount {
+  today: string;
+  days: number;
+}
 
 export interface Filters {
   needsOrder: boolean;
   short: boolean;
   low: boolean;
+  /** Counted longer ago than the Recount after setting (v0.20). */
+  due: boolean;
   /** Category name, or null for all. */
   category: string | null;
   /** Preferred supplier name, or null for all. */
@@ -19,26 +28,28 @@ export const NO_FILTERS: Readonly<Filters> = {
   needsOrder: false,
   short: false,
   low: false,
+  due: false,
   category: null,
   supplier: null,
   location: null,
 };
 
 export function activeFilterCount(f: Filters): number {
-  return [f.needsOrder, f.short, f.low, f.category !== null, f.supplier !== null, f.location !== null].filter(Boolean).length;
+  return [f.needsOrder, f.short, f.low, f.due, f.category !== null, f.supplier !== null, f.location !== null].filter(Boolean).length;
 }
 
 /**
  * Every active filter must pass, except "Short" and "Low spares": with both on,
  * an item passes when it is either one (they are mutually exclusive states).
  */
-export function passesFilters(item: Item, f: Filters, onOrder = 0): boolean {
+export function passesFilters(item: Item, f: Filters, onOrder = 0, recount?: Recount): boolean {
   if (f.needsOrder && orderLineFor(item, onOrder) === null) return false;
   if (f.short || f.low) {
     // An item not counted yet is neither (v0.16), as its chip shows.
     const kind = itemStatus(item).kind;
     if (!((f.short && kind === 'short') || (f.low && kind === 'low'))) return false;
   }
+  if (f.due && !(recount && isDue(item, recount.today, recount.days))) return false;
   if (f.category !== null && item.category !== f.category) return false;
   if (f.supplier !== null) {
     const v = preferredVendorOf(item);

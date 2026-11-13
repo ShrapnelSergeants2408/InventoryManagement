@@ -25,8 +25,9 @@ export function ShopStatusStrip({ items }: { items: readonly Item[] }) {
         today,
         staleDays: settings.staleDays,
         overdueDays: settings.overdueDays,
+        recountDays: settings.recountDays,
       }),
-    [orders, pending, items, onOrder, today, settings.staleDays, settings.overdueDays],
+    [orders, pending, items, onOrder, today, settings.staleDays, settings.overdueDays, settings.recountDays],
   );
   if (!hasShopStatus(s)) return null;
   return (
@@ -47,6 +48,12 @@ export function ShopStatusStrip({ items }: { items: readonly Item[] }) {
         <a class="sschip" href={href.pending}>
           <Icon name="count" />
           {plural(s.pending, 'new item')} from helpers to review
+        </a>
+      )}
+      {s.due > 0 && (
+        <a class="sschip" href={href.tab('count')}>
+          <Icon name="count" />
+          {plural(s.due, 'item')} due for a recount (over {settings.recountDays} days)
         </a>
       )}
       {s.staleLines > 0 && (

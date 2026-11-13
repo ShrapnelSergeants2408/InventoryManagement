@@ -12,8 +12,8 @@ const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4321', '--strictPort'], { stdio: 'ignore' });
-const port = 9337;
+const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4322', '--strictPort'], { stdio: 'ignore' });
+const port = 9339;
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });
 track(proc);
 
@@ -134,7 +134,7 @@ try {
   await send('Page.enable');
   await send('Emulation.setFocusEmulationEnabled', { enabled: true });
   await size(1280, 800);
-  await send('Page.navigate', { url: 'http://localhost:4321/' });
+  await send('Page.navigate', { url: 'http://localhost:4322/' });
   await waitFor(`document.querySelector('.setup')`, 60000);
   await js(`await doSetup();`);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);

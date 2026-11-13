@@ -80,13 +80,13 @@ try {
   await sleep(500);
 
   // Quick-filter row: Needs order · Short only · Low spares only · Category · Location · Supplier
-  check('quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 0', 'Low spares only · 0', 'Category: All', 'Location: All', 'Supplier: All']);
+  check('quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 0', 'Low spares only · 0', 'Due for a recount · 0', 'Category: All', 'Location: All', 'Supplier: All']);
   await shot('01-quick-row');
 
   // Filters panel: Stock (needs order, short, low spares) · Category · Location · Preferred supplier
   await js(openPanel);
   check('panel section order', await js(PANEL), ['Stock', 'Category', 'Location', 'Preferred supplier']);
-  check('panel stock chips', await js(`return [...document.querySelectorAll('.fpanel .fsec')][0].querySelectorAll('.fchip').length`), 3);
+  check('panel stock chips', await js(`return [...document.querySelectorAll('.fpanel .fsec')][0].querySelectorAll('.fchip').length`), 4);
   check('panel location chips present', await js(`return [...document.querySelectorAll('.fpanel .fsec')][2].querySelectorAll('.fchip').length > 0`), true);
   await shot('02-panel-landscape');
 
@@ -100,14 +100,14 @@ try {
   const rows = await js(`return document.querySelectorAll('.row').length`);
   check('Supplier filter: Show n matches rows', afterRev, `Show ${rows} items`);
   check('Supplier filter narrows the list', rows > 0 && rows < 129, true);
-  check('quick row shows both, in order', await js(ROW + `.slice(3, 6)`), ['Category: All', 'Location: No location', 'Supplier: REV']);
+  check('quick row shows both, in order', await js(ROW + `.slice(4, 7)`), ['Category: All', 'Location: No location', 'Supplier: REV']);
   check('Filters button shows count', await js(`return [...document.querySelectorAll('.top .btn')].find((b) => b.textContent.includes('Filters')).textContent`), 'Filters (2)');
   await js(`${H} [...document.querySelectorAll('.frow .fchip')].find((b) => b.textContent === 'Clear all').click(); await settle();`);
 
   // Portrait: same order in the bottom sheet, and nothing under 48 px in the panel (§17).
   await size(800, 1280);
   await sleep(400);
-  check('portrait: quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 0', 'Low spares only · 0', 'Category: All', 'Location: All', 'Supplier: All']);
+  check('portrait: quick-filter row order', await js(ROW), ['Needs order · 124', 'Short only · 0', 'Low spares only · 0', 'Due for a recount · 0', 'Category: All', 'Location: All', 'Supplier: All']);
   await js(openPanel);
   check('portrait: panel section order', await js(PANEL), ['Stock', 'Category', 'Location', 'Preferred supplier']);
   const small = await js(`return [...document.querySelectorAll('.fpanel button')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 48 || r.width < 48); }).map((e) => e.className + ':' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height))`);

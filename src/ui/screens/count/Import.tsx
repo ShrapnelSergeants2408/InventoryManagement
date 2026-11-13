@@ -14,6 +14,7 @@ import { Icon } from '../../icons';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
+import { ImportReportButtons } from './ImportReport';
 
 const ACCEPT = '.zip,application/zip,application/x-zip-compressed';
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -98,7 +99,7 @@ export function ImportScreen() {
     const undone = undo === null || undo.at !== done.at;
     return (
       <>
-        <TopBar title="Import counts" subtitle={undone ? 'Applied' : 'Applied · Undo is available until the next import or restore'} back={back}>
+        <TopBar title="Import counts" subtitle={undone ? 'Applied' : 'Applied · Undo is available until a restore, or until later imports are undone first'} back={back}>
           <NoPin />
         </TopBar>
         <div class="cbody imp">
@@ -139,6 +140,7 @@ export function ImportScreen() {
             <a class="btn lg" href={href.backup}>
               Back up now
             </a>
+            {!undone && undo && <ImportReportButtons undo={undo} large />}
             {!undone && (
               <button type="button" class="btn danger lg" onClick={() => setUndoing(true)}>
                 <Icon name="retry" />
@@ -182,8 +184,11 @@ export function ImportScreen() {
               <Icon name="retry" class="ic xl" />
               <div class="grow">
                 <strong>Last import: {undo.helperNames.join(', ')}</strong>
-                <div class="small muted">{formatDateTime(new Date(undo.at))} · can still be undone</div>
+                <div class="small muted">
+                  {formatDateTime(new Date(undo.at))} · can still be undone{undo.earlier ? ` · ${plural(undo.earlier, 'earlier import')} can be undone after it` : ''}
+                </div>
               </div>
+              <ImportReportButtons undo={undo} />
               <button type="button" class="btn danger" onClick={() => setUndoing(true)}>
                 <Icon name="retry" />
                 Undo this import
@@ -355,7 +360,7 @@ export function ImportScreen() {
             {busy ? 'Saving…' : `Apply ${plural(applyCount, 'count')}`}
           </button>
           <p class="small muted m0">
-            Everything is saved together. <strong>Undo this import</strong> stays available until the next import or restore.
+            Everything is saved together. Each import can be undone, newest first, until a restore.
           </p>
         </aside>
       </div>
@@ -427,8 +432,8 @@ function ConflictCard({ row: r, onChoose }: { row: PlanRow; onChoose: (c: Confli
   const b = r.before!;
   const who = b.countedBy === '' ? 'this tablet' : b.countedBy;
   const opts: Array<[ConflictChoice, string, number, string]> = [
-    ['keep', 'Keep this tablet’s', c.keep, `${b.countedBy === '' ? 'counted here' : b.countedBy} ${when(b.lastCounted)}`],
-    ['helper', 'Use helper’s', c.helper, `${r.helperName} ${when(r.countedAt)}`],
+    ['keep', c.twoDevices ? 'Keep the earlier' : 'Keep this tablet’s', c.keep, `${b.countedBy === '' ? 'counted here' : b.countedBy} ${when(b.lastCounted)}`],
+    ['helper', c.twoDevices ? 'Use the later' : 'Use helper’s', c.helper, `${r.helperName} ${when(r.countedAt)}`],
     ['add', 'Add together', c.add, 'stored in two places'],
   ];
   return (
@@ -436,7 +441,10 @@ function ConflictCard({ row: r, onChoose }: { row: PlanRow; onChoose: (c: Confli
       <div>
         <strong class="imp-conf-n">{r.item?.name}</strong>
         <div class="small muted">
-          Counted by {who} ({c.keep}) and on {r.helperName} ({c.helper}) after the kit was sent.{r.outside ? ' Outside this helper’s groups.' : ''}
+          {c.twoDevices
+            ? `Counted on two devices of ${r.helperName}’s kit: ${c.keep} earlier, ${c.helper} later.`
+            : `Counted by ${who} (${c.keep}) and on ${r.helperName} (${c.helper}) after the kit was sent.`}
+          {r.outside ? ' Outside this helper’s groups.' : ''}
         </div>
       </div>
       <div class="imp-opts" role="radiogroup" aria-label={`Which count for ${r.item?.name ?? r.itemId}`}>

@@ -58,6 +58,7 @@ export function FilterPanel(props: {
               <Choice on={f.needsOrder} label={`Needs order · ${props.totals.needsOrder}`} onClick={() => onChange({ ...f, needsOrder: !f.needsOrder })} />
               <Choice on={f.short} label={`Short · ${props.totals.short}`} onClick={() => onChange({ ...f, short: !f.short })} />
               <Choice on={f.low} label={`Low spares · ${props.totals.low}`} onClick={() => onChange({ ...f, low: !f.low })} />
+              <Choice on={f.due} label={`Due for a recount · ${props.totals.due}`} onClick={() => onChange({ ...f, due: !f.due })} />
             </div>
           </section>
           <section class="fsec">

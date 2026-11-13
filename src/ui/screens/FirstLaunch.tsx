@@ -65,7 +65,7 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
           <div class="setup-start">
             <h2 class="setup-h">Open your count kit</h2>
             <p class="m0">
-              The shop tablet sends it from <strong>Count › Helper devices › Send count kit</strong>, by Quick Share, Drive, email or Bluetooth. It’s called <span class="mono">count-kit-…zip</span>.
+              The shop tablet sends it from <strong>Count › Helper devices › Send count kit</strong>, by Quick Share, Drive, email or Bluetooth. It’s named after the helper, like <span class="mono">Bin_A-B_Helper.zip</span>.
             </p>
             {read ? (
               <>

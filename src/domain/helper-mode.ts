@@ -28,6 +28,10 @@ export interface HelperKit {
   kind: GroupKind;
   groups: string[];
   allowNewItems: boolean;
+  /** The tablet's count round date when the kit was made (v0.20); '' when none or from an older tablet. */
+  countSince: string;
+  /** The tablet's Recount after days (v0.20), or null from an older tablet. */
+  recountDays: number | null;
 }
 
 export type KitCheck = { ok: true; kit: HelperKit } | { ok: false; newer: boolean; message: string };
@@ -64,6 +68,8 @@ export function checkKitJson(raw: unknown): KitCheck {
       kind: groups.kind,
       groups: [...(groups.names as string[])],
       allowNewItems: k.allow_new_items !== false,
+      countSince: isText(k.count_since) && /^\d{4}-\d{2}-\d{2}$/.test(k.count_since) ? k.count_since : '',
+      recountDays: typeof k.recount_days === 'number' && Number.isSafeInteger(k.recount_days) && k.recount_days >= 1 ? k.recount_days : null,
     },
   };
 }

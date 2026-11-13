@@ -117,6 +117,8 @@ const kitInfo = (over: Partial<HelperKit> = {}): HelperKit => ({
   kind: 'category',
   groups: ['Electrical'],
   allowNewItems: true,
+  countSince: '',
+  recountDays: null,
   ...over,
 });
 
@@ -126,8 +128,19 @@ describe('kit.json check (§18.2, §18.7)', () => {
   it('reads a kit from this app', () => {
     expect(checkKitJson(good)).toEqual({
       ok: true,
-      kit: { kitId: 'kit-1', helperId: 'hp-1', helperName: 'Maya', createdAt: good.created_at, appVersion: '0.4.0', kind: 'location', groups: ['Bin A', NO_LOCATION], allowNewItems: false },
+      kit: { kitId: 'kit-1', helperId: 'hp-1', helperName: 'Maya', createdAt: good.created_at, appVersion: '0.4.0', kind: 'location', groups: ['Bin A', NO_LOCATION], allowNewItems: false, countSince: '', recountDays: null },
     });
+  });
+
+  it('reads the tablet’s count round and recount age (v0.20); ignores nonsense', () => {
+    const k = (extra: Record<string, unknown>) => {
+      const r = checkKitJson({ ...good, ...extra });
+      return r.ok ? [r.kit.countSince, r.kit.recountDays] : null;
+    };
+    expect(k({ count_since: '2026-11-10', recount_days: 60 })).toEqual(['2026-11-10', 60]);
+    expect(k({ count_since: '11/10/2026', recount_days: 0 })).toEqual(['', null]);
+    expect(k({ count_since: 5, recount_days: 'x' })).toEqual(['', null]);
+    expect(k({})).toEqual(['', null]);
   });
 
   it('refuses a newer kit format and says to reload', () => {

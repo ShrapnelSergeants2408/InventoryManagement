@@ -25,6 +25,7 @@ import {
   type CountGroup,
   type CountMode,
 } from '../../../domain/count';
+import { dueCount } from '../../../domain/recount';
 import { countedDate, formatIsoDate, localIsoDate } from '../../../domain/dates';
 import { assignedHelpers } from '../../../domain/helpers';
 import { inAssignment } from '../../../domain/helper-mode';
@@ -39,7 +40,7 @@ import { Dialog, DialogActions } from '../../components/Dialog';
 import { Keypad } from '../../components/Keypad';
 import { LocationScanDialog } from '../../components/LocationScanDialog';
 import { Scanner, type CameraState } from '../../components/Scanner';
-import { useDb, useHelpers, useOnOrder, usePending, usePhoto, useSnapshot, useThumbnail } from '../../data-hooks';
+import { useDb, useHelpers, useOnOrder, usePending, usePhoto, useSettings, useSnapshot, useThumbnail } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { useHelper } from '../../helper/session';
 import { href } from '../../shell/router';
@@ -118,7 +119,9 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
   // What this device walks and counts progress over: everything, or a helper's assigned groups.
   const kit = helper?.kit ?? null;
   const mine = useMemo(() => (kit ? snap.items.filter((i) => inAssignment(i, kit)) : snap.items), [snap.items, kit]);
-  const groupsFor = (mode: CountMode) => countGroups(mine, snap.categories, snap.locations, mode, options.skipZero, since);
+  const settings = useSettings();
+  const recount = { today: localIsoDate(), days: settings.recountDays };
+  const groupsFor = (mode: CountMode) => countGroups(mine, snap.categories, snap.locations, mode, options.skipZero, since, recount);
 
   const openWalk = (mode: 'category' | 'location', g: CountGroup, index = firstToCount(g.items, since)) => {
     const walk: Walk = {
@@ -165,6 +168,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
   };
 
   const progress = overallProgress(mine, since);
+  const dueTotal = dueCount(mine, recount.today, recount.days);
   const everCounted = overallProgress(mine).counted;
   const pct = progress.total ? Math.round((100 * progress.counted) / progress.total) : 0;
   const walking = view.kind === 'walk' || view.kind === 'scan';
@@ -197,6 +201,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
         <div class="cprog-t small">
           <span>
             {progress.counted} of {progress.total}{helper ? ' in your groups counted' : ' counted'}{since && ` since ${formatIsoDate(since)}`}
+            {dueTotal > 0 && ` · ${dueTotal} due for a recount (not counted in ${settings.recountDays} days)`}
           </span>
           <span>{pct}%</span>
         </div>
@@ -532,7 +537,12 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
             return (
               <div key={g.name} class="cg-row">
                 <div class="cg-n">
-                  <strong>{g.name}</strong> <span class="small muted">{plural(g.items.length, 'item')}</span>
+                  <strong>{g.name}</strong> <span class="small muted">{plural(g.items.length, 'item')}</span>{g.due > 0 && (
+                    <>
+                      {' '}
+                      <span class="chip stale cg-due">{g.due} due for a recount</span>
+                    </>
+                  )}
                   {who && !helper && <span class="small cg-help">Helper: {who.join(', ')}</span>}
                 </div>
                 <strong class="tnum">

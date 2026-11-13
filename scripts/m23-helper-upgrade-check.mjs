@@ -39,9 +39,9 @@ const handler = (req, res) => {
 const shopServer = createServer(handler);
 const helperServer = createServer(handler);
 await new Promise((r) => shopServer.listen(4371, 'localhost', r));
-await new Promise((r) => helperServer.listen(4372, '127.0.0.1', r));
+await new Promise((r) => helperServer.listen(4374, '127.0.0.1', r));
 const SHOP = 'http://localhost:4371';
-const HELP = 'http://127.0.0.1:4372';
+const HELP = 'http://127.0.0.1:4374';
 
 const port = 9401;
 const proc = spawn(chrome, ['--headless=new', '--disable-gpu', `--remote-debugging-port=${port}`, `--user-data-dir=${tempDir('cdp-')}`, 'about:blank'], { stdio: 'ignore' });

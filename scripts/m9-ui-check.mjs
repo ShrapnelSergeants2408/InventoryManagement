@@ -99,7 +99,7 @@ ${PIN_H}
   const gates = () => window.__gates ?? -1;
   const today = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
   // Count-in screen readers.
-  const prog = () => $$('.cprog-t span').map((s) => norm(s.textContent));
+  const prog = () => $$('.cprog-t span').map((s) => norm(s.textContent).replace(/ · [0-9]+ due for a recount.*$/, ""));
   const rows = () => $$('.cg-row').filter((r) => r.querySelector('.cg-n')).map((r) => [norm(r.querySelector('.cg-n strong').textContent), norm(r.querySelector('.tnum').textContent), norm(r.querySelector('.btn')?.textContent ?? '')]);
   const row = (name) => $$('.cg-row').find((r) => norm(r.querySelector('.cg-n strong')?.textContent ?? '') === name);
   const pos = () => $$('.wr-pos span').map((s) => norm(s.textContent));

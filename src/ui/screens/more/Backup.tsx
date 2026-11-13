@@ -249,7 +249,7 @@ export function BackupScreen() {
             </div>
             {undo && (
               <p class="small muted bk-p">
-                Last import: {undo.helperNames.join(', ')}, {formatDateTime(new Date(undo.at), new Date(now))}. It can be undone until the next import or restore.
+                Last import: {undo.helperNames.join(', ')}, {formatDateTime(new Date(undo.at), new Date(now))}. Imports can be undone, newest first, until a restore.
               </p>
             )}
           </section>

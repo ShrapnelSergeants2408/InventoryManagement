@@ -20,7 +20,7 @@ import {
 } from './lists-csv';
 
 export const APP_NAME = 'FRC 2408 Inventory Management';
-export const APP_VERSION = '1.1.0';
+export const APP_VERSION: string = __APP_VERSION__;
 
 export type BackupKind = 'full' | 'data';
 

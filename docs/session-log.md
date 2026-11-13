@@ -913,3 +913,24 @@ High for the ids, the warning and Undo (unit tests, mutants, real IndexedDB in t
 **Next:** Dan decides on the independent review, confirms details (a)–(h) in `docs/reviews/M24.md`, merges the PR and runs the tablet check there before the count.
 
 **Later:** Dan, 2026-11-10: "1 confirmed; 2 no review". Details (a)–(h) are recorded as confirmed in `docs/reviews/M24.md` and SPEC v0.19; no independent review was run. PR #46 waits for Dan to merge, then the tablet check.
+
+## 2026-11-12 to 2026-11-13 — M25: new supplier, import fixes, helper and count features, upkeep
+
+**SESSION IDENTITY**
+Same project, continued across context resets. Branch `m25-new-supplier-and-import-fixes` from `main` (`4057d1f`). Dan's requests, in order: "+ New supplier" in the item editor, then A1 and A4; B4 and B5; helper kit names that start with the helper name; B6 and B7; B8 and B9; B10, C1, C2 and an Inventory "due for a recount" filter (one recount age is enough); C3 to C5.
+
+**WORK COMPLETED**
+SPEC v0.20, app 1.2.0. A new supplier from the item editor. Two devices counting one item is a conflict; undo is one step per import, newest first. Send all kits, per-helper progress, kits named `<Helper>_Helper.zip`. Count report CSV and spot-check list. A new kit keeps the count round; cycle counts (Recount after, chips on Count and the Inventory strip, an Inventory filter). B10 help on the Send tab. C1 pull request checks, C2 starter catalog out of the offline cache (setup needs a connection for it), C3 version only in package.json, C4 `npm run checks` (parallel) and `scripts/check-lib.mjs`, C5 `npm audit fix` (6 build-tool advisories remain).
+
+**DELIVERABLES PRODUCED**
+See `docs/reviews/M25.md` (what was built, evidence, details a to aa, tablet check). New checks: `scripts/m25-ui-check.mjs`, `run-checks.mjs`, `check-lib.mjs`.
+
+**EVIDENCE**
+Type check and build clean. Unit 958 pass (1 skipped). Browser: `npm run checks` over m2 to m25, all scripts pass with clean consoles after five expectations from before this milestone were updated. Not run: the two upgrade checks (they need an older build and a backup).
+
+**CONFIDENCE**
+High for the logic and screens (unit tests and real-browser checks). Medium for a helper phone receiving a kit with the round date, Share with several files on the real devices, and a first install without the cached starter catalog, until the tablet check.
+
+**Next:** merge the PR, then the tablet check in `docs/reviews/M25.md`.
+
+**Later:** Dan, 2026-11-13: details confirmed; commit, push, PR. No independent review was run.

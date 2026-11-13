@@ -216,7 +216,7 @@ describe('count rounds — "counted since <date>" (SPEC v0.6 F24)', () => {
 });
 
 describe('nextGroup', () => {
-  const g = (name: string, counted: number, total: number) => ({ name, items: Array.from({ length: total }, () => item()), counted, action: groupAction(counted, total) });
+  const g = (name: string, counted: number, total: number) => ({ name, items: Array.from({ length: total }, () => item()), counted, action: groupAction(counted, total), due: 0 });
   const groups = [g('A', 1, 1), g('B', 2, 2), g('C', 0, 3), g('D', 1, 1)];
   it('offers the next group that still needs counting', () => {
     expect(nextGroup(groups, 'A')?.name).toBe('C');

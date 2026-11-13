@@ -6,6 +6,8 @@ export interface NamedSettings {
   unlockMinutes: number;
   /** An open order placed longer ago than this is overdue (v0.17). */
   overdueDays: number;
+  /** An item counted longer ago than this is due for a recount (v0.20). */
+  recountDays: number;
 }
 
 export const SETTING_LIMITS: Readonly<Record<keyof NamedSettings, { min: number; max: number; label: string; unit: string }>> = {
@@ -13,6 +15,7 @@ export const SETTING_LIMITS: Readonly<Record<keyof NamedSettings, { min: number;
   staleDays: { min: 7, max: 365, label: 'Stale-price age', unit: 'days' },
   unlockMinutes: { min: 1, max: 30, label: 'Unlock length', unit: 'minutes' },
   overdueDays: { min: 1, max: 120, label: 'Delivery overdue after', unit: 'days' },
+  recountDays: { min: 7, max: 365, label: 'Recount after', unit: 'days' },
 };
 
 export type SettingsDraft = Record<keyof NamedSettings, string>;

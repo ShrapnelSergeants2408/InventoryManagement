@@ -1,17 +1,23 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 import preact from '@preact/preset-vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// The one place the version number is kept (backlog C3): package.json. The app, the backup and kit
+// files, and the browser checks all read it from there.
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
 
 export default defineConfig({
   // Relative base so the build works under any GitHub Pages sub-path.
   base: './',
   // When this copy was built, shown in More › About with the app version (SPEC v0.9), so a
   // tablet check can tell whether an update arrived.
-  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()) },
+  define: { __BUILD_TIME__: JSON.stringify(new Date().toISOString()), __APP_VERSION__: JSON.stringify(version) },
   plugins: [
     preact(),
     // Installable and fully usable offline (SPEC §2): the service worker precaches the app,
-    // fonts, icons, the starter catalog ZIP (F22) and the scanner fallback's .wasm. A new
+    // fonts, icons and the scanner fallback's .wasm. The starter catalog ZIP (F22, 5.4 MB) is left out: a
+    // helper's first load stays small, and the shop tablet's setup downloads it (v0.20, backlog C2). A new
     // version waits for "Reload" (ui/shell/UpdateBanner.tsx) so a count is never cut off.
     VitePWA({
       registerType: 'prompt',
@@ -34,8 +40,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{html,js,css,woff2,png,svg,wasm,zip}'],
-        // The starter catalog is about 5.4 MB and the zxing .wasm about 1.1 MB.
+        globPatterns: ['**/*.{html,js,css,woff2,png,svg,wasm}'],
+        // The zxing .wasm is about 1.1 MB.
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,

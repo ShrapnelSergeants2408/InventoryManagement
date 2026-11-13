@@ -50,6 +50,10 @@ export interface KitJson {
   app_version: string;
   groups: { kind: GroupKind; names: string[] };
   allow_new_items: boolean;
+  /** The tablet's "counting since" date (YYYY-MM-DD) or '' (v0.20): the helper's progress counts from it, so items already counted this round stay counted. */
+  count_since?: string;
+  /** The tablet's Recount after days (v0.20). */
+  recount_days?: number;
 }
 
 export interface KitInput {
@@ -64,6 +68,10 @@ export interface KitInput {
   includePhotos: boolean;
   /** For the ZIP entries' dates. */
   now: Date;
+  /** The tablet's current count round date, '' for the first count (v0.20). */
+  countSince?: string;
+  /** The tablet's Recount after setting (v0.20). */
+  recountDays?: number;
 }
 
 /** Helpers don't need prices (§18.2): pack price and price checked are left blank. */
@@ -71,7 +79,7 @@ export function withoutPrices(item: Item): Item {
   return { ...item, vendors: item.vendors.map((v) => (v ? { ...v, packPriceCents: null, priceChecked: '' } : null)) as Item['vendors'] };
 }
 
-export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt'>): KitJson {
+export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt' | 'countSince' | 'recountDays'>): KitJson {
   const h = input.helper;
   return {
     format: KIT_FORMAT,
@@ -83,16 +91,28 @@ export function kitJson(input: Pick<KitInput, 'helper' | 'kitId' | 'createdAt'>)
     app_version: APP_VERSION,
     groups: { kind: h.kind, names: [...h.groups] },
     allow_new_items: h.allowNewItems,
+    ...(input.countSince !== undefined ? { count_since: input.countSince } : {}),
+    ...(input.recountDays !== undefined ? { recount_days: input.recountDays } : {}),
   };
 }
 
 const p2 = (n: number) => String(n).padStart(2, '0');
 
-/** count-kit-<helper name>-2026-10-24-1842.zip (local time; the name reduced to letters, digits and dashes). */
-export function kitFileName(helperName: string, now: Date): string {
-  const stamp = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}-${p2(now.getHours())}${p2(now.getMinutes())}`;
-  const name = slug(helperName);
-  return `count-kit-${name ? `${name}-` : ''}${stamp}.zip`;
+/**
+ * The helper's name for a file name (v0.20): capitals kept, a dash between letters kept, any other
+ * run of characters (spaces, dots, symbols, emoji) one underscore, so it is safe on any device.
+ */
+function fileSafeName(name: string): string {
+  return name
+    .normalize('NFKD')
+    .replace(/[^A-Za-z0-9]+/g, (run) => (run === '-' ? '-' : '_'))
+    .replace(/^[_-]+|[_-]+$/g, '');
+}
+
+/** <Helper name>_Helper.zip, e.g. Bin_A-B_Helper.zip: short, and the helper's name first so it is easy to find (v0.20). */
+export function kitFileName(helperName: string): string {
+  const name = fileSafeName(helperName);
+  return `${name ? `${name}_` : ''}Helper.zip`;
 }
 
 export async function buildCountKit(input: KitInput): Promise<Blob> {
@@ -216,7 +236,9 @@ export function countsJson(input: Pick<CountsInput, 'kit' | 'sequence' | 'create
 
 /** counts-<helper name>-2026-10-26-1912.zip (local time). */
 export function countsFileName(helperName: string, now: Date): string {
-  return kitFileName(helperName, now).replace(/^count-kit-/, 'counts-');
+  const stamp = `${now.getFullYear()}-${p2(now.getMonth() + 1)}-${p2(now.getDate())}-${p2(now.getHours())}${p2(now.getMinutes())}`;
+  const name = slug(helperName);
+  return `counts-${name ? `${name}-` : ''}${stamp}.zip`;
 }
 
 

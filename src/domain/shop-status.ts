@@ -3,6 +3,7 @@
 // Pure, so it is unit-tested; the strip only shows when something here is worth a look.
 import { buildOrderList } from './order';
 import { isOpen, overdueDays, type OnOrder, type PlacedOrder } from './placed-orders';
+import { dueCount } from './recount';
 import { orderAlerts } from './stale';
 import type { Item } from './types';
 
@@ -16,6 +17,8 @@ export interface ShopStatus {
   /** Stale priced lines on the automatic order list, when more than half are (F14); else 0. */
   staleLines: number;
   pricedLines: number;
+  /** Items last counted more than the Recount after days ago (v0.20). */
+  due: number;
 }
 
 export function shopStatus(input: {
@@ -26,6 +29,7 @@ export function shopStatus(input: {
   today: string;
   staleDays: number;
   overdueDays: number;
+  recountDays: number;
 }): ShopStatus {
   const open = input.orders.filter((o) => isOpen(o));
   const alerts = orderAlerts(buildOrderList(input.items, input.onOrder), input.items, input.today, input.staleDays);
@@ -35,8 +39,9 @@ export function shopStatus(input: {
     pending: input.pending,
     staleLines: alerts.staleBanner ? alerts.staleLines : 0,
     pricedLines: alerts.pricedLines,
+    due: dueCount(input.items, input.today, input.recountDays),
   };
 }
 
 /** True when the strip has anything to show. */
-export const hasShopStatus = (s: ShopStatus) => s.open > 0 || s.pending > 0 || s.staleLines > 0;
+export const hasShopStatus = (s: ShopStatus) => s.open > 0 || s.pending > 0 || s.staleLines > 0 || s.due > 0;

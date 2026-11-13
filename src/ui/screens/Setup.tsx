@@ -144,7 +144,10 @@ interface Result {
 const EMPTY_SNAPSHOT = { items: [], suppliers: [], locations: [], categories: [] };
 
 async function fetchSeed(onPhoto?: (done: number, total: number, items: number) => void): Promise<ReplaceAllInput> {
-  const res = await fetch(seedUrl);
+  // Not in the offline cache (v0.20), so setup needs a connection for this one download.
+  const res = await fetch(seedUrl).catch(() => {
+    throw new Error('the starter catalog is downloaded during setup (about 5 MB) and this device is offline. Connect to the internet and try again, or restore a backup file instead');
+  });
   if (!res.ok) throw new Error(`the starter catalog couldn’t be loaded (${res.status})`);
   const seed = await readSeed(await res.arrayBuffer(), onPhoto);
   if (!seed.ok) throw new Error(seed.problems.map((p) => p.message).join('; '));

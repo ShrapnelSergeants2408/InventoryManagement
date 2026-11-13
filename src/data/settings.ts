@@ -20,6 +20,8 @@ export interface Settings {
   schoolYearStart: string;
   /** Delivery overdue after (v0.17), in days. */
   overdueDays: number;
+  /** Recount after (v0.20): an item counted longer ago than this is due for a recount, in days. */
+  recountDays: number;
   /** School-year budget in cents (v0.17), or null for none. */
   budgetCents: number | null;
 }
@@ -34,6 +36,7 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   seasonStart: '',
   schoolYearStart: '08-01',
   overdueDays: 14,
+  recountDays: 90,
   budgetCents: null,
 };
 

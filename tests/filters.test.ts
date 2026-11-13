@@ -73,3 +73,22 @@ describe('SPEC F5 filters', () => {
     expect(activeFilterCount(f({ category: 'Motors', location: '', short: true }))).toBe(3);
   });
 });
+
+describe('Due for a recount (v0.20)', () => {
+  const recount = { today: '2026-11-13', days: 90 };
+  const old = item({ id: 'old', lastCounted: '2026-01-05T10:00-06:00' });
+  const fresh = item({ id: 'fresh', lastCounted: '2026-11-01T10:00-06:00' });
+  const never = item({ id: 'never', lastCounted: '' });
+  const pass = (filters: Filters) => [old, fresh, never].filter((i) => passesFilters(i, filters, 0, recount)).map((i) => i.id);
+
+  it('keeps only items counted more than the Recount after days ago; never-counted items are not due', () => {
+    expect(pass(f({ due: true }))).toEqual(['old']);
+  });
+  it('counts as one active filter and combines with the others', () => {
+    expect(activeFilterCount(f({ due: true }))).toBe(1);
+    expect(pass(f({ due: true, category: 'Nowhere' }))).toEqual([]);
+  });
+  it('shows nothing when it is on but no recount age was given', () => {
+    expect(passesFilters(old, f({ due: true }))).toBe(false);
+  });
+});

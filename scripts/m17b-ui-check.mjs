@@ -13,7 +13,7 @@ const [chrome, outDir] = process.argv.slice(2);
 mkdirSync(outDir, { recursive: true });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4342', '--strictPort'], { stdio: 'ignore' });
+const preview = spawn(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--port', '4345', '--strictPort'], { stdio: 'ignore' });
 const port = 9358;
 // Three QR codes across a 960×480 frame, black on white, each 25 modules × 8 px with space between.
 const camVideo = join(tempDir('m17b-cam-'), 'shelf.y4m');
@@ -74,7 +74,7 @@ const check = (name, actual, expected) => {
   results.push(`${ok ? 'PASS' : 'FAIL'}  ${name}: ${JSON.stringify(actual)}${ok ? '' : ` (expected ${JSON.stringify(expected)})`}`);
 };
 
-const ORIGIN = 'http://localhost:4342';
+const ORIGIN = 'http://localhost:4345';
 const PAGE = `
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => [...document.querySelectorAll(s)];

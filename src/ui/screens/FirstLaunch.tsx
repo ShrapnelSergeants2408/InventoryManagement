@@ -6,6 +6,7 @@ import { useState } from 'preact/hooks';
 import logoUrl from '../../../assets/team-logo-512.png?url';
 import { HelperDb, joinKit } from '../../data/helper-db';
 import type { ReadKit } from '../../io/count-kit';
+import { APP_VERSION } from '../../io/backup';
 import { Icon } from '../icons';
 import { KitPicker, KitSummary } from '../helper/KitPicker';
 import { countPrefsForKit } from '../helper/session';
@@ -39,6 +40,7 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
         <img class="setup-logo" src={logoUrl} alt="Shrapnel Sergeants, FRC Team 2408" />
         <h1 class="setup-title">FRC 2408 Inventory Management</h1>
         <p class="small">{step === 'choose' ? 'First launch on this device' : 'Join as a helper · count, then send your counts back'}</p>
+        <p class="small">Version {APP_VERSION}</p>
       </aside>
       <main class="setup-main">
         {step === 'choose' ? (

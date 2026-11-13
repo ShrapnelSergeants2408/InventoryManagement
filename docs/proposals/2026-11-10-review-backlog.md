@@ -39,3 +39,9 @@ Worked around for the first count by `docs/GETTING-STARTED-HELPERS.md`.
 | C3 | One source for the version number | Now in `src/io/backup.ts`, `package.json` and two check scripts |
 | C4 | Shared module and one parallel runner for the browser checks | 28 scripts, about 25 minutes in a row |
 | C5 | `npm audit fix` for the build tools | 8 low or moderate advisories, none in what ships (`npm audit --omit=dev`: 0) |
+
+## D. Next features (Dan, 2026-11-13)
+
+| # | Item | Notes |
+|---|---|---|
+| D1 | **Add items from a file**: add items the app doesn't have yet from an items file, without a restore | Never touches existing items, counts, Drive links or settings. Matches on vendor and part number and skips items already present. New items arrive with count 0, preferred vendor, price, link and photo. Needs a short SPEC first. The file can come from a vendor's product feed, or from a separate script on a computer that scrapes selected vendors (check each vendor's terms of service first) and writes the starter-catalog format. |

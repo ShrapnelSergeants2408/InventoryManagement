@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { HelperDb } from '../../data/helper-db';
 import { helperBarText } from '../../domain/helper-mode';
+import { APP_VERSION } from '../../io/backup';
 import { DbContext } from '../data-hooks';
 import { Icon, type IconName } from '../icons';
 import { CountScreen } from '../screens/count/Count';
@@ -68,6 +69,7 @@ export function HelperApp({ db, onLeft }: { db: HelperDb; onLeft: () => void }) 
             <Icon name="phone" />
             <strong>HELPER</strong>
             <span class="hbar-t">{state ? `· ${helperBarText(state.kit)}` : ''}</span>
+            <span class="hbar-v">v{APP_VERSION}</span>
           </div>
           <main class="main">
             <UpdateBanner />

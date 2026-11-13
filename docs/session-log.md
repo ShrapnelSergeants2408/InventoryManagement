@@ -951,3 +951,19 @@ High for the settings, the links and the kit field. Medium for how Drive opens f
 
 **Next:** Dan merges PR #47, then this branch gets its own PR (rebase onto main first if the merge changes the base).
 
+
+## 2026-11-13 — M27: helpers that count only some subcategories
+
+**SESSION IDENTITY**
+Same session. Dan: allow a helper kit to hold just some subcategories of a category (ticked by checkbox, all ticked by default) so several groups can work on one category. Branch `m27-subcategory-kits`, stacked on `m26-drive-folder-links` (PR #48).
+
+**WORK COMPLETED**
+SPEC v0.22, app 1.4.0. Add / Edit helper shows a chosen category's subcategories ticked; unticking limits the helper. Overlap, coverage ("nobody has …"), the kit (`kit.json` `groups.subcategories`), the helper's Count screen and progress, and renames follow it. Getting Started guide updated.
+
+**EVIDENCE**
+Type check and build clean. Unit 989 pass (1 skipped). Browser: M27 16/16; `npm run checks` 905 checks, every script clean.
+
+**CONFIDENCE**
+High for the rules and the tablet screens. Medium for a helper phone receiving a limited kit (unit-tested through `joinKit`, not driven in a browser).
+
+**Next:** Dan confirms details (a)–(h) in `docs/reviews/M27.md`; PR after M26 (#48) merges.

@@ -114,20 +114,20 @@ describe('helper rules', () => {
   it('coverage lists every group with its helpers; unassigned ones have none', () => {
     const hs = [helper({ name: 'Zed', groups: ['Electrical'] }), helper({ id: 'b', name: 'amy', groups: ['electrical', 'Tools'] }), helper({ id: 'c', name: 'Loc', kind: 'location', groups: ['Bin A'] })];
     expect(coverage(hs, 'category', groupChoices('category', categories, locations))).toEqual([
-      { group: 'Electrical', helpers: ['amy', 'Zed'] },
-      { group: 'Fasteners', helpers: [] },
-      { group: 'Tools', helpers: ['amy'] },
+      { group: 'Electrical', helpers: ['amy', 'Zed'], overlap: true, uncovered: [] },
+      { group: 'Fasteners', helpers: [], overlap: false, uncovered: [] },
+      { group: 'Tools', helpers: ['amy'], overlap: false, uncovered: [] },
     ]);
     expect(coverage(hs, 'location', groupChoices('location', categories, locations))).toEqual([
-      { group: 'Bin A', helpers: ['Loc'] },
-      { group: 'Shelf B', helpers: [] },
-      { group: NO_LOCATION, helpers: [] },
+      { group: 'Bin A', helpers: ['Loc'], overlap: false, uncovered: [] },
+      { group: 'Shelf B', helpers: [], overlap: false, uncovered: [] },
+      { group: NO_LOCATION, helpers: [], overlap: false, uncovered: [] },
     ]);
     expect(assignedHelpers(hs, 'category')).toEqual(new Map([['electrical', ['Zed', 'amy']], ['tools', ['amy']]]));
     // A location that happens to share a category's name belongs to its own kind only.
     const sameName = [helper({ id: 'd', name: 'Shelf', kind: 'location', groups: ['Fasteners'] })];
-    expect(coverage(sameName, 'category', ['Fasteners'])).toEqual([{ group: 'Fasteners', helpers: [] }]);
-    expect(coverage(sameName, 'location', ['Fasteners'])).toEqual([{ group: 'Fasteners', helpers: ['Shelf'] }]);
+    expect(coverage(sameName, 'category', ['Fasteners'])).toEqual([{ group: 'Fasteners', helpers: [], overlap: false, uncovered: [] }]);
+    expect(coverage(sameName, 'location', ['Fasteners'])).toEqual([{ group: 'Fasteners', helpers: ['Shelf'], overlap: false, uncovered: [] }]);
   });
 
   it('groups removed from the list show as missing; a rename carries the helper along', () => {

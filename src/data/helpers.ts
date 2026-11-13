@@ -2,7 +2,7 @@
 // count kits. No PIN (§6). Helpers are working records, not inventory: they aren't in backups,
 // and changing them doesn't touch the "last change" time the restore comparison shows.
 import { localIsoDateTime } from '../domain/dates';
-import { checkHelper, groupChoices, newHelperId, newKitId, sortHelpers, type Helper, type HelperDraft } from '../domain/helpers';
+import { checkHelper, groupChoices, newHelperId, newKitId, sortHelpers, subcategoryChoices, type Helper, type HelperDraft } from '../domain/helpers';
 import { buildCountKit } from '../io/count-kit';
 import { fromHelperRow, toHelperRow, type InventoryDb } from './db';
 import { getCountSince } from './count';
@@ -13,8 +13,11 @@ export async function loadHelpers(db: InventoryDb): Promise<Helper[]> {
   return sortHelpers((await db.helpers.toArray()).map(fromHelperRow));
 }
 
-async function choicesFor(db: InventoryDb, draft: HelperDraft): Promise<string[]> {
-  return groupChoices(draft.kind, await db.categories.orderBy('order').toArray(), await db.locations.orderBy('order').toArray());
+async function choicesFor(db: InventoryDb, draft: HelperDraft) {
+  const categories = await db.categories.orderBy('order').toArray();
+  const choices = groupChoices(draft.kind, categories, await db.locations.orderBy('order').toArray());
+  const subChoices = draft.kind === 'category' ? subcategoryChoices(categories, await db.items.toArray()) : undefined;
+  return { choices, subChoices };
 }
 
 function failed(errors: Partial<Record<string, string>>): Error {
@@ -22,9 +25,10 @@ function failed(errors: Partial<Record<string, string>>): Error {
 }
 
 export async function addHelper(db: InventoryDb, draft: HelperDraft, now = Date.now()): Promise<Helper> {
-  return db.transaction('rw', db.helpers, db.categories, db.locations, async () => {
+  return db.transaction('rw', db.helpers, db.categories, db.locations, db.items, async () => {
     const helpers = (await db.helpers.toArray()).map(fromHelperRow);
-    const r = checkHelper(draft, helpers, await choicesFor(db, draft));
+    const { choices, subChoices } = await choicesFor(db, draft);
+    const r = checkHelper(draft, helpers, choices, null, subChoices);
     if (!r.ok) throw failed(r.errors);
     const ids = new Set(helpers.map((h) => h.id));
     const helper: Helper = { id: newHelperId((x) => ids.has(x)), ...r.draft, kits: [], lastImportAt: null, created: now };
@@ -35,13 +39,16 @@ export async function addHelper(db: InventoryDb, draft: HelperDraft, now = Date.
 
 /** Changes take effect in the next kit (§18.1). The name stays locked once a kit was sent. */
 export async function editHelper(db: InventoryDb, id: string, draft: HelperDraft): Promise<Helper> {
-  return db.transaction('rw', db.helpers, db.categories, db.locations, async () => {
+  return db.transaction('rw', db.helpers, db.categories, db.locations, db.items, async () => {
     const row = await db.helpers.get(id);
     if (!row) throw new Error('that helper was removed');
     const editing = fromHelperRow(row);
-    const r = checkHelper(draft, (await db.helpers.toArray()).map(fromHelperRow), await choicesFor(db, draft), editing);
+    const { choices, subChoices } = await choicesFor(db, draft);
+    const r = checkHelper(draft, (await db.helpers.toArray()).map(fromHelperRow), choices, editing, subChoices);
     if (!r.ok) throw failed(r.errors);
-    const helper: Helper = { ...editing, ...r.draft };
+    // Limits are replaced as a whole: an edit that counts a whole category drops the old limit.
+    const { subcategories: _old, ...kept } = editing;
+    const helper: Helper = { ...kept, ...r.draft };
     await db.helpers.put(toHelperRow(helper));
     return helper;
   });
@@ -86,12 +93,12 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
     };
   });
   const choices = groupChoices(helper.kind, snapshot.categories, snapshot.locations);
-  const check = checkHelper(helper, [], choices, helper);
+  const check = checkHelper(helper, [], choices, helper, helper.kind === 'category' ? subcategoryChoices(snapshot.categories, snapshot.items) : undefined);
   if (!check.ok) throw new Error(`Edit this helper first: ${Object.values(check.errors).join(' ')}`);
   const kitId = newKitId((x) => kitIds.has(x));
   const createdAt = localIsoDateTime(now);
   const ids = new Set(snapshot.items.map((i) => i.id));
-  const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups }, kitId, createdAt, includePhotos, now, countSince, recountDays, kitsFolderUrl, countsFolderUrl });
+  const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups, subcategories: check.draft.subcategories }, kitId, createdAt, includePhotos, now, countSince, recountDays, kitsFolderUrl, countsFolderUrl });
   return { blob, kitId, createdAt, itemCount: snapshot.items.length, photoCount: [...photos.keys()].filter((id) => ids.has(id)).length };
 }
 

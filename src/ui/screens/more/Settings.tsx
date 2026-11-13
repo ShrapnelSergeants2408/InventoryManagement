@@ -29,8 +29,8 @@ const HELP: Record<keyof NamedSettings, string> = {
 const toDraft = (s: NamedSettings): SettingsDraft => ({ reminderDays: String(s.reminderDays), staleDays: String(s.staleDays), unlockMinutes: String(s.unlockMinutes), overdueDays: String(s.overdueDays), recountDays: String(s.recountDays) });
 
 const FOLDER_ROWS: ReadonlyArray<[keyof FolderDraft, string, string, string]> = [
-  ['kits', 'set-kitsFolder', 'Kits folder link', 'Where count kits go for helpers to download. The Helper devices screen shows a link and a QR code for it, and each kit carries it, so a helper can open the folder from the Send tab.'],
-  ['counts', 'set-countsFolder', 'Counts folder link', 'Where helpers upload their counts files. Import counts and each helper’s Send tab have a button that opens it. Each kit carries it.'],
+  ['kits', 'set-kitsFolder', 'Kits folder link', 'Where count kits go for helpers to download. The Helper devices screen shows a QR code for it (kits on the left), and each kit carries it, so a helper can also open the folder from the Send tab.'],
+  ['counts', 'set-countsFolder', 'Counts folder link', 'Where helpers upload their counts files. The Helper devices screen shows a QR code for it (counts on the right); Import counts and each helper’s Send tab have a button that opens it. Each kit carries it.'],
 ];
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];

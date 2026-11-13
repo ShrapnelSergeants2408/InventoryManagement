@@ -128,7 +128,7 @@ export async function joinKit(db: HelperDb, read: ReadKit, now = Date.now(), dev
  * Records a change to an item (inside the caller's transaction). `before` is the item as it
  * was: the first change decides whether it was outside the helper's groups (§18.3).
  */
-export async function noteItemChange(db: HelperDb, before: Pick<ItemRow, 'id' | 'category' | 'location'>, what: { counted?: boolean; location?: boolean; barcode?: boolean }, now: number): Promise<void> {
+export async function noteItemChange(db: HelperDb, before: Pick<ItemRow, 'id' | 'category' | 'subcategory' | 'location'>, what: { counted?: boolean; location?: boolean; barcode?: boolean }, now: number): Promise<void> {
   const kit = await getKit(db);
   const key = changeKey({ kind: 'item', itemId: before.id });
   const earlier = (await db.changes.get(key)) ?? null;

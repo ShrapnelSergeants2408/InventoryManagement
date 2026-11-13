@@ -27,7 +27,7 @@ import {
 } from '../../../domain/count';
 import { dueCount } from '../../../domain/recount';
 import { countedDate, formatIsoDate, localIsoDate } from '../../../domain/dates';
-import { assignedHelpers } from '../../../domain/helpers';
+import { assignedHelpers, groupLabels } from '../../../domain/helpers';
 import { inAssignment } from '../../../domain/helper-mode';
 import { NO_LOCATION, checkName, takenLocationNames } from '../../../domain/lists';
 import { formatCents } from '../../../domain/money';
@@ -367,7 +367,7 @@ function Count({ snap, scanOnly }: { snap: InventorySnapshot; scanOnly: boolean 
       {top}
       <div class="cbody">
         {helper ? (
-          <HelperStart groups={helper.kit.groups} kind={helper.kit.kind} items={mine.length} unsent={helper.unsent} saved={helper.saved} allowNew={helper.kit.allowNewItems} />
+          <HelperStart groups={groupLabels(helper.kit)} kind={helper.kit.kind} items={mine.length} unsent={helper.unsent} saved={helper.saved} allowNew={helper.kit.allowNewItems} />
         ) : (
           <>
         <div class="card ctotal">

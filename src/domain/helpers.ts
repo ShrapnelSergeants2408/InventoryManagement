@@ -1,10 +1,17 @@
 // Helper devices on the main tablet (SPEC §3 "Helper", §18.1): who counts which groups, and
 // the kits sent to them. Pure, so the rules are unit-tested; data/helpers.ts saves them.
-import { NO_LOCATION } from './lists';
+import { NO_LOCATION, NO_SUBCATEGORY } from './lists';
 import { nameKey, type Category, type Location } from './types';
 
 /** A helper counts categories or locations, never a mix (§18.1). */
 export type GroupKind = 'category' | 'location';
+
+/**
+ * A helper that counts categories can be limited to some subcategories of one (v0.22): category
+ * name → the subcategories it counts, with NO_SUBCATEGORY for the items directly under the
+ * category. A category with no entry is counted whole.
+ */
+export type SubGroups = Record<string, string[]>;
 
 /** One count kit sent to a helper (§18.1: each send gets a new kit id). */
 export interface SentKit {
@@ -20,6 +27,8 @@ export interface Helper {
   kind: GroupKind;
   /** Category names, or location names (and "No location"), in list order. */
   groups: string[];
+  /** Subcategories counted instead of the whole category, for category helpers (v0.22). Absent: every category whole. */
+  subcategories?: SubGroups;
   allowNewItems: boolean;
   /** Oldest first. The last one is "last kit sent". */
   kits: SentKit[];
@@ -35,6 +44,7 @@ export interface HelperDraft {
   name: string;
   kind: GroupKind;
   groups: string[];
+  subcategories?: SubGroups;
   allowNewItems: boolean;
 }
 
@@ -77,7 +87,7 @@ export type DraftCheck = { ok: true; draft: HelperDraft } | { ok: false; errors:
  * ignoring capitals, taking the list's spelling and order), at least one. When editing a helper
  * whose kit was sent, the name can't change.
  */
-export function checkHelper(draft: HelperDraft, helpers: readonly Helper[], choices: readonly string[], editing: Helper | null = null): DraftCheck {
+export function checkHelper(draft: HelperDraft, helpers: readonly Helper[], choices: readonly string[], editing: Helper | null = null, subChoices?: SubChoices): DraftCheck {
   const errors: Partial<Record<'name' | 'groups', string>> = {};
   const name = draft.name.trim();
   if (editing && nameLocked(editing) && name !== editing.name) {
@@ -90,8 +100,73 @@ export function checkHelper(draft: HelperDraft, helpers: readonly Helper[], choi
   const groups = choices.filter((c) => wanted.has(nameKey(c)));
   if (wanted.size === 0) errors.groups = `Choose at least one ${KIND_LABEL[draft.kind].one} to count.`;
   else if (groups.length < wanted.size) errors.groups = `Some ${KIND_LABEL[draft.kind].many} aren’t in the list any more. Choose again.`;
-  if (errors.name || errors.groups) return { ok: false, errors };
-  return { ok: true, draft: { ...draft, name, groups } };
+const subs = errors.groups ? undefined : checkSubcategories(draft, groups, subChoices);  if (subs && !subs.ok) errors.groups = subs.error;  if (errors.name || errors.groups) return { ok: false, errors };  const { subcategories: _drop, ...rest } = draft;  const limits = subs?.ok ? subs.value : undefined;  return { ok: true, draft: { ...rest, name, groups, ...(limits ? { subcategories: limits } : {}) } };
+}
+
+/** Category → the subcategories a helper can be limited to, in list order (v0.22). */
+export type SubChoices = Record<string, string[]>;
+
+/**
+ * Every category's subcategory choices: the list's subcategories, any an item uses that the list
+ * doesn't have, and "No subcategory" when items sit directly under the category.
+ */
+export function subcategoryChoices(categories: readonly Category[], items: ReadonlyArray<{ category: string; subcategory: string }>): SubChoices {
+  const out: SubChoices = {};
+  for (const c of categories) {
+    const mine = items.filter((i) => i.category === c.name);
+    const names = [...c.subcategories];
+    for (const i of mine) if (i.subcategory !== '' && !names.some((n) => nameKey(n) === nameKey(i.subcategory))) names.push(i.subcategory);
+    if (mine.some((i) => i.subcategory === '')) names.push(NO_SUBCATEGORY);
+    out[c.name] = names;
+  }
+  return out;
+}
+
+const subsFor = (subs: SubGroups | undefined, group: string): string[] | null => {
+  if (!subs) return null;
+  const key = Object.keys(subs).find((k) => nameKey(k) === nameKey(group));
+  return key === undefined ? null : subs[key]!;
+};
+
+/** The subcategories counted in one category, or null when all of it is (v0.22). */
+export const subcategoriesOf = (h: { subcategories?: SubGroups }, group: string): string[] | null => subsFor(h.subcategories, group);
+
+/** Whether an item's subcategory is one of these (NO_SUBCATEGORY matches an item with none). */
+export const inSubcategories = (item: { subcategory?: string }, subs: readonly string[]): boolean =>
+  subs.some((s) => (s === NO_SUBCATEGORY ? (item.subcategory ?? '') === '' : nameKey(s) === nameKey(item.subcategory ?? '')));
+
+function checkSubcategories(draft: HelperDraft, groups: readonly string[], choices?: SubChoices): { ok: true; value: SubGroups | undefined } | { ok: false; error: string } {
+  if (draft.kind !== 'category' || !draft.subcategories) return { ok: true, value: undefined };
+  const out: SubGroups = {};
+  for (const g of groups) {
+    const wanted = subsFor(draft.subcategories, g);
+    if (wanted === null) continue;
+    if (wanted.length === 0) return { ok: false, error: 'Choose at least one subcategory of ' + g + ', or count all of it.' };
+    const all = choices ? (subsFor(choices, g) ?? []) : null;
+    if (all === null) {
+      out[g] = [...wanted];
+      continue;
+    }
+    const keys = new Set(wanted.map(nameKey));
+    const picked = all.filter((a) => keys.has(nameKey(a)));
+    if (picked.length < keys.size) return { ok: false, error: 'Some subcategories of ' + g + ' aren’t in the list any more. Choose again.' };
+    if (picked.length < all.length) out[g] = picked;
+  }
+  return { ok: true, value: Object.keys(out).length > 0 ? out : undefined };
+}
+
+/** "Mechanical (Wheels, Gears), Electrical": a helper's groups as shown to people (v0.22). */
+export const groupLabels = (h: { groups: readonly string[]; subcategories?: SubGroups }): string[] =>
+  h.groups.map((g) => {
+    const subs = subsFor(h.subcategories, g);
+    return subs ? g + ' (' + subs.join(', ') + ')' : g;
+  });
+
+/** Whether two helpers' shares of one category overlap: either counts all of it, or they share a subcategory. */
+function overlaps(a: string[] | null, b: string[] | null): boolean {
+  if (a === null || b === null) return true;
+  const keys = new Set(a.map(nameKey));
+  return b.some((x) => keys.has(nameKey(x)));
 }
 
 /**
@@ -101,7 +176,10 @@ export function checkHelper(draft: HelperDraft, helpers: readonly Helper[], choi
 export function sharedGroups(draft: HelperDraft, helpers: readonly Helper[], exceptId?: string): Array<{ group: string; helpers: string[] }> {
   const out: Array<{ group: string; helpers: string[] }> = [];
   for (const g of draft.groups) {
-    const others = helpers.filter((h) => h.id !== exceptId && h.kind === draft.kind && h.groups.some((x) => nameKey(x) === nameKey(g))).map((h) => h.name);
+    const mine = subsFor(draft.subcategories, g);
+    const others = helpers
+      .filter((h) => h.id !== exceptId && h.kind === draft.kind && h.groups.some((x) => nameKey(x) === nameKey(g)) && overlaps(mine, subsFor(h.subcategories, g)))
+      .map((h) => h.name);
     if (others.length > 0) out.push({ group: g, helpers: others });
   }
   return out;
@@ -109,25 +187,43 @@ export function sharedGroups(draft: HelperDraft, helpers: readonly Helper[], exc
 
 export interface Coverage {
   group: string;
-  /** Helper names assigned this group, A–Z. Empty: unassigned (highlighted, §18.1). */
+  /** Helper names assigned this group, A–Z, with their subcategories when they count only some (v0.22). Empty: unassigned (highlighted, §18.1). */
   helpers: string[];
+  /** Two or more helpers count the same items (their shares overlap). */
+  overlap: boolean;
+  /** Subcategories nobody counts, when helpers count only parts of the category (v0.22). */
+  uncovered: string[];
 }
 
 /** Every group of one kind with the helpers assigned to it, in walk order (§18.1). */
-export function coverage(helpers: readonly Helper[], kind: GroupKind, choices: readonly string[]): Coverage[] {
-  return choices.map((group) => ({
-    group,
-    helpers: helpers
-      .filter((h) => h.kind === kind && h.groups.some((g) => nameKey(g) === nameKey(group)))
-      .map((h) => h.name)
-      .sort((a, b) => a.localeCompare(b, 'en-US', { sensitivity: 'base' })),
-  }));
+export function coverage(helpers: readonly Helper[], kind: GroupKind, choices: readonly string[], subChoices?: SubChoices): Coverage[] {
+  return choices.map((group) => {
+    const mine = helpers.filter((h) => h.kind === kind && h.groups.some((g) => nameKey(g) === nameKey(group)));
+    const parts = mine.map((h) => ({ name: h.name, subs: kind === 'category' ? subsFor(h.subcategories, group) : null }));
+    const sorted = [...parts].sort((a, b) => a.name.localeCompare(b.name, 'en-US', { sensitivity: 'base' }));
+    const covered = new Set(parts.flatMap((p) => p.subs ?? []).map(nameKey));
+    const whole = parts.some((p) => p.subs === null);
+    const all = subChoices ? (subsFor(subChoices, group) ?? []) : [];
+    return {
+      group,
+      helpers: sorted.map((p) => (p.subs ? p.name + ' (' + p.subs.join(', ') + ')' : p.name)),
+      overlap: parts.some((p, i) => parts.slice(i + 1).some((q) => overlaps(p.subs, q.subs))),
+      uncovered: parts.length > 0 && !whole ? all.filter((a) => !covered.has(nameKey(a))) : [],
+    };
+  });
 }
 
 /** A helper's groups that are no longer in the list (removed since it was set up). */
-export const missingGroups = (h: Helper, choices: readonly string[]): string[] => {
+export const missingGroups = (h: Helper, choices: readonly string[], subChoices?: SubChoices): string[] => {
   const known = new Set(choices.map(nameKey));
-  return h.groups.filter((g) => !known.has(nameKey(g)));
+  const gone = h.groups.filter((g) => !known.has(nameKey(g)));
+  if (!subChoices) return gone;
+  for (const g of h.groups) {
+    if (gone.includes(g)) continue;
+    const have = new Set((subsFor(subChoices, g) ?? []).map(nameKey));
+    for (const x of subsFor(h.subcategories, g) ?? []) if (!have.has(nameKey(x))) gone.push(g + ' › ' + x);
+  }
+  return gone;
 };
 
 /** Group (nameKey) → helper names, for the count-in start screen (F24: "each group shows which helper it's assigned to"). */
@@ -144,7 +240,19 @@ export function assignedHelpers(helpers: readonly Helper[], kind: GroupKind): Ma
 export function renameGroup(helpers: readonly Helper[], kind: GroupKind, from: string, to: string): Helper[] {
   return helpers.flatMap((h) => {
     if (h.kind !== kind || !h.groups.some((g) => nameKey(g) === nameKey(from))) return [];
-    return [{ ...h, groups: h.groups.map((g) => (nameKey(g) === nameKey(from) ? to : g)) }];
+    const renamed: Helper = { ...h, groups: h.groups.map((g) => (nameKey(g) === nameKey(from) ? to : g)) };
+    if (h.subcategories) renamed.subcategories = Object.fromEntries(Object.entries(h.subcategories).map(([k, v]) => [nameKey(k) === nameKey(from) ? to : k, v]));
+    return [renamed];
+  });
+}
+
+/** A subcategory renamed on this tablet: helpers limited to it follow the new name (v0.22). */
+export function renameSubgroup(helpers: readonly Helper[], category: string, from: string, to: string): Helper[] {
+  return helpers.flatMap((h) => {
+    const subs = h.kind === 'category' ? subsFor(h.subcategories, category) : null;
+    if (!subs || !subs.some((x) => nameKey(x) === nameKey(from))) return [];
+    const key = Object.keys(h.subcategories!).find((k) => nameKey(k) === nameKey(category))!;
+    return [{ ...h, subcategories: { ...h.subcategories, [key]: subs.map((x) => (nameKey(x) === nameKey(from) ? to : x)) } }];
   });
 }
 

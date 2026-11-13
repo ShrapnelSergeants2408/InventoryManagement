@@ -68,14 +68,14 @@ try {
 
   // ── Where they show ──
   await js(`await go('#/count/helpers'); await settle(600);`);
-  check('Helper devices: the folder card has a QR code and two buttons that open in a new tab', await js(`const c = $('[aria-label="Shared Drive folders"]'); return [!!c.querySelector('svg'), [...c.querySelectorAll('a')].map((a) => [norm(a.textContent), a.getAttribute('href'), a.target, a.rel])]`), [true, [['Open the Kits folder', KITS, '_blank', 'noopener noreferrer'], ['Open the Counts folder', COUNTS, '_blank', 'noopener noreferrer']]]);
+  check('Helper devices: a QR code for the Kits folder on the left and one for the Counts folder on the right, each captioned, no links', await js(`const f = $$('[aria-label="Shared Drive folders"] figure'); return [f.map((x) => [norm(x.querySelector('figcaption').textContent), x.querySelector('svg').getAttribute('aria-label')]), f.length === 2 && f[0].getBoundingClientRect().left < f[1].getBoundingClientRect().left, $$('[aria-label="Shared Drive folders"] a').length]`), [[['KitsScan to download your kit', 'QR code ' + KITS], ['CountsScan to upload your counts', 'QR code ' + COUNTS]], true, 0]);
   await shot('02-helper-devices-folders');
   await js(`await go('#/count/import'); await settle(500);`);
   check('Import counts: Open the Counts folder, beside Choose counts files', await js(`const a = byText('.imp-start a', 'Counts folder'); return [a.getAttribute('href'), a.target, norm($('.imp-start .btn.pri').textContent)]`), [COUNTS, '_blank', 'Choose counts files…']);
   await size(800, 1280);
   await js(`await go('#/count/helpers'); await settle(600);`);
   await shot('03-helper-devices-portrait');
-  check('portrait: nothing wider than the screen; the buttons are at least 48 px tall', await js(`return [document.documentElement.scrollWidth <= innerWidth, $$('[aria-label="Shared Drive folders"] a').map((a) => a.getBoundingClientRect().height >= 47.5)]`), [true, [true, true]]);
+  check('portrait: nothing wider than the screen; both codes are on screen', await js(`return [document.documentElement.scrollWidth <= innerWidth, $$('[aria-label="Shared Drive folders"] figure').map((x) => x.getBoundingClientRect().right <= innerWidth)]`), [true, [true, true]]);
   await size(1280, 800);
 
   // ── Cleared again ──

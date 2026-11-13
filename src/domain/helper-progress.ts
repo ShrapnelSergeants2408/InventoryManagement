@@ -13,7 +13,7 @@ export interface HelperProgress {
 }
 
 /** null: no kit has been sent, so there is nothing to count against. */
-export function helperProgress(h: Helper, items: readonly Pick<Item, 'category' | 'location' | 'lastCounted' | 'countedBy'>[]): HelperProgress | null {
+export function helperProgress(h: Helper, items: readonly Pick<Item, 'category' | 'subcategory' | 'location' | 'lastCounted' | 'countedBy'>[]): HelperProgress | null {
   const kit = lastKit(h);
   if (!kit) return null;
   const since = stampMs(kit.createdAt);

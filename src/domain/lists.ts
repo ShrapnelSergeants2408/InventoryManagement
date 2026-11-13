@@ -85,6 +85,8 @@ export function reassignSupplier(items: readonly Item[], from: string, to: strin
 
 /** Items without a location are grouped under this name, so no location may use it. */
 export const NO_LOCATION = 'No location';
+/** The choice for items that sit directly under a category, with no subcategory (v0.22). */
+export const NO_SUBCATEGORY = 'No subcategory';
 
 /** Names a new or renamed location can't take: the list plus "No location". */
 export const takenLocationNames = (names: readonly string[]) => [...names, NO_LOCATION];

@@ -1,6 +1,7 @@
 // Helper devices (§18.1), from the count-in start screen: add, edit and remove helpers, see
 // which groups each counts (unassigned ones highlighted), and send each a count kit (§18.2).
 // No PIN anywhere here (§6).
+import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
 import { addHelper, buildKit, editHelper, recordKit, recordKits, removeHelper, type BuiltKit } from '../../../data/helpers';
 import type { InventorySnapshot } from '../../../data/inventory';
@@ -11,13 +12,17 @@ import {
   checkHelper,
   coverage,
   groupChoices,
+  groupLabels,
   lastKit,
   missingGroups,
   nameLocked,
   sharedGroups,
+  subcategoriesOf,
+  subcategoryChoices,
   type GroupKind,
   type Helper,
   type HelperDraft,
+  type SubGroups,
 } from '../../../domain/helpers';
 import { helperProgress } from '../../../domain/helper-progress';
 import { nameKey } from '../../../domain/types';
@@ -139,8 +144,9 @@ function AppLink() {
 }
 
 /**
- * The team's shared Drive folders (v0.21): a QR code and a button for the Kits folder, where
- * helpers download their kit, and a button for the Counts folder. Set in More › Reminders & limits.
+ * The team's shared Drive folders (v0.21, v0.22): a QR code for the Kits folder on the left, where
+ * a helper downloads its kit, and one for the Counts folder on the right, where it uploads its
+ * counts. Set in More › Reminders & limits.
  */
 function FolderCard() {
   const s = useSettings();
@@ -152,15 +158,27 @@ function FolderCard() {
     );
   }
   return (
-    <div class="card happlink" aria-label="Shared Drive folders">
-      {s.kitsFolderUrl !== '' && <QrSvg text={s.kitsFolderUrl} size={1.5} />}
-      <div class="grow">
-        <h2 class="h2">Shared Drive folders</h2>
-        {s.kitsFolderUrl !== '' && <div>Kits: helpers scan this code, or open the link, to download their kit.</div>}
-        <div class="folder-acts">
-          <FolderLink url={s.kitsFolderUrl} label="Open the Kits folder" />
-          <FolderLink url={s.countsFolderUrl} label="Open the Counts folder" />
-        </div>
+    <div class="card folderqr" aria-label="Shared Drive folders">
+      <h2 class="h2">Shared Drive folders</h2>
+      <div class="folderqr-g">
+        {s.kitsFolderUrl !== '' && (
+          <figure class="folderqr-c" aria-label="Kits folder code">
+            <QrSvg text={s.kitsFolderUrl} size={1.6} />
+            <figcaption>
+              <strong>Kits</strong>
+              <span>Scan to download your kit</span>
+            </figcaption>
+          </figure>
+        )}
+        {s.countsFolderUrl !== '' && (
+          <figure class="folderqr-c" aria-label="Counts folder code">
+            <QrSvg text={s.countsFolderUrl} size={1.6} />
+            <figcaption>
+              <strong>Counts</strong>
+              <span>Scan to upload your counts</span>
+            </figcaption>
+          </figure>
+        )}
       </div>
     </div>
   );
@@ -170,7 +188,7 @@ function HelperCard(props: { h: Helper; snap: InventorySnapshot; onOpen: (o: Ope
   const h = props.h;
   const kit = lastKit(h);
   const progress = helperProgress(h, props.snap.items);
-  const gone = missingGroups(h, groupChoices(h.kind, props.snap.categories, props.snap.locations));
+  const gone = missingGroups(h, groupChoices(h.kind, props.snap.categories, props.snap.locations), h.kind === 'category' ? subcategoryChoices(props.snap.categories, props.snap.items) : undefined);
   return (
     <div class="card hcard" aria-label={`Helper ${h.name}`}>
       <div class="hcard-h">
@@ -200,7 +218,7 @@ function HelperCard(props: { h: Helper; snap: InventorySnapshot; onOpen: (o: Ope
           <span class="small muted">
             Counts {plural(h.groups.length, KIND_LABEL[h.kind].one, KIND_LABEL[h.kind].many)}:
           </span>{' '}
-          <strong>{h.groups.join(', ')}</strong>
+          <strong>{groupLabels(h).join(', ')}</strong>
         </div>
         {progress && (
           <div class="small hprog">
@@ -229,23 +247,25 @@ function Coverage(props: { helpers: Helper[]; snap: InventorySnapshot }) {
   return (
     <>
       {kinds.map((kind) => {
-        const rows = coverage(props.helpers, kind, groupChoices(kind, props.snap.categories, props.snap.locations));
+        const rows = coverage(props.helpers, kind, groupChoices(kind, props.snap.categories, props.snap.locations), subcategoryChoices(props.snap.categories, props.snap.items));
         const open = rows.filter((r) => r.helpers.length === 0).length;
+        const partial = rows.filter((r) => r.uncovered.length > 0).length;
         return (
           <div key={kind} class="card cgroups" aria-label={`Who counts which ${KIND_LABEL[kind].one}`}>
             <div class="cg-h">
               <h2 class="h2 grow">{kind === 'category' ? 'Categories' : 'Locations'}</h2>
-              <span class="small muted">{open === 0 ? 'Every one has a helper' : `${open} without a helper`}</span>
+              <span class="small muted">{open === 0 ? (partial === 0 ? 'Every one has a helper' : `${plural(partial, 'category', 'categories')} only partly assigned`) : `${open} without a helper`}</span>
             </div>
             {rows.map((r) => (
-              <div key={r.group} class={r.helpers.length === 0 ? 'cov-row open' : 'cov-row'}>
+              <div key={r.group} class={r.helpers.length === 0 || r.uncovered.length > 0 ? 'cov-row open' : 'cov-row'}>
                 <strong class="grow">{r.group}</strong>
                 {r.helpers.length === 0 ? (
                   <span class="chip np">Not assigned</span>
                 ) : (
                   <span class="small">
                     {r.helpers.join(', ')}
-                    {r.helpers.length > 1 && <span class="muted"> · both count it; settle differences on import</span>}
+                    {r.overlap && <span class="muted"> · both count it; settle differences on import</span>}
+                    {r.uncovered.length > 0 && <strong> · nobody has {r.uncovered.join(', ')}</strong>}
                   </span>
                 )}
               </div>
@@ -262,10 +282,28 @@ function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: 
   const e = props.editing;
   // Groups removed from the list since this helper was set up can't be ticked, so they're
   // dropped when the dialog opens and named under the checkboxes (independent review, finding 2).
-  const [gone] = useState(() => (e ? missingGroups(e, groupChoices(e.kind, props.snap.categories, props.snap.locations)) : []));
-  const [d, setD] = useState<HelperDraft>(() =>
-    e ? { name: e.name, kind: e.kind, groups: e.groups.filter((g) => !gone.includes(g)), allowNewItems: e.allowNewItems } : { name: '', kind: 'category', groups: [], allowNewItems: true },
-  );
+  const subChoices = subcategoryChoices(props.snap.categories, props.snap.items);
+  const [gone] = useState(() => (e ? missingGroups(e, groupChoices(e.kind, props.snap.categories, props.snap.locations), e.kind === 'category' ? subChoices : undefined) : []));
+  const [d, setD] = useState<HelperDraft>(() => {
+    if (!e) return { name: '', kind: 'category', groups: [], allowNewItems: true };
+    // Subcategories removed since the kit was set up are dropped; a category left with none is taken off.
+    const groups: string[] = [];
+    const subs: SubGroups = {};
+    for (const g of e.groups) {
+      if (gone.includes(g)) continue;
+      const mine = subcategoriesOf(e, g);
+      if (mine === null) {
+        groups.push(g);
+        continue;
+      }
+      const have = new Set((subChoices[g] ?? []).map(nameKey));
+      const kept = mine.filter((x) => have.has(nameKey(x)));
+      if (kept.length === 0) continue;
+      groups.push(g);
+      subs[g] = kept;
+    }
+    return { name: e.name, kind: e.kind, groups, ...(Object.keys(subs).length > 0 ? { subcategories: subs } : {}), allowNewItems: e.allowNewItems };
+  });
   const [errors, setErrors] = useState<Partial<Record<'name' | 'groups', string>>>({});
   const [confirmShared, setConfirmShared] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -278,17 +316,38 @@ function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: 
   // Only groups this edit adds: a share that was already accepted isn't asked about again.
   const had = new Set((e?.kind === d.kind ? e.groups : []).map(nameKey));
   const shared = sharedGroups(d, props.helpers, e?.id).filter((s) => !had.has(nameKey(s.group)));
+  const sharedNames = new Map(sharedGroups(d, props.helpers, e?.id).map((s) => [nameKey(s.group), s.helpers] as const));
+  const on0 = (g: string) => chosen.has(nameKey(g));
+  /** A helper's name with the subcategories it counts of a category, when only some. */
+  const labelIn = (h: Helper, g: string) => {
+    const s = subcategoriesOf(h, g);
+    return s ? `${h.name} (${s.join(', ')})` : h.name;
+  };
 
   const patch = (p: Partial<HelperDraft>) => {
     setD({ ...d, ...p });
     setConfirmShared(false);
   };
-  const toggle = (g: string) => patch({ groups: chosen.has(nameKey(g)) ? d.groups.filter((x) => nameKey(x) !== nameKey(g)) : [...d.groups, g] });
+  const toggle = (g: string) => {
+    if (!chosen.has(nameKey(g))) return patch({ groups: [...d.groups, g] });
+    // Taking a category off also drops its subcategory limit.
+    const { [g]: _gone, ...subs } = d.subcategories ?? {};
+    patch({ groups: d.groups.filter((x) => nameKey(x) !== nameKey(g)), subcategories: subs });
+  };
+  /** Ticks or unticks one subcategory of a chosen category; all ticked means the whole category (v0.22). */
+  const toggleSub = (g: string, s: string) => {
+    const all = subChoices[g] ?? [];
+    const cur = subcategoriesOf(d, g) ?? all;
+    const k = nameKey(s);
+    const next = cur.some((x) => nameKey(x) === nameKey(s)) ? cur.filter((x) => nameKey(x) !== k) : all.filter((a) => nameKey(a) === k || cur.some((x) => nameKey(x) === nameKey(a)));
+    const { [g]: _old, ...rest } = d.subcategories ?? {};
+    patch({ subcategories: next.length === all.length ? rest : { ...rest, [g]: next } });
+  };
 
   const submit = async (ev: Event) => {
     ev.preventDefault();
     if (busy) return;
-    const r = checkHelper(d, props.helpers, choices, e);
+    const r = checkHelper(d, props.helpers, choices, e, d.kind === 'category' ? subChoices : undefined);
     if (!r.ok) {
       setErrors(r.errors);
       return;
@@ -348,7 +407,7 @@ function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: 
                 aria-checked={d.kind === k}
                 class={d.kind === k ? 'choice on' : 'choice'}
                 disabled={k === 'location' && noLocations}
-                onClick={() => d.kind !== k && patch({ kind: k, groups: [] })}
+                onClick={() => d.kind !== k && patch({ kind: k, groups: [], subcategories: undefined })}
               >
                 <span class="dot" />
                 {k === 'category' ? 'Categories' : noLocations ? 'Locations (none yet: add them in More › Locations)' : 'Locations'}
@@ -361,22 +420,44 @@ function HelperDialog(props: { editing: Helper | null; helpers: Helper[]; snap: 
             <span class="lbl" id="hgroups">
               Which {KIND_LABEL[d.kind].many}
             </span>
-            <button type="button" class="btn sm" onClick={() => patch({ groups: chosen.size === choices.length ? [] : [...choices] })}>
+            <button type="button" class="btn sm" onClick={() => patch({ groups: chosen.size === choices.length ? [] : [...choices], subcategories: undefined })}>
               {chosen.size === choices.length ? 'Clear' : 'Select all'}
             </button>
           </div>
           <div class="hgroups" role="group" aria-labelledby="hgroups">
             {choices.map((g) => {
-              const also = others.filter((h) => h.groups.some((x) => nameKey(x) === nameKey(g))).map((h) => h.name);
+              const has = others.filter((h) => h.groups.some((x) => nameKey(x) === nameKey(g)));
+              // Chosen: only helpers whose share overlaps this one. Not chosen: everyone with it, and what they count.
+              const also = on0(g) ? sharedNames.get(nameKey(g)) ?? [] : has.map((h) => labelIn(h, g));
               const on = chosen.has(nameKey(g));
+              const subs = subChoices[g] ?? [];
+              const picked = subcategoriesOf(d, g);
               return (
-                <button key={g} type="button" class="cb hgroup" role="checkbox" aria-checked={on} onClick={() => toggle(g)}>
-                  <CheckBox state={on ? 'on' : 'off'} />
-                  <span>
-                    <strong>{g}</strong>
-                    {also.length > 0 && <span class="small muted"> · also {also.join(', ')}</span>}
-                  </span>
-                </button>
+                <Fragment key={g}>
+                  <button key={g} type="button" class="cb hgroup" role="checkbox" aria-checked={on} onClick={() => toggle(g)}>
+                    <CheckBox state={on ? 'on' : 'off'} />
+                    <span>
+                      <strong>{g}</strong>
+                      {also.length > 0 && <span class="small muted"> · also {also.join(', ')}</span>}
+                    </span>
+                  </button>
+                  {on && d.kind === 'category' && subs.length > 0 && (
+                    <div class="hsubs" role="group" aria-label={`Subcategories of ${g}`}>
+                      <div class="small muted">{picked ? `Only these parts of ${g}:` : `All of ${g}. Untick a subcategory to leave it for another helper:`}</div>
+                      <div class="hsubs-g">
+                        {subs.map((s) => {
+                          const subOn = picked === null || picked.some((x) => nameKey(x) === nameKey(s));
+                          return (
+                            <button key={s} type="button" class="cb hsub" role="checkbox" aria-checked={subOn} onClick={() => toggleSub(g, s)}>
+                              <CheckBox state={subOn ? 'on' : 'off'} />
+                              <span>{s}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </Fragment>
               );
             })}
           </div>
@@ -489,7 +570,7 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
       <h2 class="h2">Send a count kit to “{h.name}”</h2>
       <p class="dlg-p">
         The kit holds all {plural(props.items, 'item')} (search and scan reach any item), the supplier, location and category lists, and this helper’s{' '}
-        {plural(h.groups.length, KIND_LABEL[h.kind].one, KIND_LABEL[h.kind].many)}: <strong>{h.groups.join(', ')}</strong>. Prices are left out.
+        {plural(h.groups.length, KIND_LABEL[h.kind].one, KIND_LABEL[h.kind].many)}: <strong>{groupLabels(h).join(', ')}</strong>. Prices are left out.
       </p>
       <Toggle on={photos} disabled={busy} onClick={() => setPhotos(!photos)}>
         Include photos{size ? ` (${plural(size.count, 'photo')}, about ${formatBytes(size.bytes)})` : ''}. Turn off for slow transfers like Bluetooth.

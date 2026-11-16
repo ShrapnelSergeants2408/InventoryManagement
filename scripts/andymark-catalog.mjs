@@ -1,7 +1,7 @@
 // Builds a catalog ZIP of AndyMark parts for More › Backup, restore & price import › Add items from a
 // file (SPEC §23.7). Run on a computer with Node; the app never does this itself.
 //
-//   node scripts/andymark-catalog.mjs <output folder> [--delay 3000] [--max-pages 40] [--max-products N]
+//   node scripts/andymark-catalog.mjs <output folder> [--delay 30000] [--max-pages 40] [--max-products N]
 //   --include discontinued,international,merchandise,game,programs,tools,bundles   keep what is left out by default (see exclusionReason in andymark-lib.mjs)
 //   --collapse-over N    list a product with more than N variants once, "(multiple variants)" (default 65; 0 = never)
 //   node scripts/andymark-catalog.mjs <output folder> --save-json feed.json   (also keep the feed it fetched)
@@ -14,10 +14,11 @@
 // photos (they must not go in the public repository) and ask AndyMark before relying on them.
 //
 // It reads AndyMark's public /products.json feed, never signs in, checks robots.txt first (for the
-// photo host too), and waits between requests (--delay, default 3 seconds, never under 1). If AndyMark
-// answers "too many requests" (429) it waits as long as it is asked, up to 5 minutes, slows down for
-// the rest of the run, and tries again up to 3 times before giving up. Run it when a fresh list is
-// wanted, not on a schedule.
+// photo host too), and waits between requests to AndyMark (--delay, default 30 seconds, which Dan found
+// AndyMark accepts best; never under 1; the photo host gets at most 3). If a host answers "too many
+// requests" (429) it waits as long as it is asked, up to 5 minutes, slows down for the rest of the run,
+// and tries again up to 3 times before giving up. A full run is about 12 pages, so about 6 minutes.
+// Run it when a fresh list is wanted, not on a schedule.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { COLLAPSE_OVER, SITE, buildCatalogZip, productRows, robotsAllows } from './andymark-lib.mjs';
@@ -36,7 +37,7 @@ if (!out) {
   console.error('Usage: node scripts/andymark-catalog.mjs <output folder> [--delay ms] [--max-pages n] [--max-products n] [--images] [--from-json file]');
   process.exit(2);
 }
-let delay = Math.max(1000, Number(flag('--delay', 3000)) || 3000);
+const delay = Math.max(1000, Number(flag('--delay', 30000)) || 30000);
 const maxPages = Math.max(1, Number(flag('--max-pages', 40)) || 40);
 const maxProducts = Number(flag('--max-products', 0)) || Infinity;
 const fromJson = flag('--from-json', null);
@@ -54,21 +55,27 @@ for (const event of ['unhandledRejection', 'uncaughtException']) {
   });
 }
 
-/** One request, spaced from the last by `delay`; a 429 or 503 is waited out (see the header) before trying again. */
-let last = 0;
+/**
+ * One request, spaced from the last one to the same host by that host's delay: `delay` for AndyMark itself
+ * (30 s by default, what it was found to accept), and at most 3 s for another host such as the photo CDN.
+ * A 429 or 503 is waited out (see the header) before trying again.
+ */
+const lastByHost = new Map();
+const delayByHost = new Map();
+const hostDelay = (host) => delayByHost.get(host) ?? (host === new URL(SITE).host ? delay : Math.min(delay, 3000));
 async function fetchPolite(url, accept) {
+  const where = new URL(url);
   for (let attempt = 1; ; attempt++) {
-    const wait = last + delay - Date.now();
+    const wait = (lastByHost.get(where.host) ?? 0) + hostDelay(where.host) - Date.now();
     if (wait > 0) await sleep(wait);
-    last = Date.now();
+    lastByHost.set(where.host, Date.now());
     const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: accept } });
     if (res.ok) return res;
-    const where = new URL(url);
     if ((res.status === 429 || res.status === 503) && attempt <= 3) {
       const asked = Number(res.headers.get('retry-after'));
       const seconds = Math.min(300, Number.isFinite(asked) && asked > 0 ? asked : 30 * attempt);
-      delay = Math.min(delay * 2, 30000);
-      console.log(`${where.host} answered ${res.status}; waiting ${seconds} s, then slowing to one request every ${delay / 1000} s (try ${attempt} of 3)`);
+      delayByHost.set(where.host, Math.min(hostDelay(where.host) * 2, 120000));
+      console.log(`${where.host} answered ${res.status}; waiting ${seconds} s, then slowing to one request every ${hostDelay(where.host) / 1000} s (try ${attempt} of 3)`);
       await sleep(seconds * 1000);
       continue;
     }

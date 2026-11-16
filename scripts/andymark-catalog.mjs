@@ -2,6 +2,9 @@
 // file (SPEC §23.7). Run on a computer with Node; the app never does this itself.
 //
 //   node scripts/andymark-catalog.mjs <output folder> [--delay 3000] [--max-pages 40] [--max-products N]
+//   --max-variants N     also leave out products with more than N variants (swerve modules and gearboxes have hundreds)
+//   --include-discontinued / --include-bundles keep what is left out by default (see exclusionReason in andymark-lib.mjs)
+//   node scripts/andymark-catalog.mjs <output folder> --save-json feed.json   (also keep the feed it fetched)
 //   node scripts/andymark-catalog.mjs <output folder> --from-json <saved products.json>   (offline)
 //   node scripts/andymark-catalog.mjs <output folder> --max-products 12 --images          (a small pilot with photos)
 //
@@ -16,7 +19,7 @@
 // the rest of the run, and tries again up to 3 times before giving up. Run it when a fresh list is
 // wanted, not on a schedule.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { SITE, buildCatalogZip, productRows, robotsAllows } from './andymark-lib.mjs';
 
 const USER_AGENT = 'frc2408-andymark-catalog-script';
@@ -27,7 +30,7 @@ const flag = (name, fallback) => {
   const i = args.indexOf(name);
   return i === -1 ? fallback : args[i + 1];
 };
-const VALUE_FLAGS = new Set(['--delay', '--max-pages', '--max-products', '--from-json']);
+const VALUE_FLAGS = new Set(['--delay', '--max-pages', '--max-products', '--from-json', '--save-json', '--max-variants']);
 const out = args.find((a, i) => !a.startsWith('--') && !VALUE_FLAGS.has(args[i - 1]));
 if (!out) {
   console.error('Usage: node scripts/andymark-catalog.mjs <output folder> [--delay ms] [--max-pages n] [--max-products n] [--images] [--from-json file]');
@@ -37,7 +40,9 @@ let delay = Math.max(1000, Number(flag('--delay', 3000)) || 3000);
 const maxPages = Math.max(1, Number(flag('--max-pages', 40)) || 40);
 const maxProducts = Number(flag('--max-products', 0)) || Infinity;
 const fromJson = flag('--from-json', null);
+const saveJson = flag('--save-json', null);
 const images = args.includes('--images');
+const keep = { discontinued: args.includes('--include-discontinued'), bundles: args.includes('--include-bundles'), maxVariants: Math.max(0, Number(flag('--max-variants', 0)) || 0) };
 const today = new Date().toISOString().slice(0, 10);
 
 // A failure prints its message, not a stack trace.
@@ -96,7 +101,12 @@ if (fromJson) {
   if (Number.isFinite(maxProducts)) products = products.slice(0, maxProducts);
 }
 
-const { rows, skipped, unmapped } = productRows(products, today, { images });
+if (saveJson && !fromJson) {
+  mkdirSync(dirname(saveJson), { recursive: true });
+  writeFileSync(saveJson, JSON.stringify({ products }));
+}
+
+const { rows, skipped, unmapped } = productRows(products, today, { images, ...keep });
 if (rows.length === 0) {
   console.error('No parts found; nothing written.');
   process.exit(1);
@@ -133,7 +143,17 @@ writeFileSync(file, await buildCatalogZip(rows, photos));
 
 const bytes = [...photos.values()].reduce((n, b) => n + b.length, 0);
 console.log(`\nWrote ${file}`);
-console.log(`${rows.length} parts from ${products.length} products; ${skipped.length} products left out.`);
+const why = new Map();
+for (const s of skipped) why.set(s.reason.replace(/ \(.*\)$/, ''), (why.get(s.reason.replace(/ \(.*\)$/, '')) ?? 0) + 1);
+console.log(`${rows.length} parts from ${products.length - skipped.length} products; ${skipped.length} products left out (${[...why].map(([r, n]) => `${n} ${r}`).join(', ') || 'none'}).`);
+// What was left out, so it can be checked (not part of the ZIP).
+const cell = (s) => `"${String(s).replace(/"/g, '""')}"`;
+writeFileSync(join(out, 'left-out.csv'), '﻿title,reason\r\n' + skipped.map((s) => `${cell(s.title)},${cell(s.reason)}`).join('\r\n') + '\r\n');
+// Products with many variants (one row each): a mentor may want to look at those.
+const perProduct = new Map();
+for (const r of rows) perProduct.set(r.v1_url.split('?')[0], (perProduct.get(r.v1_url.split('?')[0]) ?? 0) + 1);
+const big = [...perProduct].filter(([, n]) => n > 30).sort((a, b) => b[1] - a[1]);
+if (big.length > 0) console.log(`\n${big.length} products have more than 30 variants (one row each); the biggest: ${big.slice(0, 5).map(([u, n]) => `${n} ${u.split('/').pop()}`).join(', ')}.`);
 if (images) console.log(`${photos.size} photos (${(bytes / 1024 / 1024).toFixed(1)} MB)${noPhoto ? `; ${noPhoto} products had no photo` : ''}. Keep them off the public repository.`);
 if (unmapped.size > 0) {
   const top = [...unmapped].sort((a, b) => b[1] - a[1]);

@@ -5,12 +5,13 @@ export const CATEGORY_MAP: Record<string, [string, string]>;
 export const SKIP_TYPES: Set<string>;
 export const COLUMNS: string[];
 export function mapCategory(productType: unknown): { category: string; subcategory: string; mapped: boolean };
+export function exclusionReason(product: unknown, options?: { discontinued?: boolean; bundles?: boolean; maxVariants?: number }): string | null;
 export function imageFor(product: unknown): { url: string; file: string } | null;
 export function priceText(raw: unknown): string;
 export function productRows(
   products: unknown[] | undefined,
   today: string,
-  options?: { images?: boolean },
+  options?: { images?: boolean; discontinued?: boolean; bundles?: boolean; maxVariants?: number },
 ): { rows: Record<string, string>[]; skipped: { title: string; reason: string }[]; unmapped: Map<string, number> };
 export function toCsv(columns: string[], rows: Record<string, string>[]): string;
 export function categoriesCsv(rows: Record<string, string>[]): string;

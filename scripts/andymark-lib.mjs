@@ -66,6 +66,28 @@ export const CATEGORY_MAP = {
   wrenches: ['Tools', 'Wrenches'],
 };
 
+/**
+ * Why a product is left out, or null to keep it (Dan, 2026-11-16: no discontinued products and no
+ * bundles; a part that comes in several sizes or ratings is kept, one row per size or rating).
+ * Discontinued is AndyMark's own "Discontinued" tag. A bundle is a product whose type or a tag says
+ * "bundle", or whose title says bundle, kit, builder or combo: those hold several different products.
+ * A "pack" of the same part is not a bundle. Pass { discontinued: true } or { bundles: true } to keep them.
+ * { maxVariants: N } also leaves out a product with more than N variants (a configurator such as a swerve
+ * module with ratio, wheel and encoder choices makes hundreds of rows); 0, the default, keeps them all.
+ */
+export function exclusionReason(product, { discontinued = false, bundles = false, maxVariants = 0 } = {}) {
+  const tags = Array.isArray(product?.tags) ? product.tags.map((t) => String(t)) : [];
+  if (!discontinued && tags.some((t) => t.trim().toLowerCase() === 'discontinued')) return 'discontinued';
+  if (!bundles) {
+    const type = String(product?.product_type ?? '');
+    if (/\bbundles?\b/i.test(type) || tags.some((t) => /\bbundles?\b/i.test(t))) return 'bundle';
+    if (/\b(bundles?|kits?|builder|combo)\b/i.test(String(product?.title ?? ''))) return 'bundle or kit';
+  }
+  const count = Array.isArray(product?.variants) ? product.variants.length : 0;
+  if (maxVariants > 0 && count > maxVariants) return `too many variants (${count})`;
+  return null;
+}
+
 /** Product types that are not parts at all; left out of the file. */
 export const SKIP_TYPES = new Set(['gift card', 'gift cards', 'shipping', 'donation', 'donations', 'service', 'services']);
 
@@ -105,7 +127,7 @@ export function priceText(raw) {
  * title, sku, price and id; nothing else in the feed is touched.
  * @returns {{ rows: object[], skipped: { title: string, reason: string }[], unmapped: Map<string, number> }}
  */
-export function productRows(products, today, { images = false } = {}) {
+export function productRows(products, today, { images = false, discontinued = false, bundles = false, maxVariants = 0 } = {}) {
   const rows = [];
   const skipped = [];
   const unmapped = new Map();
@@ -118,6 +140,11 @@ export function productRows(products, today, { images = false } = {}) {
     }
     if (SKIP_TYPES.has(type.toLowerCase())) {
       skipped.push({ title, reason: `not a part (${type})` });
+      continue;
+    }
+    const why = exclusionReason(p, { discontinued, bundles, maxVariants });
+    if (why) {
+      skipped.push({ title, reason: why });
       continue;
     }
     const handle = String(p?.handle ?? '').trim();

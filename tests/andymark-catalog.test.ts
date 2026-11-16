@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { IMAGE_WIDTH, buildCatalogZip, categoriesCsv, imageFor, mapCategory, priceText, productRows, robotsAllows, toCsv } from '../scripts/andymark-lib.mjs';
+import { IMAGE_WIDTH, buildCatalogZip, categoriesCsv, exclusionReason, imageFor, mapCategory, priceText, productRows, robotsAllows, toCsv } from '../scripts/andymark-lib.mjs';
 import { planAddItems, readAddFile } from '../src/io/add-items';
 
 const products = (JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/andymark-products.json', import.meta.url)), 'utf8')) as { products: unknown[] }).products;
@@ -95,6 +95,70 @@ describe('AndyMark catalog script (SPEC §23.7)', () => {
     const wheel = plan.newItems.find((n) => n.item.name.endsWith('6 in.'))!.item;
     expect(wheel.vendors[0]).toMatchObject({ supplier: 'AndyMark', partNo: 'am-2002', packSize: 1, packPriceCents: 121250, priceChecked: TODAY });
     expect(wheel).toMatchObject({ onHand: 0, desired: 0 });
+  });
+});
+
+describe('AndyMark catalog script: what is left out (Dan, 2026-11-16)', () => {
+  const part = (over: Record<string, unknown>) => ({ title: 'Part', handle: 'part', product_type: 'Spacers', tags: [], variants: [{ id: 1, title: 'Default Title', sku: 'am-1', price: '1.00' }], ...over });
+
+  it('leaves out discontinued products, by AndyMark’s own tag', () => {
+    expect(exclusionReason(part({ tags: ['View All', 'Discontinued'] }))).toBe('discontinued');
+    expect(exclusionReason(part({ tags: ['discontinued'] }))).toBe('discontinued');
+    expect(exclusionReason(part({ tags: ['Not discontinued soon'] }))).toBeNull();
+    expect(exclusionReason(part({ tags: ['Discontinued'] }), { discontinued: true })).toBeNull();
+  });
+
+  it('leaves out bundles and kits: by product type, by tag, or by title', () => {
+    expect(exclusionReason(part({ product_type: 'Hardware Bundles' }))).toBe('bundle');
+    expect(exclusionReason(part({ tags: ['FIRST® Robotics Competition Bundles'] }))).toBe('bundle');
+    expect(exclusionReason(part({ title: 'Robot Power Cable Kit' }))).toBe('bundle or kit');
+    expect(exclusionReason(part({ title: 'Electronic Bundles Builder' }))).toBe('bundle or kit');
+    expect(exclusionReason(part({ title: 'FRC Basic Starter Bundle' }))).toBe('bundle or kit');
+    expect(exclusionReason(part({ title: 'Hex Spacer Kit' }), { bundles: true })).toBeNull();
+  });
+
+  it('keeps a part sold in several sizes or ratings, and a pack of the same part', () => {
+    expect(exclusionReason(part({ title: 'Traction Wheels', product_type: 'Wheels', tags: ['Traction Wheels', 'View All'] }))).toBeNull();
+    expect(exclusionReason(part({ title: 'Machine Key Pack' }))).toBeNull();
+    expect(exclusionReason(part({ title: 'Skit Bracket' }))).toBeNull();
+  });
+
+  it('lists a row for every size and every durometer', () => {
+    const wheels = part({
+      title: 'Grip Wheel',
+      handle: 'grip-wheel',
+      product_type: 'Mecanum & Omni Wheels',
+      variants: [
+        { id: 1, title: '4 in. / 40A', sku: 'am-w440', price: '10.00' },
+        { id: 2, title: '4 in. / 60A', sku: 'am-w460', price: '10.00' },
+        { id: 3, title: '6 in. / 40A', sku: 'am-w640', price: '14.00' },
+        { id: 4, title: '8 in. / 60A', sku: 'am-w860', price: '18.00' },
+      ],
+    });
+    const { rows } = productRows([wheels], TODAY);
+    expect(rows.map((r) => [r.name, r.v1_part_no])).toEqual([
+      ['Grip Wheel - 4 in. / 40A', 'am-w440'],
+      ['Grip Wheel - 4 in. / 60A', 'am-w460'],
+      ['Grip Wheel - 6 in. / 40A', 'am-w640'],
+      ['Grip Wheel - 8 in. / 60A', 'am-w860'],
+    ]);
+  });
+
+  it('productRows leaves them out and says why; the options keep them', () => {
+    const list = [part({ title: 'Old', tags: ['Discontinued'] }), part({ title: 'A Bundle', product_type: 'Hardware Bundles' }), part({ title: 'Good' })];
+    expect(productRows(list, TODAY).skipped).toEqual([
+      { title: 'Old', reason: 'discontinued' },
+      { title: 'A Bundle', reason: 'bundle' },
+    ]);
+    expect(productRows(list, TODAY).rows.map((r) => r.name)).toEqual(['Good']);
+    expect(productRows(list, TODAY, { discontinued: true, bundles: true }).rows).toHaveLength(3);
+  });
+
+  it('--max-variants leaves out a configurator with too many variants, and is off by default', () => {
+    const many = part({ title: 'Swerve Module', variants: Array.from({ length: 40 }, (_, i) => ({ id: i + 1, title: `Option ${i}`, sku: `am-${i}`, price: '5.00' })) });
+    expect(exclusionReason(many)).toBeNull();
+    expect(exclusionReason(many, { maxVariants: 40 })).toBeNull();
+    expect(exclusionReason(many, { maxVariants: 30 })).toBe('too many variants (40)');
   });
 });
 

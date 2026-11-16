@@ -2,8 +2,8 @@
 // file (SPEC §23.7). Run on a computer with Node; the app never does this itself.
 //
 //   node scripts/andymark-catalog.mjs <output folder> [--delay 3000] [--max-pages 40] [--max-products N]
-//   --include discontinued,bundles,tools,programs   keep what is left out by default (see exclusionReason in andymark-lib.mjs)
-//   --collapse-over N    list a product with more than N variants once, "(multiple variants)" (default 50; 0 = never)
+//   --include discontinued,international,merchandise,game,programs,tools,bundles   keep what is left out by default (see exclusionReason in andymark-lib.mjs)
+//   --collapse-over N    list a product with more than N variants once, "(multiple variants)" (default 65; 0 = never)
 //   node scripts/andymark-catalog.mjs <output folder> --save-json feed.json   (also keep the feed it fetched)
 //   node scripts/andymark-catalog.mjs <output folder> --from-json <saved products.json>   (offline)
 //   node scripts/andymark-catalog.mjs <output folder> --max-products 12 --images          (a small pilot with photos)

@@ -110,7 +110,8 @@ export const isCombinedParent = (product) => (Array.isArray(product?.tags) ? pro
 
 /**
  * Why a product is left out, or null to keep it. Dan, 2026-11-16: no discontinued products, no
- * bundles, no tools, no FTC, FLL or Robits products unless also tagged FRC; a part that comes in several
+ * bundles, no tools, no merchandise, game pieces or pre-orders, no parts shipped from outside the US,
+ * no FTC, FLL or Robits products unless also tagged FRC; a part that comes in several
  * sizes or ratings is kept, one row each; assemblies ("Climber in a Box") come in.
  *  - discontinued: AndyMark's own "Discontinued" tag.
  *  - ftc, fll or robits: the type, a tag or the title names one of those programs, and no tag or type
@@ -121,7 +122,9 @@ export const isCombinedParent = (product) => (Array.isArray(product?.tags) ? pro
  *  - bundle: the type or a tag says "bundle", or the title says bundle, kit, builder or combo (those hold
  *    several different products). A single assembly ("in a Box", "Assembly", "Cart") is not left out for
  *    that, unless its title also says kit. A "pack" of the same part is not a bundle.
- * `include` is a Set of 'discontinued', 'bundles', 'tools', 'programs' (FTC, FLL, Robits) to keep anyway.
+ *  - outside the US, merchandise, game piece or pre-order: see isOutsideUS, isGameItem, and a type of "Merchandise".
+ * `include` is a Set of 'discontinued', 'international', 'merchandise', 'game', 'programs' (FTC, FLL, Robits),
+ * 'tools' and 'bundles': the groups to keep anyway.
  */
 export function exclusionReason(product, { include = new Set() } = {}) {
   const tags = Array.isArray(product?.tags) ? product.tags.map((t) => String(t)) : [];
@@ -129,7 +132,10 @@ export function exclusionReason(product, { include = new Set() } = {}) {
   const title = String(product?.title ?? '');
   const mentions = (re) => re.test(type) || tags.some((t) => re.test(t));
   if (!include.has('discontinued') && tags.some((t) => t.trim().toLowerCase() === 'discontinued')) return 'discontinued';
+  if (!include.has('international') && isOutsideUS(product)) return 'outside the US';
   if (!include.has('programs') && (mentions(OTHER_PROGRAMS) || /\bRobits\b/i.test(title)) && !mentions(FRC)) return 'ftc, fll or robits';
+  if (!include.has('merchandise') && /\bmerchandise\b/i.test(type)) return 'merchandise';
+  if (!include.has('game') && isGameItem(product)) return 'game piece or pre-order';
   if (!include.has('tools') && mentions(/\btools?\b/i)) return 'tool';
   if (tags.some((t) => TAG_COMBINED.test(t.trim())) && !isCombinedParent(product)) return 'part of a combined listing';
   if (!include.has('bundles')) {
@@ -141,8 +147,26 @@ export function exclusionReason(product, { include = new Set() } = {}) {
   return null;
 }
 
-/** Products with more than this many variants (and AndyMark's combined-listing parents) are listed once. */
-export const COLLAPSE_OVER = 50;
+/**
+ * Parts that ship from outside the US (Dan, 2026-11-16): AndyMark's Australian store lists its parts as
+ * "Ships from Sydney - <title>", with part numbers ending in AUS. Either marker is enough.
+ */
+export function isOutsideUS(product) {
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  return /^ships from\b/i.test(String(product?.title ?? '').trim()) || (variants.length > 0 && variants.every((v) => /AUS$/.test(String(v?.sku ?? '').trim())));
+}
+
+/**
+ * Game pieces and pre-orders (Dan, 2026-11-16): a product type that names a season or a year ("FIRST®
+ * Robotics Competition 2026 REBUILT™", "2027 FIRST® … season BIOCORE™"), or a title that says game piece,
+ * scoring element, pre-order or field carpet.
+ */
+export function isGameItem(product) {
+  return /\b(19|20)\d\d\b|\bseason\b/i.test(String(product?.product_type ?? '')) || /\b(game pieces?|scoring elements?|pre-?orders?|field carpet)\b/i.test(String(product?.title ?? ''));
+}
+
+/** A product with more than this many variants is listed once, as "(multiple variants)" (Dan, 2026-11-16: 65). */
+export const COLLAPSE_OVER = 65;
 
 /** Product types that are not parts at all; left out of the file. */
 export const SKIP_TYPES = new Set(['gift card', 'gift cards', 'shipping', 'donation', 'donations', 'service', 'services']);
@@ -223,7 +247,7 @@ export function productRows(products, today, { images = false, include = new Set
     // and hardware choices) is one row, not hundreds: AndyMark's combined-listing parents, and any product
     // with more than `collapseOver` variants (Dan, 2026-11-16). Its part number is left blank, the price is
     // the lowest of its variants, and the notes say so.
-    if (many && collapseOver > 0 && (isCombinedParent(p) || variants.length > collapseOver)) {
+    if (many && collapseOver > 0 && variants.length > collapseOver) {
       const prices = variants.map((v) => Number(priceText(v?.price))).filter((n) => n > 0);
       const options = (Array.isArray(p.options) ? p.options : []).map((o) => String(o?.name ?? '').trim()).filter((n) => n !== '' && n.toLowerCase() !== 'title');
       rows.push({

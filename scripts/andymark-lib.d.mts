@@ -6,6 +6,8 @@ export const CATEGORY_MAP: Record<string, [string, string]>;
 export const SKIP_TYPES: Set<string>;
 export const COLUMNS: string[];
 export function mapCategory(productType: unknown): { category: string; subcategory: string; mapped: boolean };
+export function isOutsideUS(product: unknown): boolean;
+export function isGameItem(product: unknown): boolean;
 export function isAssembly(title: unknown): boolean;
 export function isCombinedParent(product: unknown): boolean;
 export function exclusionReason(product: unknown, options?: { include?: Set<string> }): string | null;

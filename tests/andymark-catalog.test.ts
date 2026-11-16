@@ -161,6 +161,28 @@ describe('AndyMark catalog script: what is left out (Dan, 2026-11-16)', () => {
     expect(exclusionReason(part({ title: 'Tooling Plate', product_type: 'Brackets & Plates' }))).toBeNull();
   });
 
+  it('leaves out parts that ship from outside the US: the "Ships from Sydney" store and its AUS part numbers', () => {
+    expect(exclusionReason(part({ title: 'Ships from Sydney - Nut Drivers' }))).toBe('outside the US');
+    expect(exclusionReason(part({ title: 'Surface Mount Breaker', variants: [{ id: 1, title: 'Default Title', sku: 'am-0282aAUS', price: '60.00' }] }))).toBe('outside the US');
+    expect(exclusionReason(part({ title: 'Mixed', variants: [{ id: 1, sku: 'am-1AUS' }, { id: 2, sku: 'am-2' }] }))).toBeNull();
+    expect(exclusionReason(part({ title: 'Ships from Sydney - Nut Drivers' }), inc('international'))).toBeNull();
+  });
+
+  it('leaves out merchandise', () => {
+    expect(exclusionReason(part({ product_type: 'Merchandise', title: 'AndyMark Socks' }))).toBe('merchandise');
+    expect(exclusionReason(part({ product_type: 'Merchandise' }), inc('merchandise'))).toBeNull();
+  });
+
+  it('leaves out game pieces and pre-orders: by a season type, or by the title', () => {
+    expect(exclusionReason(part({ product_type: 'FIRST® Robotics Competition 2026 REBUILT™' }))).toBe('game piece or pre-order');
+    expect(exclusionReason(part({ product_type: '2027 FIRST® Robotics Competition season BIOCORE™' }))).toBe('game piece or pre-order');
+    expect(exclusionReason(part({ title: 'REEFSCAPE℠ Game Pieces' }))).toBe('game piece or pre-order');
+    expect(exclusionReason(part({ title: 'FIRST Robotics Competition Field Carpet Pre-Order' }))).toBe('game piece or pre-order');
+    expect(exclusionReason(part({ title: 'BIOCORE™ FRC Scoring Element Pre-Orders' }))).toBe('game piece or pre-order');
+    expect(exclusionReason(part({ product_type: 'FIRST® Robotics Competition 2026 REBUILT™' }), inc('game'))).toBeNull();
+    expect(exclusionReason(part({ title: 'Hex Spacers', product_type: 'Spacers' }))).toBeNull();
+  });
+
   it('keeps a part sold in several sizes or ratings, and a pack of the same part', () => {
     expect(exclusionReason(part({ title: 'Traction Wheels', product_type: 'Wheels', tags: ['Traction Wheels', 'View All'] }))).toBeNull();
     expect(exclusionReason(part({ title: 'Machine Key Pack' }))).toBeNull();
@@ -202,18 +224,30 @@ describe('AndyMark catalog script: what is left out (Dan, 2026-11-16)', () => {
 
 describe('AndyMark catalog script: products with many variants are listed once (Dan, 2026-11-16)', () => {
   const variants = (n: number) => Array.from({ length: n }, (_, i) => ({ id: i + 1, title: `Option ${i}`, sku: `am-${i}`, price: `${10 + i}.00` }));
-  const product = (over: Record<string, unknown>) => ({ title: 'Swerve Module', handle: 'swerve-module', product_type: 'Swerve Modules', tags: [], options: [{ name: 'Gear Ratio' }, { name: 'Wheel Type' }], variants: variants(6), ...over });
+  const product = (over: Record<string, unknown>) => ({ title: 'Swerve Module', handle: 'swerve-module', product_type: 'Swerve Modules', tags: [], options: [{ name: 'Gear Ratio' }, { name: 'Wheel Type' }], variants: variants(70), ...over });
 
-  it('an AndyMark combined-listing parent is one row, "(multiple variants)", with the lowest price and a note', () => {
-    const { rows } = productRows([product({ tags: ['Combined Listing Parent', 'combinedListing-am-X'] })], TODAY);
+  it('a product with more than 65 variants is one row, "(multiple variants)", with the lowest price and a note', () => {
+    const { rows } = productRows([product({})], TODAY);
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       name: 'Swerve Module (multiple variants)',
       v1_part_no: '',
       v1_url: 'https://www.andymark.com/products/swerve-module',
       v1_pack_price: '10.00',
-      notes: '6 variants (Gear Ratio, Wheel Type); choose on the product page. The price is the lowest of them.',
+      notes: '70 variants (Gear Ratio, Wheel Type); choose on the product page. The price is the lowest of them.',
     });
+  });
+
+  it('65 variants or fewer are a row per variant (spacers, gussets, belts, a gearbox with 52)', () => {
+    expect(productRows([product({ variants: variants(65) })], TODAY).rows).toHaveLength(65);
+    expect(productRows([product({ variants: variants(31), title: 'Hex Spacers', handle: 'hex-spacers' })], TODAY).rows).toHaveLength(31);
+    expect(productRows([product({ variants: variants(66) })], TODAY).rows.map((r) => r.name)).toEqual(['Swerve Module (multiple variants)']);
+  });
+
+  it('an AndyMark combined-listing parent follows the same limit', () => {
+    const parent = (n: number) => product({ tags: ['Combined Listing Parent', 'combinedListing-am-X'], variants: variants(n) });
+    expect(productRows([parent(12)], TODAY).rows).toHaveLength(12);
+    expect(productRows([parent(80)], TODAY).rows).toHaveLength(1);
   });
 
   it('the child products of a combined listing are left out, since the parent already lists them', () => {
@@ -222,25 +256,33 @@ describe('AndyMark catalog script: products with many variants are listed once (
     expect(productRows([child], TODAY).skipped).toEqual([{ title: 'Swerve Module - L3 / Billet', reason: 'part of a combined listing' }]);
   });
 
-  it('a product with more than 50 variants is one row too, and one with 50 or fewer is a row per variant', () => {
-    expect(productRows([product({ variants: variants(51) })], TODAY).rows.map((r) => r.name)).toEqual(['Swerve Module (multiple variants)']);
-    expect(productRows([product({ variants: variants(50) })], TODAY).rows).toHaveLength(50);
-  });
-
   it('the limit can be changed or turned off', () => {
     expect(productRows([product({ variants: variants(12) })], TODAY, { collapseOver: 10 }).rows).toHaveLength(1);
-    expect(productRows([product({ variants: variants(80), tags: ['Combined Listing Parent'] })], TODAY, { collapseOver: 0 }).rows).toHaveLength(80);
+    expect(productRows([product({ variants: variants(80) })], TODAY, { collapseOver: 0 }).rows).toHaveLength(80);
   });
 
   it('a one-variant product is never collapsed, and a collapsed row is read by the importer', async () => {
-    expect(productRows([product({ variants: variants(1), tags: ['Combined Listing Parent'] })], TODAY).rows[0]!.name).toBe('Swerve Module');
-    const { rows } = productRows([product({ variants: variants(60) })], TODAY);
+    expect(productRows([product({ variants: variants(1) })], TODAY).rows[0]!.name).toBe('Swerve Module');
+    const { rows } = productRows([product({ variants: variants(70) })], TODAY);
     const read = await readAddFile(await buildCatalogZip(rows), 'a.zip');
     expect(read.ok).toBe(true);
     if (!read.ok) return;
     expect(read.file.skipped).toEqual([]);
-    expect(read.file.rows[0]!.item).toMatchObject({ name: 'Swerve Module (multiple variants)', notes: expect.stringContaining('60 variants') });
+    expect(read.file.rows[0]!.item).toMatchObject({ name: 'Swerve Module (multiple variants)', notes: expect.stringContaining('70 variants') });
     expect(read.file.rows[0]!.item.vendors[0]).toMatchObject({ partNo: '', packPriceCents: 1000 });
+  });
+});
+
+describe('AndyMark catalog script: price and stock (Dan, 2026-11-16)', () => {
+  const sale = { title: 'Sale Part', handle: 'sale-part', product_type: 'Spacers', tags: [], variants: [{ id: 1, title: 'Default Title', sku: 'am-9', price: '7.50', compare_at_price: '10.00', available: false }] };
+
+  it('uses the current price, even when it is a sale price', () => {
+    expect(productRows([sale], TODAY).rows[0]!.v1_pack_price).toBe('7.50');
+  });
+
+  it('keeps a part that is out of stock', () => {
+    expect(exclusionReason(sale)).toBeNull();
+    expect(productRows([sale], TODAY).rows).toHaveLength(1);
   });
 });
 

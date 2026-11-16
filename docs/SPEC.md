@@ -1,7 +1,12 @@
-# FRC 2408 Inventory Management — Specification v0.24
+# FRC 2408 Inventory Management — Specification v0.25 (details confirmed 2026-11-16; not yet built)
 
 **Team:** FRC 2408 · **Owner:** Dan · **Target device:** Samsung Galaxy Tab S8 (Android, Chrome, not school-managed), plus optional helper devices for counting (§18)
 **Status:** v0.18 approved by Dan 2026-10-29 (released as app version 1.0.0). **v0.19 (app version 1.1.0): details confirmed by Dan 2026-11-10** (`docs/reviews/M24.md`) · **v0.20 (app version 1.2.0): details confirmed by Dan 2026-11-13** (`docs/reviews/M25.md`) · **v0.21 (app version 1.3.0): 2026-11-13, details for Dan to confirm** (`docs/reviews/M26.md`) · **v0.22 (app version 1.4.0): 2026-11-13, details for Dan to confirm** (`docs/reviews/M27.md`) · **v0.23 (app version 1.5.0): 2026-11-13, details for Dan to confirm** (`docs/reviews/M28.md`) · **v0.1:** 2026-10-17 10:35 CDT · **v0.2:** 2026-10-17 10:58 CDT · **v0.3:** 2026-10-17 11:45 CDT · **v0.4:** 2026-10-17 14:50 CDT · **v0.5:** 2026-10-17 15:40 CDT · **v0.6:** 2026-10-18 CDT · **v0.7:** 2026-10-18 CDT · **v0.8:** 2026-10-21 13:46 CDT · **v0.9:** 2026-10-28 CDT · **v0.10:** 2026-10-28 CDT · **v0.11:** 2026-10-28 CDT · **v0.12:** 2026-10-28 CDT · **v0.13:** 2026-10-28 CDT · **v0.14:** 2026-10-29 CDT · **v0.15:** 2026-10-29 CDT · **v0.16:** 2026-10-29 CDT · **v0.17:** 2026-10-29 CDT · **v0.18:** 2026-10-29 CDT · **v0.19:** 2026-11-10 CST · **v0.20:** 2026-11-12 CST · **v0.21:** 2026-11-13 CST · **v0.22:** 2026-11-13 CST · **v0.23:** 2026-11-13 CST
+
+**Changes in v0.25 (M30, app version 1.6.0; details (a)–(g) of §23.9 confirmed by Dan 2026-11-16, not yet built):** Add items from a file (backlog D1; Dan, 2026-11-13: add the items the app doesn't have from an items file, without a restore). Interviewed 2026-11-16.
+- **Add items from a file** (F33, §23). More › Backup, restore & price import gets **Add items from a file** (PIN). It reads a starter-catalog ZIP or a bare `inventory.csv`, shows a preview (new items, items already present, skipped rows, lists it would create), and adds only what is new. Existing items, counts, Drive links and settings are never touched. New items arrive with on hand 0 and desired 0. Missing categories, subcategories and suppliers are created. One **Undo this import** is kept.
+- **A first catalog script** (§23.7). `scripts/andymark-catalog.mjs`, run on a computer (never in the app), writes a starter-catalog ZIP from AndyMark's public product pages. It is built only after the vendor's terms of service have been checked (§10).
+- File formats: unchanged (the importer reads the starter-catalog format, §7 and §12). Database schema: unchanged. Count kit and counts file: unchanged.
 
 **Changes in v0.24:** Helper fixes after iPhone testing (Dan, 2026-11-13: "photo library shouldn't be an option, camera should be used to scan qr code and not take a picture… the version number does not show on the helper"). The kit file picker is limited to ZIP files again (the v0.22 removal let iOS add Photo Library and Take Photo to its file sheet). The helper's top bar and the first-launch screen show the app version. Google Drive in the iPhone's file list is the phone's setting (Files › Browse › ⋯ › Edit › Drive), not the app's. File formats and schema: unchanged.
 
@@ -406,6 +411,7 @@ Highlighting never relies on color alone: each state also has its own icon and w
 | F30 | Placed orders | **Mark ordered…** on a supplier group of the Automatic list or a named list (F27) records what was actually ordered from that supplier, as a placed order (§3, §21). Lines come in ticked, with the list's packs and the stored pack price; untick lines not ordered, change packs and prices to what was charged, and **+ Add line** for an inventory item (search) or a typed line. Then order or invoice number, payment / PO, placed date, tax, shipping, discount ($ or %), other fees, notes and receipts. The total updates as you type. Saving removes the ordered lines from a named list and adds their units to on order (§4), then offers to copy changed prices into the catalog (§21.3). Orders can be edited, cancelled or deleted (§21.4). PIN required for recording, editing, cancelling and deleting |
 | F31 | Receiving | An open order has **Receive…**: each line shows ordered, already received and a stepper for "received now", defaulting to what's still due; **Receive all** fills every line. Confirming adds the received units to each item's on hand in one step ("Add 50 to on hand for 3 items?"); typed lines and lines for deleted items are marked received without changing inventory. Status follows: partly received, then received. Receiving doesn't set last_counted. No PIN required (it adds stock, like F3) |
 | F32 | Order history and spending | **Order › History**: orders newest first, filtered by date range (This month, Last 30 days, This season, This school year, Last school year, Custom From–To; by placed date), supplier and status. Each order shows date, supplier, order #, status and total; tap opens it. **Spending summary** for the range: by supplier (orders, parts, discount, tax, shipping, fees, total) with a grand total, and by category (parts cost of item lines by the category copied onto the line, typed lines under "Other", then discount, tax, shipping and fees as their own rows, adding up to the same total). Cancelled orders are listed but excluded from totals. **Export CSV** (orders and summary) and **Export lines CSV** (one row per line); **Print summary** (one printable page, saved as a PDF like labels, §9). Viewing and exporting need no PIN. Details in §21.5 |
+| F33 | Add items from a file | **More › Backup, restore & price import › Add items from a file** (PIN) adds the items the tablet doesn't have yet from a starter-catalog ZIP or a bare `inventory.csv`, without a restore. A preview lists what will be added, what is already present, which rows are skipped and why, and which categories, subcategories and suppliers will be created; nothing changes until **Add items** is confirmed. New items arrive with on hand 0, desired 0, spares 0 and no last count; existing items, counts, Drive links and settings are never touched. **Undo this import** takes the added items back. Details in §23 |
 
 ## 6. Mentor PIN
 
@@ -486,6 +492,8 @@ v1 approach:
 2. One-tap link to check a price on the vendor's site (F11).
 3. **Price refresh with Claude:** before ordering, export a data-only backup, give it to Claude in a desktop chat with web search, and ask it to check current prices for items on the order list. Claude returns a price-update CSV, imported with F18. Counts recorded since the export are not overwritten.
 4. McMaster-Carr shows prices only to signed-in users, so McMaster options are added by the team (or in a price-refresh session where a mentor signs in).
+
+**Catalog files made by a script (v0.25).** A script run on a computer (§23.7), not the app, may read a vendor's public product pages to build a catalog file for F33. The app itself still never reads other websites. The vendor's terms of service and robots.txt are checked before a script is written for that vendor.
 
 ## 11. Categories (team structure, Dan 2026-10-21 12:28, revised 12:54; editable in the app via F9 and F28)
 
@@ -635,6 +643,7 @@ Stage 4 should use the Stage 3 mockup canvas as the visual reference and §17 fo
 | 2026-10-29 | Dan: "set this as version 1.0.0". `APP_VERSION` and `package.json` 1.0.0; SPEC stays v0.18 (no feature change). The tablet then starts fresh: site data cleared, first-launch setup (`docs/HANDOFF.md` §8) |
 | 2026-11-10 | Project review before the first full count (`docs/proposals/2026-11-10-review-backlog.md`). Dan: "lets do b1, b2, and b3 now before the count": a device id for every opened kit with a warning at import, new-item ids that never repeat, "saved to Downloads" shown as not sent, and the app's address as a QR code on Helper devices → v0.19, M24, `APP_VERSION` 1.1.0. Details Claude filled in are listed in `docs/reviews/M24.md` for Dan to confirm |
 | 2026-11-10 | Dan confirmed the M24 details (a)–(h) and decided against an independent review: "1 confirmed; 2 no review" |
+| 2026-11-16 | Dan, interviewed for the D1 spec (all answers 2026-11-16): reads the starter-catalog format, a ZIP or a bare `inventory.csv`; lives under More › Backup, restore & price import with the PIN; preview, then one Undo; missing categories and suppliers are created; an item is "already present" when vendor + part number match **or the name matches anywhere** (stricter than the backlog); new items get count 0 and desired 0 whatever the file says; vendor names match ignoring capitals and unknown vendors are created; broken or repeated rows are skipped and listed; the first scraper script is included, for AndyMark; M30, SPEC v0.25, app 1.6.0 → v0.25 / M30. Dan then confirmed details (a)–(g) of §23.9 as drafted (name match anywhere kept, source `team`, location ignored, bad rows skipped, script gated with unmapped to Misc, Undo keeps used items, 50 MB / 2,000-entry limit) |
 | 2026-11-13 | Dan, testing M28 on the iPhone: Photo Library offered, version not shown on the helper → ZIP filter restored, version shown → v0.24 / M29. Dan also asked for an "Add items from a file" import (backlog D1) |
 | 2026-11-13 | Dan, testing the iPhone: the file sheet still has no Google Drive → the kit picker also offers Open Google Drive (or the Kits folder when known) and Scan the Kits QR code → v0.23 / M28 |
 | 2026-11-13 | Dan: "for setting up helpers by category allow kits to contain just a subcategory…" → a category helper can be limited to ticked subcategories (all ticked by default), carried in kit.json → v0.22 / M27 |
@@ -903,3 +912,61 @@ After an order is saved, the app lists every item line whose item has a vendor o
 - **History (§21.5):** each preset range on boundary dates (first and last day included, the school year rolling over on its start date, season preset hidden when unset); the supplier and category summaries add up to the same total; cancelled orders excluded; both CSV layouts, with the formula guard.
 - **Backups:** `orders.csv` and `order-lines.csv` round-trip with receipts; an empty order history still writes both files; an older backup without them keeps the tablet's orders; a CSV-only restore keeps them; lines for items not in the backup survive as deleted-item lines.
 - **Upgrade:** a v3 database with real rows opens as v4 with nothing else changed; a v3 app refuses to write to a v4 database.
+
+## 23. Add items from a file (F33, v0.25)
+
+Backlog D1. For adding a vendor's parts, or a new batch of starter parts, to a tablet that already holds real counts. A restore can't do this: it replaces everything.
+
+### 23.1 The file
+- **Accepted:** a starter-catalog ZIP (`inventory.csv`, optional `categories.csv`, `suppliers.csv`, `photos/`; §7 and §12) or a bare `inventory.csv`. Anything else is refused with a message naming what was expected.
+- Columns are matched by header name (§7). Required per row: `name`, `category`, `unit`, and at least one vendor option with a supplier. Read: `name`, `category`, `subcategory`, `unit`, `barcode`, `notes`, `preferred_vendor`, `photo_file`, and each vendor option's supplier, part number, URL, pack size, pack price and price checked date. Not read: `id` (the tablet gives new items its own ids), `location`, `on_hand`, `desired`, `spares`, `source`, `last_counted`, `counted_by`.
+- A bare CSV adds items with no photos. `categories.csv` and `suppliers.csv`, when present, supply the category order, supplier websites and notes for anything the import creates.
+- The whole file is read before anything is shown. The app has no size limit on restore files today (HANDOFF §10), so this import sets one: a file over 50 MB, or a ZIP holding more than 2,000 entries, is refused before it is unpacked (see §23.9 g).
+
+### 23.2 The preview and the rules
+Opens after a file is picked and shows four lists with counts:
+1. **New items**, to be added.
+2. **Already present**, skipped. A row is already present when **any** of these holds: (a) a vendor option has the same supplier (ignoring capitals) and the same part number as a vendor option on an existing item; (b) the name, ignoring capitals and extra spaces, equals the name of any existing item, whatever its category or supplier.
+3. **Skipped rows**, each with its row number and reason: missing name, category or unit; no vendor option; pack size not a whole number ≥ 1; pack price not a number ≥ 0; a price checked date that isn't `YYYY-MM-DD`; or a repeat of an earlier row in the same file by the same rules as (a) and (b) (the first is kept).
+4. **Lists to create**: categories, subcategories and suppliers named in the file that the tablet doesn't have. Supplier names match existing ones ignoring capitals; a match keeps the tablet's spelling. Created categories go at the end of the category list in the file's order; created subcategories at the end of their category.
+
+The file is never rejected as a whole because of bad rows: good rows import and bad rows are listed (this differs from F18, which rejects the file). A file with no good rows adds nothing and says why.
+
+### 23.3 What gets added
+For each new item: a new id from the tablet's counter (never reused, as v0.19), `source` = `team`, on hand 0, desired 0, spares 0, no location, no `last_counted`, no `counted_by`. Other fields come from the file. If `preferred_vendor` is blank or names a missing option, option 1 is preferred. The items show as "not counted" and join count rounds like any item. Photos in the ZIP are resized and stored as in §8; a named photo missing from the ZIP leaves that item without one and is counted in the summary.
+
+### 23.4 Confirming and Undo
+**Add items** applies everything in one step (all or nothing). A summary says how many items, categories, subcategories and suppliers were added. **Undo this import** (More › Backup, restore & price import) removes the items and the lists the import created. It is one level, like the undo for a count import (§18.5, before v0.20): the next add, restore or fresh setup forgets it. An added item that has since been counted, edited, received into, or put on an order or named list is kept, and the message names those items. Undo needs the PIN, like the add.
+
+### 23.5 Storage, backups and helpers
+The database schema, backup files and count kit/counts file formats are unchanged; added items are ordinary items and appear in the next backup. A helper's kit made before the import doesn't include the new items; the tablet makes new kits as usual.
+
+### 23.6 UI
+Follows §17: the preview is a sheet with the four lists collapsed to counts and expandable; skipped rows can be copied. The PIN prompt comes before the file picker.
+
+### 23.7 The AndyMark catalog script
+- `scripts/andymark-catalog.mjs`, run with Node on a computer: `node scripts/andymark-catalog.mjs <output folder>`. It writes a starter-catalog ZIP (`inventory.csv`, `categories.csv`, `suppliers.csv`, `photos/`) in the §12 format, with supplier `AndyMark`, the product page as URL, pack size 1 unless the page says otherwise, the page's price and today's date as price checked, and a photo when the page has one.
+- **Gate:** it isn't written until AndyMark's terms of service and `robots.txt` have been read and the result recorded in the M30 review. If they forbid it, the script isn't built and F33 ships with the importer alone.
+- It reads public product pages only, never signs in, waits between requests, stops at a page limit, and sends a plain script name as its user agent. It never runs in the app.
+- Categories: AndyMark's product categories map to the §11 categories through a mapping table in the script; unmapped products go to Misc.
+- It is a convenience for mentors. Prices it writes are checked like any other (F14).
+
+### 23.8 Must-have tests for §23 (Vitest)
+- **Reading:** a ZIP and a bare CSV both read; columns by header; BOM and quoted cells; a wrong file type refused; `id`, `location`, `on_hand`, `desired`, `spares` in the file ignored.
+- **Matching:** same supplier + part number (different capitals, spaces) is present; same name under another category or supplier is present; a part number only on another supplier's option is not; a repeat inside the file keeps the first.
+- **Skips:** each §23.2 reason gives its row number and message; good rows still import; a file with no good rows adds nothing.
+- **Adding:** counts 0, desired 0, spares 0, no `last_counted`; new ids don't repeat after Undo and re-add; `source` is `team`; preferred vendor falls back to option 1; a supplier differing only in capitals reuses the tablet's; created lists in order; existing items, counts, Drive links and settings byte-for-byte unchanged (compare before and after).
+- **Photos:** stored resized; a missing photo counted, item still added.
+- **Undo:** removes added items and created lists; keeps and names an item counted or ordered since; forgotten after the next add or a restore.
+- **Backup:** after an import, a full backup and restore keeps the added items.
+- **Browser check** (`scripts/m30-ui-check.mjs`): PIN, file picked, preview lists, add, Inventory shows the items "not counted", Undo; at phone and tablet widths.
+- **Script:** the AndyMark script's parser is tested on saved sample pages, offline; the output passes the same reader as the app.
+
+### 23.9 Details (a)–(g), confirmed by Dan 2026-11-16 as written
+- (a) **"Already present" by name anywhere** (your choice) will also skip genuinely different parts that share a name, such as two vendors' "1/2 in. hex shaft". The preview lists them so you can see what was skipped.
+- (b) **Imported items are `source` = `team`**, because `source` has only `starter` and `team` and the schema stays unchanged.
+- (c) **Location in the file is ignored**; items arrive with none, like a new item before the walk-through.
+- (d) **Bad rows are skipped, not fatal**, unlike the price import.
+- (e) **The AndyMark script is gated** on the terms-of-service check, and unmapped AndyMark categories go to Misc.
+- (f) **Undo keeps items that have since been counted, edited or ordered**, and says so.
+- (g) **Size limit (my addition, not asked):** 50 MB and 2,000 ZIP entries, because the existing restore has none. Change the numbers if you like.

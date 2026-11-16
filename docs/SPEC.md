@@ -945,8 +945,8 @@ The database schema, backup files and count kit/counts file formats are unchange
 Follows §17: the preview is a sheet with the four lists collapsed to counts and expandable; skipped rows can be copied. The PIN prompt comes before the file picker.
 
 ### 23.7 The AndyMark catalog script
-- `scripts/andymark-catalog.mjs`, run with Node on a computer: `node scripts/andymark-catalog.mjs <output folder>`. It writes a starter-catalog ZIP (`inventory.csv`, `categories.csv`, `suppliers.csv`, `photos/`) in the §12 format, with supplier `AndyMark`, the product page as URL, pack size 1 unless the page says otherwise, the page's price and today's date as price checked, and a photo when the page has one.
-- **Gate:** it isn't written until AndyMark's terms of service and `robots.txt` have been read and the result recorded in the M30 review. If they forbid it, the script isn't built and F33 ships with the importer alone.
+- `scripts/andymark-catalog.mjs`, run with Node on a computer: `node scripts/andymark-catalog.mjs <output folder>`. It writes a starter-catalog ZIP (`inventory.csv`, `categories.csv`, `suppliers.csv`; no `photos/`) in the §12 format, with supplier `AndyMark`, the product page as URL, pack size 1 unless the page says otherwise, the page's price and today's date as price checked. **Facts only (Dan, 2026-11-16):** it copies product name, part number, price, URL and category, never photos or descriptions.
+- **Terms check, done 2026-11-16.** `robots.txt` allows general crawling (`Allow: /`, no crawl-delay) and blocks 32 named AI-training crawlers, so the script must not identify itself as one of them. The terms of service (`andymark.com/pages/terms`) don't mention robots, scraping or automated access; they copyright the site's content as a collective work, allow copying only to place an order, and allow viewing or downloading for "your own non-commercial use". Product descriptions and photos are covered; prices are not addressed. Facts only keeps the script to the team's own non-commercial purchasing data. This is a reading of the terms, not legal advice; if AndyMark objects, the script stops and F33 ships with the importer alone.
 - It reads public product pages only, never signs in, waits between requests, stops at a page limit, and sends a plain script name as its user agent. It never runs in the app.
 - Categories: AndyMark's product categories map to the §11 categories through a mapping table in the script; unmapped products go to Misc.
 - It is a convenience for mentors. Prices it writes are checked like any other (F14).
@@ -967,6 +967,6 @@ Follows §17: the preview is a sheet with the four lists collapsed to counts and
 - (b) **Imported items are `source` = `team`**, because `source` has only `starter` and `team` and the schema stays unchanged.
 - (c) **Location in the file is ignored**; items arrive with none, like a new item before the walk-through.
 - (d) **Bad rows are skipped, not fatal**, unlike the price import.
-- (e) **The AndyMark script is gated** on the terms-of-service check, and unmapped AndyMark categories go to Misc.
+- (e) **The AndyMark script** passed the terms-of-service check as facts only (no photos or descriptions; §23.7), and unmapped AndyMark categories go to Misc.
 - (f) **Undo keeps items that have since been counted, edited or ordered**, and says so.
 - (g) **Size limit (my addition, not asked):** 50 MB and 2,000 ZIP entries, because the existing restore has none. Change the numbers if you like.

@@ -64,29 +64,85 @@ export const CATEGORY_MAP = {
   gloves: ['Safety', 'Gloves'],
   tools: ['Tools', 'Specialty Tools'],
   wrenches: ['Tools', 'Wrenches'],
+  // The product types AndyMark actually uses (seen in its feed, 2026-11-16).
+  'brackets & plates': ['Mechanical', 'Brackets & Plates'],
+  'cables & wires': ['Electrical', 'Cables/Wires'],
+  'machine keys': ['Mechanical', 'Keys'],
+  encoders: ['Electrical', 'Sensors'],
+  'inertial measurement unit (imu) - gyroscope - accelerometer': ['Electrical', 'Sensors'],
+  vision: ['Electrical', 'Cameras'],
+  'batteries & chargers': ['Electrical', 'Batteries'],
+  'fuses breakers & distribution': ['Electrical', 'Power Distribution'],
+  gearmotors: ['Electrical', 'Motors'],
+  'metal & plastic sheet': ['Mechanical', 'Sheet Material'],
+  'traction wheels': ['Mechanical', 'Wheels'],
+  'mecanum & omni wheels': ['Mechanical', 'Wheels'],
+  tread: ['Mechanical', 'Wheels'],
+  'rollers & casters': ['Mechanical', 'Wheels'],
+  'collar clamps': ['Mechanical', 'Collars'],
+  'shaft adapters': ['Mechanical', 'Adapters'],
+  standoffs: ['Mechanical', 'Spacers'],
+  'extrusion & structure': ['Mechanical', 'Structure'],
+  'bumpers & accessories': ['Mechanical', 'Bumpers'],
+  'retaining clips': ['Fasteners', 'Retaining Clips'],
+  'pneumatics fittings': ['Pneumatics', 'Fittings'],
+  'pneumatic accumulation': ['Pneumatics', 'Accumulation'],
+  'pneumatic cylinders': ['Pneumatics', 'Cylinders'],
+  'solenoids & controllers': ['Pneumatics', 'Solenoids'],
+  'planetary gearboxes': ['Power Transfer', 'Gear Boxes'],
+  'spur gearboxes': ['Power Transfer', 'Gear Boxes'],
+  'banebots gearboxes and parts': ['Power Transfer', 'Gear Boxes'],
+  // Complete units (SPEC §11 Assemblies): swerve modules, and anything titled "in a Box", "Assembly" or "Cart".
+  'swerve modules': ['Assemblies', ''],
+  'swerve drive specialties': ['Assemblies', ''],
 };
 
+/** A single assembly, sold complete: a title that ends "in a Box", "Assembly" or "Cart" ("Climber in a Box", "Turret Assembly"), not a "kit" of parts and not a part for one ("Launcher in a Box Side Plate"). */
+export const isAssembly = (title) => /\b(in a box|assembly|cart)\s*$/i.test(String(title ?? '').trim()) && !/\bkits?\b/i.test(String(title ?? ''));
+
+const TAG_COMBINED_PARENT = /^combined listing parent$/i;
+const TAG_COMBINED = /^combinedlisting-/i;
+const OTHER_PROGRAMS = /\b(FTC|FIRST® Tech Challenge)\b|\bLEGO\b|\bFLL\b|\bRobits\b/i;
+const FRC = /\bFRC\b|FIRST® Robotics Competition/i;
+
+/** A product AndyMark groups as a "combined listing": the parent lists every option combination as a variant. */
+export const isCombinedParent = (product) => (Array.isArray(product?.tags) ? product.tags : []).some((t) => TAG_COMBINED_PARENT.test(String(t).trim()));
+
 /**
- * Why a product is left out, or null to keep it (Dan, 2026-11-16: no discontinued products and no
- * bundles; a part that comes in several sizes or ratings is kept, one row per size or rating).
- * Discontinued is AndyMark's own "Discontinued" tag. A bundle is a product whose type or a tag says
- * "bundle", or whose title says bundle, kit, builder or combo: those hold several different products.
- * A "pack" of the same part is not a bundle. Pass { discontinued: true } or { bundles: true } to keep them.
- * { maxVariants: N } also leaves out a product with more than N variants (a configurator such as a swerve
- * module with ratio, wheel and encoder choices makes hundreds of rows); 0, the default, keeps them all.
+ * Why a product is left out, or null to keep it. Dan, 2026-11-16: no discontinued products, no
+ * bundles, no tools, no FTC, FLL or Robits products unless also tagged FRC; a part that comes in several
+ * sizes or ratings is kept, one row each; assemblies ("Climber in a Box") come in.
+ *  - discontinued: AndyMark's own "Discontinued" tag.
+ *  - ftc, fll or robits: the type, a tag or the title names one of those programs, and no tag or type
+ *    says FRC (a tag like "Release - 2026 Other FRC Kickoff" counts as FRC).
+ *  - tool: the type or a tag says "tools" (AndyMark's own "Mechanical Tools", "Electrical Tools").
+ *  - part of a combined listing: a child product of a swerve module or gearbox listing. The parent lists
+ *    every option combination already (and is collapsed to one row), so the child would repeat it.
+ *  - bundle: the type or a tag says "bundle", or the title says bundle, kit, builder or combo (those hold
+ *    several different products). A single assembly ("in a Box", "Assembly", "Cart") is not left out for
+ *    that, unless its title also says kit. A "pack" of the same part is not a bundle.
+ * `include` is a Set of 'discontinued', 'bundles', 'tools', 'programs' (FTC, FLL, Robits) to keep anyway.
  */
-export function exclusionReason(product, { discontinued = false, bundles = false, maxVariants = 0 } = {}) {
+export function exclusionReason(product, { include = new Set() } = {}) {
   const tags = Array.isArray(product?.tags) ? product.tags.map((t) => String(t)) : [];
-  if (!discontinued && tags.some((t) => t.trim().toLowerCase() === 'discontinued')) return 'discontinued';
-  if (!bundles) {
-    const type = String(product?.product_type ?? '');
-    if (/\bbundles?\b/i.test(type) || tags.some((t) => /\bbundles?\b/i.test(t))) return 'bundle';
-    if (/\b(bundles?|kits?|builder|combo)\b/i.test(String(product?.title ?? ''))) return 'bundle or kit';
+  const type = String(product?.product_type ?? '');
+  const title = String(product?.title ?? '');
+  const mentions = (re) => re.test(type) || tags.some((t) => re.test(t));
+  if (!include.has('discontinued') && tags.some((t) => t.trim().toLowerCase() === 'discontinued')) return 'discontinued';
+  if (!include.has('programs') && (mentions(OTHER_PROGRAMS) || /\bRobits\b/i.test(title)) && !mentions(FRC)) return 'ftc, fll or robits';
+  if (!include.has('tools') && mentions(/\btools?\b/i)) return 'tool';
+  if (tags.some((t) => TAG_COMBINED.test(t.trim())) && !isCombinedParent(product)) return 'part of a combined listing';
+  if (!include.has('bundles')) {
+    if (!isAssembly(title)) {
+      if (mentions(/\bbundles?\b/i)) return 'bundle';
+      if (/\b(bundles?|kits?|builder|combo)\b/i.test(title)) return 'bundle or kit';
+    }
   }
-  const count = Array.isArray(product?.variants) ? product.variants.length : 0;
-  if (maxVariants > 0 && count > maxVariants) return `too many variants (${count})`;
   return null;
 }
+
+/** Products with more than this many variants (and AndyMark's combined-listing parents) are listed once. */
+export const COLLAPSE_OVER = 50;
 
 /** Product types that are not parts at all; left out of the file. */
 export const SKIP_TYPES = new Set(['gift card', 'gift cards', 'shipping', 'donation', 'donations', 'service', 'services']);
@@ -127,7 +183,7 @@ export function priceText(raw) {
  * title, sku, price and id; nothing else in the feed is touched.
  * @returns {{ rows: object[], skipped: { title: string, reason: string }[], unmapped: Map<string, number> }}
  */
-export function productRows(products, today, { images = false, discontinued = false, bundles = false, maxVariants = 0 } = {}) {
+export function productRows(products, today, { images = false, include = new Set(), collapseOver = COLLAPSE_OVER } = {}) {
   const rows = [];
   const skipped = [];
   const unmapped = new Map();
@@ -142,7 +198,7 @@ export function productRows(products, today, { images = false, discontinued = fa
       skipped.push({ title, reason: `not a part (${type})` });
       continue;
     }
-    const why = exclusionReason(p, { discontinued, bundles, maxVariants });
+    const why = exclusionReason(p, { include });
     if (why) {
       skipped.push({ title, reason: why });
       continue;
@@ -157,10 +213,36 @@ export function productRows(products, today, { images = false, discontinued = fa
       skipped.push({ title, reason: 'no variants' });
       continue;
     }
-    const { category, subcategory, mapped } = mapCategory(type);
+    // A complete assembly goes under Assemblies whatever AndyMark calls its type.
+    const { category, subcategory, mapped } = isAssembly(title) ? { category: 'Assemblies', subcategory: '', mapped: true } : mapCategory(type);
     if (!mapped) unmapped.set(type === '' ? '(no type)' : type, (unmapped.get(type === '' ? '(no type)' : type) ?? 0) + 1);
     const many = variants.length > 1;
     const image = images ? imageFor(p) : null;
+    const photo = images ? { photo_file: image?.file ?? '', _image_url: image?.url ?? '' } : {};
+    // A configurator (a swerve module with ratio, wheel and encoder choices; a gearbox with ratio, shaft
+    // and hardware choices) is one row, not hundreds: AndyMark's combined-listing parents, and any product
+    // with more than `collapseOver` variants (Dan, 2026-11-16). Its part number is left blank, the price is
+    // the lowest of its variants, and the notes say so.
+    if (many && collapseOver > 0 && (isCombinedParent(p) || variants.length > collapseOver)) {
+      const prices = variants.map((v) => Number(priceText(v?.price))).filter((n) => n > 0);
+      const options = (Array.isArray(p.options) ? p.options : []).map((o) => String(o?.name ?? '').trim()).filter((n) => n !== '' && n.toLowerCase() !== 'title');
+      rows.push({
+        name: `${title} (multiple variants)`,
+        category,
+        subcategory,
+        unit: 'each',
+        preferred_vendor: '1',
+        v1_supplier: SUPPLIER,
+        v1_part_no: '',
+        v1_url: `${SITE}/products/${handle}`,
+        v1_pack_size: '1',
+        v1_pack_price: prices.length > 0 ? Math.min(...prices).toFixed(2) : '',
+        v1_price_checked: today,
+        notes: `${variants.length} variants${options.length > 0 ? ` (${options.join(', ')})` : ''}; choose on the product page.${prices.length > 0 ? ' The price is the lowest of them.' : ''}`,
+        ...photo,
+      });
+      continue;
+    }
     for (const v of variants) {
       const vt = String(v?.title ?? '').trim();
       const label = many && vt !== '' && vt.toLowerCase() !== 'default title' ? ` - ${vt}` : '';
@@ -176,14 +258,15 @@ export function productRows(products, today, { images = false, discontinued = fa
         v1_pack_size: '1',
         v1_pack_price: priceText(v?.price),
         v1_price_checked: today,
-        ...(images ? { photo_file: image?.file ?? '', _image_url: image?.url ?? '' } : {}),
+        notes: '',
+        ...photo,
       });
     }
   }
   return { rows, skipped, unmapped };
 }
 
-export const COLUMNS = ['name', 'category', 'subcategory', 'unit', 'preferred_vendor', 'v1_supplier', 'v1_part_no', 'v1_url', 'v1_pack_size', 'v1_pack_price', 'v1_price_checked'];
+export const COLUMNS = ['name', 'category', 'subcategory', 'unit', 'notes', 'preferred_vendor', 'v1_supplier', 'v1_part_no', 'v1_url', 'v1_pack_size', 'v1_pack_price', 'v1_price_checked'];
 
 const cell = (s) => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 export const toCsv = (columns, rows) => '﻿' + [columns.join(','), ...rows.map((r) => columns.map((c) => cell(String(r[c] ?? ''))).join(','))].join('\r\n') + '\r\n';

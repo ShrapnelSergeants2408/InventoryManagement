@@ -1,5 +1,6 @@
 // Reads for a backup, the record that one was exported (F15, F16), and applying a restore (F17).
 import { buildDataCsv, buildFullBackup, type BackupKind } from '../io/backup';
+import { ADD_UNDO_KEY } from './add-items';
 import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
 import { loadSnapshot, replaceAll } from './inventory';
@@ -49,6 +50,7 @@ export async function applyRestore(db: InventoryDb, plan: RestorePlan, now = Dat
     if (plan.pending !== null) await replacePending(db, plan.pending, plan.pendingPhotos);
     if (plan.orders !== null) await replaceOrders(db, plan.orders, plan.receipts);
     await db.importUndo.clear();
+    await db.settings.delete(ADD_UNDO_KEY);
     return n;
   });
 }

@@ -1006,12 +1006,12 @@ High for the version display; the filter's effect on iOS's file sheet is unteste
 Same project. Branch `m30-add-items-from-file` from `main` (after PR #51, M29, which had already merged). Dan asked for the D1 spec, was interviewed for its content, confirmed details (a)–(g), and asked to build it.
 
 **WORK COMPLETED**
-SPEC v0.25 (F33, §23). AndyMark terms checked (robots.txt allows crawling; the terms don't mention scraping but limit copying of content): the script will copy facts only. Importer (`src/io/add-items.ts`, `src/data/add-items.ts`), the Add items from a file card with preview, summary and Undo on the Backup screen, version 1.6.0, review `docs/reviews/M30.md`. The AndyMark script is not built yet.
+SPEC v0.25 (F33, §23). AndyMark terms checked (robots.txt allows crawling; the terms don't mention scraping but limit copying of content): the script will copy facts only. Importer (`src/io/add-items.ts`, `src/data/add-items.ts`), the Add items from a file card with preview, summary and Undo on the Backup screen, version 1.6.0, review `docs/reviews/M30.md`. Then the AndyMark script (`scripts/andymark-catalog.mjs`, `scripts/andymark-lib.mjs`): it reads AndyMark's public `/products.json` feed (found by looking at the site: a Shopify store), facts only, checks robots.txt, waits between pages and stops at the first error. A HANDOFF row for the feature was added.
 
 **EVIDENCE**
-`npm test` 1013 passed (24 new); build clean; `scripts/m30-ui-check.mjs` 25 pass. Full `npm run checks` was started at commit time; its result is recorded below when known.
+`npm test` 1024 passed (35 new: 24 importer, 11 script); build clean; `scripts/m30-ui-check.mjs` 25 pass; full `npm run checks` 939 pass, with m5 updated for the fifth Backup card (39/39 on rerun); the script runs offline on a saved feed and its ZIP reads in the importer with no skipped rows. The one live attempt (robots.txt, then page 1) got 429 Too Many Requests after about three quick sample requests earlier in the session, and stopped as designed; it was not retried, so the live path is verified only as far as the robots.txt and first-request handling.
 
 **CONFIDENCE**
-High for the importer and screen in headless Chrome. Not yet run on the tablet.
+High for the importer and screen in headless Chrome. Medium for the script: the parsing and ZIP are tested offline, but it has not completed a live run, and its category table is a guess. Not yet run on the tablet.
 
-**Next:** the AndyMark script; then the tablet check in `docs/reviews/M30.md`, and Dan confirms details (h) and (i).
+**Next:** a full live run of the script when the rate limit clears; the tablet check in `docs/reviews/M30.md`; Dan confirms details (h), (i) and (j).

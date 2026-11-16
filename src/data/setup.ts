@@ -3,6 +3,7 @@
 // (empty) inventory and marks setup done in one transaction, so a tablet closed part-way
 // simply shows the choice again.
 import type { Category, Supplier } from '../domain/types';
+import { ADD_UNDO_KEY } from './add-items';
 import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
 import { replaceAll, type ReplaceAllInput } from './inventory';
@@ -34,7 +35,7 @@ export async function startInventory(db: InventoryDb, choice: StartChoice, data:
     // A fresh shop tablet starts with no helpers (§18.1), whatever an earlier install left.
     await db.helpers.clear();
     // …and nothing pending from helpers, nothing to undo (§18.5).
-    await Promise.all([db.pendingItems.clear(), db.pendingPhotos.clear(), db.importUndo.clear()]);
+    await Promise.all([db.pendingItems.clear(), db.pendingPhotos.clear(), db.importUndo.clear(), db.settings.delete(ADD_UNDO_KEY)]);
     if (p.pending) await replacePending(db, p.pending, p.pendingPhotos ?? new Map());
     await replaceOrders(db, p.orders ?? [], p.receipts ?? new Map());
     await db.settings.put({ key: SETUP_DONE, value: now });

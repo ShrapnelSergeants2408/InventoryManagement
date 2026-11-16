@@ -4,10 +4,12 @@ import { liveQuery } from 'dexie';
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import type { InventoryDb } from '../../../data/db';
 import { loadSnapshot } from '../../../data/inventory';
+import { applyAddItems, getAddUndo, undoAddItems, type AddResult, type AddUndo } from '../../../data/add-items';
 import { applyPriceImport } from '../../../data/price-import';
 import { formatBytes, formatDateTime } from '../../../domain/dates';
 import { daysSinceBackup } from '../../../domain/backup-reminder';
 import { buildDataCsv, type BackupKind } from '../../../io/backup';
+import { planAddItems, readAddFile, type AddPlan } from '../../../io/add-items';
 import { decodeCsvBytes } from '../../../io/csv';
 import { planPriceImport, type PricePlan, type PriceProblem } from '../../../io/price-import';
 import { readRestoreFile, type RestorePlan } from '../../../io/restore';
@@ -19,6 +21,7 @@ import { BackupBanner } from '../../shell/BackupBanner';
 import { href } from '../../shell/router';
 import { showToast } from '../../shell/toast';
 import { StorageError } from '../StorageError';
+import { AddItemsDone, AddItemsPreview, AddItemsUndoDialog } from './AddItemsDialogs';
 import { exportBackup, exportMessage } from './export-backup';
 import { PriceImportDone, PriceImportPreview, ProblemsDialog } from './ImportDialogs';
 import { RestoreDialog, type TabletNow } from './RestoreDialog';
@@ -45,6 +48,16 @@ function usePhotoStats(db: InventoryDb): PhotoStats | null {
   return stats;
 }
 
+/** The undo of the last "Add items from a file" (F33), or null when there is none. */
+function useAddUndo(db: InventoryDb): AddUndo | null {
+  const [undo, setUndo] = useState<AddUndo | null>(null);
+  useEffect(() => {
+    const sub = liveQuery(() => getAddUndo(db)).subscribe({ next: setUndo, error: () => setUndo(null) });
+    return () => sub.unsubscribe();
+  }, [db]);
+  return undo;
+}
+
 /** Opens the system file picker and resolves with the chosen file's name and bytes. */
 function usePicker(accept: string, onFile: (f: { name: string; bytes: Uint8Array }) => void) {
   const input = useRef<HTMLInputElement>(null);
@@ -69,7 +82,10 @@ type Dlg =
   | { kind: 'restore'; plan: RestorePlan }
   | { kind: 'problems'; title: string; fileName: string; problems: PriceProblem[]; warnings: string[]; footer: string }
   | { kind: 'pricePreview'; plan: PricePlan }
-  | { kind: 'priceDone'; plan: PricePlan };
+  | { kind: 'priceDone'; plan: PricePlan }
+  | { kind: 'addPreview'; plan: AddPlan }
+  | { kind: 'addDone'; fileName: string; result: AddResult }
+  | { kind: 'addUndo'; undo: AddUndo };
 
 export function BackupScreen() {
   const undo = useImportUndo();
@@ -86,7 +102,8 @@ export function BackupScreen() {
   const [busy, setBusy] = useState<string | null>(null);
   const [dlg, setDlg] = useState<Dlg | null>(null);
   const [importing, setImporting] = useState(false);
-  const snap = live.state === 'ready' ? live.value : null;
+  const addUndo = useAddUndo(db);
+  const snap =live.state === 'ready' ? live.value : null;
   const csvBytes = useMemo(() => (snap ? new TextEncoder().encode(buildDataCsv(snap)).length : null), [snap]);
 
   const doExport = async (kind: BackupKind) => {
@@ -161,6 +178,54 @@ export function BackupScreen() {
       showToast(`Couldn’t import ${plan.fileName}: ${e instanceof Error ? e.message : String(e)} Nothing was changed.`);
     } finally {
       setImporting(false);
+    }
+  };
+
+  const addPicker = usePicker(BACKUP_ACCEPT, async (f) => {
+    setBusy(`Checking ${f.name}…`);
+    try {
+      const read = await readAddFile(f.bytes, f.name);
+      if (!read.ok) {
+        setDlg({
+          kind: 'problems',
+          title: 'Can’t add items from this file — nothing was changed',
+          fileName: f.name,
+          problems: read.problems,
+          warnings: [],
+          footer: 'Choose a starter-catalog ZIP, or an inventory.csv with name, category and unit columns and at least one vendor option.',
+        });
+        return;
+      }
+      setDlg({ kind: 'addPreview', plan: planAddItems(read.file, await loadSnapshot(db)) });
+    } catch (e) {
+      showToast(`Couldn’t read ${f.name}: ${e instanceof Error ? e.message : String(e)} Nothing was changed.`);
+    } finally {
+      setBusy(null);
+    }
+  });
+
+  const addItems = async (plan: AddPlan) => {
+    if (importing || !(await gate('Adding items from a file adds new items, and any new categories and suppliers they need.'))) return;
+    setImporting(true);
+    try {
+      const result = await applyAddItems(db, plan);
+      setDlg({ kind: 'addDone', fileName: plan.fileName, result });
+    } catch (e) {
+      setDlg(null);
+      showToast(`Couldn’t add items from ${plan.fileName}: ${e instanceof Error ? e.message : String(e)} Nothing was changed.`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const undoAdd = async () => {
+    if (!(await gate('Undoing an import removes the items it added.'))) return null;
+    try {
+      return await undoAddItems(db);
+    } catch (e) {
+      setDlg(null);
+      showToast(`Couldn’t undo: ${e instanceof Error ? e.message : String(e)}`);
+      return null;
     }
   };
 
@@ -304,6 +369,40 @@ export function BackupScreen() {
             </button>
             {pricePicker.el}
           </section>
+
+          <section class="card bkcard" aria-labelledby="ai-h">
+            <div class="bk-h">
+              <h2 class="h2 grow" id="ai-h">
+                Add items from a file
+              </h2>
+              <span class="chip lock">
+                <Icon name="lock" />
+                PIN
+              </span>
+            </div>
+            <p class="bk-p">
+              Adds the items this tablet doesn’t have yet, from a starter-catalog ZIP or an <span class="mono">inventory.csv</span>. It shows what it will add first.{' '}
+              <strong>Never changes existing items, counts or settings.</strong> New items start at on hand 0 and desired 0.
+            </p>
+            <div class="setup-acts">
+              <button type="button" class="btn lg" disabled={!!busy || !snap} onClick={addPicker.open}>
+                <Icon name="upload" />
+                Choose items file (ZIP or CSV)…
+              </button>
+              {addUndo && (
+                <button type="button" class="btn danger lg" onClick={() => setDlg({ kind: 'addUndo', undo: addUndo })}>
+                  <Icon name="retry" />
+                  Undo this import
+                </button>
+              )}
+            </div>
+            {addUndo && (
+              <p class="small muted bk-p">
+                Last add: {plural(addUndo.items.length, 'item')} from {addUndo.fileName}, {formatDateTime(new Date(addUndo.at), new Date(now))}. It can be undone until the next add or a restore.
+              </p>
+            )}
+            {addPicker.el}
+          </section>
         </div>
       </div>
 
@@ -321,6 +420,9 @@ export function BackupScreen() {
       )}
       {dlg?.kind === 'pricePreview' && <PriceImportPreview plan={dlg.plan} busy={importing} onImport={() => void importPrices(dlg.plan)} onClose={() => setDlg(null)} />}
       {dlg?.kind === 'priceDone' && <PriceImportDone plan={dlg.plan} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'addPreview' && <AddItemsPreview plan={dlg.plan} busy={importing} onAdd={() => void addItems(dlg.plan)} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'addDone' && <AddItemsDone fileName={dlg.fileName} result={dlg.result} onClose={() => setDlg(null)} />}
+      {dlg?.kind === 'addUndo' && <AddItemsUndoDialog undo={dlg.undo} onUndo={undoAdd} onClose={() => setDlg(null)} />}
     </>
   );
 }

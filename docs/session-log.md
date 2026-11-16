@@ -999,3 +999,29 @@ Type check and build clean; M28 check 11/11. Full suite not re-run.
 High for the version display; the filter's effect on iOS's file sheet is untested here.
 
 **Next:** Dan retests on the iPhone; D1 needs a SPEC when requested.
+
+## 2026-11-16 — M30: Add items from a file (backlog D1)
+
+**SESSION IDENTITY**
+Same project. Branch `m30-add-items-from-file` from `main` (after PR #51, M29, which had already merged). Dan asked for the D1 spec, was interviewed for its content, confirmed details (a)–(g), and asked to build it.
+
+**WORK COMPLETED**
+SPEC v0.25 (F33, §23). AndyMark terms checked (robots.txt allows crawling; the terms don't mention scraping but limit copying of content): the script will copy facts only. Importer (`src/io/add-items.ts`, `src/data/add-items.ts`), the Add items from a file card with preview, summary and Undo on the Backup screen, version 1.6.0, review `docs/reviews/M30.md`. Then the AndyMark script (`scripts/andymark-catalog.mjs`, `scripts/andymark-lib.mjs`): it reads AndyMark's public `/products.json` feed (found by looking at the site: a Shopify store), facts only, checks robots.txt, waits between pages and stops at the first error. A HANDOFF row for the feature was added.
+
+**EVIDENCE**
+`npm test` 1024 passed (35 new: 24 importer, 11 script); build clean; `scripts/m30-ui-check.mjs` 25 pass; full `npm run checks` 939 pass, with m5 updated for the fifth Backup card (39/39 on rerun); the script runs offline on a saved feed and its ZIP reads in the importer with no skipped rows. The one live attempt (robots.txt, then page 1) got 429 Too Many Requests after about three quick sample requests earlier in the session, and stopped as designed; it was not retried, so the live path is verified only as far as the robots.txt and first-request handling.
+
+**CONFIDENCE**
+High for the importer and screen in headless Chrome. Medium for the script: the parsing and ZIP are tested offline, but it has not completed a live run, and its category table is a guess. Not yet run on the tablet.
+
+**Later the same day:** Dan confirmed (h), (i), (j) and asked for a pilot with images, vendor categories, a fix for the 429, and listed future vendors. The script now waits out a 429 and retries (3 s default delay), has an opt-in `--images`, and uses the vendor's product type as a subcategory under Misc when the table doesn't know it. Live pilot: 12 products, 41 parts, 12 photos (0.8 MB), imported cleanly in the importer, not kept; AndyMark refused twice (429) before the run went through, which the new backoff handled. Whether the photos are *allowed* is not something a run can show; recommendation recorded in the review (ask AndyMark in writing, keep them out of the public repository). `npm test` 1028 passed.
+
+**Then:** Dan asked to leave out discontinued products and bundles while keeping one row per size or rating. Fetched 750 products once (the first attempt lost them to a bug in the new `--save-json`, since fixed, so it was fetched twice), saved the feed, and worked offline: discontinued = AndyMark tag (177), bundles = type/tag/title (54), 519 products and 2,368 parts kept; wheels by size and durometer verified. Added `left-out.csv`, `--include-discontinued`, `--include-bundles`, `--max-variants`, `--save-json`. `npm test` 1034 passed.
+
+**Then, again:** Dan: assemblies come in; exclude FTC/FLL/Robits unless tagged FRC; exclude tools; list swerve modules and gearboxes once as "(multiple variants)"; asked what similar situations to consider. Worked offline on the saved 750-product feed: found that swerve and gearbox configurators are also listed as child products with identical part numbers (258 variants), so the children are left out and the parent is one row; assemblies go under Assemblies; the category table now has AndyMark's real type names. 750 → 330 products, 596 parts. Other situations are listed in SPEC §23.9 (m). `--max-variants`, `--include-discontinued` and `--include-bundles` were replaced by `--collapse-over` and `--include`. `npm test` 1042 passed.
+
+**Then:** Dan: exclude parts from outside the US, merchandise, game pieces and pre-orders; keep out-of-stock; use the current price; variant limit 65. Added `isOutsideUS` (title "Ships from…" or AUS part numbers) and `isGameItem` (season/year product types, or game piece, scoring element, pre-order, field carpet in the title); out-of-stock and sale prices needed no change (tests added). Collapse is now only by variant count (>65). 750 → 213 products, 489 parts. `npm test` 1048 passed.
+
+**Then:** Dan: scripts for Thrifty Bot, CTRE and REV with photos; same exclusions as AndyMark; ask about similar items; find REV's fastest rate at one request per page; no scripts for Vulcan Spring, Bimba or WCP; then "allow wcp products sold through other vendors". Checked each store's robots.txt, terms and feed first (recorded in SPEC §23.7). Moved the shared code into `scripts/catalog-common.mjs` (AndyMark's tests unchanged), wrote the Shopify and REV scripts, tested REV at 36 pages down to one a second without throttling (default 2 s), fixed a missing-robots.txt 404 on the photo host, set the Shopify default to 30 s after CTRE answered 429 at 10 s. Live pilots of six products with photos for each: all three ZIPs read cleanly by the importer. `npm test` 1073 passed.
+
+**Next:** a full live run of the script (a mentor, after reading the review's caveats); the tablet check in `docs/reviews/M30.md`; terms checks for the other vendors before any scripts.

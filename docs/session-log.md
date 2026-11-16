@@ -999,3 +999,19 @@ Type check and build clean; M28 check 11/11. Full suite not re-run.
 High for the version display; the filter's effect on iOS's file sheet is untested here.
 
 **Next:** Dan retests on the iPhone; D1 needs a SPEC when requested.
+
+## 2026-11-16 — M30: Add items from a file (backlog D1)
+
+**SESSION IDENTITY**
+Same project. Branch `m30-add-items-from-file` from `main` (after PR #51, M29, which had already merged). Dan asked for the D1 spec, was interviewed for its content, confirmed details (a)–(g), and asked to build it.
+
+**WORK COMPLETED**
+SPEC v0.25 (F33, §23). AndyMark terms checked (robots.txt allows crawling; the terms don't mention scraping but limit copying of content): the script will copy facts only. Importer (`src/io/add-items.ts`, `src/data/add-items.ts`), the Add items from a file card with preview, summary and Undo on the Backup screen, version 1.6.0, review `docs/reviews/M30.md`. The AndyMark script is not built yet.
+
+**EVIDENCE**
+`npm test` 1013 passed (24 new); build clean; `scripts/m30-ui-check.mjs` 25 pass. Full `npm run checks` was started at commit time; its result is recorded below when known.
+
+**CONFIDENCE**
+High for the importer and screen in headless Chrome. Not yet run on the tablet.
+
+**Next:** the AndyMark script; then the tablet check in `docs/reviews/M30.md`, and Dan confirms details (h) and (i).

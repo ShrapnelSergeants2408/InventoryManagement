@@ -942,7 +942,7 @@ For each new item: a new random id (`tm-` and 5 characters, as the item editor m
 The database schema, backup files and count kit/counts file formats are unchanged; added items are ordinary items and appear in the next backup. A helper's kit made before the import doesn't include the new items; the tablet makes new kits as usual.
 
 ### 23.6 UI
-Follows §17: the preview is a sheet with the four lists collapsed to counts and expandable; skipped rows can be copied. The PIN prompt comes before the file picker.
+Follows §17: the preview is a sheet with the four lists collapsed to counts and expandable; skipped rows can be copied. The PIN is asked when **Add items** and **Undo this import** are tapped, not before the file picker (as for the price import, F18): the mentor sees the preview first, and a PIN pad between the tap and the picker could lose the browser's permission to open it. Cancelling the PIN leaves the preview open. The card sits after Price update import on the Backup screen and is titled **Add items from a file**.
 
 ### 23.7 The AndyMark catalog script
 - `scripts/andymark-catalog.mjs`, run with Node on a computer: `node scripts/andymark-catalog.mjs <output folder>`. It writes a starter-catalog ZIP (`inventory.csv`, `categories.csv`, `suppliers.csv`; no `photos/`) in the §12 format, with supplier `AndyMark`, the product page as URL, pack size 1 unless the page says otherwise, the page's price and today's date as price checked. **Facts only (Dan, 2026-11-16):** it copies product name, part number, price, URL and category, never photos or descriptions.
@@ -969,4 +969,6 @@ Follows §17: the preview is a sheet with the four lists collapsed to counts and
 - (d) **Bad rows are skipped, not fatal**, unlike the price import.
 - (e) **The AndyMark script** passed the terms-of-service check as facts only (no photos or descriptions; §23.7), and unmapped AndyMark categories go to Misc.
 - (f) **Undo keeps items that have since been counted, edited or ordered**, and says so.
+- (h) **Where the PIN is asked (my change to §23.6, not yet confirmed):** at Add items and at Undo, after the preview, instead of before the file picker.
+- (i) **A barcode another item already has is left off (my addition, not yet confirmed)**, so a scan is never ambiguous.
 - (g) **Size limit (my addition, not asked):** 50 MB and 2,000 ZIP entries, because the existing restore has none. Change the numbers if you like.

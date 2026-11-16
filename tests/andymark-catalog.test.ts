@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { buildCatalogZip, categoriesCsv, mapCategory, priceText, productRows, robotsAllows, toCsv } from '../scripts/andymark-lib.mjs';
+import { IMAGE_WIDTH, buildCatalogZip, categoriesCsv, imageFor, mapCategory, priceText, productRows, robotsAllows, toCsv } from '../scripts/andymark-lib.mjs';
 import { planAddItems, readAddFile } from '../src/io/add-items';
 
 const products = (JSON.parse(readFileSync(fileURLToPath(new URL('./fixtures/andymark-products.json', import.meta.url)), 'utf8')) as { products: unknown[] }).products;
@@ -54,7 +54,7 @@ describe('AndyMark catalog script (SPEC §23.7)', () => {
       { title: 'No Variants', reason: 'no variants' },
     ]);
     expect(unmapped).toEqual(new Map([['Gizmos', 2]]));
-    expect(rows.find((r) => r.name === 'Mystery Part')).toMatchObject({ category: 'Misc', subcategory: '' });
+    expect(rows.find((r) => r.name === 'Mystery Part')).toMatchObject({ category: 'Misc', subcategory: 'Gizmos' });
   });
 
   it('a price of zero is no price; prices are plain dollars with two decimals', () => {
@@ -64,8 +64,8 @@ describe('AndyMark catalog script (SPEC §23.7)', () => {
 
   it('maps product types to the team’s categories ignoring capitals, anything else to Misc', () => {
     expect(mapCategory('NUTS')).toEqual({ category: 'Fasteners', subcategory: 'Nuts', mapped: true });
-    expect(mapCategory('Gizmos')).toEqual({ category: 'Misc', subcategory: '', mapped: false });
-    expect(mapCategory(undefined).category).toBe('Misc');
+    expect(mapCategory('Gizmos')).toEqual({ category: 'Misc', subcategory: 'Gizmos', mapped: false });
+    expect(mapCategory(undefined)).toEqual({ category: 'Misc', subcategory: '', mapped: false });
   });
 
   it('writes CSV with quotes doubled and a byte order mark', () => {
@@ -95,6 +95,44 @@ describe('AndyMark catalog script (SPEC §23.7)', () => {
     const wheel = plan.newItems.find((n) => n.item.name.endsWith('6 in.'))!.item;
     expect(wheel.vendors[0]).toMatchObject({ supplier: 'AndyMark', partNo: 'am-2002', packSize: 1, packPriceCents: 121250, priceChecked: TODAY });
     expect(wheel).toMatchObject({ onHand: 0, desired: 0 });
+  });
+});
+
+describe('AndyMark catalog script: the opt-in photos (pilot)', () => {
+  it('asks for the first image at a set width and names the file after the product', () => {
+    const bushing = products[0];
+    expect(imageFor(bushing)).toEqual({ url: `https://cdn.shopify.com/s/files/1/0000/0000/files/bushing.JPG?v=123&width=${IMAGE_WIDTH}`, file: 'photos/0875-in-id-1125-in-od-0750-in-long-bushing.jpg' });
+    expect(imageFor(products[3])!.url).toBe(`https://cdn.shopify.com/s/files/1/0000/0000/files/wheel.png?width=${IMAGE_WIDTH}`);
+    expect(imageFor(products[3])!.file).toBe('photos/example-wheel.png');
+    expect(imageFor(products[1])).toBeNull();
+    expect(imageFor({ handle: 'x', images: [{ src: 'http://insecure.example/a.jpg' }] })).toBeNull();
+  });
+
+  it('without images the rows have no photo columns at all', () => {
+    expect(Object.keys(productRows(products, TODAY).rows[0]!)).not.toContain('photo_file');
+  });
+
+  it('with images the variants of a product share one photo, and rows without one are left blank', () => {
+    const { rows } = productRows(products, TODAY, { images: true });
+    const wheels = rows.filter((r) => r.name?.startsWith('Example Wheel'));
+    expect(wheels.map((r) => r.photo_file)).toEqual(['photos/example-wheel.png', 'photos/example-wheel.png']);
+    expect(rows.find((r) => r.name === 'Mystery Part')!.photo_file).toBe('');
+  });
+
+  it('the ZIP with photos is read by the importer, which stores the photo for the rows that have one', async () => {
+    const { rows } = productRows(products, TODAY, { images: true });
+    const photos = new Map([
+      ['photos/0875-in-id-1125-in-od-0750-in-long-bushing.jpg', new Uint8Array([1, 2, 3])],
+      ['photos/example-wheel.png', new Uint8Array([4, 5, 6])],
+    ]);
+    const read = await readAddFile(await buildCatalogZip(rows, photos), 'andymark.zip');
+    expect(read.ok).toBe(true);
+    if (!read.ok) return;
+    expect(read.file.skipped).toEqual([]);
+    expect(read.file.missingPhotos).toEqual([]);
+    expect([...read.file.photos.keys()].sort()).toEqual(['photos/0875-in-id-1125-in-od-0750-in-long-bushing.jpg', 'photos/example-wheel.png']);
+    const plan = planAddItems(read.file, { items: [], suppliers: [], categories: [] });
+    expect(plan.newItems.filter((n) => n.photoFile !== '')).toHaveLength(3);
   });
 });
 

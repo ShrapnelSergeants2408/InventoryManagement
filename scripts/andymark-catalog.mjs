@@ -1,14 +1,20 @@
 // Builds a catalog ZIP of AndyMark parts for More › Backup, restore & price import › Add items from a
 // file (SPEC §23.7). Run on a computer with Node; the app never does this itself.
 //
-//   node scripts/andymark-catalog.mjs <output folder> [--delay 2000] [--max-pages 40] [--max-products N]
+//   node scripts/andymark-catalog.mjs <output folder> [--delay 3000] [--max-pages 40] [--max-products N]
 //   node scripts/andymark-catalog.mjs <output folder> --from-json <saved products.json>   (offline)
+//   node scripts/andymark-catalog.mjs <output folder> --max-products 12 --images          (a small pilot with photos)
 //
-// Facts only: product name, part number (SKU), price, product page and category. It copies no photos and
-// no descriptions (AndyMark's terms limit copying of site content; see SPEC §23.7 for the check made on
-// 2026-11-16). It reads AndyMark's public /products.json feed, never signs in, checks robots.txt first,
-// waits between requests (default 2 seconds), stops at a page limit, and gives up at the first error
-// instead of retrying hard. Run it once when you want a fresh list, not on a schedule.
+// By default: facts only (product name, part number (SKU), price, product page, category), no photos and
+// no descriptions. AndyMark's terms limit copying of site content (SPEC §23.7), so --images is opt-in:
+// it adds each product's first photo, kept in the ZIP for the team's own tablet. Don't publish those
+// photos (they must not go in the public repository) and ask AndyMark before relying on them.
+//
+// It reads AndyMark's public /products.json feed, never signs in, checks robots.txt first (for the
+// photo host too), and waits between requests (--delay, default 3 seconds, never under 1). If AndyMark
+// answers "too many requests" (429) it waits as long as it is asked, up to 5 minutes, slows down for
+// the rest of the run, and tries again up to 3 times before giving up. Run it when a fresh list is
+// wanted, not on a schedule.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SITE, buildCatalogZip, productRows, robotsAllows } from './andymark-lib.mjs';
@@ -21,25 +27,18 @@ const flag = (name, fallback) => {
   const i = args.indexOf(name);
   return i === -1 ? fallback : args[i + 1];
 };
-const out = args.find((a, i) => !a.startsWith('--') && !args[i - 1]?.startsWith('--'));
+const VALUE_FLAGS = new Set(['--delay', '--max-pages', '--max-products', '--from-json']);
+const out = args.find((a, i) => !a.startsWith('--') && !VALUE_FLAGS.has(args[i - 1]));
 if (!out) {
-  console.error('Usage: node scripts/andymark-catalog.mjs <output folder> [--delay ms] [--max-pages n] [--max-products n] [--from-json file]');
+  console.error('Usage: node scripts/andymark-catalog.mjs <output folder> [--delay ms] [--max-pages n] [--max-products n] [--images] [--from-json file]');
   process.exit(2);
 }
-const delay = Math.max(1000, Number(flag('--delay', 2000)) || 2000);
+let delay = Math.max(1000, Number(flag('--delay', 3000)) || 3000);
 const maxPages = Math.max(1, Number(flag('--max-pages', 40)) || 40);
 const maxProducts = Number(flag('--max-products', 0)) || Infinity;
 const fromJson = flag('--from-json', null);
+const images = args.includes('--images');
 const today = new Date().toISOString().slice(0, 10);
-
-async function get(path) {
-  const res = await fetch(SITE + path, { headers: { 'User-Agent': USER_AGENT, Accept: path.endsWith('.json') || path.includes('.json?') ? 'application/json' : 'text/plain' } });
-  if (!res.ok) {
-    const wait = res.headers.get('retry-after');
-    throw new Error(`AndyMark answered ${res.status} ${res.statusText} for ${path}${wait ? ` (it asks to wait ${wait} seconds)` : ''}. Stopping without retrying; try again in a while${res.status === 429 ? ', and with a longer --delay' : ''}.`);
-  }
-  return res;
-}
 
 // A failure prints its message, not a stack trace.
 for (const event of ['unhandledRejection', 'uncaughtException']) {
@@ -49,19 +48,47 @@ for (const event of ['unhandledRejection', 'uncaughtException']) {
   });
 }
 
+/** One request, spaced from the last by `delay`; a 429 or 503 is waited out (see the header) before trying again. */
+let last = 0;
+async function fetchPolite(url, accept) {
+  for (let attempt = 1; ; attempt++) {
+    const wait = last + delay - Date.now();
+    if (wait > 0) await sleep(wait);
+    last = Date.now();
+    const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: accept } });
+    if (res.ok) return res;
+    const where = new URL(url);
+    if ((res.status === 429 || res.status === 503) && attempt <= 3) {
+      const asked = Number(res.headers.get('retry-after'));
+      const seconds = Math.min(300, Number.isFinite(asked) && asked > 0 ? asked : 30 * attempt);
+      delay = Math.min(delay * 2, 30000);
+      console.log(`${where.host} answered ${res.status}; waiting ${seconds} s, then slowing to one request every ${delay / 1000} s (try ${attempt} of 3)`);
+      await sleep(seconds * 1000);
+      continue;
+    }
+    throw new Error(`${where.host} answered ${res.status} ${res.statusText} for ${where.pathname}. Stopping; try again in a while with a longer --delay.`);
+  }
+}
+
+const robotsCache = new Map();
+async function allowed(url) {
+  const u = new URL(url);
+  if (!robotsCache.has(u.origin)) robotsCache.set(u.origin, await (await fetchPolite(`${u.origin}/robots.txt`, 'text/plain')).text());
+  return robotsAllows(robotsCache.get(u.origin), u.pathname);
+}
+
 let products = [];
 if (fromJson) {
   products = JSON.parse(readFileSync(fromJson, 'utf8')).products ?? [];
   console.log(`Read ${products.length} products from ${fromJson}`);
 } else {
-  const robots = await (await get('/robots.txt')).text();
-  if (!robotsAllows(robots, '/products.json')) {
+  if (!(await allowed(`${SITE}/products.json`))) {
     console.error('robots.txt no longer allows /products.json for everyone. Not going further; check AndyMark’s terms again.');
     process.exit(1);
   }
   for (let page = 1; page <= maxPages && products.length < maxProducts; page++) {
-    await sleep(delay);
-    const batch = (await (await get(`/products.json?limit=250&page=${page}`)).json()).products ?? [];
+    const limit = Number.isFinite(maxProducts) ? Math.min(250, maxProducts - products.length) : 250;
+    const batch = (await (await fetchPolite(`${SITE}/products.json?limit=${limit}&page=${page}`, 'application/json')).json()).products ?? [];
     console.log(`page ${page}: ${batch.length} products`);
     if (batch.length === 0) break;
     products.push(...batch);
@@ -69,20 +96,48 @@ if (fromJson) {
   if (Number.isFinite(maxProducts)) products = products.slice(0, maxProducts);
 }
 
-const { rows, skipped, unmapped } = productRows(products, today);
+const { rows, skipped, unmapped } = productRows(products, today, { images });
 if (rows.length === 0) {
   console.error('No parts found; nothing written.');
   process.exit(1);
 }
-mkdirSync(out, { recursive: true });
-const file = join(out, `andymark-catalog-${today}.zip`);
-writeFileSync(file, await buildCatalogZip(rows));
 
+// Photos (opt-in): one request per product, never repeated for variants that share it.
+const photos = new Map();
+let noPhoto = 0;
+if (images) {
+  const urls = new Map(rows.filter((r) => r._image_url).map((r) => [r.photo_file, r._image_url]));
+  noPhoto = new Set(rows.filter((r) => !r._image_url).map((r) => r.v1_url.split('?')[0])).size;
+  if (fromJson) {
+    console.log('--images with --from-json: nothing is downloaded, so no photos are added.');
+    for (const r of rows) r.photo_file = '';
+  } else {
+    let n = 0;
+    for (const [file, url] of urls) {
+      n++;
+      if (!(await allowed(url))) {
+        console.log(`robots.txt doesn't allow ${new URL(url).pathname}; skipped`);
+        for (const r of rows) if (r.photo_file === file) r.photo_file = '';
+        continue;
+      }
+      const res = await fetchPolite(url, 'image/*');
+      photos.set(file, new Uint8Array(await res.arrayBuffer()));
+      if (n % 10 === 0 || n === urls.size) console.log(`photos: ${n} of ${urls.size}`);
+    }
+  }
+}
+
+mkdirSync(out, { recursive: true });
+const file = join(out, `andymark-catalog-${today}${images ? '-with-photos' : ''}.zip`);
+writeFileSync(file, await buildCatalogZip(rows, photos));
+
+const bytes = [...photos.values()].reduce((n, b) => n + b.length, 0);
 console.log(`\nWrote ${file}`);
 console.log(`${rows.length} parts from ${products.length} products; ${skipped.length} products left out.`);
+if (images) console.log(`${photos.size} photos (${(bytes / 1024 / 1024).toFixed(1)} MB)${noPhoto ? `; ${noPhoto} products had no photo` : ''}. Keep them off the public repository.`);
 if (unmapped.size > 0) {
   const top = [...unmapped].sort((a, b) => b[1] - a[1]);
-  console.log(`\n${top.length} AndyMark product types aren't in the category table and went to Misc (most common first).`);
+  console.log(`\n${top.length} AndyMark product types aren't in the category table; they went to Misc, with the type as the subcategory (most common first).`);
   console.log('Add the ones you want to CATEGORY_MAP in scripts/andymark-lib.mjs and run again:');
   for (const [t, n] of top.slice(0, 40)) console.log(`  ${n}  ${t}`);
 }

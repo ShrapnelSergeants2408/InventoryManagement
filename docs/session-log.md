@@ -1014,4 +1014,6 @@ SPEC v0.25 (F33, §23). AndyMark terms checked (robots.txt allows crawling; the 
 **CONFIDENCE**
 High for the importer and screen in headless Chrome. Medium for the script: the parsing and ZIP are tested offline, but it has not completed a live run, and its category table is a guess. Not yet run on the tablet.
 
-**Next:** a full live run of the script when the rate limit clears; the tablet check in `docs/reviews/M30.md`; Dan confirms details (h), (i) and (j).
+**Later the same day:** Dan confirmed (h), (i), (j) and asked for a pilot with images, vendor categories, a fix for the 429, and listed future vendors. The script now waits out a 429 and retries (3 s default delay), has an opt-in `--images`, and uses the vendor's product type as a subcategory under Misc when the table doesn't know it. Live pilot: 12 products, 41 parts, 12 photos (0.8 MB), imported cleanly in the importer, not kept; AndyMark refused twice (429) before the run went through, which the new backoff handled. Whether the photos are *allowed* is not something a run can show; recommendation recorded in the review (ask AndyMark in writing, keep them out of the public repository). `npm test` 1028 passed.
+
+**Next:** a full live run of the script (a mentor, after reading the review's caveats); the tablet check in `docs/reviews/M30.md`; terms checks for the other vendors before any scripts.

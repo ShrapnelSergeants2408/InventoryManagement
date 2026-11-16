@@ -69,10 +69,29 @@ export const CATEGORY_MAP = {
 /** Product types that are not parts at all; left out of the file. */
 export const SKIP_TYPES = new Set(['gift card', 'gift cards', 'shipping', 'donation', 'donations', 'service', 'services']);
 
-/** @returns {{ category: string, subcategory: string, mapped: boolean }} */
+/**
+ * The team's category for a vendor product type. AndyMark's feed has only a flat product type (its 215
+ * collections have no parent/child structure), so a type the table doesn't know keeps the vendor's own
+ * name as the subcategory under Misc, and the script lists it so it can be mapped.
+ * @returns {{ category: string, subcategory: string, mapped: boolean }}
+ */
 export function mapCategory(productType) {
-  const hit = CATEGORY_MAP[String(productType ?? '').trim().toLowerCase()];
-  return hit ? { category: hit[0], subcategory: hit[1], mapped: true } : { category: 'Misc', subcategory: '', mapped: false };
+  const type = String(productType ?? '').trim();
+  const hit = CATEGORY_MAP[type.toLowerCase()];
+  return hit ? { category: hit[0], subcategory: hit[1], mapped: true } : { category: 'Misc', subcategory: type, mapped: false };
+}
+
+/** Photos: a product's first image, asked for at most this wide (Shopify's CDN resizes with ?width=). */
+export const IMAGE_WIDTH = 1024;
+
+/** The first image's address with the size asked for, and the file name it gets in the ZIP; null when none. */
+export function imageFor(product) {
+  const src = String(product?.images?.[0]?.src ?? '').trim();
+  if (!/^https:\/\//i.test(src)) return null;
+  const ext = (/\.(jpe?g|png|webp)(?:\?|$)/i.exec(src)?.[1] ?? 'jpg').toLowerCase().replace('jpeg', 'jpg');
+  const stem = String(product.handle ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+  if (stem === '') return null;
+  return { url: `${src}${src.includes('?') ? '&' : '?'}width=${IMAGE_WIDTH}`, file: `photos/${stem}.${ext}` };
 }
 
 /** "9.00" → "9.00"; "1,234.5" → "1234.50"; zero, blank or not a number → '' (no price). */
@@ -86,7 +105,7 @@ export function priceText(raw) {
  * title, sku, price and id; nothing else in the feed is touched.
  * @returns {{ rows: object[], skipped: { title: string, reason: string }[], unmapped: Map<string, number> }}
  */
-export function productRows(products, today) {
+export function productRows(products, today, { images = false } = {}) {
   const rows = [];
   const skipped = [];
   const unmapped = new Map();
@@ -114,6 +133,7 @@ export function productRows(products, today) {
     const { category, subcategory, mapped } = mapCategory(type);
     if (!mapped) unmapped.set(type === '' ? '(no type)' : type, (unmapped.get(type === '' ? '(no type)' : type) ?? 0) + 1);
     const many = variants.length > 1;
+    const image = images ? imageFor(p) : null;
     for (const v of variants) {
       const vt = String(v?.title ?? '').trim();
       const label = many && vt !== '' && vt.toLowerCase() !== 'default title' ? ` - ${vt}` : '';
@@ -129,6 +149,7 @@ export function productRows(products, today) {
         v1_pack_size: '1',
         v1_pack_price: priceText(v?.price),
         v1_price_checked: today,
+        ...(images ? { photo_file: image?.file ?? '', _image_url: image?.url ?? '' } : {}),
       });
     }
   }
@@ -160,10 +181,16 @@ export function categoriesCsv(rows) {
 
 export const suppliersCsv = () => toCsv(['name', 'website', 'notes'], [{ name: SUPPLIER, website: SITE, notes: '' }]);
 
-/** The catalog ZIP (inventory.csv, categories.csv, suppliers.csv; no photos), ready for Add items from a file. */
-export async function buildCatalogZip(rows) {
+/**
+ * The catalog ZIP (inventory.csv, categories.csv, suppliers.csv), ready for Add items from a file.
+ * `photos` (file name in the ZIP → bytes) is empty unless the script was asked for images; the
+ * photo_file column is written only when some row has a photo.
+ */
+export async function buildCatalogZip(rows, photos = new Map()) {
   const zip = new JSZip();
-  zip.file('inventory.csv', toCsv(COLUMNS, rows));
+  const columns = rows.some((r) => r.photo_file) ? [...COLUMNS, 'photo_file'] : COLUMNS;
+  zip.file('inventory.csv', toCsv(columns, rows));
+  for (const [file, bytes] of photos) zip.file(file, bytes);
   zip.file('categories.csv', categoriesCsv(rows));
   zip.file('suppliers.csv', suppliersCsv());
   return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE' });

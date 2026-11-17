@@ -124,7 +124,7 @@ export function SetupScreen({ pinSet, onDone }: { pinSet: boolean; onDone: () =>
 
 type Stage =
   | { kind: 'choose' }
-  | { kind: 'loading'; items: number | null; photos: number; photoTotal: number | null; saving: boolean }
+  | { kind: 'loading'; items: number | null; photos: number; photoTotal: number | null; saving: boolean; note?: string }
   | { kind: 'checking'; name: string }
   | { kind: 'restore'; plan: RestorePlan }
   | { kind: 'refused'; name: string; problems: string[] }
@@ -139,6 +139,8 @@ interface Result {
   orderCents: number;
   fileName?: string;
   persisted: boolean | null;
+  /** Set when the tablet refused some photos (v0.29, M34). */
+  photoWarning?: string;
 }
 
 const EMPTY_SNAPSHOT = { items: [], suppliers: [], locations: [], categories: [] };
@@ -162,13 +164,20 @@ function StartStep(props: { onStarted: () => void; onDone: () => void }) {
   const file = useRef<HTMLInputElement>(null);
 
   const start = async (c: StartChoice, data: ReplaceAllInput, fileName?: string) => {
-    const photos = await startInventory(db, c, data);
+    const r = await startInventory(db, c, data, Date.now(), (n, total) =>
+      total > 0 && setStage((s) => (s.kind === 'loading' ? { ...s, saving: true, note: `Saving photos to this tablet… ${n} of ${total}` } : s)),
+    );
+    const photos = r.withPhotos;
+    const photoWarning =
+      r.photos.error === undefined
+        ? undefined
+        : `This tablet stored ${r.photos.photosSaved} of the ${r.photos.photosTotal} photos, then the browser refused the rest. Everything else is here. Restore the same backup again from More › Backup to try the photos again.`;
     forgetAllThumbnails();
     const persisted = await requestPersistentStorage();
     props.onStarted();
     setStage({
       kind: 'ready',
-      result: { choice: c, items: data.items.length, photos, suppliers: data.suppliers.length, categories: data.categories.length, orderCents: orderTotalCents(data.items, onOrderMap((data as { orders?: PlacedOrder[] }).orders ?? [])), fileName, persisted },
+      result: { choice: c, items: data.items.length, photos, suppliers: data.suppliers.length, categories: data.categories.length, orderCents: orderTotalCents(data.items, onOrderMap((data as { orders?: PlacedOrder[] }).orders ?? [])), fileName, persisted, photoWarning },
     });
   };
   const fail = (e: unknown) => {
@@ -235,7 +244,7 @@ function StartStep(props: { onStarted: () => void; onDone: () => void }) {
             <Progress label="Photos" done={stage.photoTotal === null ? null : stage.photos} total={stage.photoTotal} />
           </>
         )}
-        <p class="setup-note">{stage.saving ? 'Saving to this tablet…' : 'Keep the app open. This takes under a minute and only happens once.'}</p>
+        <p class="setup-note">{stage.note ?? (stage.saving ? 'Saving to this tablet…' : 'Keep the app open. This takes under a minute and only happens once.')}</p>
       </div>
     );
   }
@@ -401,6 +410,12 @@ function Ready({ result: r, onDone }: { result: Result; onDone: () => void }) {
           <Icon name="check" />
           {what}
         </li>
+        {r.photoWarning && (
+          <li role="alert">
+            <Icon name="low" />
+            {r.photoWarning}
+          </li>
+        )}
         <li>
           <Icon name={r.persisted ? 'check' : 'info'} />
           {storage}

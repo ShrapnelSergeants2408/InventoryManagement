@@ -2,7 +2,7 @@
 // share sheet. "Last sent … · n changes not sent yet". Opening another kit and Leave helper
 // mode both ask about unsent changes first (§18.2).
 import { useState } from 'preact/hooks';
-import { confirmSent, helperItems, joinKit, leaveHelperMode, markSent, pendingPhotos, type HelperDb, type HelperState } from '../../data/helper-db';
+import { confirmSent, helperItems, joinKit, leaveHelperMode, markSent, pendingPhotos, photoWarning, type HelperDb, type HelperState } from '../../data/helper-db';
 import { formatDateTime, nowLocalIso } from '../../domain/dates';
 import { sendSummary } from '../../domain/helper-mode';
 import { buildCountsFile, countsFileName, type ReadKit } from '../../io/count-kit';
@@ -66,11 +66,11 @@ export function HelperSendScreen({ db, state, onLeft }: { db: HelperDb; state: H
   const openKit = async (read: ReadKit) => {
     setBusy(true);
     try {
-      await joinKit(db, read);
+      const r = await joinKit(db, read);
       countPrefsForKit(read.kit);
       forgetAllThumbnails();
       setAsking(null);
-      showToast(`Opened the kit for ${read.kit.helperName}.`);
+      showToast(photoWarning(r) ?? `Opened the kit for ${read.kit.helperName}.`);
       location.hash = '#/count';
     } catch (e) {
       showToast(`Couldn’t open the kit: ${message(e)}`);

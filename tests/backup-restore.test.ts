@@ -85,7 +85,7 @@ async function planFor(db: InventoryDb, file: { name: string; bytes: Uint8Array 
 }
 
 async function applyPlan(db: InventoryDb, plan: RestorePlan, now = 1_000) {
-  return applyRestore(db, plan, now);
+  return (await applyRestore(db, plan, now)).withPhotos;
 }
 
 describe('backup file names (§7)', () => {

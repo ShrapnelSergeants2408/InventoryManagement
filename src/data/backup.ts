@@ -3,7 +3,7 @@ import { buildDataCsv, buildFullBackup, type BackupKind } from '../io/backup';
 import { ADD_UNDO_KEY } from './add-undo-key';
 import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
-import { loadSnapshot, replaceAll } from './inventory';
+import { itemsWithPhoto, loadSnapshot, replaceAll, savePhotosInBatches, type PhotoSave, type PhotoSaveProgress } from './inventory';
 import { loadOrderLists } from './order-lists';
 import { loadPending, replacePending } from './pending';
 import { loadOrders, replaceOrders } from './placed-orders';
@@ -37,20 +37,30 @@ export async function photoCount(db: InventoryDb): Promise<number> {
   return db.photos.count();
 }
 
+/** After a restore: items with a photo, and how storing the backup's photos went. */
+export interface RestoreResult {
+  withPhotos: number;
+  photos: PhotoSave;
+}
+
 /**
  * Applies a restore plan (F17) in one transaction: a CSV keeps the tablet's photos for matching
  * ids, its order lists (minus lines for items that are gone) and its pending items; a ZIP
  * replaces all three (§15 Q7d). Placed orders and receipts are replaced by a full backup that
- * has orders.csv, and kept otherwise (§21.6). Either clears Undo this import (§18.5). Returns how many items have a photo.
+ * has orders.csv, and kept otherwise (§21.6). Either clears Undo this import (§18.5).
+ * A ZIP's item photos are stored after, a batch at a time (v0.29, M34); until its new photo is
+ * stored an item keeps the tablet's old one.
  */
-export async function applyRestore(db: InventoryDb, plan: RestorePlan, now = Date.now()): Promise<number> {
+export async function applyRestore(db: InventoryDb, plan: RestorePlan, now = Date.now(), onPhotos?: PhotoSaveProgress): Promise<RestoreResult> {
   const tables = [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.pendingItems, db.pendingPhotos, db.importUndo, db.orders, db.receipts];
-  return db.transaction('rw', tables, async () => {
-    const n = await replaceAll(db, plan, now, { keepPhotos: plan.kind === 'csv', orderLists: plan.orderLists ?? undefined });
+  const csv = plan.kind === 'csv';
+  await db.transaction('rw', tables, async () => {
+    await replaceAll(db, plan, now, { keepPhotos: csv, orderLists: plan.orderLists ?? undefined, deferPhotos: true });
     if (plan.pending !== null) await replacePending(db, plan.pending, plan.pendingPhotos);
     if (plan.orders !== null) await replaceOrders(db, plan.orders, plan.receipts);
     await db.importUndo.clear();
     await db.settings.delete(ADD_UNDO_KEY);
-    return n;
   });
+  const photos = csv ? { photosSaved: 0, photosTotal: 0 } : await savePhotosInBatches(db, plan.photos, now, onPhotos);
+  return { withPhotos: await itemsWithPhoto(db), photos };
 }

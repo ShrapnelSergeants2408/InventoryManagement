@@ -31,7 +31,29 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
   const [understood, setUnderstood] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [backedUp, setBackedUp] = useState<string | null>(null);
+  // Restored, but the tablet refused some of the backup's photos (v0.29, M34).
+  const [partial, setPartial] = useState<{ done: string; saved: number; total: number } | null>(null);
   const now = new Date();
+
+  if (partial) {
+    return (
+      <Dialog label="Restored, some photos not stored" role="alertdialog" onClose={onClose}>
+        <h2 class="h2">Restored, some photos not stored</h2>
+        <p class="dlg-p">{partial.done}</p>
+        <div class="bk-store warn" role="status">
+          <Icon name="low" />
+          <p>
+            This tablet stored {partial.saved} of the backup’s {partial.total} photos, then the browser refused the rest. Every item, count and list was restored. Items whose photo wasn’t stored keep the photo they had, or show none. Restoring the same backup again tries the photos again.
+          </p>
+        </div>
+        <DialogActions>
+          <button type="button" class="btn pri lg" data-autofocus onClick={onClose}>
+            Close
+          </button>
+        </DialogActions>
+      </Dialog>
+    );
+  }
 
   const keptPhotos = plan.kind === 'csv' ? plan.items.filter((i) => tablet.photoIds.has(i.id)).length : 0;
   // Photos the ZIP names but doesn't have: the tablet keeps its own (Stage 5 finding 5).
@@ -68,9 +90,15 @@ export function RestoreDialog({ plan, tablet, onClose }: { plan: RestorePlan; ta
     if (!(await gate('Restoring replaces all inventory on this tablet.'))) return;
     setBusy('Replacing everything…');
     try {
-      const withPhotos = await applyRestore(db, plan);
+      const r = await applyRestore(db, plan, Date.now(), (n, total) => total > 0 && setBusy(`Saving photos… ${n} of ${total}`));
       forgetAllThumbnails();
-      showToast(`Restored ${plural(plan.items.length, 'item')} and ${plural(withPhotos, 'photo')} from ${plan.fileName}.`);
+      const done = `Restored ${plural(plan.items.length, 'item')} and ${plural(r.withPhotos, 'photo')} from ${plan.fileName}.`;
+      if (r.photos.error !== undefined) {
+        setBusy(null);
+        setPartial({ done, saved: r.photos.photosSaved, total: r.photos.photosTotal });
+        return;
+      }
+      showToast(done);
       onClose();
     } catch (e) {
       setBusy(null);

@@ -50,7 +50,15 @@ export async function replaceAll(
   db: InventoryDb,
   input: ReplaceAllInput,
   now = Date.now(),
-  opts: { keepPhotos?: boolean; orderLists?: readonly NamedOrderList[] } = {},
+  opts: {
+    keepPhotos?: boolean;
+    orderLists?: readonly NamedOrderList[];
+    /**
+     * v0.29 (M34): `photos` aren't stored here; the caller stores them after its transaction with
+     * savePhotosInBatches. Until then an item keeps the photo it had, if any.
+     */
+    deferPhotos?: boolean;
+  } = {},
 ): Promise<number> {
   const supplierNames = input.suppliers.map((s) => s.name);
   for (const item of input.items) {
@@ -70,9 +78,16 @@ export async function replaceAll(
     } else {
       const keep = new Set((input.missingPhotos ?? []).filter((id) => ids.has(id) && !input.photos.has(id)));
       const existing = await db.photos.toCollection().primaryKeys();
-      await db.photos.bulkDelete(existing.filter((id) => !keep.has(id)));
-      await db.photos.bulkAdd([...input.photos].map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now })));
-      withPhoto = new Set([...input.photos.keys(), ...existing.filter((id) => keep.has(id))]);
+      if (opts.deferPhotos) {
+        // The old photo stays until its new one is stored, so a refused batch never loses a photo.
+        const stay = new Set(existing.filter((id) => keep.has(id) || (ids.has(id) && input.photos.has(id))));
+        await db.photos.bulkDelete(existing.filter((id) => !stay.has(id)));
+        withPhoto = stay;
+      } else {
+        await db.photos.bulkDelete(existing.filter((id) => !keep.has(id)));
+        await db.photos.bulkAdd([...input.photos].map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now })));
+        withPhoto = new Set([...input.photos.keys(), ...existing.filter((id) => keep.has(id))]);
+      }
     }
     await Promise.all([db.items.clear(), db.suppliers.clear(), db.locations.clear(), db.categories.clear()]);
     await db.items.bulkAdd(input.items.map((i) => toItemRow({ ...i, hasPhoto: withPhoto.has(i.id) }, now)));
@@ -82,6 +97,52 @@ export async function replaceAll(
     await db.settings.put({ key: 'lastChangeAt', value: now });
     return input.items.filter((i) => withPhoto.has(i.id)).length;
   });
+}
+
+/** How many photos were stored; `error` when the browser refused a batch and it stopped. */
+export interface PhotoSave {
+  photosSaved: number;
+  photosTotal: number;
+  error?: string;
+}
+
+/** Called after each batch: photos stored so far, of how many. */
+export type PhotoSaveProgress = (saved: number, total: number) => void;
+
+export const PHOTO_BATCH = 50;
+
+/**
+ * Stores photos PHOTO_BATCH at a time (v0.29, M34), each batch with its items' hasPhoto in its
+ * own transaction. Android Chrome refused 1533 photo Blobs in one transaction ("UnknownError:
+ * Error preparing Blob/File data to be stored in object store"), which stopped a helper kit
+ * opening and would stop a restore. Stops at the first refused batch; what was stored stays, and
+ * an item whose new photo wasn't stored keeps its old one (replaceAll deferPhotos).
+ */
+export async function savePhotosInBatches(db: InventoryDb, photos: ReadonlyMap<string, Blob>, now: number, onProgress?: PhotoSaveProgress): Promise<PhotoSave> {
+  const all = [...photos];
+  let saved = 0;
+  onProgress?.(0, all.length);
+  for (let i = 0; i < all.length; i += PHOTO_BATCH) {
+    const batch = all.slice(i, i + PHOTO_BATCH);
+    try {
+      await db.transaction('rw', db.items, db.photos, async () => {
+        const there = new Set((await db.items.bulkGet(batch.map(([id]) => id))).flatMap((r) => (r ? [r.id] : [])));
+        const rows = batch.filter(([id]) => there.has(id)).map(([itemId, full]) => ({ itemId, full, thumb: null, updatedAt: now }));
+        await db.photos.bulkPut(rows);
+        await db.items.where('id').anyOf([...there]).modify({ hasPhoto: true });
+        saved += rows.length;
+      });
+    } catch (e) {
+      return { photosSaved: saved, photosTotal: all.length, error: e instanceof Error ? e.message : String(e) };
+    }
+    onProgress?.(saved, all.length);
+  }
+  return { photosSaved: saved, photosTotal: all.length };
+}
+
+/** How many items have a photo now. */
+export async function itemsWithPhoto(db: InventoryDb): Promise<number> {
+  return db.items.filter((i) => i.hasPhoto).count();
 }
 
 /** The counts a stepper can change without the PIN (F3; desired and spares on the detail card, F7). */

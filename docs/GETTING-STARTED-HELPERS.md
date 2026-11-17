@@ -102,6 +102,9 @@ Importing the same file twice changes nothing, so when in doubt, import again.
 | What you see | What to do |
 |---|---|
 | The phone doesn't ask "What is this device?" or looks out of date | Reload the page. On an iPhone, if that doesn't help, clear Safari's data for the site (send counts first if there are any) |
+| "Couldn’t open the kit on this device: photos.bulkAdd() … Error preparing Blob/File data…" | The phone still has app version 1.7.2 or older. Reload the page and choose the kit again. From 1.7.3 the kit opens and the photos are saved after it |
+| "This device could only store n of m photos" | The kit is open and counting works. Items without a stored photo show no picture. Nothing to do |
+| Drive says the folder is inaccessible or asks to request access | The phone opened Drive with an account the folder isn't shared with. In the Drive app, tap the profile picture and switch to the student's school account, then scan again. Check the student is on the folder's sharing list: **Contributor** or higher on the Counts folder to upload counts; Viewer is enough for Kits. A school account may be blocked from folders owned outside the school; then ask the school's IT, or put the folders in a drive the school owns |
 | "This file isn't a count kit", "This is a counts file…" or "This is an inventory backup…" | The student picked the wrong file. Pick the one named after the helper, like `Bin_A-B_Helper.zip` |
 | The kit file is greyed out in the picker | Download it to the phone first, then pick it from Downloads or Files |
 | A phone lost its data mid-count | Import the last file it sent, then send that helper a new kit. Only what wasn't sent needs recounting; items imported earlier this round show as counted, so the student can pick up where they stopped |

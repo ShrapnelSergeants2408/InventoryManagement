@@ -1,6 +1,6 @@
 # Full review — regression, usability, code (2026-11-17)
 
-**Reviewed:** `main` at the M30 merge (`3c4af38`), app version 1.6.0, SPEC v0.25. **Status:** proposals only. Nothing here is approved; each item needs a spec entry before it's built (HANDOFF §5). The priority shown is the reviewer's suggestion, for Dan to set.
+**Reviewed:** `main` at the M30 merge (`3c4af38`), app version 1.6.0, SPEC v0.25. **Status:** R1, R2 and R4 built as M31 (app 1.7.0, `docs/reviews/M31.md`); R3 was already built; R7, R8 and R9 built as M33 (app 1.7.2, `docs/reviews/M33.md`); R5 left as is (Dan). The rest are proposals only. Nothing here is approved; each item needs a spec entry before it's built (HANDOFF §5). The priority shown is the reviewer's suggestion, for Dan to set.
 
 ## 1. Regression result
 

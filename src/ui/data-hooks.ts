@@ -1,4 +1,5 @@
-// Live data for screens: Dexie liveQuery re-runs the query whenever a table it read changes.
+// Live data for screens: Dexie liveQuery re-runs the query whenever a table it read changes
+// (the shared hooks are in live.ts, review R7).
 import { liveQuery } from 'dexie';
 import { createContext } from 'preact';
 import { useContext, useEffect, useMemo, useState } from 'preact/hooks';
@@ -17,6 +18,9 @@ import type { Helper } from '../domain/helpers';
 import type { NamedOrderList } from '../domain/order-lists';
 import { DEFAULT_SETTINGS, getSettings, type Settings } from '../data/settings';
 import { makeThumbnail } from '../io/image';
+import { useLive, useLiveValue, type Live } from './live';
+
+export type { Live } from './live';
 
 export const DbContext = createContext<InventoryDb | null>(null);
 
@@ -26,47 +30,22 @@ export function useDb(): InventoryDb {
   return db;
 }
 
-export type Live<T> = { state: 'loading' } | { state: 'ready'; value: T } | { state: 'error'; error: unknown };
-
+/** Items, suppliers, locations and categories, live. */
 export function useSnapshot(): Live<InventorySnapshot> {
   const db = useDb();
-  const [live, setLive] = useState<Live<InventorySnapshot>>({ state: 'loading' });
-  useEffect(() => {
-    const sub = liveQuery(() => loadSnapshot(db)).subscribe({
-      next: (value) => setLive({ state: 'ready', value }),
-      error: (error: unknown) => setLive({ state: 'error', error }),
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return live;
+  return useLive(() => loadSnapshot(db), [db]);
 }
 
 /** Named order lists (F27), A–Z, live. */
 export function useOrderLists(): Live<NamedOrderList[]> {
   const db = useDb();
-  const [live, setLive] = useState<Live<NamedOrderList[]>>({ state: 'loading' });
-  useEffect(() => {
-    const sub = liveQuery(() => loadOrderLists(db)).subscribe({
-      next: (value) => setLive({ state: 'ready', value }),
-      error: (error: unknown) => setLive({ state: 'error', error }),
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return live;
+  return useLive(() => loadOrderLists(db), [db]);
 }
 
 /** Placed orders (F30), newest first, live. */
 export function useOrders(): Live<PlacedOrder[]> {
   const db = useDb();
-  const [live, setLive] = useState<Live<PlacedOrder[]>>({ state: 'loading' });
-  useEffect(() => {
-    const sub = liveQuery(() => loadOrders(db)).subscribe({
-      next: (value) => setLive({ state: 'ready', value }),
-      error: (error: unknown) => setLive({ state: 'error', error }),
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return live;
+  return useLive(() => loadOrders(db), [db]);
 }
 
 const NONE_ON_ORDER: OnOrder = new Map();
@@ -80,15 +59,10 @@ export function useOnOrder(): OnOrder {
   return useMemo(() => (live.state === 'ready' ? onOrderMap(live.value) : NONE_ON_ORDER), [live]);
 }
 
-/** Device settings (stale-price age etc.), live; defaults until loaded or if the read fails. */
+/** Device settings (stale-price age etc.), live; defaults until loaded, and the last ones if a read fails. */
 export function useSettings(): Settings {
   const db = useDb();
-  const [settings, setSettings] = useState<Settings>({ ...DEFAULT_SETTINGS });
-  useEffect(() => {
-    const sub = liveQuery(() => getSettings(db)).subscribe({ next: setSettings, error: () => undefined });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return settings;
+  return useLiveValue(() => getSettings(db), { ...DEFAULT_SETTINGS }, [db], 'keep');
 }
 
 // Thumbnails: object URLs cached for the session, made one at a time so a fully expanded
@@ -220,38 +194,17 @@ export function useThumbnail(itemId: string, hasPhoto: boolean): string | null {
 /** Helper devices (§18.1), A–Z, live. */
 export function useHelpers(): Live<Helper[]> {
   const db = useDb();
-  const [live, setLive] = useState<Live<Helper[]>>({ state: 'loading' });
-  useEffect(() => {
-    const sub = liveQuery(() => loadHelpers(db)).subscribe({
-      next: (value) => setLive({ state: 'ready', value }),
-      error: (error: unknown) => setLive({ state: 'error', error }),
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return live;
+  return useLive(() => loadHelpers(db), [db]);
 }
 
 /** Pending items from helpers (§18.5), live. */
 export function usePending(): Live<PendingRecord[]> {
   const db = useDb();
-  const [live, setLive] = useState<Live<PendingRecord[]>>({ state: 'loading' });
-  useEffect(() => {
-    const sub = liveQuery(() => loadPending(db)).subscribe({
-      next: (value) => setLive({ state: 'ready', value }),
-      error: (error: unknown) => setLive({ state: 'error', error }),
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return live;
+  return useLive(() => loadPending(db), [db]);
 }
 
 /** The import Undo this import would reverse (§18.5), or null; live. */
 export function useImportUndo(): ImportUndo | null {
   const db = useDb();
-  const [undo, setUndo] = useState<ImportUndo | null>(null);
-  useEffect(() => {
-    const sub = liveQuery(() => getImportUndo(db)).subscribe({ next: setUndo, error: () => setUndo(null) });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return undo;
+  return useLiveValue(() => getImportUndo(db), null, [db], 'reset');
 }

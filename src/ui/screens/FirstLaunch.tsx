@@ -6,7 +6,7 @@ import { useState } from 'preact/hooks';
 import logoUrl from '../../../assets/team-logo-512.png?url';
 import { HelperDb, joinKit } from '../../data/helper-db';
 import type { ReadKit } from '../../io/count-kit';
-import { APP_VERSION } from '../../io/backup';
+import { APP_VERSION } from '../../domain/app-version';
 import { Icon } from '../icons';
 import { KitPicker, KitSummary } from '../helper/KitPicker';
 import { countPrefsForKit } from '../helper/session';

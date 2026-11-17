@@ -10,30 +10,34 @@ import { SETUP_DONE, STARTER_LOADED, isSetUp, watchPersistentStorage } from '../
 import { TopBar } from './components/common';
 import { DbContext } from './data-hooks';
 import { CountScreen } from './screens/count/Count';
-import { HelpersScreen } from './screens/count/Helpers';
-import { ImportScreen } from './screens/count/Import';
-import { PendingScreen } from './screens/count/Pending';
 import { InventoryScreen } from './screens/inventory/Inventory';
 import { DetailScreen } from './screens/item/Detail';
 import { EditorScreen } from './screens/item/Editor';
-import { BackupScreen } from './screens/more/Backup';
-import { CategoriesScreen } from './screens/more/Categories';
-import { LocationsScreen } from './screens/more/Locations';
 import { MoreScreen } from './screens/more/More';
-import { SettingsScreen } from './screens/more/Settings';
-import { SuppliersScreen } from './screens/more/Suppliers';
 import { OrderScreen } from './screens/order/Order';
-import { HistoryScreen } from './screens/order/History';
-import { PlacedOrderScreen } from './screens/order/Placed';
-import { LabelsScreen } from './screens/labels/Labels';
 import { ScanScreen } from './screens/scan/Scan';
-import { FirstLaunch } from './screens/FirstLaunch';
-import { SetupScreen } from './screens/Setup';
-import { HelperApp } from './helper/HelperApp';
 import { AppOutdated, OpenBlocked, StorageError, UpdatedElsewhere } from './screens/StorageError';
 import { GateHost } from './shell/GateHost';
 import { Shell } from './shell/Shell';
 import { useRoute, type Route } from './shell/router';
+import { lazyScreen, preloadScreens } from './shell/lazy';
+
+// Loaded on demand (review R8): screens a visit rarely opens, first-time setup and the helper app,
+// with the libraries only they use. The everyday screens above stay in the main bundle.
+const HelpersScreen = lazyScreen(() => import('./screens/count/Helpers').then((m) => m.HelpersScreen));
+const ImportScreen = lazyScreen(() => import('./screens/count/Import').then((m) => m.ImportScreen));
+const PendingScreen = lazyScreen(() => import('./screens/count/Pending').then((m) => m.PendingScreen));
+const BackupScreen = lazyScreen(() => import('./screens/more/Backup').then((m) => m.BackupScreen));
+const CategoriesScreen = lazyScreen(() => import('./screens/more/Categories').then((m) => m.CategoriesScreen));
+const LocationsScreen = lazyScreen(() => import('./screens/more/Locations').then((m) => m.LocationsScreen));
+const SettingsScreen = lazyScreen(() => import('./screens/more/Settings').then((m) => m.SettingsScreen));
+const SuppliersScreen = lazyScreen(() => import('./screens/more/Suppliers').then((m) => m.SuppliersScreen));
+const HistoryScreen = lazyScreen(() => import('./screens/order/History').then((m) => m.HistoryScreen));
+const PlacedOrderScreen = lazyScreen(() => import('./screens/order/Placed').then((m) => m.PlacedOrderScreen));
+const LabelsScreen = lazyScreen(() => import('./screens/labels/Labels').then((m) => m.LabelsScreen));
+const FirstLaunch = lazyScreen(() => import('./screens/FirstLaunch').then((m) => m.FirstLaunch));
+const SetupScreen = lazyScreen(() => import('./screens/Setup').then((m) => m.SetupScreen));
+const HelperApp = lazyScreen(() => import('./helper/HelperApp').then((m) => m.HelperApp));
 
 /** Setup still to do: everything (no PIN yet), or only the inventory's starting point. */
 type SetupNeeded = 'all' | 'start' | null;
@@ -181,6 +185,11 @@ export function App() {
     void deviceRole().then((r) => (r.role === 'main' ? openMain() : setBoot(r.role === 'helper' ? { state: 'helper', db: r.db } : { state: 'role' })));
   };
   useEffect(start, []);
+  // Once the inventory is open, fetch the on-demand screens in the background (R8).
+  const ready = boot.state === 'ready' && !boot.setup;
+  useEffect(() => {
+    if (ready) preloadScreens();
+  }, [ready]);
   // Ask for persistent storage on every launch until granted, and again once installed (§2, T-01).
   useEffect(() => watchPersistentStorage(), []);
 

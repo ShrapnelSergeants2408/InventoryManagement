@@ -177,7 +177,8 @@ src/
     screens/          one folder per area (inventory, item, order, scan, count, labels, more)
     helper/           the helper-device app (Count, Scan, Send)
     components/       shared pieces: dialogs, steppers, keypad, scanner, select bar
-    data-hooks.ts     live queries: screens re-render when the data they read changes
+    data-hooks.ts     live queries: screens re-render when the data they read changes (live.ts: the shared hook)
+    shell/lazy.tsx    screens loaded on demand (the everyday ones are in the main bundle)
   styles/             CSS, with design tokens in tokens.css
 tests/                Vitest unit tests; tests/helpers.ts builds test items
 scripts/

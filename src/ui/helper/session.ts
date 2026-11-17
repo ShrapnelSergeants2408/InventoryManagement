@@ -1,8 +1,8 @@
 // Helper mode (SPEC §18.3): screens shared with the shop tablet (count-in, the location
 // scanner, the top bar) read this to tell a helper device apart. null on the shop tablet.
-import { liveQuery } from 'dexie';
+import { useLive } from '../live';
 import { createContext } from 'preact';
-import { useContext, useEffect, useState } from 'preact/hooks';
+import { useContext } from 'preact/hooks';
 import { loadHelperState, type HelperDb, type HelperState } from '../../data/helper-db';
 import { loadCountOptions, saveCountOptions, saveCountPause } from '../../data/prefs';
 import type { HelperKit } from '../../domain/helper-mode';
@@ -31,13 +31,5 @@ export function countPrefsForKit(kit: HelperKit): void {
 
 /** The helper's kit, changes and pending items, live. */
 export function useHelperState(db: HelperDb): Live<HelperState | null> {
-  const [live, setLive] = useState<Live<HelperState | null>>({ state: 'loading' });
-  useEffect(() => {
-    const sub = liveQuery(() => loadHelperState(db)).subscribe({
-      next: (value) => setLive({ state: 'ready', value }),
-      error: (error: unknown) => setLive({ state: 'error', error }),
-    });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return live;
+  return useLive(() => loadHelperState(db), [db]);
 }

@@ -6,7 +6,7 @@ import { moveItemsTo } from '../../../data/lists';
 import { loadExpanded, loadFilters, loadRecent, saveExpanded, saveFilters } from '../../../data/prefs';
 import { localIsoDate } from '../../../domain/dates';
 import { NO_FILTERS, activeFilterCount, type Filters } from '../../../domain/filters';
-import { buildInventoryView, filterOptions, type InventoryView } from '../../../domain/inventory-view';
+import { ROW_PAGE, buildInventoryView, filterOptions, limitLines, listOrder, type InventoryView } from '../../../domain/inventory-view';
 import { placeLabel } from '../../../domain/lists';
 import { keepExisting, selectState, withIds } from '../../../domain/selection';
 import type { Item } from '../../../domain/types';
@@ -65,6 +65,11 @@ export function InventoryScreen() {
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [moveOpen, setMoveOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  // Rows drawn for this search and these filters (v0.26, R1): a new search or filter starts again at ROW_PAGE.
+  const rowsKey = JSON.stringify([query, filters]);
+  const [more, setMore] = useState(savedRows);
+  const rows = more.key === rowsKey ? more.n : ROW_PAGE;
+  const showMore = () => setMore((savedRows = { key: rowsKey, n: rows + ROW_PAGE }));
 
   useEffect(() => saveFilters(filters), [filters]);
   useEffect(() => saveExpanded(expanded), [expanded]);
@@ -206,6 +211,18 @@ export function InventoryScreen() {
           onAll={() => setPicked(withIds(selected, view.shownIds, true))}
           onClear={() => setPicked(new Set())}
         >
+          {/* Labels for the selection (v0.26, R4), in list order like the Labels tab. */}
+          {selected.size === 0 || !snap ? (
+            <button type="button" class="btn" disabled>
+              <Icon name="labels" />
+              Labels
+            </button>
+          ) : (
+            <a class="btn" href={href.labels(listOrder(chosen, snap.categories).map((i) => i.id))}>
+              <Icon name="labels" />
+              Labels
+            </a>
+          )}
           <button type="button" class="btn" disabled={selected.size === 0} onClick={() => setAddOpen(true)}>
             <Icon name="listAdd" />
             Add to order list…
@@ -253,7 +270,7 @@ export function InventoryScreen() {
           </p>
         </StateMessage>
       ) : (
-        <List view={view} toggle={toggle} select={selecting ? { selected, set: (ids, on) => setPicked(withIds(selected, ids, on)) } : null} />
+        <List view={view} rows={rows} onMore={showMore} toggle={toggle} select={selecting ? { selected, set: (ids, on) => setPicked(withIds(selected, ids, on)) } : null} />
       )}
 
       {moveOpen && snap && chosen.length > 0 && (
@@ -348,14 +365,20 @@ function QuickFilters(props: {
 
 // Where the list was scrolled, so coming back from an item's detail card keeps the place.
 let savedScroll = 0;
+// How many rows Show more had reached, and for which search and filters, kept for the same reason.
+let savedRows = { key: '', n: ROW_PAGE };
 
 interface Selection {
   selected: ReadonlySet<string>;
   set: (ids: readonly string[], on: boolean) => void;
 }
 
-function List({ view, toggle, select }: { view: InventoryView; toggle: (key: string) => void; select: Selection | null }) {
+function List(props: { view: InventoryView; rows: number; onMore: () => void; toggle: (key: string) => void; select: Selection | null }) {
+  const { view, toggle, select } = props;
   const db = useDb();
+  // Search and filters open every matching group, so only the first rows are drawn (v0.26, R1).
+  // Browsing draws what the user has opened, as before.
+  const drawn = view.filtering ? limitLines(view.lines, props.rows) : { lines: view.lines, hidden: 0 };
   const box = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (box.current) box.current.scrollTop = savedScroll;
@@ -369,7 +392,7 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
     });
   return (
     <div class="list" ref={box} onScroll={(e) => (savedScroll = (e.currentTarget as HTMLDivElement).scrollTop)}>
-      {view.lines.map((ln) => {
+      {drawn.lines.map((ln) => {
         if (ln.kind === 'item') {
           if (select) return <SelectRow key={ln.info.item.id} item={ln.info.item} info={ln.info} select={select} />;
           return <ItemRow key={ln.info.item.id} info={ln.info} onStep={onStep} onSet={onSet} />;
@@ -423,6 +446,16 @@ function List({ view, toggle, select }: { view: InventoryView; toggle: (key: str
           </button>
         );
       })}
+      {drawn.hidden > 0 && (
+        <div class="list-more">
+          <button type="button" class="btn lg" onClick={props.onMore}>
+            Show {Math.min(ROW_PAGE, drawn.hidden)} more
+          </button>
+          <span class="small muted">
+            {drawn.hidden} more {drawn.hidden === 1 ? 'match' : 'matches'} not shown yet. Type more of the name or part # to narrow the list.
+          </span>
+        </div>
+      )}
       <div class="list-foot small muted">
         {view.filtering
           ? `${plural(view.shown, 'matching item')}`

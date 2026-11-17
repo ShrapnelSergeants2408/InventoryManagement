@@ -262,3 +262,30 @@ export function filterOptions(items: readonly Item[], categories: readonly Categ
     locations: locs,
   };
 }
+
+/**
+ * Item rows drawn at first, and added by each "Show more" (v0.26, review R1). Drawing is what is
+ * slow on the tablet: at 3,000 items a one-letter search drew 2,348 rows and took about 1 s on a
+ * desktop and 7.7 s at a quarter of its speed. 100 rows is about what the 129-item starter catalog draws today.
+ */
+export const ROW_PAGE = 100;
+
+/**
+ * The lines up to and including the `max`-th item row (v0.26, R1). Group headers after it are left out
+ * too, so a header never appears without its rows; the headers that are drawn keep their exact
+ * counts. `hidden` is how many item rows were left out.
+ */
+export function limitLines(lines: readonly ListLine[], max: number): { lines: ListLine[]; hidden: number } {
+  const out: ListLine[] = [];
+  let rows = 0;
+  let hidden = 0;
+  for (const ln of lines) {
+    if (ln.kind === 'item') {
+      if (rows < max) {
+        rows++;
+        out.push(ln);
+      } else hidden++;
+    } else if (rows < max) out.push(ln);
+  }
+  return { lines: out, hidden };
+}

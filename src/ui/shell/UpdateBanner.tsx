@@ -3,20 +3,71 @@
 // count or an open form.
 import { registerSW } from 'virtual:pwa-register';
 import { useEffect, useState } from 'preact/hooks';
+import { CHECK_EVERY_MS, dueForCheck, type UpdateResult } from '../../domain/update-check';
 import { Icon } from '../icons';
 
 let applyUpdate: ((reload?: boolean) => Promise<void>) | null = null;
 let waiting = false;
 const listeners = new Set<() => void>();
+let registration: ServiceWorkerRegistration | undefined;
+let lastCheck = 0;
+
+function announce(): void {
+  waiting = true;
+  for (const l of listeners) l();
+}
+
+/** Asks the browser to look for a new version, unless one was looked for recently (v0.26, R2). */
+function checkSoon(now = Date.now()): void {
+  if (!registration || !navigator.onLine || !dueForCheck(now, lastCheck)) return;
+  lastCheck = now;
+  void registration.update().catch(() => undefined);
+}
 
 export function startServiceWorker(): void {
   if (!('serviceWorker' in navigator)) return;
   applyUpdate = registerSW({
-    onNeedRefresh() {
-      waiting = true;
-      for (const l of listeners) l();
+    onNeedRefresh: announce,
+    onRegisteredSW(_url, reg) {
+      registration = reg;
+      // Registering has just checked.
+      lastCheck = Date.now();
+      document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && checkSoon());
+      setInterval(() => document.visibilityState === 'visible' && checkSoon(), CHECK_EVERY_MS);
     },
   });
+}
+
+/**
+ * More › About › Check for updates (v0.26, R2): looks now and waits for a new version to finish
+ * downloading. When one is ready, the Reload banner shows (again, if it was put off with Later).
+ */
+export async function checkForUpdate(): Promise<UpdateResult> {
+  if (!('serviceWorker' in navigator)) return 'unsupported';
+  if (!navigator.onLine) return 'offline';
+  const reg = registration ?? (await navigator.serviceWorker.getRegistration().catch(() => undefined));
+  if (!reg) return 'unsupported';
+  lastCheck = Date.now();
+  try {
+    await reg.update();
+  } catch {
+    return navigator.onLine ? 'failed' : 'offline';
+  }
+  const sw = reg.installing;
+  if (sw) {
+    await new Promise<void>((done) => {
+      const t = setTimeout(done, 60_000);
+      sw.addEventListener('statechange', () => {
+        if (sw.state !== 'installing') {
+          clearTimeout(t);
+          done();
+        }
+      });
+    });
+  }
+  if (!reg.waiting && !waiting) return 'current';
+  announce();
+  return 'ready';
 }
 
 /**
@@ -41,7 +92,10 @@ export function UpdateBanner() {
   const [ready, setReady] = useState(waiting);
   const [later, setLater] = useState(false);
   useEffect(() => {
-    const l = () => setReady(true);
+    const l = () => {
+      setReady(true);
+      setLater(false);
+    };
     listeners.add(l);
     return () => void listeners.delete(l);
   }, []);

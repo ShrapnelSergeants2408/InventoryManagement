@@ -110,7 +110,9 @@ const P = `
     dt.items.add(file);
     input.files = dt.files;
     input.dispatchEvent(new Event('change', { bubbles: true }));
-    for (let i = 0; i < 100 && document.querySelector('.pacts[aria-busy=true]'); i++) await settle(100);
+    // Up to 60 s: resizing a 4000×3000 picture took longer than 10 s with checks side by side (M31).
+    await settle(100);
+    for (let i = 0; i < 600 && document.querySelector('.pacts[aria-busy=true]'); i++) await settle(100);
     await settle(400);
   };
   const dims = async (blob) => { const b = await createImageBitmap(blob); const r = [b.width, b.height]; b.close(); return r; };

@@ -12,6 +12,9 @@ import { gate } from '../../../security/gate';
 import { unlockReason, useCloseOnRelock, useUnlockRemaining } from '../../shell/LockPill';
 import { href } from '../../shell/router';
 import { ChangePinDialog, ForgotPinDialog } from './PinDialogs';
+import { checkForUpdate } from '../../shell/UpdateBanner';
+import { showToast } from '../../shell/toast';
+import { updateMessage } from '../../../domain/update-check';
 
 function Row(props: { icon: IconName; title: string; sub: string; chip?: string; to?: string; later?: string; onClick?: () => void }) {
   const body = (
@@ -60,6 +63,19 @@ export function MoreScreen() {
     ? ''
     : ` · persistent storage ${storage.persisted === null ? 'unknown' : storage.persisted ? 'granted' : 'not granted'}${storage.usage === null ? '' : ` · ${formatBytes(storage.usage)} used`}`;
   const [dialog, setDialog] = useState<'change' | 'forgot' | null>(null);
+  // Check for updates (v0.26, R2).
+  const [checking, setChecking] = useState(false);
+  const check = () => {
+    if (checking) return;
+    setChecking(true);
+    void checkForUpdate()
+      .catch(() => 'failed' as const)
+      .then((r) => {
+        setChecking(false);
+        showToast(updateMessage(r, APP_VERSION));
+      });
+  };
+  const built = new Date(__BUILD_TIME__).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' });
   useCloseOnRelock(dialog === 'change', () => setDialog(null));
   const backupSub = `Last backup: ${days === null ? 'never' : days === 0 ? 'today' : `${plural(days, 'day')} ago`} · full or data only`;
   return (
@@ -102,7 +118,8 @@ export function MoreScreen() {
           <div class="grp">
             <h3>About</h3>
             <Row icon="database" title="FRC 2408 Inventory Management" sub={`${snap ? `${plural(snap.items.length, 'item')} on this tablet` : 'Stored on this tablet'}${storageText}`} />
-            <Row icon="info" title={`App version ${APP_VERSION}`} sub={`Built ${new Date(__BUILD_TIME__).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })}`} />
+            <Row icon="info" title={`App version ${APP_VERSION}`} sub={`Built ${built}`} />
+            <Row icon="retry" title={checking ? 'Checking for updates…' : 'Check for updates'} sub="Looks for a newer version of the app now (needs a connection)" onClick={check} />
           </div>
         </div>
       </div>

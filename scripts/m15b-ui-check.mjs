@@ -176,7 +176,8 @@ try {
 
   // ── Inventory Select mode → Add to order list… (to the same list: asks once) ──
   await P(`await go('#/inventory'); await type('.top .searchwrap input', 'andymark'); await click('.top .btn', 'Select');`);
-  check('Inventory select bar: Add to order list… beside Move to…', await P(`return $$('.selbar .btn').map((b) => norm(b.textContent))`), ['Select all shown (' + (await P(`return $$('.selrow').length`)) + ')', 'Clear', 'Add to order list…', 'Move to…']);
+  // Labels joined the bar in v0.26 (M31, R4).
+  check('Inventory select bar: Add to order list… beside Move to…', await P(`return $$('.selbar .btn').map((b) => norm(b.textContent))`), ['Select all shown (' + (await P(`return $$('.selrow').length`)) + ')', 'Clear', 'Labels', 'Add to order list…', 'Move to…']);
   await P(`await click('.selbar .btn', 'Select all shown'); await click('.selbar .btn', 'Add to order list');`);
   // F4 search: name, location, notes and every vendor option's part # and supplier.
   const invChosen = items.filter((i) => fold([i.name, i.location, i.notes, ...i.vendors.flatMap((v) => (v ? [v.partNo, v.supplier] : []))].join(' \n ')).includes('andymark'));

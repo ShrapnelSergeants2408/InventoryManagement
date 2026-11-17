@@ -195,13 +195,38 @@ try {
   await shot('05-update-banner');
   await js(`[...${bannerBtns}].find((b) => b.textContent.includes('Later')).click(); await settle(300);`);
   check('Later hides it', await js(`return [...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version'))`), false);
+  // v0.26 (R2): More › About › Check for updates finds the waiting version and brings the banner back after Later.
+  const hashBefore = await js(`return location.hash`);
+  await js(`location.hash = '#/more'; await settle(700); byText('.mrow', 'Check for updates').click();`);
+  await waitFor(`[...document.querySelectorAll('.toast')].some((t) => t.textContent.includes('A new version is ready'))`, 30000);
+  check('Check for updates (v0.26): says a new version is ready, and the banner is back after Later', await js(`return [...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version'))`), true);
+  await shot('05b-check-for-updates-ready');
   await send('Page.reload');
   await waitFor(`[...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version of the app is ready'))`, 30000);
   check('after a reload the waiting version is offered again', true, true);
-  await js(`[...${bannerBtns}].find((b) => b.textContent.includes('Reload')).click();`);
+  await js(`window.__oldPage = true; [...${bannerBtns}].find((b) => b.textContent.includes('Reload')).click();`);
   await sleep(2500);
-  await waitFor(`document.querySelector('.main')`, 30000);
+  // The old page can still answer for a moment, so wait until the reload has really replaced it.
+  await waitFor(`!window.__oldPage && document.querySelector('.main')`, 30000);
   check('Reload: the new version takes over and the banner is gone', await js(`const reg = await navigator.serviceWorker.getRegistration(); return [!reg.waiting, !!navigator.serviceWorker.controller, [...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version'))]`), [true, true, false]);
+
+  // v0.26 (R2): coming back on screen looks for a new version, at most every 30 minutes, with no page load.
+  const hasBanner = `[...document.querySelectorAll('.banner')].some((b) => b.textContent.includes('A new version of the app is ready'))`;
+  // Let the reloaded page finish registering (that counts as its first check) before the next deploy.
+  await js(`await navigator.serviceWorker.ready; await settle(1500);`);
+  writeFileSync(swPath, Buffer.concat([swOriginal, Buffer.from('\n// another deploy\n')]));
+  await js(`document.dispatchEvent(new Event('visibilitychange')); await settle(4000);`);
+  check('back on screen within 30 minutes of the last check: no check, no banner', await js(`return ${hasBanner}`), false);
+  await js(`const real = Date.now.bind(Date); Date.now = () => real() + 31 * 60 * 1000; document.dispatchEvent(new Event('visibilitychange'));`);
+  await waitFor(hasBanner, 30000);
+  check('back on screen after 30 minutes: the new deploy is found and the Reload banner shows', true, true);
+  // Take it, so the rest of this check runs on one version.
+  await js(`window.__oldPage = true; [...${bannerBtns}].find((b) => b.textContent.includes('Reload')).click();`);
+  await sleep(2500);
+  await waitFor(`!window.__oldPage && document.querySelector('.main') && navigator.serviceWorker.controller`, 30000);
+  check('…and Reload takes it', await js(`const reg = await navigator.serviceWorker.getRegistration(); return [!reg.waiting, ${hasBanner}]`), [true, false]);
+  // Back to the screen the rest of this check expects.
+  await js(`location.hash = ${JSON.stringify(hashBefore)}; await settle(700);`);
 
   // ── Offline: stop the web server ──
   await send('Page.reload');

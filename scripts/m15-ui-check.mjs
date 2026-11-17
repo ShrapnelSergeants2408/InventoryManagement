@@ -237,7 +237,8 @@ try {
   // ── §17: touch targets; portrait ──
   // PDH goes on the list used last ("wcp order — nov"), so that list has a line to measure.
   await P(`await go('#/item/' + encodeURIComponent(${JSON.stringify(pdh.id)})); await click('.dacts .btn', 'Add to order list'); await waitDlg('Add to order list'); await click('.dlg .btn', 'Add to list'); await settle(500);`);
-  await P(`await go('#/order'); await click('.ltabs .ltab', 'wcp order — nov'); await settle(500);`);
+  // Waits for the tab and the line rather than a fixed pause: with checks side by side both were once late (M31).
+  await P(`await go('#/order'); (await waitBtn('.ltabs .ltab', 'wcp order — nov')).click(); for (let i = 0; i < 100 && $$('.lctl button').length < 3; i++) await settle(100);`);
   check('the list shown has a line with +/− and remove', await P(`return [norm($('.top h1').textContent), $$('.lctl button').length]`), ['wcp order — nov', 3]);
   const small = `return [...document.querySelectorAll('.top button, .top input, .ltabs a, .ltabs button, .lhead button, .lctl button, .rmenu')].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && (r.height < 47.5 || r.width < 47.5); }).map((e) => (e.className || e.tagName) + ':' + Math.round(e.getBoundingClientRect().width) + 'x' + Math.round(e.getBoundingClientRect().height))`;
   check('landscape: touch targets ≥ 48 px (tabs, header, line controls)', await js(small), []);

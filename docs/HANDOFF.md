@@ -102,8 +102,8 @@ The inventory lives in the browser's IndexedDB on the tablet. A mistake here can
 
 After a merge, the new version is live within a few minutes, but the installed app on the tablet may keep the old one:
 
-1. Open the app and wait for the **Reload** banner. It often doesn't appear.
-2. If it doesn't: swipe the app away, then Android **Settings › Apps › Chrome › Force stop**. Open the app, wait about 15 seconds, close it and open it again. (Or open the site in a Chrome tab and refresh.)
+1. Open the app and tap **More › About › Check for updates** (1.7.0 and later). When it says a new version is ready, tap **Reload** in the banner. From 1.7.0 the app also checks by itself when it comes back on screen (at most every 30 minutes) and every hour, so the banner usually appears on its own.
+2. If no new version arrives (or the tablet is on 1.6.0 or older): swipe the app away, then Android **Settings › Apps › Chrome › Force stop**. Open the app, wait about 15 seconds, close it and open it again. (Or open the site in a Chrome tab and refresh.)
 3. **More › About** shows the version and build time: check it's the new one.
 4. Then run the steps listed at the end of that milestone's review file.
 

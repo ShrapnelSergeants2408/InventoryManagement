@@ -29,8 +29,15 @@ export const PIN_H = `
     if (!$('.setup')) throw new Error('first-launch setup did not appear');
     await pickShopTablet();
     await enterPin(pin);
+    // Wait for the confirm step before typing again: on a busy machine (checks side by side) the
+    // second PIN was once typed before it appeared and was lost (M31).
+    for (let i = 0; i < 300 && !byText('.setup', 'Type the same PIN again'); i++) await settle(100);
+    if (!byText('.setup', 'Type the same PIN again')) throw new Error('the confirm-PIN step did not appear within 30 s');
     await enterPin(pin);
-    for (let i = 0; i < 100 && !$('.recovery input[type=checkbox]'); i++) await settle(100);
+    // Up to 30 s: setting the PIN hashes it slowly on purpose, and with several checks running at once
+    // (npm run checks) the recovery step once took longer than the 10 s this used to wait (M31).
+    for (let i = 0; i < 300 && !$('.recovery input[type=checkbox]'); i++) await settle(100);
+    if (!$('.recovery input[type=checkbox]')) throw new Error('the recovery code step did not appear within 30 s');
     $('.recovery input[type=checkbox]').click();
     await settle(150);
     (await waitBtn('.recovery button', 'Next')).click();

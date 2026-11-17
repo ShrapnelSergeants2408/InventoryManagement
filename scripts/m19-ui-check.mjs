@@ -201,14 +201,14 @@ try {
 
   // ── Receive: part, then the rest ──
   const onHand0 = await js(`return (await idb('items', ${JSON.stringify(rev[0].id)})).onHand`);
-  await js(`await click('.top button', 'Receive…'); await waitDlg('Receive');`);
+  await js(`(await waitBtn('.top button', 'Receive…')).click(); await settle(); await waitDlg('Receive');`);
   check('Receive starts each line at what is due', await js(`return $$('.rc-n').map((i) => Number(i.value))`), [units0, line2Packs * rev[1].packSize, 6]);
   await js(`const minus = $$('.rc-line')[0].querySelector('button[aria-label^="One fewer"]'); minus.click(); await settle(100); $$('.rc-n')[1].focus(); await type($$('.rc-n')[1], '0'); await type($$('.rc-n')[2], '0'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?');`);
   check('confirmation says exactly what is added', await js(`return norm(dlg('Add to on hand?').querySelector('h2').textContent)`), `Add ${units0 - 1} to on hand for 1 item?`);
   await shot('07-receive-confirm');
   await js(`await click('.dlg button', 'Add ${units0 - 1} to on hand'); await waitGone('Add to on hand?'); await settle(600);`);
   check('partly received: on hand up by exactly that, last_counted unchanged, status chip', await js(`const it = await idb('items', ${JSON.stringify(rev[0].id)}); return [it.onHand - ${onHand0}, it.lastCounted, norm($('.po-head .chip').textContent)]`), [units0 - 1, '', 'Partly received']);
-  await js(`await click('.top button', 'Receive…'); await waitDlg('Receive'); await click('.dlg button', 'Receive all'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?'); await click('.dlg button', 'Add'); await waitGone('Add to on hand?'); await settle(600);`);
+  await js(`(await waitBtn('.top button', 'Receive…')).click(); await settle(); await waitDlg('Receive'); await click('.dlg button', 'Receive all'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?'); await click('.dlg button', 'Add'); await waitGone('Add to on hand?'); await settle(600);`);
   check('received: everything in, the typed line changed no item, no Receive button', await js(`const o = (await idb('orders'))[0]; return [o.lines.map((l) => l.received), norm($('.po-head .chip').textContent), !byText('.top button', 'Receive')]`), [[units0, line2Packs * rev[1].packSize, 6], 'Received', true]);
   check('no Cancel once received', await js(`return !byText('.po-head button', 'Cancel order')`), true);
 
@@ -274,7 +274,7 @@ try {
   await js(`await idbTx('items', (s) => void s.delete(${JSON.stringify(gone.itemId)})); location.hash = '#/inventory'; location.reload();`);
   await sleep(1000);
   await waitFor(`document.querySelectorAll('.cathdr').length >= 11`, 60000);
-  await js(`await go('#/placed/' + ${JSON.stringify(o3.id)}); await click('.top button', 'Receive…'); await waitDlg('Receive'); await click('.dlg button', 'Receive all'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?');`);
+  await js(`await go('#/placed/' + ${JSON.stringify(o3.id)}); (await waitBtn('.top button', 'Receive…')).click(); await settle(); await waitDlg('Receive'); await click('.dlg button', 'Receive all'); await click('.dlg button', 'Next'); await waitDlg('Add to on hand?');`);
   const firstUnits = o3.lines[0].packs * o3.lines[0].packSize;
   check('Receive with a deleted item: only the existing item is added; the deleted one is marked received', await js(`const d = dlg('Add to on hand?'); return [norm(d.querySelector('h2').textContent), $$('.notes-list li').map((l) => norm(l.textContent))[1]]`), [`Add ${firstUnits} to on hand for 1 item?`, `${gone.description}: ${gone.packs * gone.packSize} received (item deleted, no inventory change)`]);
   await shot('11-receive-deleted-item');

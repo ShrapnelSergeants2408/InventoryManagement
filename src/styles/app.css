@@ -78,6 +78,8 @@
 .cn { font-family: var(--font-display); font-weight: 700; font-size: 25px; line-height: 1.1; }
 .hc { font-size: 15px; color: var(--ink-2); font-weight: 400; }
 .list-foot { padding: 20px 24px 32px; }
+/* Show more under a long search or filter result (v0.26, R1). */
+.list-more { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; padding: 20px 24px 0; }
 /* Select mode and bulk move (F28): a header is a checkbox plus an expand button; rows toggle as a whole. */
 .cathdr.sel, .subhdr.sel { cursor: default; flex-wrap: nowrap; gap: 8px; padding-top: 0; padding-bottom: 0; }
 .cathdr.sel .cb, .subhdr.sel .cb { min-height: 64px; }

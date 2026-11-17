@@ -4,8 +4,18 @@ export const TEST_PIN = '2408';
 
 export const PIN_H = `
   const pinDlg = () => $('[role=dialog][aria-label="Mentor PIN"]');
+  // Checks the dots before Next, and types again if a digit was lost (M32): the pad clears itself
+  // just after it appears (PinPad's clearKey effect), and on a busy machine a first digit typed
+  // straight away was once cleared with it. A person can't tap that early.
   const enterPin = async (pin) => {
-    for (const d of pin) { $$('.pkey').find((b) => norm(b.textContent) === d).click(); await settle(40); }
+    const dots = () => $$('.pin-dots').map((d) => d.getAttribute('aria-label')).find(Boolean) ?? '';
+    for (let tries = 0; tries < 3; tries++) {
+      for (const d of pin) { $$('.pkey').find((b) => norm(b.textContent) === d).click(); await settle(40); }
+      await settle(60);
+      if (dots().startsWith(pin.length + ' of')) break;
+      byText('.pkey', 'Clear')?.click();
+      await settle(300);
+    }
     $('.pin-go').click();
     await settle(450);
   };

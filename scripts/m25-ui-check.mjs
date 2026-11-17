@@ -134,7 +134,8 @@ try {
   await js(`byText('[role=checkbox]', 'Motors crew').click(); await settle(150); await click('.dlg-actions .btn', 'Send 2 kits');`);
   await waitFor('window.__shared', 90000);
   await sleep(800);
-  check('with a share sheet: ONE share holds both kits, the dialog closes, “Sent 2 kits.”', await js(`return [window.__shared, !$('.dlg'), toast()]`), [{ names: ['Bin_A-B_Helper.zip', 'Motors_crew_Helper.zip'], title: 'Count kits' }, true, 'Sent 2 kits.']);
+  // The toast gives the kits' total size since v0.27 (M32).
+  check('with a share sheet: ONE share holds both kits, the dialog closes, “Sent 2 kits (… MB).”', await js(`return [window.__shared, !$('.dlg'), /^Sent 2 kits \\([\\d.]+ [KM]B\\)\\.$/.test(toast())]`), [{ names: ['Bin_A-B_Helper.zip', 'Motors_crew_Helper.zip'], title: 'Count kits' }, true, true]);
   await sleep(800);
   check('both kits are recorded; progress starts at 0 with nothing imported', await js(`return [(await idb('helpers')).map((h) => h.kits.length), $$('.hprog').map((e) => /^Nothing imported yet · counted 0 of \\d+/.test(norm(e.textContent)))]`), [[1, 1], [true, true]]);
   await js(`navigator.canShare = undefined; navigator.share = undefined; await click('.sendall .btn', 'Send all kits'); await settle(400); await click('.dlg-actions .btn', 'Send 2 kits');`);

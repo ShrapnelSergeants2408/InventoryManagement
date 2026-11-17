@@ -6,6 +6,7 @@ import JSZip from 'jszip';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { InventoryDb, toItemRow, toLocationRow, toSupplierRow } from '../src/data/db';
 import { addHelper, buildKit, editHelper, loadHelpers, recordKit, removeHelper } from '../src/data/helpers';
+import { forgetKitPhotos } from '../src/data/kit-photos';
 import { applyRestore } from '../src/data/backup';
 import { loadSnapshot } from '../src/data/inventory';
 import { startInventory } from '../src/data/setup';
@@ -394,6 +395,24 @@ describe('building a kit from the tablet', () => {
     const h = await addHelper(db, draft({ name: 'Maya', groups: ['Tools'] }));
     await db.categories.delete('Tools');
     await expect(buildKit(db, h.id, true)).rejects.toThrow(/Edit this helper first/);
+    db.close();
+  });
+
+  it('v0.27 (M32): with shrink, the kit holds the small photo and the tablet keeps its own', async () => {
+    forgetKitPhotos();
+    const db = await filled();
+    const h = await addHelper(db, draft({ name: 'Maya', groups: ['Tools'] }));
+    // Smaller than the stored 3-byte photo (an equal or larger copy is not used).
+    const small = photo(0xff, 0xd8);
+    const seen: [number, number][] = [];
+    const k = await buildKit(db, h.id, true, new Date(), { shrink: async () => small, onProgress: (d, t) => seen.push([d, t]) });
+    const { zip, names } = await readKit(k.blob);
+    const files = names.filter((n) => n.startsWith('photos/') && !n.endsWith('/'));
+    expect(files).toHaveLength(1);
+    expect([...(await zip.file(files[0]!)!.async('uint8array'))]).toEqual([0xff, 0xd8]);
+    expect(k.photoCount).toBe(1);
+    expect(seen).toEqual([[1, 1]]);
+    expect([...new Uint8Array(await (await db.photos.get('st-0001'))!.full.arrayBuffer())]).toEqual([0xff, 0xd8, 7]);
     db.close();
   });
 });

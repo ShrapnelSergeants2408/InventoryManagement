@@ -1,5 +1,5 @@
 // Browser-only image work (canvas). The size math lives in domain/image-size.ts and is unit-tested.
-import { PHOTO_LONG_SIDE, PHOTO_QUALITY, THUMB_LONG_SIDE, THUMB_QUALITY, fitWithin, pickedFileProblem } from '../domain/image-size';
+import { KIT_PHOTO_LONG_SIDE, KIT_PHOTO_QUALITY, PHOTO_LONG_SIDE, PHOTO_QUALITY, THUMB_LONG_SIDE, THUMB_QUALITY, fitWithin, pickedFileProblem } from '../domain/image-size';
 
 /** Draws `bitmap` scaled to fit `longSide` and encodes it as JPEG. */
 async function encodeJpeg(bitmap: ImageBitmap, longSide: number, quality: number): Promise<Blob> {
@@ -24,6 +24,16 @@ export async function makeThumbnail(photo: Blob, longSide = THUMB_LONG_SIDE): Pr
   const bitmap = await createImageBitmap(photo);
   try {
     return await encodeJpeg(bitmap, longSide, THUMB_QUALITY);
+  } finally {
+    bitmap.close();
+  }
+}
+
+/** A photo made small for a count kit (v0.27, M32): JPEG, KIT_PHOTO_LONG_SIDE on the long side. */
+export async function makeKitPhoto(photo: Blob): Promise<Blob> {
+  const bitmap = await createImageBitmap(photo);
+  try {
+    return await encodeJpeg(bitmap, KIT_PHOTO_LONG_SIDE, KIT_PHOTO_QUALITY);
   } finally {
     bitmap.close();
   }

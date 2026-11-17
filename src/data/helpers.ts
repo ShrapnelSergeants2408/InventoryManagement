@@ -8,6 +8,7 @@ import { fromHelperRow, toHelperRow, type InventoryDb } from './db';
 import { getCountSince } from './count';
 import { loadSnapshot } from './inventory';
 import { getSettings } from './settings';
+import { kitPhotos, type KitPhotoProgress, type Shrink } from './kit-photos';
 
 export async function loadHelpers(db: InventoryDb): Promise<Helper[]> {
   return sortHelpers((await db.helpers.toArray()).map(fromHelperRow));
@@ -78,15 +79,22 @@ async function kitSettings(db: InventoryDb) {
  * transaction so items and photos agree. Nothing is recorded until `recordKit`, after the
  * file has been handed on.
  */
-export async function buildKit(db: InventoryDb, helperId: string, includePhotos: boolean, now = new Date()): Promise<BuiltKit> {
-  const { helper, snapshot, photos, kitIds, countSince, recountDays, kitsFolderUrl, countsFolderUrl } = await db.transaction('r', [db.helpers, db.items, db.suppliers, db.locations, db.categories, db.photos, db.settings], async () => {
+export async function buildKit(
+  db: InventoryDb,
+  helperId: string,
+  includePhotos: boolean,
+  now = new Date(),
+  /** v0.27 (M32): makes each photo small for the kit; without it (tests) the stored photos go in. */
+  opts: { shrink?: Shrink; onProgress?: KitPhotoProgress } = {},
+): Promise<BuiltKit> {
+  const { helper, snapshot, photoRows, kitIds, countSince, recountDays, kitsFolderUrl, countsFolderUrl } = await db.transaction('r', [db.helpers, db.items, db.suppliers, db.locations, db.categories, db.photos, db.settings], async () => {
     const row = await db.helpers.get(helperId);
     if (!row) throw new Error('that helper was removed');
     const all = (await db.helpers.toArray()).map(fromHelperRow);
     return {
       helper: fromHelperRow(row),
       snapshot: await loadSnapshot(db),
-      photos: includePhotos ? new Map((await db.photos.toArray()).map((p) => [p.itemId, p.full] as const)) : new Map<string, Blob>(),
+      photoRows: includePhotos ? await db.photos.toArray() : [],
       kitIds: new Set(all.flatMap((h) => h.kits.map((k) => k.id))),
       countSince: await getCountSince(db),
       ...(await kitSettings(db)),
@@ -98,6 +106,9 @@ export async function buildKit(db: InventoryDb, helperId: string, includePhotos:
   const kitId = newKitId((x) => kitIds.has(x));
   const createdAt = localIsoDateTime(now);
   const ids = new Set(snapshot.items.map((i) => i.id));
+  // Made small after the read, outside the transaction (canvas work would let it close early).
+  const rows = photoRows.filter((p) => ids.has(p.itemId));
+  const photos = opts.shrink ? await kitPhotos(rows, opts.shrink, opts.onProgress) : new Map(rows.map((p) => [p.itemId, p.full] as const));
   const blob = await buildCountKit({ snapshot, photos, helper: { ...helper, groups: check.draft.groups, subcategories: check.draft.subcategories }, kitId, createdAt, includePhotos, now, countSince, recountDays, kitsFolderUrl, countsFolderUrl });
   return { blob, kitId, createdAt, itemCount: snapshot.items.length, photoCount: [...photos.keys()].filter((id) => ids.has(id)).length };
 }

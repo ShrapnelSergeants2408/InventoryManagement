@@ -55,7 +55,7 @@ An offline web app (a PWA) for the team's parts inventory: look up parts, count 
 | Command | What it does |
 |---|---|
 | `npm run dev` | Runs the app at http://localhost:5173 with live reload. It uses its own browser storage, separate from the tablet |
-| `npm test` | All unit tests (about 900, under a minute) |
+| `npm test` | All unit tests (about 1,070, under a minute) |
 | `npm run build` | Type check and production build into `dist/` |
 | `npm run preview` | Serves `dist/` as the live site would |
 
@@ -65,7 +65,7 @@ A browser check runs on a built app: `npm run build`, then
 node scripts/m22-ui-check.mjs "C:/Program Files/Google/Chrome/Application/chrome.exe" <folder for screenshots>
 ```
 
-It prints one PASS or FAIL line per check and exits 1 if anything failed. **To run them all, `npm run checks`** (`scripts/run-checks.mjs`; `npm run checks -- m3 m25` for some; `--jobs 4` is the default): it runs the scripts side by side, each with its own ports and Chrome, runs m10 (it rewrites `dist/`) alone at the end, and leaves out the two upgrade checks (they need an older build and a tablet backup as arguments; run them by hand), and prints one summary; each check's output is kept in a log file. Run in a row, the full set takes about 25 minutes. New checks start with `startCheck()` from `scripts/check-lib.mjs` and need their own two ports (a preview port and a Chrome port, not used by another script). Don't rebuild or switch branches while it runs, because each check reads `dist/` and its own script when it starts. On Windows, pass folder arguments as Windows paths (`C:\...`, quoted if they contain spaces).
+It prints one PASS or FAIL line per check and exits 1 if anything failed. **To run them all, `npm run checks`** (`scripts/run-checks.mjs`; `npm run checks -- m3 m25` for some; `--jobs 4` is the default): it runs the scripts side by side, each with its own ports and Chrome, runs m10 (it rewrites `dist/`) alone at the end, and leaves out the two upgrade checks (they need an older build and a tablet backup as arguments; run them by hand), and prints one summary; each check's output is kept in a log file. Run in a row, the full set takes about 25 minutes; `npm run checks` (4 at a time) takes about 6. New checks start with `startCheck()` from `scripts/check-lib.mjs` and need their own two ports (a preview port and a Chrome port, not used by another script). Don't rebuild or switch branches while it runs, because each check reads `dist/` and its own script when it starts. On Windows, pass folder arguments as Windows paths (`C:\...`, quoted if they contain spaces).
 
 ## 5. How to make a change
 

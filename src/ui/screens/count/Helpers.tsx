@@ -3,7 +3,8 @@
 // No PIN anywhere here (§6).
 import { Fragment } from 'preact';
 import { useEffect, useState } from 'preact/hooks';
-import { addHelper, buildKit, editHelper, recordKit, recordKits, removeHelper, type BuiltKit } from '../../../data/helpers';
+import { addHelper, editHelper, recordKit, recordKits, removeHelper } from '../../../data/helpers';
+import { buildKit, type BuiltKit } from '../../../data/kits';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { formatBytes, formatDateTime } from '../../../domain/dates';
 import {

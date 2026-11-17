@@ -4,7 +4,7 @@ import { useState } from 'preact/hooks';
 import { TopBar, plural } from '../../components/common';
 import { daysSinceBackup } from '../../../domain/backup-reminder';
 import { formatBytes } from '../../../domain/dates';
-import { APP_VERSION } from '../../../io/backup';
+import { APP_VERSION } from '../../../domain/app-version';
 import { useNow, useSettings, useSnapshot, useStorageStatus } from '../../data-hooks';
 import { Icon, type IconName } from '../../icons';
 import { lockNow, formatRemaining } from '../../../security/lock';

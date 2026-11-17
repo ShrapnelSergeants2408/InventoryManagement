@@ -3,7 +3,7 @@ import 'fake-indexeddb/auto';
 import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 import { InventoryDb, toHelperRow, toItemRow } from '../src/data/db';
-import { buildKit } from '../src/data/helpers';
+import { buildKit } from '../src/data/kits';
 import { HelperDb, getKit, joinKit } from '../src/data/helper-db';
 import { getSettings, setSettings } from '../src/data/settings';
 import { checkFolderUrl, folderUrlOrBlank, MAX_FOLDER_URL } from '../src/domain/folder-links';

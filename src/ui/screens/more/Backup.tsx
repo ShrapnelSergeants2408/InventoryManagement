@@ -1,7 +1,7 @@
 // Backup & restore (mockups 8a–8f): full or data-only backup (F15), the reminder (F16),
 // restore (F17), price-update import (F18) and storage status (§2).
-import { liveQuery } from 'dexie';
-import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
+import { useLiveValue } from '../../live';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import type { InventoryDb } from '../../../data/db';
 import { loadSnapshot } from '../../../data/inventory';
 import { applyAddItems, getAddUndo, undoAddItems, type AddResult, type AddUndo } from '../../../data/add-items';
@@ -37,25 +37,20 @@ interface PhotoStats {
 }
 
 function usePhotoStats(db: InventoryDb): PhotoStats | null {
-  const [stats, setStats] = useState<PhotoStats | null>(null);
-  useEffect(() => {
-    const sub = liveQuery(async () => {
+  return useLiveValue<PhotoStats | null>(
+    async () => {
       const rows = await db.photos.toArray();
       return { count: rows.length, bytes: rows.reduce((n, r) => n + r.full.size, 0), ids: new Set(rows.map((r) => r.itemId)) };
-    }).subscribe({ next: setStats, error: () => setStats(null) });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return stats;
+    },
+    null,
+    [db],
+    'reset',
+  );
 }
 
 /** The undo of the last "Add items from a file" (F33), or null when there is none. */
 function useAddUndo(db: InventoryDb): AddUndo | null {
-  const [undo, setUndo] = useState<AddUndo | null>(null);
-  useEffect(() => {
-    const sub = liveQuery(() => getAddUndo(db)).subscribe({ next: setUndo, error: () => setUndo(null) });
-    return () => sub.unsubscribe();
-  }, [db]);
-  return undo;
+  return useLiveValue(() => getAddUndo(db), null, [db], 'reset');
 }
 
 /** Opens the system file picker and resolves with the chosen file's name and bytes. */

@@ -304,3 +304,26 @@ export function draftFromPending(p: PendingItem, categories: readonly Category[]
       : [blankVendor()],
   };
 }
+
+/** What the editor's pickers offer (review R9, M33): the lists, plus the item's own value when a list doesn't have it. */
+export interface FormChoices {
+  /** The category's subcategories; the item's own (e.g. imported) is kept even if unlisted. */
+  subcategories: string[];
+  /** UNITS; the item's own unit is kept even if unlisted. */
+  units: readonly string[];
+  /** Location names in walk order; the item's own is kept even if unlisted. */
+  locations: string[];
+  /** Up to 5 recently used locations that are still on the list. */
+  recentLocations: string[];
+}
+
+export function formChoices(d: Pick<ItemDraft, 'category' | 'subcategory' | 'unit' | 'location'>, categories: readonly Category[], locationNames: readonly string[], recent: readonly string[]): FormChoices {
+  const cat = categories.find((c) => nameKey(c.name) === nameKey(d.category));
+  const subs = cat?.subcategories ?? [];
+  return {
+    subcategories: d.subcategory && !subs.some((s) => nameKey(s) === nameKey(d.subcategory)) ? [...subs, d.subcategory] : [...subs],
+    units: UNITS.includes(d.unit) || d.unit === '' ? UNITS : [...UNITS, d.unit],
+    locations: d.location && !locationNames.some((n) => n === d.location) ? [...locationNames, d.location] : [...locationNames],
+    recentLocations: recent.filter((r) => locationNames.includes(r)).slice(0, 5),
+  };
+}

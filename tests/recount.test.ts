@@ -4,7 +4,7 @@ import Dexie from 'dexie';
 import { afterEach, describe, expect, it } from 'vitest';
 import { getCountSince, setCountSince } from '../src/data/count';
 import { InventoryDb, toHelperRow, toItemRow } from '../src/data/db';
-import { buildKit } from '../src/data/helpers';
+import { buildKit } from '../src/data/kits';
 import { HelperDb, joinKit } from '../src/data/helper-db';
 import { setSettings, getSettings } from '../src/data/settings';
 import { countGroups } from '../src/domain/count';

@@ -19,8 +19,9 @@ import {
   serializeSuppliersCsv,
 } from './lists-csv';
 
-export const APP_NAME = 'FRC 2408 Inventory Management';
-export const APP_VERSION: string = __APP_VERSION__;
+import { APP_NAME, APP_VERSION } from '../domain/app-version';
+
+export { APP_NAME, APP_VERSION };
 
 export type BackupKind = 'full' | 'data';
 

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  UNITS,
   blankVendor,
   buildItem,
   draftFromItem,
   editVendor,
+  formChoices,
   mergeEdit,
   newDraft,
   removeVendor,
@@ -256,5 +258,45 @@ describe('mergeEdit', () => {
 
   it('the photo flag always comes from the stored item', () => {
     expect(mergeEdit(base, { ...base, hasPhoto: true }, { ...base, hasPhoto: false }).hasPhoto).toBe(false);
+  });
+});
+
+describe('formChoices (review R9, M33): what the editor pickers offer', () => {
+  const cats = [
+    { name: 'Fasteners', order: 0, subcategories: ['Bolts', 'Nuts'] },
+    { name: 'Motors', order: 1, subcategories: [] },
+  ];
+  const locs = ['Bin A', 'Bin B', 'Shelf 1'];
+  const d = (over: Partial<{ category: string; subcategory: string; unit: string; location: string }> = {}) => ({ category: 'Fasteners', subcategory: '', unit: 'each', location: '', ...over });
+
+  it('the category’s subcategories (category matched ignoring capitals); unknown category: none', () => {
+    expect(formChoices(d({ category: 'fasteners' }), cats, locs, []).subcategories).toEqual(['Bolts', 'Nuts']);
+    expect(formChoices(d({ category: 'Gone' }), cats, locs, []).subcategories).toEqual([]);
+  });
+
+  it('keeps the item’s own subcategory, unit and location when a list doesn’t have them', () => {
+    const c = formChoices(d({ subcategory: 'Washers', unit: 'pair', location: 'Old bin' }), cats, locs, []);
+    expect(c.subcategories).toEqual(['Bolts', 'Nuts', 'Washers']);
+    expect(c.units.at(-1)).toBe('pair');
+    expect(c.locations).toEqual(['Bin A', 'Bin B', 'Shelf 1', 'Old bin']);
+  });
+
+  it('does not add a listed one twice (subcategory matched ignoring capitals)', () => {
+    const c = formChoices(d({ subcategory: 'bolts', unit: 'ft', location: 'Bin B' }), cats, locs, []);
+    expect(c.subcategories).toEqual(['Bolts', 'Nuts']);
+    expect(c.units).toBe(UNITS);
+    expect(c.locations).toEqual(locs);
+  });
+
+  it('recent locations: still on the list, at most 5, in recent order', () => {
+    expect(formChoices(d(), cats, locs, ['Shelf 1', 'Gone', 'Bin A']).recentLocations).toEqual(['Shelf 1', 'Bin A']);
+    const many = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
+    expect(formChoices(d(), cats, many, many).recentLocations).toEqual(['L1', 'L2', 'L3', 'L4', 'L5']);
+  });
+
+  it('never changes the lists it was given', () => {
+    const sub = cats[0]!.subcategories;
+    formChoices(d({ subcategory: 'Washers', location: 'X' }), cats, locs, []);
+    expect([sub, locs]).toEqual([['Bolts', 'Nuts'], ['Bin A', 'Bin B', 'Shelf 1']]);
   });
 });

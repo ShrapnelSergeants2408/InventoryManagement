@@ -18,6 +18,7 @@ import {
   draftFromItem,
   draftFromPending,
   editVendor,
+  formChoices,
   newDraft,
   removeVendor,
   vendorChangesNeedPin,
@@ -26,7 +27,7 @@ import {
   type VendorDraft,
 } from '../../../domain/item-form';
 import { checkName, sortSupplierNames, takenLocationNames } from '../../../domain/lists';
-import { nameKey, type Item } from '../../../domain/types';
+import { type Item, type Location } from '../../../domain/types';
 import type { InventorySnapshot } from '../../../data/inventory';
 import { gate } from '../../../security/gate';
 import { isUnlocked } from '../../../security/lock';
@@ -153,22 +154,9 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const [busy, setBusy] = useState(false);
   const [discarding, setDiscarding] = useState(false);
   const [recent, setRecent] = useState<string[]>([]);
-  const [newLoc, setNewLoc] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [scanningLoc, setScanningLoc] = useState(false);
   const today = localIsoDate();
-  const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
-  // A photo taken or removed in the form; undefined keeps the stored one.
-  // Accepting a pending item: the helper's photo comes with it (§18.5).
-  const [photo, setPhotoChange] = useState<PhotoChange | undefined>(props.accepting?.photo ? { full: props.accepting.photo, thumb: null } : undefined);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
-  useEffect(() => {
-    const url = photo && photo !== 'remove' ? URL.createObjectURL(photo.thumb ?? photo.full) : null;
-    setPhotoUrl(url);
-    return () => void (url && URL.revokeObjectURL(url));
-  }, [photo]);
-  const shownPhoto = photo === 'remove' ? null : photo ? photoUrl : base?.hasPhoto ? thumb : null;
-  const showsPhoto = photo === undefined ? (base?.hasPhoto ?? false) : photo !== 'remove';
+  const { photo, setPhotoChange, shownPhoto, showsPhoto } = useFormPhoto(base, props.accepting);
 
   useEffect(() => {
     void getRecentLocations(db).then(setRecent);
@@ -178,15 +166,12 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
   const setVendor = (i: number, field: keyof VendorDraft, value: string) =>
     setD((prev) => ({ ...prev, vendors: prev.vendors.map((v, j) => (j === i ? editVendor(v, field, value, today) : v)) }));
 
-  const cat = snap.categories.find((c) => nameKey(c.name) === nameKey(d.category));
-  const subs = cat?.subcategories ?? [];
-  // An item's own subcategory or unit is kept even if the lists don't have it (e.g. imported).
-  const subOptions = d.subcategory && !subs.some((s) => nameKey(s) === nameKey(d.subcategory)) ? [...subs, d.subcategory] : subs;
-  const units = UNITS.includes(d.unit) || d.unit === '' ? UNITS : [...UNITS, d.unit];
   const suppliers = useMemo(() => sortSupplierNames(snap.suppliers.map((s) => s.name)), [snap.suppliers]);
   const locNames = snap.locations.map((l) => l.name);
-  const locOptions = d.location && !locNames.some((n) => n === d.location) ? [...locNames, d.location] : locNames;
-  const quickLocs = recent.filter((r) => locNames.includes(r)).slice(0, 5);
+  // What the pickers offer; an item's own subcategory, unit or location is kept even if a list doesn't have it (e.g. imported).
+  const choices = formChoices(d, snap.categories, locNames, recent);
+  const subOptions = choices.subcategories;
+  const units = choices.units;
 
   // Vendor fields: open while adding (option 1, F6) or after the PIN; locked otherwise.
   const vLocked = !adding && !vendorsOpen;
@@ -205,18 +190,6 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
     setD((prev) => (prev.vendors.length >= MAX_VENDORS ? prev : { ...prev, vendors: [...prev.vendors, blankVendor()] }));
   };
 
-  const locCheck = newLoc === null || newLoc.trim() === '' ? null : checkName(newLoc, takenLocationNames(locNames), 'Location');
-  const saveNewLocation = async () => {
-    if (!locCheck || !locCheck.ok) return;
-    try {
-      const loc = await addLocation(db, locCheck.name);
-      set({ location: loc.name });
-      setNewLoc(null);
-      showToast(`Added location “${loc.name}”.`);
-    } catch (e) {
-      showToast(e instanceof Error ? e.message : String(e));
-    }
-  };
 
   // Vendor fields are only editable once open (new item, or after the PIN), so adding a supplier here needs no further PIN.
   const addNewSupplier = async (name: string) => (await addSupplier(db, { name, website: '', notes: '' })).name;
@@ -365,73 +338,7 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
                 <div class="small muted hint">Anyone can add a subcategory. Renaming or removing one later needs the PIN.</div>
               </Field>
             )}
-            <Field id="loc" label="Location" optional>
-              <div class="inline-add">
-                <select
-                  id="loc"
-                  class="field"
-                  value={newLoc !== null ? NEW : d.location}
-                  onChange={(e) => {
-                    const v = (e.currentTarget as HTMLSelectElement).value;
-                    if (v === NEW) setNewLoc('');
-                    else {
-                      setNewLoc(null);
-                      set({ location: v });
-                    }
-                  }}
-                >
-                  <option value="">No location</option>
-                  {locOptions.map((l) => (
-                    <option key={l} value={l}>
-                      {l}
-                    </option>
-                  ))}
-                  <option value={NEW}>+ New location…</option>
-                </select>
-                {/* F29: the bin's QR code holds the location's name. */}
-                <button type="button" class="btn" aria-label="Scan a location" onClick={() => setScanningLoc(true)}>
-                  <Icon name="scan" />
-                  Scan
-                </button>
-              </div>
-              {newLoc !== null && (
-                <>
-                  <div class="inline-add">
-                    <input
-                      class={locCheck && !locCheck.ok ? 'field bad' : 'field'}
-                      aria-label="New location name"
-                      value={newLoc}
-                      onInput={(e) => setNewLoc((e.currentTarget as HTMLInputElement).value)}
-                      onKeyDown={(e) => e.key === 'Enter' && void saveNewLocation()}
-                      placeholder="New location name — e.g. Bin F17"
-                      autoComplete="off"
-                    />
-                    <button type="button" class="btn" disabled={!locCheck?.ok} onClick={() => void saveNewLocation()}>
-                      Add
-                    </button>
-                  </div>
-                  {locCheck && !locCheck.ok && (
-                    <div class="err" role="alert">
-                      {locCheck.error}
-                    </div>
-                  )}
-                  <div class="small muted hint">Anyone can add a location. Renaming, removing and walk order are in More › Locations.</div>
-                </>
-              )}
-              {quickLocs.length > 0 && (
-                <div class="chips-row">
-                  <span class="small muted">Recent:</span>
-                  {quickLocs.map((l) => (
-                    <button key={l} type="button" class={d.location === l ? 'fchip on' : 'fchip'} aria-pressed={d.location === l} onClick={() => {
-                        setNewLoc(null);
-                        set({ location: l });
-                      }}>
-                      {l}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Field>
+            <LocationField value={d.location} options={choices.locations} names={locNames} recent={choices.recentLocations} locations={snap.locations} onChange={(location) => set({ location })} />
             <div>
               <span class="lbl" id="unit-l">
                 Unit <span class="req">*</span>
@@ -486,69 +393,21 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
               </Field>
             </div>
 
-            <div class="card sec">
-              <div class="vtitle">
-                <h2 class="h2">Vendors &amp; prices</h2>
-                {vLocked ? (
-                  <span class="chip lock">
-                    <Icon name="lock" />
-                    PIN-locked
-                  </span>
-                ) : adding && !vendorsOpen ? (
-                  <span class="chip open">
-                    <Icon name="pencil" />
-                    Open for a new item
-                  </span>
-                ) : (
-                  <span class="chip open">
-                    <Icon name="unlock" />
-                    Unlocked
-                  </span>
-                )}
-              </div>
-              {vLocked && (
-                <div class="lockbar">
-                  <Icon name="lock" />
-                  <span class="grow">Mentor PIN needed to change suppliers, part numbers, links, pack sizes, prices or the preferred vendor.</span>
-                  <button type="button" class="btn navy sm" onClick={() => void unlockVendors()}>
-                    Unlock
-                  </button>
-                </div>
-              )}
-              {adding && !vendorsOpen && (
-                <div class="lockbar warm">
-                  <Icon name="info" />
-                  <span class="grow">New item: fill in where to buy it now. Price is optional. After saving, these fields lock behind the PIN.</span>
-                </div>
-              )}
-              {d.vendors.map((v, i) => (
-                <VendorCard
-                  key={i}
-                  n={i + 1}
-                  v={v}
-                  preferred={i === d.preferred}
-                  locked={vLocked}
-                  // While adding without the PIN, only option 1 exists and it is the preferred one.
-                  canMakePreferred={!vLocked && (vendorsOpen || !adding)}
-                  canRemove={!vLocked && d.vendors.length > 1}
-                  suppliers={suppliers}
-                  onAddSupplier={addNewSupplier}
-                  errors={errors}
-                  onField={(f, value) => setVendor(i, f, value)}
-                  onPreferred={() => set({ preferred: i })}
-                  onRemove={() => setD((prev) => removeVendor(prev, i))}
-                  today={today}
-                />
-              ))}
-              {!vLocked && d.vendors.length < MAX_VENDORS && (
-                <button type="button" class="btn" onClick={() => void addVendorOption()}>
-                  <Icon name="plus" />
-                  Add vendor option ({d.vendors.length} of 3)
-                  {!vendorsOpen && <PinMark />}
-                </button>
-              )}
-              <div class="small muted">Supplier list: alphabetical, “other” last. Manage it in More › Suppliers.</div>
-            </div>
+            <VendorsSection
+              d={d}
+              set={set}
+              setD={setD}
+              setVendor={setVendor}
+              vLocked={vLocked}
+              adding={adding}
+              vendorsOpen={vendorsOpen}
+              unlockVendors={unlockVendors}
+              addVendorOption={addVendorOption}
+              suppliers={suppliers}
+              addNewSupplier={addNewSupplier}
+              errors={errors}
+              today={today}
+            />
 
             {base && <DeleteItemButton item={base} label="Delete this item…" />}
           </div>
@@ -562,19 +421,6 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
             set({ barcode: code });
             setScanning(false);
             showToast(`Barcode ${code} filled in. Save to keep it.`);
-          }}
-        />
-      )}
-      {scanningLoc && (
-        <LocationScanDialog
-          locations={snap.locations}
-          notFound="offer"
-          onClose={() => setScanningLoc(false)}
-          onPicked={(l, how) => {
-            setNewLoc(null);
-            set({ location: l.name });
-            setScanningLoc(false);
-            if (how === 'found') showToast(`Location set to ${l.name}. Save to keep it.`);
           }}
         />
       )}
@@ -593,6 +439,213 @@ function Form(props: { snap: InventorySnapshot; base: Item | null; startName: st
         </Dialog>
       )}
     </>
+  );
+}
+
+/**
+ * The photo shown in the form (§8): one taken or removed here, else the stored one. Accepting a
+ * pending item brings the helper's photo with it (§18.5). `photo` undefined keeps the stored one.
+ */
+function useFormPhoto(base: Item | null, accepting: Accepting | undefined) {
+  const thumb = useThumbnail(base?.id ?? '', base?.hasPhoto ?? false);
+  // A photo taken or removed in the form; undefined keeps the stored one.
+  // Accepting a pending item: the helper's photo comes with it (§18.5).
+  const [photo, setPhotoChange] = useState<PhotoChange | undefined>(accepting?.photo ? { full: accepting.photo, thumb: null } : undefined);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const url = photo && photo !== 'remove' ? URL.createObjectURL(photo.thumb ?? photo.full) : null;
+    setPhotoUrl(url);
+    return () => void (url && URL.revokeObjectURL(url));
+  }, [photo]);
+  const shownPhoto = photo === 'remove' ? null : photo ? photoUrl : base?.hasPhoto ? thumb : null;
+  const showsPhoto = photo === undefined ? (base?.hasPhoto ?? false) : photo !== 'remove';
+  return { photo, setPhotoChange, shownPhoto, showsPhoto };
+}
+
+/** Location (F25): pick one, add a new one (anyone), scan a bin's QR code (F29), or tap a recent one. */
+function LocationField(props: { value: string; options: readonly string[]; names: readonly string[]; recent: readonly string[]; locations: readonly Location[]; onChange: (location: string) => void }) {
+  const db = useDb();
+  const [newLoc, setNewLoc] = useState<string | null>(null);
+  const [scanningLoc, setScanningLoc] = useState(false);
+  const locCheck = newLoc === null || newLoc.trim() === '' ? null : checkName(newLoc, takenLocationNames(props.names), 'Location');
+  const saveNewLocation = async () => {
+    if (!locCheck || !locCheck.ok) return;
+    try {
+      const loc = await addLocation(db, locCheck.name);
+      props.onChange(loc.name);
+      setNewLoc(null);
+      showToast(`Added location “${loc.name}”.`);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e));
+    }
+  };
+  return (
+    <>
+      <Field id="loc" label="Location" optional>
+        <div class="inline-add">
+          <select
+            id="loc"
+            class="field"
+            value={newLoc !== null ? NEW : props.value}
+            onChange={(e) => {
+              const v = (e.currentTarget as HTMLSelectElement).value;
+              if (v === NEW) setNewLoc('');
+              else {
+                setNewLoc(null);
+                props.onChange(v);
+              }
+            }}
+          >
+            <option value="">No location</option>
+            {props.options.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+            <option value={NEW}>+ New location…</option>
+          </select>
+          {/* F29: the bin's QR code holds the location's name. */}
+          <button type="button" class="btn" aria-label="Scan a location" onClick={() => setScanningLoc(true)}>
+            <Icon name="scan" />
+            Scan
+          </button>
+        </div>
+        {newLoc !== null && (
+          <>
+            <div class="inline-add">
+              <input
+                class={locCheck && !locCheck.ok ? 'field bad' : 'field'}
+                aria-label="New location name"
+                value={newLoc}
+                onInput={(e) => setNewLoc((e.currentTarget as HTMLInputElement).value)}
+                onKeyDown={(e) => e.key === 'Enter' && void saveNewLocation()}
+                placeholder="New location name — e.g. Bin F17"
+                autoComplete="off"
+              />
+              <button type="button" class="btn" disabled={!locCheck?.ok} onClick={() => void saveNewLocation()}>
+                Add
+              </button>
+            </div>
+            {locCheck && !locCheck.ok && (
+              <div class="err" role="alert">
+                {locCheck.error}
+              </div>
+            )}
+            <div class="small muted hint">Anyone can add a location. Renaming, removing and walk order are in More › Locations.</div>
+          </>
+        )}
+        {props.recent.length > 0 && (
+          <div class="chips-row">
+            <span class="small muted">Recent:</span>
+            {props.recent.map((l) => (
+              <button key={l} type="button" class={props.value === l ? 'fchip on' : 'fchip'} aria-pressed={props.value === l} onClick={() => {
+                  setNewLoc(null);
+                  props.onChange(l);
+                }}>
+                {l}
+              </button>
+            ))}
+          </div>
+        )}
+      </Field>
+      {scanningLoc && (
+        <LocationScanDialog
+          locations={props.locations}
+          notFound="offer"
+          onClose={() => setScanningLoc(false)}
+          onPicked={(l, how) => {
+            setNewLoc(null);
+            props.onChange(l.name);
+            setScanningLoc(false);
+            if (how === 'found') showToast(`Location set to ${l.name}. Save to keep it.`);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+/** Vendors & prices (F6, F7): open while adding (option 1) or after the PIN, locked otherwise (§6). */
+function VendorsSection(props: {
+  d: ItemDraft;
+  set: (patch: Partial<ItemDraft>) => void;
+  setD: (update: (prev: ItemDraft) => ItemDraft) => void;
+  setVendor: (i: number, field: keyof VendorDraft, value: string) => void;
+  vLocked: boolean;
+  adding: boolean;
+  vendorsOpen: boolean;
+  unlockVendors: () => Promise<void>;
+  addVendorOption: () => Promise<void>;
+  suppliers: string[];
+  addNewSupplier: (name: string) => Promise<string>;
+  errors: FormError[];
+  today: string;
+}) {
+  const { d, set, setD, setVendor, vLocked, adding, vendorsOpen, unlockVendors, addVendorOption, suppliers, addNewSupplier, errors, today } = props;
+  return (
+    <div class="card sec">
+      <div class="vtitle">
+        <h2 class="h2">Vendors &amp; prices</h2>
+        {vLocked ? (
+          <span class="chip lock">
+            <Icon name="lock" />
+            PIN-locked
+          </span>
+        ) : adding && !vendorsOpen ? (
+          <span class="chip open">
+            <Icon name="pencil" />
+            Open for a new item
+          </span>
+        ) : (
+          <span class="chip open">
+            <Icon name="unlock" />
+            Unlocked
+          </span>
+        )}
+      </div>
+      {vLocked && (
+        <div class="lockbar">
+          <Icon name="lock" />
+          <span class="grow">Mentor PIN needed to change suppliers, part numbers, links, pack sizes, prices or the preferred vendor.</span>
+          <button type="button" class="btn navy sm" onClick={() => void unlockVendors()}>
+            Unlock
+          </button>
+        </div>
+      )}
+      {adding && !vendorsOpen && (
+        <div class="lockbar warm">
+          <Icon name="info" />
+          <span class="grow">New item: fill in where to buy it now. Price is optional. After saving, these fields lock behind the PIN.</span>
+        </div>
+      )}
+      {d.vendors.map((v, i) => (
+        <VendorCard
+          key={i}
+          n={i + 1}
+          v={v}
+          preferred={i === d.preferred}
+          locked={vLocked}
+          // While adding without the PIN, only option 1 exists and it is the preferred one.
+          canMakePreferred={!vLocked && (vendorsOpen || !adding)}
+          canRemove={!vLocked && d.vendors.length > 1}
+          suppliers={suppliers}
+          onAddSupplier={addNewSupplier}
+          errors={errors}
+          onField={(f, value) => setVendor(i, f, value)}
+          onPreferred={() => set({ preferred: i })}
+          onRemove={() => setD((prev) => removeVendor(prev, i))}
+          today={today}
+        />
+      ))}
+      {!vLocked && d.vendors.length < MAX_VENDORS && (
+        <button type="button" class="btn" onClick={() => void addVendorOption()}>
+          <Icon name="plus" />
+          Add vendor option ({d.vendors.length} of 3)
+          {!vendorsOpen && <PinMark />}
+        </button>
+      )}
+      <div class="small muted">Supplier list: alphabetical, “other” last. Manage it in More › Suppliers.</div>
+    </div>
   );
 }
 

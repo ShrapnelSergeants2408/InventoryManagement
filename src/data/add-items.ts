@@ -7,7 +7,9 @@ import { addToPresence, presenceOf, presentReason, type AddPlan } from '../io/ad
 import { toItemRow, toSupplierRow, type InventoryDb } from './db';
 
 /** Where the one level of undo is kept. Forgotten by a restore or a fresh setup (§23.4). */
-export const ADD_UNDO_KEY = 'addItemsUndo';
+import { ADD_UNDO_KEY } from './add-undo-key';
+
+export { ADD_UNDO_KEY };
 
 /** What an add created, so Undo can take it back. */
 export interface AddUndo {

@@ -3,7 +3,7 @@
 // (empty) inventory and marks setup done in one transaction, so a tablet closed part-way
 // simply shows the choice again.
 import type { Category, Supplier } from '../domain/types';
-import { ADD_UNDO_KEY } from './add-items';
+import { ADD_UNDO_KEY } from './add-undo-key';
 import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
 import { replaceAll, type ReplaceAllInput } from './inventory';

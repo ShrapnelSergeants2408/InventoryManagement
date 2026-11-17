@@ -6,7 +6,8 @@ import type { Category, Supplier } from '../domain/types';
 import { ADD_UNDO_KEY } from './add-undo-key';
 import type { InventoryDb } from './db';
 import type { RestorePlan } from '../io/restore';
-import { replaceAll, type ReplaceAllInput } from './inventory';
+import type { RestoreResult } from './backup';
+import { itemsWithPhoto, replaceAll, savePhotosInBatches, type PhotoSaveProgress, type ReplaceAllInput } from './inventory';
 import { replacePending } from './pending';
 import { replaceOrders } from './placed-orders';
 
@@ -23,15 +24,18 @@ export async function isSetUp(db: InventoryDb): Promise<boolean> {
 
 /**
  * Fills the inventory for the first time. Refused once setup is done, so this can never
- * replace a team's data (restoring later is F17, behind the PIN). Returns how many items have a photo.
+ * replace a team's data (restoring later is F17, behind the PIN).
+ * The photos are stored after, a batch at a time (v0.29, M34: a backup with 1533 photos in one
+ * transaction would fail on Android). A tablet closed part-way is set up, with fewer photos;
+ * restoring the backup again from More › Backup fills them in.
  */
-export async function startInventory(db: InventoryDb, choice: StartChoice, data: ReplaceAllInput, now = Date.now()): Promise<number> {
+export async function startInventory(db: InventoryDb, choice: StartChoice, data: ReplaceAllInput, now = Date.now(), onPhotos?: PhotoSaveProgress): Promise<RestoreResult> {
   const tables = [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.helpers, db.pendingItems, db.pendingPhotos, db.importUndo, db.orders, db.receipts];
-  return db.transaction('rw', tables, async () => {
+  await db.transaction('rw', tables, async () => {
     if (await isSetUp(db)) throw new Error('this tablet is already set up; use Restore in More › Backup instead');
     // A backup restored at setup brings its order lists, pending items and placed orders (§7, F22, §21.6).
     const p = data as Partial<Pick<RestorePlan, 'orderLists' | 'pending' | 'pendingPhotos' | 'orders' | 'receipts'>>;
-    const photos = await replaceAll(db, data, now, { orderLists: p.orderLists ?? [] });
+    await replaceAll(db, data, now, { orderLists: p.orderLists ?? [], deferPhotos: true });
     // A fresh shop tablet starts with no helpers (§18.1), whatever an earlier install left.
     await db.helpers.clear();
     // …and nothing pending from helpers, nothing to undo (§18.5).
@@ -40,8 +44,9 @@ export async function startInventory(db: InventoryDb, choice: StartChoice, data:
     await replaceOrders(db, p.orders ?? [], p.receipts ?? new Map());
     await db.settings.put({ key: SETUP_DONE, value: now });
     if (choice === 'starter') await db.settings.put({ key: STARTER_LOADED, value: now });
-    return photos;
   });
+  const photos = await savePhotosInBatches(db, data.photos, now, onPhotos);
+  return { withPhotos: await itemsWithPhoto(db), photos };
 }
 
 /** "Start empty": the starter catalog's suppliers and categories, with no items (9h). */

@@ -4,7 +4,7 @@
 // never sees this (§18.7). The helper's database is made only once a kit has been chosen.
 import { useState } from 'preact/hooks';
 import logoUrl from '../../../assets/team-logo-512.png?url';
-import { HelperDb, joinKit } from '../../data/helper-db';
+import { HelperDb, joinKit, photoWarning } from '../../data/helper-db';
 import type { ReadKit } from '../../io/count-kit';
 import { APP_VERSION } from '../../domain/app-version';
 import { Icon } from '../icons';
@@ -16,6 +16,14 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
   const [read, setRead] = useState<ReadKit | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [photos, setPhotos] = useState<string | null>(null);
+  // Joined, but some photos couldn't be stored (M34): say so before counting starts.
+  const [partly, setPartly] = useState<{ db: HelperDb; warning: string } | null>(null);
+
+  const start = (db: HelperDb) => {
+    location.hash = '#/count';
+    props.onJoined(db);
+  };
 
   const join = async () => {
     if (!read || busy) return;
@@ -23,10 +31,15 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
     setError(null);
     const db = new HelperDb();
     try {
-      await joinKit(db, read);
+      const r = await joinKit(db, read, Date.now(), undefined, (n, total) => setPhotos(total > 0 ? `Saving photos… ${n} of ${total}` : null));
       countPrefsForKit(read.kit);
-      location.hash = '#/count';
-      props.onJoined(db);
+      const warning = photoWarning(r);
+      if (warning) {
+        setBusy(false);
+        setPartly({ db, warning });
+        return;
+      }
+      start(db);
     } catch (e) {
       db.close();
       setBusy(false);
@@ -69,7 +82,19 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
             <p class="m0">
               The shop tablet sends it from <strong>Count › Helper devices › Send count kit</strong>, by Quick Share, Drive, email or Bluetooth. It’s named after the helper, like <span class="mono">Bin_A-B_Helper.zip</span>.
             </p>
-            {read ? (
+            {partly ? (
+              <>
+                <p class="pin-err" role="alert">
+                  {partly.warning}
+                </p>
+                <div class="setup-acts">
+                  <button type="button" class="btn pri lg" data-autofocus onClick={() => start(partly.db)}>
+                    Start counting
+                    <Icon name="chevRight" />
+                  </button>
+                </div>
+              </>
+            ) : read ? (
               <>
                 <KitSummary read={read} />
                 {error && (
@@ -79,7 +104,7 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
                 )}
                 <div class="setup-acts">
                   <button type="button" class="btn pri lg" disabled={busy} onClick={() => void join()}>
-                    {busy ? 'Opening…' : 'Start counting'}
+                    {busy ? (photos ?? 'Opening…') : 'Start counting'}
                     <Icon name="chevRight" />
                   </button>
                   <button type="button" class="btn lg" disabled={busy} onClick={() => setRead(null)}>
@@ -94,7 +119,7 @@ export function FirstLaunch(props: { onShop: () => void; onJoined: (db: HelperDb
               <button
                 type="button"
                 class="btn lg"
-                disabled={busy}
+                disabled={busy || partly !== null}
                 onClick={() => {
                   setRead(null);
                   setStep('choose');

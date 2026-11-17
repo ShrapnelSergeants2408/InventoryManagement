@@ -21,7 +21,7 @@ import {
 import type { Item } from '../domain/types';
 import type { ReadKit } from '../io/count-kit';
 import { InventoryDb, SCHEMA_VERSION, fromItemRow, type ItemRow, type PendingItemRow } from './db';
-import { replaceAll } from './inventory';
+import { replaceAll, savePhotosInBatches, type PhotoSave, type PhotoSaveProgress } from './inventory';
 import type { PhotoChange } from './photos';
 
 export const INVENTORY_DB_NAME = 'frc2408-inventory';
@@ -107,9 +107,18 @@ export async function getDeviceId(db: HelperDb): Promise<string> {
  * unsent counts. Every opening gets a new device id and its own block of new-item numbers
  * (v0.19), so neither a second device nor a second kit can repeat a new item's id.
  */
-export async function joinKit(db: HelperDb, read: ReadKit, now = Date.now(), device: HelperDevice = newHelperDevice()): Promise<void> {
+export async function joinKit(
+  db: HelperDb,
+  read: ReadKit,
+  now = Date.now(),
+  device: HelperDevice = newHelperDevice(),
+  onPhotos?: PhotoSaveProgress,
+): Promise<PhotoSave> {
+  // The photos go in after, a batch at a time (v0.29, M34): 1533 in one transaction stopped a
+  // kit opening on Android. A phone that can't store photos still counts. The previous kit's
+  // photos go with its items.
   await db.transaction('rw', [db.items, db.photos, db.suppliers, db.locations, db.categories, db.orderLists, db.settings, db.changes, db.pendingItems, db.pendingPhotos], async () => {
-    await replaceAll(db, read.data, now, { orderLists: [] });
+    await replaceAll(db, { ...read.data, photos: new Map() }, now, { orderLists: [] });
     await Promise.all([db.changes.clear(), db.pendingItems.clear(), db.pendingPhotos.clear(), db.settings.clear()]);
     await db.settings.bulkPut([
       { key: KIT_KEY, value: read.kit },
@@ -122,6 +131,13 @@ export async function joinKit(db: HelperDb, read: ReadKit, now = Date.now(), dev
       ...(read.kit.recountDays === null ? [] : [{ key: 'recountDays', value: read.kit.recountDays }]),
     ]);
   });
+  return savePhotosInBatches(db, read.data.photos, now, onPhotos);
+}
+
+/** What to tell the helper after joining when some photos couldn't be stored, or null. */
+export function photoWarning(r: PhotoSave): string | null {
+  if (r.error === undefined) return null;
+  return `This device could only store ${r.photosSaved} of ${r.photosTotal} photos. Counting works without them; items just show no picture.`;
 }
 
 /**

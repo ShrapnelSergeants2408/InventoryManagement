@@ -119,7 +119,7 @@ describe('photos missing from the ZIP (finding 5)', () => {
     expect(read.plan.missingPhotos).toEqual(['a2']);
     expect(read.plan.photos.size).toBe(1);
 
-    expect(await applyRestore(db, read.plan)).toBe(2);
+    expect((await applyRestore(db, read.plan)).withPhotos).toBe(2);
     // a1 comes from the backup, a2 is the tablet's own, a3 has no photo in the backup and is gone.
     expect(await blobBytes((await db.photos.get('a1'))!.full)).toEqual([0xff, 0xd8, 1]);
     expect(await blobBytes((await db.photos.get('a2'))!.full)).toEqual([0xff, 0xd8, 8]);
@@ -136,7 +136,7 @@ describe('photos missing from the ZIP (finding 5)', () => {
     await replaceAll(db, data([]));
     const read = await readRestoreFile({ name: 'b.zip', bytes }, await loadSnapshot(db));
     if (!read.ok) throw new Error('expected a plan');
-    expect(await applyRestore(db, read.plan)).toBe(0);
+    expect((await applyRestore(db, read.plan)).withPhotos).toBe(0);
     expect(await db.photos.count()).toBe(0);
   });
 

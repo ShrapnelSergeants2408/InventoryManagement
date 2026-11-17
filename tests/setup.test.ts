@@ -29,7 +29,7 @@ describe('first launch: load the starter catalog (F22)', () => {
   it('129 items, 168 vendor options, 128 photos stored, 9 suppliers, 11 categories; on hand 0, spares 0, never counted', async () => {
     const db = newDb();
     expect(await isSetUp(db)).toBe(false);
-    const photos = await startInventory(db, 'starter', await seed(), 1000);
+    const photos = (await startInventory(db, 'starter', await seed(), 1000)).withPhotos;
     const snap = await loadSnapshot(db);
     expect(photos).toBe(128);
     expect(snap.items).toHaveLength(129);
@@ -100,7 +100,7 @@ describe('first launch: restore a backup file (Q2)', () => {
     if (!read.ok) throw new Error(JSON.stringify(read.problems));
 
     const fresh = newDb();
-    const photos = await startInventory(fresh, 'restore', read.plan, 9);
+    const photos = (await startInventory(fresh, 'restore', read.plan, 9)).withPhotos;
     const snap = await loadSnapshot(fresh);
     expect(photos).toBe(128);
     expect(snap.items).toHaveLength(129);

@@ -38,7 +38,7 @@ The search logic itself is cheap: `buildInventoryView` takes 3.5–4.2 ms at 2,0
 |---|---|---|---|
 | R1 | **Limit the rows drawn for a search or filter** | §2: at 3,000 items, a one-letter search blocks the screen for about 1–8 s, and each later keystroke waits behind it | Draw the first ~100 matches with "Show 100 more (n left)", or draw groups only as they scroll into view. Wait about 150 ms after the last keystroke before searching. Keep the counts in the headers exact. Add a browser check at 3,000 items |
 | R2 | **Check for updates while the app is open** | `registerSW` (`src/ui/shell/UpdateBanner.tsx`) checks only when the page loads. An installed app reopened from Android's recent apps never loads again, which is why the Reload banner "often doesn't appear" and HANDOFF §7 needs Force stop | In `onRegisteredSW`, call `registration.update()` when the app becomes visible again (at most once every 30 min) and every hour. Add **Check for updates** to More › About, using the existing `updateAndReload()`. Then simplify HANDOFF §7 |
-| R3 | **Escape formulas in exported CSVs** | M5-independent left this open. Vendor names now come from scraped catalogs, and the order and spending CSVs are opened in Sheets and Excel. A cell starting with `=`, `+`, `-` or `@` is read as a formula (a name such as "-20 thread …" turns into an error) | Prefix `'` in the **order and spending** CSVs only (they are opened by people, not re-imported). Leave backup CSVs exact so round trips stay unchanged |
+| R3 | ~~Escape formulas in exported CSVs~~ **Already built (correction, 2026-11-17)** | This item was taken from M5-independent's "open" list without checking the code. The order-list, spending and count-report CSVs already use the F13 spreadsheet guard (`guardCell` in `src/io/order-csv.ts`): text starting with `=`, `+`, `@`, a tab, or `-` before a letter gets a leading `'`, and backup CSVs stay exact. M5-independent's note is out of date | None |
 
 ### Medium: usability
 
@@ -70,4 +70,4 @@ The search logic itself is cheap: `buildInventoryView` takes 3.5–4.2 ms at 2,0
 
 ## 4. Suggested order
 
-R2 and R1 first (one small milestone: they change how the app feels on the tablet, and R1 must come before the vendor catalogs are loaded), then R3 and R4, then R7–R9 as a cleanup milestone with no behaviour change, so the browser checks prove nothing moved. Do R11–R16 whenever convenient.
+R2 and R1 first (one small milestone: they change how the app feels on the tablet, and R1 must come before the vendor catalogs are loaded), then R4, then R7–R9 as a cleanup milestone with no behaviour change, so the browser checks prove nothing moved. Do R11–R16 whenever convenient.

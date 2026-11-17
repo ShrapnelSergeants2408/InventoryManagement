@@ -154,7 +154,8 @@ try {
 
   // ── Send count kit, with photos ──
   await P(`await go('#/count/helpers'); catchShare(); card('Tablet 2 · Alex & Jordan').querySelector('.btn.pri').click(); await settle(600);`);
-  check('send dialog: what goes in, Include photos on with its size, the name-lock note', await P(`return [norm($('.dlg .h2').textContent), norm($('.dlg .dlg-p').textContent), $('.dlg .tog').getAttribute('aria-checked'), /Include photos \\(\\d+ photos, about [\\d.]+ MB\\)/.test(norm($('.dlg .tog').textContent)), /name can’t change/.test(norm($('.dlg').textContent))]`), ['Send a count kit to “Tablet 2 · Alex & Jordan”', 'The kit holds all 129 items (search and scan reach any item), the supplier, location and category lists, and this helper’s 2 categories: Electrical, Pneumatics. Prices are left out.', 'true', true, true]);
+  // v0.27 (M32): photos go in made small, so the toggle no longer adds up the tablet's full-size photos.
+  check('send dialog: what goes in, Include photos on (made small for phones), the name-lock note', await P(`return [norm($('.dlg .h2').textContent), norm($('.dlg .dlg-p').textContent), $('.dlg .tog').getAttribute('aria-checked'), /Include photos \\(128 photos, made small for phones\\)/.test(norm($('.dlg .tog').textContent)), /name can’t change/.test(norm($('.dlg').textContent))]`), ['Send a count kit to “Tablet 2 · Alex & Jordan”', 'The kit holds all 129 items (search and scan reach any item), the supplier, location and category lists, and this helper’s 2 categories: Electrical, Pneumatics. Prices are left out.', 'true', true, true]);
   await shot('05-send-dialog');
   await P(`await click('.dlg .btn', 'Send count kit');`);
   const k1 = await readKit();

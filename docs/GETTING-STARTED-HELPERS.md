@@ -34,7 +34,7 @@ Then copy each folder's link (Drive › the folder › Share › Copy link) into
 - One helper for each device, named so the student knows which is theirs.
 - Under **Categories** (or **Locations**), anything marked **Not assigned** has nobody counting it. Give it to a helper, or count it yourself on the tablet.
 
-**4. Send each kit.** On each helper card: **Send count kit** › **Send count kit**. Leave **Include photos** on (photos help students recognize parts).
+**4. Send each kit.** On each helper card: **Send count kit** › **Send count kit**. Leave **Include photos** on (photos help students recognize parts). From app version 1.7.1 the photos go in made small (320 px), so a kit is about a fifth of the tablet's photo size. With a big catalog the first kit takes a while ("Making photos small… n of m"); the next ones reuse the small photos and are quick.
 - The tablet saves `<name>_Helper.zip` (e.g. `Bin_A-B_Helper.zip`) to its Downloads (with several helpers, **Send all kits…** makes every helper's kit in one go; Helper devices shows each helper's last import and how many items it has counted) and says "Saved to Downloads, not sent yet". It doesn't open the share menu for this kind of file. Tap **Done**.
 - When all kits are saved, open the Drive app › **+** › **Upload**, choose the kit files from Downloads, and put them in `Kits`.
 

@@ -4,6 +4,12 @@
 export const PHOTO_LONG_SIDE = 1024;
 /** List thumbnails: shown at 64 CSS px, so 160 px covers a 2.5× screen. */
 export const THUMB_LONG_SIDE = 160;
+/**
+ * Photos in a count kit (v0.27, M32; Dan, 2026-11-17: 320 px). A helper phone shows the count photo at
+ * most 96 CSS px tall (about 290 px on a 3× screen); a helper tablet up to 300 CSS px, slightly soft.
+ */
+export const KIT_PHOTO_LONG_SIDE = 320;
+export const KIT_PHOTO_QUALITY = 0.8;
 
 /** Scales to fit within `max` on the long side, keeping the aspect ratio. Never upscales; at least 1 px. */
 export function fitWithin(width: number, height: number, max: number): { width: number; height: number } {

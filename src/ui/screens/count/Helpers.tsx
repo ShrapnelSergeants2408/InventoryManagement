@@ -28,6 +28,7 @@ import { helperProgress } from '../../../domain/helper-progress';
 import { nameKey } from '../../../domain/types';
 import { appAddress } from '../../../domain/url';
 import { kitFileName } from '../../../io/count-kit';
+import { makeKitPhoto } from '../../../io/image';
 import { shareFilesOrDownload, shareOrDownload } from '../../../io/share';
 import { BackButton, CheckBox, StateMessage, Toggle, TopBar, plural } from '../../components/common';
 import { Dialog, DialogActions } from '../../components/Dialog';
@@ -507,14 +508,15 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
   const links = useSettings();
   const h = props.h;
   const [photos, setPhotos] = useState(true);
-  const [size, setSize] = useState<{ count: number; bytes: number } | null>(null);
+  const [size, setSize] = useState<{ count: number } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [made, setMade] = useState<[number, number] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   /** The kit's file name once it was saved to Downloads instead of shared. */
   const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => {
     void db.photos.toArray().then(
-      (rows) => setSize({ count: rows.length, bytes: rows.reduce((n, r) => n + r.full.size, 0) }),
+      (rows) => setSize({ count: rows.length }),
       () => setSize(null),
     );
   }, [db]);
@@ -525,7 +527,8 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
     setFailure(null);
     try {
       const now = new Date();
-      const built = await buildKit(db, h.id, photos, now);
+      setMade(null);
+      const built = await buildKit(db, h.id, photos, now, { shrink: makeKitPhoto, onProgress: (d, t) => setMade([d, t]) });
       const name = kitFileName(h.name);
       const result = await shareOrDownload(new File([built.blob], name, { type: 'application/zip' }), `Count kit for ${h.name}`);
       if (result === 'cancelled') {
@@ -539,7 +542,7 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
         setBusy(false);
         return;
       }
-      showToast(`Sent ${name}.`);
+      showToast(`Sent ${name} (${formatBytes(built.blob.size)}).`);
       props.onClose();
     } catch (e) {
       setFailure(`Couldn’t build the kit: ${message(e)}`);
@@ -573,7 +576,7 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
         {plural(h.groups.length, KIND_LABEL[h.kind].one, KIND_LABEL[h.kind].many)}: <strong>{groupLabels(h).join(', ')}</strong>. Prices are left out.
       </p>
       <Toggle on={photos} disabled={busy} onClick={() => setPhotos(!photos)}>
-        Include photos{size ? ` (${plural(size.count, 'photo')}, about ${formatBytes(size.bytes)})` : ''}. Turn off for slow transfers like Bluetooth.
+        Include photos{size ? ` (${plural(size.count, 'photo')}, made small for phones)` : ''}. Turn off for slow transfers like Bluetooth.
       </Toggle>
       <p class="small muted dlg-p">
         {kit ? `Last kit sent ${kitTime(kit.createdAt)}. Sending again makes a new kit with today’s inventory.` : 'Once a kit is sent, this helper’s name can’t change.'} Next, open the kit on the helper
@@ -590,11 +593,17 @@ function SendKitDialog(props: { h: Helper; items: number; onClose: () => void })
         </button>
         <button type="button" class="btn pri lg" disabled={busy} onClick={() => void send()}>
           <Icon name="upload" />
-          {busy ? 'Building the kit…' : 'Send count kit'}
+          {busy ? buildingLabel(made, false) : 'Send count kit'}
         </button>
       </DialogActions>
     </Dialog>
   );
+}
+
+/** The busy button while kits are built: how far making photos small has got (v0.27, M32). */
+function buildingLabel(made: [number, number] | null, many: boolean): string {
+  if (made && made[0] < made[1]) return `Making photos small… ${made[0]} of ${made[1]}`;
+  return many ? 'Building the kits…' : 'Building the kit…';
 }
 
 /** Send all kits (§18.1, v0.20): one share sheet holding one kit per ticked helper. */
@@ -604,6 +613,7 @@ function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () =>
   const [ticked, setTicked] = useState<Set<string>>(() => new Set(props.helpers.map((h) => h.id)));
   const [photos, setPhotos] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [made, setMade] = useState<[number, number] | null>(null);
   const [failures, setFailures] = useState<string[]>([]);
   /** File names once they were saved to Downloads instead of shared. */
   const [saved, setSaved] = useState<string[] | null>(null);
@@ -618,7 +628,9 @@ function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () =>
     const problems: string[] = [];
     for (const h of chosen) {
       try {
-        const kit = await buildKit(db, h.id, photos, now);
+        // Each photo is made small once and reused for the next helpers' kits (kit-photos.ts).
+        setMade(null);
+        const kit = await buildKit(db, h.id, photos, now, { shrink: makeKitPhoto, onProgress: (d, t) => setMade([d, t]) });
         built.push({ h, kit, file: new File([kit.blob], kitFileName(h.name), { type: 'application/zip' }) });
       } catch (e) {
         problems.push(`${h.name}: ${message(e)}`);
@@ -642,7 +654,7 @@ function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () =>
         setBusy(false);
         return;
       }
-      showToast(`Sent ${plural(built.length, 'kit')}.`);
+      showToast(`Sent ${plural(built.length, 'kit')} (${formatBytes(built.reduce((n, b) => n + b.kit.blob.size, 0))}).`);
       props.onClose();
     } catch (e) {
       setFailures([`Couldn’t send the kits: ${message(e)}`]);
@@ -693,7 +705,7 @@ function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () =>
         })}
       </div>
       <Toggle on={photos} disabled={busy} onClick={() => setPhotos(!photos)}>
-        Include photos. Turn off for slow transfers like Bluetooth.
+        Include photos, made small for phones. Turn off for slow transfers like Bluetooth.
       </Toggle>
       {failures.length > 0 && (
         <div class="err" role="alert">
@@ -711,7 +723,7 @@ function SendAllDialog(props: { helpers: Helper[]; items: number; onClose: () =>
         </button>
         <button type="button" class="btn pri lg" disabled={busy || chosen.length === 0} onClick={() => void send()}>
           <Icon name="upload" />
-          {busy ? 'Building the kits…' : `Send ${plural(chosen.length, 'kit')}`}
+          {busy ? buildingLabel(made, true) : `Send ${plural(chosen.length, 'kit')}`}
         </button>
       </DialogActions>
     </Dialog>
